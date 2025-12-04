@@ -79,7 +79,7 @@ const testProducts = [
   },
 ];
 
-// Компонент карточки товара
+// Компонент карточки товара (формат списка)
 function ProductCard({ product }: { product: typeof testProducts[0] }) {
   const [isLiked, setIsLiked] = useState(false);
   
@@ -92,89 +92,83 @@ function ProductCard({ product }: { product: typeof testProducts[0] }) {
   };
 
   return (
-    <div className="group relative bg-card rounded-2xl overflow-hidden border border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5">
+    <div className="flex bg-card border-b border-border/30 active:bg-muted/50 transition-colors">
       {/* Изображение */}
-      <div className="relative aspect-square overflow-hidden bg-muted">
+      <div className="relative w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 bg-muted">
         <img
           src={product.images[0]}
           alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="w-full h-full object-cover"
         />
         
-        {/* Бейджи */}
-        <div className="absolute top-3 left-3 flex flex-col gap-2">
-          {discount && (
-            <Badge className="bg-destructive text-destructive-foreground font-semibold">
-              -{discount}%
-            </Badge>
-          )}
-          {!product.inStock && (
-            <Badge variant="secondary" className="bg-muted/90 backdrop-blur-sm">
-              Нет в наличии
-            </Badge>
-          )}
-        </div>
-
-        {/* Кнопка избранного */}
-        <button
-          onClick={() => setIsLiked(!isLiked)}
-          className="absolute top-3 right-3 w-9 h-9 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center transition-all hover:bg-background hover:scale-110"
-        >
-          <Heart
-            className={`w-5 h-5 transition-colors ${
-              isLiked ? "fill-destructive text-destructive" : "text-muted-foreground"
-            }`}
-          />
-        </button>
-
-        {/* Быстрая покупка (появляется при наведении) */}
-        <div className="absolute inset-x-3 bottom-3 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-          <Button 
-            className="w-full gap-2" 
-            disabled={!product.inStock}
-          >
-            <ShoppingCart className="w-4 h-4" />
-            В корзину
-          </Button>
-        </div>
+        {/* Бейдж скидки */}
+        {discount && (
+          <Badge className="absolute top-1.5 left-1.5 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5">
+            -{discount}%
+          </Badge>
+        )}
+        
+        {/* Нет в наличии */}
+        {!product.inStock && (
+          <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+            <span className="text-xs text-muted-foreground font-medium">Нет в наличии</span>
+          </div>
+        )}
       </div>
 
       {/* Информация */}
-      <div className="p-4 space-y-2">
-        {/* Категория */}
-        <span className="text-xs text-muted-foreground uppercase tracking-wide">
-          {product.category}
-        </span>
+      <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
+        <div className="space-y-1">
+          {/* Название */}
+          <h3 className="font-medium text-sm text-foreground line-clamp-2 leading-tight">
+            {product.name}
+          </h3>
 
-        {/* Название */}
-        <h3 className="font-medium text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
-          {product.name}
-        </h3>
-
-        {/* Описание */}
-        <p className="text-sm text-muted-foreground line-clamp-1">
-          {product.description}
-        </p>
-
-        {/* Рейтинг */}
-        <div className="flex items-center gap-1.5">
-          <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-          <span className="text-sm font-medium">{product.rating}</span>
-          <span className="text-sm text-muted-foreground">
-            ({product.reviewsCount})
-          </span>
+          {/* Рейтинг */}
+          <div className="flex items-center gap-1">
+            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+            <span className="text-xs font-medium">{product.rating}</span>
+            <span className="text-xs text-muted-foreground">
+              ({product.reviewsCount})
+            </span>
+          </div>
         </div>
 
-        {/* Цена */}
-        <div className="flex items-baseline gap-2 pt-1">
-          <span className="text-lg font-bold text-foreground">
-            {formatPrice(product.price)}
-          </span>
-          {product.comparePrice && (
-            <span className="text-sm text-muted-foreground line-through">
-              {formatPrice(product.comparePrice)}
+        {/* Цена и действия */}
+        <div className="flex items-end justify-between mt-2">
+          <div className="flex flex-col">
+            <span className="text-base font-bold text-foreground">
+              {formatPrice(product.price)}
             </span>
-          )}
+            {product.comparePrice && (
+              <span className="text-xs text-muted-foreground line-through">
+                {formatPrice(product.comparePrice)}
+              </span>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsLiked(!isLiked);
+              }}
+              className="w-8 h-8 rounded-full bg-muted flex items-center justify-center"
+            >
+              <Heart
+                className={`w-4 h-4 ${
+                  isLiked ? "fill-destructive text-destructive" : "text-muted-foreground"
+                }`}
+              />
+            </button>
+            <Button 
+              size="sm"
+              className="h-8 px-3 text-xs"
+              disabled={!product.inStock}
+            >
+              <ShoppingCart className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -185,37 +179,36 @@ export default function TestStore() {
   return (
     <div className="min-h-screen bg-background">
       {/* Шапка магазина */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
+      <header className="border-b border-border bg-card sticky top-0 z-50">
+        <div className="px-3 py-3 sm:px-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-                <Package className="w-5 h-5 text-primary-foreground" />
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+                <Package className="w-4 h-4 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="font-bold text-lg">Тестовый Магазин</h1>
-                <p className="text-xs text-muted-foreground">Дизайн карточек товаров</p>
+                <h1 className="font-bold text-base">Тестовый Магазин</h1>
               </div>
             </div>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="h-9 w-9 p-0">
               <ShoppingCart className="w-4 h-4" />
-              Корзина
             </Button>
           </div>
         </div>
       </header>
 
       {/* Контент */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-2">Каталог товаров</h2>
-          <p className="text-muted-foreground">
-            Тестовые карточки для отработки дизайна
+      <main>
+        {/* Заголовок каталога */}
+        <div className="px-3 py-3 sm:px-4 border-b border-border bg-muted/30">
+          <h2 className="text-sm font-semibold text-foreground">Каталог товаров</h2>
+          <p className="text-xs text-muted-foreground">
+            {testProducts.length} товаров
           </p>
         </div>
 
-        {/* Сетка товаров */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+        {/* Список товаров с отступом 1px */}
+        <div className="flex flex-col gap-px bg-border">
           {testProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
