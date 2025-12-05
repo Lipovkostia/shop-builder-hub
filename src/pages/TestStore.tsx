@@ -1,214 +1,228 @@
 import { useState } from "react";
-import { ShoppingCart, Heart, Star, Package } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Truck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 // Тестовые данные товаров
 const testProducts = [
   {
     id: "1",
     name: "Беспроводные наушники Premium",
-    description: "Активное шумоподавление, 30 часов работы",
+    description: "Активное шумоподавление",
     price: 12990,
-    comparePrice: 15990,
+    unit: "шт",
+    weight: "0.3 кг",
     images: ["https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop"],
-    category: "Электроника",
-    rating: 4.8,
-    reviewsCount: 124,
+    variants: [
+      { label: "1 шт", price: 12990 },
+      { label: "2 шт", price: 24990 },
+    ],
     inStock: true,
+    isHit: true,
   },
   {
     id: "2",
     name: "Умные часы Sport Pro",
-    description: "GPS, пульсометр, водозащита IP68",
+    description: "GPS, пульсометр, водозащита",
     price: 8490,
-    comparePrice: null,
+    unit: "шт",
+    weight: "0.15 кг",
     images: ["https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop"],
-    category: "Электроника",
-    rating: 4.5,
-    reviewsCount: 89,
+    variants: [
+      { label: "1 шт", price: 8490 },
+    ],
     inStock: true,
+    isHit: false,
   },
   {
     id: "3",
     name: "Кожаная сумка Classic",
-    description: "Натуральная кожа, ручная работа",
+    description: "Натуральная кожа",
     price: 7990,
-    comparePrice: 9990,
+    unit: "шт",
+    weight: "0.8 кг",
     images: ["https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&h=400&fit=crop"],
-    category: "Аксессуары",
-    rating: 4.9,
-    reviewsCount: 56,
-    inStock: true,
+    variants: [],
+    inStock: false,
+    isHit: false,
   },
   {
     id: "4",
     name: "Минималистичная лампа",
     description: "Скандинавский дизайн, LED",
     price: 3490,
-    comparePrice: null,
+    unit: "шт",
+    weight: "1.2 кг",
     images: ["https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop"],
-    category: "Дом",
-    rating: 4.3,
-    reviewsCount: 34,
+    variants: [],
     inStock: false,
+    isHit: false,
   },
   {
     id: "5",
     name: "Кроссовки Urban Runner",
-    description: "Легкие, дышащие, амортизация",
+    description: "Легкие, дышащие",
     price: 6990,
-    comparePrice: 8990,
+    unit: "пара",
+    weight: "0.6 кг",
     images: ["https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop"],
-    category: "Обувь",
-    rating: 4.7,
-    reviewsCount: 203,
+    variants: [
+      { label: "1 пара", price: 6990 },
+      { label: "2 пары", price: 12990 },
+    ],
     inStock: true,
+    isHit: true,
   },
   {
     id: "6",
     name: "Керамическая ваза",
-    description: "Ручная роспись, авторская работа",
+    description: "Ручная роспись",
     price: 2490,
-    comparePrice: null,
+    unit: "шт",
+    weight: "0.5 кг",
     images: ["https://images.unsplash.com/photo-1578500494198-246f612d3b3d?w=400&h=400&fit=crop"],
-    category: "Дом",
-    rating: 4.6,
-    reviewsCount: 18,
+    variants: [
+      { label: "1 шт", price: 2490 },
+    ],
     inStock: true,
+    isHit: false,
   },
 ];
 
-// Компонент карточки товара (формат списка)
+// Форматирование цены
+const formatPrice = (price: number) => {
+  return new Intl.NumberFormat("ru-RU").format(price) + " ₽";
+};
+
+// Компонент карточки товара
 function ProductCard({ product }: { product: typeof testProducts[0] }) {
-  const [isLiked, setIsLiked] = useState(false);
-  
-  const discount = product.comparePrice 
-    ? Math.round((1 - product.price / product.comparePrice) * 100) 
-    : null;
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("ru-RU").format(price) + " ₽";
-  };
-
   return (
-    <div className="flex bg-card border-b border-border/30 active:bg-muted/50 transition-colors">
+    <div className="flex items-start gap-3 p-3 bg-background border-b border-border">
       {/* Изображение */}
-      <div className="relative w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 bg-muted">
+      <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
         <img
           src={product.images[0]}
           alt={product.name}
           className="w-full h-full object-cover"
         />
-        
-        {/* Бейдж скидки */}
-        {discount && (
-          <Badge className="absolute top-1.5 left-1.5 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5">
-            -{discount}%
+        {/* Бейдж ХИТ */}
+        {product.isHit && (
+          <Badge className="absolute bottom-1 left-1 bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 rounded">
+            ХИТ
           </Badge>
-        )}
-        
-        {/* Нет в наличии */}
-        {!product.inStock && (
-          <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
-            <span className="text-xs text-muted-foreground font-medium">Нет в наличии</span>
-          </div>
         )}
       </div>
 
-      {/* Информация */}
-      <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
-        <div className="space-y-1">
-          {/* Название */}
-          <h3 className="font-medium text-sm text-foreground line-clamp-2 leading-tight">
-            {product.name}
-          </h3>
+      {/* Информация о товаре */}
+      <div className="flex-1 min-w-0">
+        {/* Название */}
+        <h3 className="font-semibold text-sm text-foreground leading-tight mb-1">
+          {product.name}
+        </h3>
+        
+        {/* Цена и вес */}
+        <p className="text-sm text-muted-foreground mb-2">
+          {formatPrice(product.price)}/{product.unit} · {product.weight}
+        </p>
 
-          {/* Рейтинг */}
-          <div className="flex items-center gap-1">
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            <span className="text-xs font-medium">{product.rating}</span>
-            <span className="text-xs text-muted-foreground">
-              ({product.reviewsCount})
-            </span>
-          </div>
-        </div>
-
-        {/* Цена и действия */}
-        <div className="flex items-end justify-between mt-2">
-          <div className="flex flex-col">
-            <span className="text-base font-bold text-foreground">
-              {formatPrice(product.price)}
-            </span>
-            {product.comparePrice && (
-              <span className="text-xs text-muted-foreground line-through">
-                {formatPrice(product.comparePrice)}
-              </span>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsLiked(!isLiked);
-              }}
-              className="w-8 h-8 rounded-full bg-muted flex items-center justify-center"
-            >
-              <Heart
-                className={`w-4 h-4 ${
-                  isLiked ? "fill-destructive text-destructive" : "text-muted-foreground"
-                }`}
-              />
-            </button>
-            <Button 
+        {/* Варианты или статус */}
+        <div className="flex flex-wrap items-center gap-2">
+          {product.inStock ? (
+            product.variants.length > 0 ? (
+              product.variants.map((variant, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 text-xs rounded-full border-primary/30 hover:bg-primary/10 hover:border-primary"
+                >
+                  <span className={`w-2 h-2 rounded-full mr-1.5 ${
+                    index === 0 ? 'bg-primary/30' : index === 1 ? 'bg-primary/60' : 'bg-primary'
+                  }`} />
+                  {formatPrice(variant.price)}
+                </Button>
+              ))
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 text-xs rounded-full border-primary/30 hover:bg-primary/10 hover:border-primary"
+              >
+                <span className="w-2 h-2 rounded-full mr-1.5 bg-primary" />
+                {formatPrice(product.price)}
+              </Button>
+            )
+          ) : (
+            <Button
+              variant="secondary"
               size="sm"
-              className="h-8 px-3 text-xs"
-              disabled={!product.inStock}
+              className="h-8 px-4 text-xs rounded-full bg-muted text-muted-foreground"
+              disabled
             >
-              <ShoppingCart className="w-3.5 h-3.5" />
+              Нет в наличии
             </Button>
-          </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
+// Компонент шапки с корзиной
+function StoreHeader() {
+  const [cartItems] = useState(2);
+  const [cartWeight] = useState(3.97);
+  const [cartTotal] = useState(9937.5);
+
+  return (
+    <header className="sticky top-0 z-50 bg-background border-b border-border">
+      <div className="flex items-center justify-between px-4 py-3">
+        {/* Корзина */}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Truck className="w-10 h-10 text-primary" strokeWidth={1.5} />
+            {cartItems > 0 && (
+              <span className="absolute -top-1 -left-1 w-5 h-5 bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center">
+                {cartItems}
+              </span>
+            )}
+          </div>
+          <div className="text-sm">
+            <p className="text-foreground">
+              Позиций: <span className="font-medium">{cartItems}</span>
+            </p>
+            <p className="text-muted-foreground">
+              Вес, кг: ~{cartWeight}
+            </p>
+            <p className="text-muted-foreground">
+              Сумма, ₽: {new Intl.NumberFormat("ru-RU").format(cartTotal)}
+            </p>
+          </div>
+        </div>
+
+        {/* Авторизация */}
+        <div className="flex items-center gap-2 text-sm">
+          <button className="text-foreground hover:text-primary transition-colors">
+            Войти
+          </button>
+          <span className="text-border">|</span>
+          <button className="text-primary font-medium hover:text-primary/80 transition-colors">
+            Регистрация
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
 export default function TestStore() {
   return (
     <div className="min-h-screen bg-background">
-      {/* Шапка магазина */}
-      <header className="border-b border-border bg-card sticky top-0 z-50">
-        <div className="px-3 py-3 sm:px-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-                <Package className="w-4 h-4 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="font-bold text-base">Тестовый Магазин</h1>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" className="h-9 w-9 p-0">
-              <ShoppingCart className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
+      <StoreHeader />
 
-      {/* Контент */}
+      {/* Список товаров */}
       <main>
-        {/* Заголовок каталога */}
-        <div className="px-3 py-3 sm:px-4 border-b border-border bg-muted/30">
-          <h2 className="text-sm font-semibold text-foreground">Каталог товаров</h2>
-          <p className="text-xs text-muted-foreground">
-            {testProducts.length} товаров
-          </p>
-        </div>
-
-        {/* Список товаров с отступом 1px */}
-        <div className="flex flex-col gap-px bg-border">
+        <div className="flex flex-col">
           {testProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
