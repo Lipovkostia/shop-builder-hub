@@ -2,12 +2,11 @@ import { useState } from "react";
 import { ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-// Типы товаров
 type ProductType = "weight" | "piece";
 
 interface WeightVariant {
   type: "full" | "half" | "quarter";
-  weight: number; // в кг
+  weight: number;
 }
 
 interface PieceVariant {
@@ -19,7 +18,7 @@ interface Product {
   id: string;
   name: string;
   description: string;
-  pricePerUnit: number; // цена за кг или за штуку
+  pricePerUnit: number;
   unit: string;
   image: string;
   productType: ProductType;
@@ -29,7 +28,13 @@ interface Product {
   isHit: boolean;
 }
 
-// Тестовые данные - сыры и хамон
+interface CartItem {
+  productId: string;
+  variantIndex: number;
+  quantity: number;
+  price: number;
+}
+
 const testProducts: Product[] = [
   {
     id: "1",
@@ -123,274 +128,244 @@ const testProducts: Product[] = [
     inStock: true,
     isHit: false,
   },
+  {
+    id: "7",
+    name: "Пекорино Романо DOP",
+    description: "Овечий сыр, 12 мес",
+    pricePerUnit: 2450,
+    unit: "кг",
+    image: "https://images.unsplash.com/photo-1589881133595-a3c085cb731d?w=400&h=400&fit=crop",
+    productType: "weight",
+    weightVariants: [
+      { type: "full", weight: 25 },
+      { type: "half", weight: 12.5 },
+    ],
+    inStock: true,
+    isHit: false,
+  },
+  {
+    id: "8",
+    name: "Горгонзола Дольче",
+    description: "Мягкая с голубой плесенью",
+    pricePerUnit: 1990,
+    unit: "кг",
+    image: "https://images.unsplash.com/photo-1452195100486-9cc805987862?w=400&h=400&fit=crop",
+    productType: "weight",
+    weightVariants: [
+      { type: "full", weight: 6 },
+      { type: "half", weight: 3 },
+    ],
+    inStock: true,
+    isHit: false,
+  },
+  {
+    id: "9",
+    name: "Манчего 6 мес",
+    description: "Испанский овечий сыр",
+    pricePerUnit: 2290,
+    unit: "кг",
+    image: "https://images.unsplash.com/photo-1634487359989-3e90c9432133?w=400&h=400&fit=crop",
+    productType: "weight",
+    weightVariants: [
+      { type: "full", weight: 3.2 },
+      { type: "half", weight: 1.6 },
+    ],
+    inStock: true,
+    isHit: true,
+  },
+  {
+    id: "10",
+    name: "Прошутто ди Парма",
+    description: "18 месяцев выдержки",
+    pricePerUnit: 4890,
+    unit: "кг",
+    image: "https://images.unsplash.com/photo-1551248429-40975aa4de74?w=400&h=400&fit=crop",
+    productType: "weight",
+    weightVariants: [
+      { type: "full", weight: 8 },
+      { type: "half", weight: 4 },
+    ],
+    inStock: true,
+    isHit: false,
+  },
 ];
 
-// Форматирование цены
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat("ru-RU").format(Math.round(price)) + " ₽";
 };
 
-// Получение названия варианта веса
-const getWeightLabel = (type: "full" | "half" | "quarter") => {
-  switch (type) {
-    case "full": return "Головка";
-    case "half": return "½ головки";
-    case "quarter": return "¼ головки";
-  }
-};
-
-// Компонент индикатора порции (круг)
-function PortionIndicator({ 
-  type, 
-  isSelected,
-  onClick 
-}: { 
-  type: "full" | "half" | "quarter";
-  isSelected: boolean;
-  onClick: () => void;
-}) {
-  const getIndicatorStyle = () => {
-    const baseClasses = "w-5 h-5 rounded-full border-2 border-primary cursor-pointer transition-all";
-    
-    if (type === "full") {
-      return `${baseClasses} ${isSelected ? "bg-primary" : "bg-primary"}`;
-    }
-    if (type === "half") {
-      return `${baseClasses} ${isSelected ? "bg-primary" : ""}`;
-    }
-    if (type === "quarter") {
-      return `${baseClasses} ${isSelected ? "bg-primary" : ""}`;
-    }
-    return baseClasses;
-  };
-
-  const renderInnerContent = () => {
-    if (type === "full") {
-      return <div className="w-full h-full rounded-full bg-primary" />;
-    }
-    if (type === "half") {
-      return (
-        <div className="w-full h-full rounded-full overflow-hidden">
-          <div className="w-1/2 h-full bg-primary" />
-        </div>
-      );
-    }
-    if (type === "quarter") {
-      return (
-        <div className="w-full h-full rounded-full overflow-hidden relative">
-          <div 
-            className="absolute top-0 left-0 w-1/2 h-1/2 bg-primary"
-            style={{ borderBottomRightRadius: "100%" }}
-          />
-        </div>
-      );
-    }
-    return null;
-  };
-
+// Индикатор порции
+function PortionIndicator({ type }: { type: "full" | "half" | "quarter" }) {
   return (
-    <button
-      onClick={onClick}
-      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all
-        ${isSelected 
-          ? "border-primary ring-2 ring-primary/30" 
-          : "border-primary/60 hover:border-primary"
-        }`}
-    >
-      <div className="w-4 h-4 rounded-full overflow-hidden relative">
-        {renderInnerContent()}
-      </div>
-    </button>
+    <div className="w-3.5 h-3.5 rounded-full overflow-hidden border border-primary bg-background">
+      {type === "full" && <div className="w-full h-full bg-primary" />}
+      {type === "half" && <div className="w-1/2 h-full bg-primary" />}
+      {type === "quarter" && (
+        <div className="w-1/2 h-1/2 bg-primary" style={{ borderBottomRightRadius: "100%" }} />
+      )}
+    </div>
   );
 }
 
-// Компонент карточки товара
-function ProductCard({ product }: { product: Product }) {
-  const [selectedVariant, setSelectedVariant] = useState<number>(0);
-
-  const calculatePrice = () => {
-    if (product.productType === "weight" && product.weightVariants) {
-      const variant = product.weightVariants[selectedVariant];
-      return product.pricePerUnit * variant.weight;
-    }
-    if (product.productType === "piece" && product.pieceVariants) {
-      const variant = product.pieceVariants[selectedVariant];
-      return product.pricePerUnit * variant.quantity;
-    }
-    return product.pricePerUnit;
-  };
-
-  const getSelectedWeight = () => {
-    if (product.productType === "weight" && product.weightVariants) {
-      return product.weightVariants[selectedVariant].weight;
-    }
-    return null;
-  };
-
-  const getSelectedQuantity = () => {
-    if (product.productType === "piece" && product.pieceVariants) {
-      return product.pieceVariants[selectedVariant].quantity;
-    }
-    return null;
+// Карточка товара
+function ProductCard({ 
+  product, 
+  cart, 
+  onAddToCart 
+}: { 
+  product: Product;
+  cart: CartItem[];
+  onAddToCart: (productId: string, variantIndex: number, price: number) => void;
+}) {
+  const getCartQuantity = (variantIndex: number) => {
+    const item = cart.find(
+      (c) => c.productId === product.id && c.variantIndex === variantIndex
+    );
+    return item?.quantity || 0;
   };
 
   return (
-    <div className="flex items-start gap-3 p-3 bg-background border-b border-border">
+    <div className="flex items-center gap-2 px-2 h-[calc((100vh-48px)/10)] min-h-[56px] bg-background border-b border-border">
       {/* Изображение */}
-      <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
+      <div className="relative w-11 h-11 flex-shrink-0 rounded overflow-hidden bg-muted">
         <img
           src={product.image}
           alt={product.name}
           className="w-full h-full object-cover"
         />
         {product.isHit && (
-          <Badge className="absolute bottom-1 left-1 bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 rounded">
+          <Badge className="absolute -top-0.5 -left-0.5 bg-destructive text-destructive-foreground text-[8px] px-1 py-0 rounded leading-tight">
             ХИТ
           </Badge>
         )}
       </div>
 
-      {/* Информация о товаре */}
-      <div className="flex-1 min-w-0">
-        {/* Название */}
-        <h3 className="font-semibold text-sm text-foreground leading-tight mb-0.5">
+      {/* Инфо */}
+      <div className="flex-1 min-w-0 py-1">
+        <h3 className="font-medium text-xs text-foreground leading-tight truncate">
           {product.name}
         </h3>
-        
-        {/* Описание */}
-        <p className="text-xs text-muted-foreground mb-1.5">
-          {product.description}
-        </p>
-
-        {/* Цена за единицу */}
-        <p className="text-sm font-medium text-foreground mb-2">
+        <p className="text-[10px] text-muted-foreground leading-tight truncate">
           {formatPrice(product.pricePerUnit)}/{product.unit}
         </p>
+      </div>
 
-        {/* Варианты или статус */}
+      {/* Кнопки */}
+      <div className="flex items-center gap-1 flex-shrink-0">
         {product.inStock ? (
-          <div className="space-y-2">
-            {/* Варианты по весу (сыр, хамон) */}
-            {product.productType === "weight" && product.weightVariants && (
-              <div className="flex flex-wrap items-center gap-2">
-                {product.weightVariants.map((variant, index) => (
-                  <button
-                    key={variant.type}
-                    onClick={() => setSelectedVariant(index)}
-                    className={`flex items-center gap-1.5 h-9 px-3 rounded-full border text-xs transition-all
-                      ${selectedVariant === index 
-                        ? "border-primary bg-primary/10 text-primary font-medium" 
-                        : "border-border hover:border-primary/50"
-                      }`}
-                  >
-                    <PortionIndicator 
-                      type={variant.type} 
-                      isSelected={selectedVariant === index}
-                      onClick={() => setSelectedVariant(index)}
-                    />
-                    <span className="flex flex-col items-start leading-tight">
-                      <span className="font-medium">
-                        {formatPrice(product.pricePerUnit * variant.weight)}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        ~{variant.weight} кг
-                      </span>
+          <>
+            {product.productType === "weight" && product.weightVariants?.map((variant, idx) => {
+              const qty = getCartQuantity(idx);
+              const price = product.pricePerUnit * variant.weight;
+              return (
+                <button
+                  key={variant.type}
+                  onClick={() => onAddToCart(product.id, idx, price)}
+                  className="relative flex flex-col items-center justify-center h-10 w-16 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                >
+                  {qty > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {qty}
                     </span>
-                  </button>
-                ))}
-              </div>
-            )}
+                  )}
+                  <PortionIndicator type={variant.type} />
+                  <span className="text-[10px] font-medium text-foreground leading-tight mt-0.5">
+                    {formatPrice(price)}
+                  </span>
+                </button>
+              );
+            })}
 
-            {/* Варианты по штукам */}
-            {product.productType === "piece" && product.pieceVariants && (
-              <div className="flex flex-wrap items-center gap-2">
-                {product.pieceVariants.map((variant, index) => (
-                  <button
-                    key={variant.type}
-                    onClick={() => setSelectedVariant(index)}
-                    className={`flex items-center gap-1.5 h-9 px-3 rounded-full border text-xs transition-all
-                      ${selectedVariant === index 
-                        ? "border-primary bg-primary/10 text-primary font-medium" 
-                        : "border-border hover:border-primary/50"
-                      }`}
-                  >
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold
-                      ${variant.type === "box" 
-                        ? "bg-primary text-primary-foreground" 
-                        : "border-2 border-primary text-primary"
-                      }`}
-                    >
-                      {variant.quantity}
+            {product.productType === "piece" && product.pieceVariants?.map((variant, idx) => {
+              const qty = getCartQuantity(idx);
+              const price = product.pricePerUnit * variant.quantity;
+              return (
+                <button
+                  key={variant.type}
+                  onClick={() => onAddToCart(product.id, idx, price)}
+                  className="relative flex flex-col items-center justify-center h-10 w-16 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                >
+                  {qty > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {qty}
                     </span>
-                    <span className="flex flex-col items-start leading-tight">
-                      <span className="font-medium">
-                        {formatPrice(product.pricePerUnit * variant.quantity)}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {variant.type === "box" ? "коробка" : "штука"}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+                  )}
+                  <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold ${
+                    variant.type === "box" ? "bg-primary text-primary-foreground" : "border border-primary text-primary"
+                  }`}>
+                    {variant.quantity}
+                  </span>
+                  <span className="text-[10px] font-medium text-foreground leading-tight mt-0.5">
+                    {formatPrice(price)}
+                  </span>
+                </button>
+              );
+            })}
+          </>
         ) : (
-          <button
-            className="h-9 px-4 text-xs rounded-full bg-muted text-muted-foreground cursor-not-allowed"
-            disabled
-          >
-            Нет в наличии
-          </button>
+          <span className="text-[10px] text-muted-foreground px-2">Нет в наличии</span>
         )}
       </div>
     </div>
   );
 }
 
-// Компонент шапки
-function StoreHeader() {
-  const [cartItems] = useState(3);
-  const [cartTotal] = useState(47850);
+// Шапка
+function StoreHeader({ cart }: { cart: CartItem[] }) {
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   return (
-    <header className="sticky top-0 z-50 bg-background border-b border-border">
-      <div className="flex items-center justify-between px-4 py-3">
-        {/* Логотип и название */}
-        <div>
-          <h1 className="font-bold text-lg text-foreground">Сыры & Хамон</h1>
-          <p className="text-xs text-muted-foreground">Оптовый каталог</p>
-        </div>
-
-        {/* Корзина */}
-        <button className="relative flex items-center gap-2 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-2 px-4">
-          <ShoppingCart className="w-5 h-5 text-primary" />
-          <div className="text-sm text-right">
-            <p className="font-semibold text-foreground">{formatPrice(cartTotal)}</p>
-          </div>
-          {cartItems > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center">
-              {cartItems}
-            </span>
-          )}
-        </button>
+    <header className="sticky top-0 z-50 bg-background border-b border-border h-12 flex items-center justify-between px-3">
+      <div>
+        <h1 className="font-bold text-sm text-foreground leading-tight">Сыры & Хамон</h1>
+        <p className="text-[10px] text-muted-foreground leading-tight">Оптовый каталог</p>
       </div>
+
+      <button className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3">
+        <ShoppingCart className="w-4 h-4 text-primary" />
+        <span className="text-xs font-semibold text-foreground">{formatPrice(totalPrice)}</span>
+        {totalItems > 0 && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+            {totalItems}
+          </span>
+        )}
+      </button>
     </header>
   );
 }
 
 export default function TestStore() {
-  return (
-    <div className="min-h-screen bg-background">
-      <StoreHeader />
+  const [cart, setCart] = useState<CartItem[]>([]);
 
-      {/* Список товаров */}
-      <main>
-        <div className="flex flex-col">
-          {testProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+  const handleAddToCart = (productId: string, variantIndex: number, price: number) => {
+    setCart((prev) => {
+      const existingIndex = prev.findIndex(
+        (item) => item.productId === productId && item.variantIndex === variantIndex
+      );
+      
+      if (existingIndex >= 0) {
+        const updated = [...prev];
+        updated[existingIndex].quantity += 1;
+        return updated;
+      }
+      
+      return [...prev, { productId, variantIndex, quantity: 1, price }];
+    });
+  };
+
+  return (
+    <div className="h-screen bg-background flex flex-col">
+      <StoreHeader cart={cart} />
+      <main className="flex-1 overflow-auto">
+        {testProducts.map((product) => (
+          <ProductCard 
+            key={product.id} 
+            product={product} 
+            cart={cart}
+            onAddToCart={handleAddToCart}
+          />
+        ))}
       </main>
     </div>
   );
