@@ -224,8 +224,22 @@ function ProductCard({
     return item?.quantity || 0;
   };
 
+  const getFullPrice = () => {
+    if (product.productType === "weight" && product.weightVariants) {
+      const fullVariant = product.weightVariants.find(v => v.type === "full");
+      return fullVariant ? product.pricePerUnit * fullVariant.weight : null;
+    }
+    if (product.productType === "piece" && product.pieceVariants) {
+      const boxVariant = product.pieceVariants.find(v => v.type === "box");
+      return boxVariant ? product.pricePerUnit * boxVariant.quantity : null;
+    }
+    return null;
+  };
+
+  const fullPrice = getFullPrice();
+
   return (
-    <div className="flex gap-1.5 px-1.5 py-1 h-[calc((100vh-44px)/8)] min-h-[72px] bg-background border-b border-border">
+    <div className="flex gap-1.5 px-1.5 py-0.5 h-[calc((100vh-44px)/8)] min-h-[72px] bg-background border-b border-border">
       {/* Изображение */}
       <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-center">
         <img
@@ -241,17 +255,27 @@ function ProductCard({
       </div>
 
       {/* Контент справа */}
-      <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
-        {/* Название с эффектом затухания */}
+      <div className="flex-1 min-w-0 flex flex-col justify-center gap-0">
+        {/* Строка 1: Название */}
         <div className="relative overflow-hidden">
-          <h3 className="font-medium text-xs text-foreground leading-tight whitespace-nowrap pr-4">
-            {product.name} · {formatPrice(product.pricePerUnit)}/{product.unit}
+          <h3 className="font-medium text-xs text-foreground leading-tight whitespace-nowrap pr-6">
+            {product.name}
           </h3>
-          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent" />
+          <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />
         </div>
 
-        {/* Кнопки */}
-        <div className="flex items-center gap-0.5">
+        {/* Строка 2: Цена за кг и за головку */}
+        <p className="text-[10px] text-muted-foreground leading-tight">
+          {formatPrice(product.pricePerUnit)}/{product.unit}
+          {fullPrice && (
+            <span className="ml-1">
+              · головка ~{formatPrice(fullPrice)}
+            </span>
+          )}
+        </p>
+
+        {/* Строка 3: Кнопки */}
+        <div className="flex items-center gap-0.5 mt-0.5">
           {product.inStock ? (
             <>
               {product.productType === "weight" && product.weightVariants?.map((variant, idx) => {
@@ -261,7 +285,7 @@ function ProductCard({
                   <button
                     key={variant.type}
                     onClick={() => onAddToCart(product.id, idx, price)}
-                    className="relative flex flex-col items-center justify-center h-9 w-14 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                    className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
                   >
                     {qty > 0 && (
                       <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
@@ -269,7 +293,7 @@ function ProductCard({
                       </span>
                     )}
                     <PortionIndicator type={variant.type} />
-                    <span className="text-[9px] font-medium text-foreground leading-none mt-0.5">
+                    <span className="text-[9px] font-medium text-foreground">
                       {formatPrice(price)}
                     </span>
                   </button>
@@ -283,7 +307,7 @@ function ProductCard({
                   <button
                     key={variant.type}
                     onClick={() => onAddToCart(product.id, idx, price)}
-                    className="relative flex flex-col items-center justify-center h-9 w-14 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                    className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
                   >
                     {qty > 0 && (
                       <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
@@ -295,7 +319,7 @@ function ProductCard({
                     }`}>
                       {variant.quantity}
                     </span>
-                    <span className="text-[9px] font-medium text-foreground leading-none mt-0.5">
+                    <span className="text-[9px] font-medium text-foreground">
                       {formatPrice(price)}
                     </span>
                   </button>
