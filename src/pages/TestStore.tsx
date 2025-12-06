@@ -225,9 +225,9 @@ function ProductCard({
   };
 
   return (
-    <div className="flex items-center gap-2 px-2 h-[calc((100vh-48px)/10)] min-h-[56px] bg-background border-b border-border">
+    <div className="flex gap-1.5 px-1.5 py-1 h-[calc((100vh-44px)/8)] min-h-[72px] bg-background border-b border-border">
       {/* Изображение */}
-      <div className="relative w-11 h-11 flex-shrink-0 rounded overflow-hidden bg-muted">
+      <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-center">
         <img
           src={product.image}
           alt={product.name}
@@ -240,71 +240,72 @@ function ProductCard({
         )}
       </div>
 
-      {/* Инфо */}
-      <div className="flex-1 min-w-0 py-1">
-        <h3 className="font-medium text-xs text-foreground leading-tight truncate">
-          {product.name}
-        </h3>
-        <p className="text-[10px] text-muted-foreground leading-tight truncate">
-          {formatPrice(product.pricePerUnit)}/{product.unit}
-        </p>
-      </div>
+      {/* Контент справа */}
+      <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+        {/* Название с эффектом затухания */}
+        <div className="relative overflow-hidden">
+          <h3 className="font-medium text-xs text-foreground leading-tight whitespace-nowrap pr-4">
+            {product.name} · {formatPrice(product.pricePerUnit)}/{product.unit}
+          </h3>
+          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent" />
+        </div>
 
-      {/* Кнопки */}
-      <div className="flex items-center gap-1 flex-shrink-0">
-        {product.inStock ? (
-          <>
-            {product.productType === "weight" && product.weightVariants?.map((variant, idx) => {
-              const qty = getCartQuantity(idx);
-              const price = product.pricePerUnit * variant.weight;
-              return (
-                <button
-                  key={variant.type}
-                  onClick={() => onAddToCart(product.id, idx, price)}
-                  className="relative flex flex-col items-center justify-center h-10 w-16 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                >
-                  {qty > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-                      {qty}
+        {/* Кнопки */}
+        <div className="flex items-center gap-0.5">
+          {product.inStock ? (
+            <>
+              {product.productType === "weight" && product.weightVariants?.map((variant, idx) => {
+                const qty = getCartQuantity(idx);
+                const price = product.pricePerUnit * variant.weight;
+                return (
+                  <button
+                    key={variant.type}
+                    onClick={() => onAddToCart(product.id, idx, price)}
+                    className="relative flex flex-col items-center justify-center h-9 w-14 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                  >
+                    {qty > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                        {qty}
+                      </span>
+                    )}
+                    <PortionIndicator type={variant.type} />
+                    <span className="text-[9px] font-medium text-foreground leading-none mt-0.5">
+                      {formatPrice(price)}
                     </span>
-                  )}
-                  <PortionIndicator type={variant.type} />
-                  <span className="text-[10px] font-medium text-foreground leading-tight mt-0.5">
-                    {formatPrice(price)}
-                  </span>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
 
-            {product.productType === "piece" && product.pieceVariants?.map((variant, idx) => {
-              const qty = getCartQuantity(idx);
-              const price = product.pricePerUnit * variant.quantity;
-              return (
-                <button
-                  key={variant.type}
-                  onClick={() => onAddToCart(product.id, idx, price)}
-                  className="relative flex flex-col items-center justify-center h-10 w-16 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                >
-                  {qty > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-                      {qty}
+              {product.productType === "piece" && product.pieceVariants?.map((variant, idx) => {
+                const qty = getCartQuantity(idx);
+                const price = product.pricePerUnit * variant.quantity;
+                return (
+                  <button
+                    key={variant.type}
+                    onClick={() => onAddToCart(product.id, idx, price)}
+                    className="relative flex flex-col items-center justify-center h-9 w-14 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                  >
+                    {qty > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                        {qty}
+                      </span>
+                    )}
+                    <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[8px] font-bold ${
+                      variant.type === "box" ? "bg-primary text-primary-foreground" : "border border-primary text-primary"
+                    }`}>
+                      {variant.quantity}
                     </span>
-                  )}
-                  <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold ${
-                    variant.type === "box" ? "bg-primary text-primary-foreground" : "border border-primary text-primary"
-                  }`}>
-                    {variant.quantity}
-                  </span>
-                  <span className="text-[10px] font-medium text-foreground leading-tight mt-0.5">
-                    {formatPrice(price)}
-                  </span>
-                </button>
-              );
-            })}
-          </>
-        ) : (
-          <span className="text-[10px] text-muted-foreground px-2">Нет в наличии</span>
-        )}
+                    <span className="text-[9px] font-medium text-foreground leading-none mt-0.5">
+                      {formatPrice(price)}
+                    </span>
+                  </button>
+                );
+              })}
+            </>
+          ) : (
+            <span className="text-[10px] text-muted-foreground">Нет в наличии</span>
+          )}
+        </div>
       </div>
     </div>
   );
