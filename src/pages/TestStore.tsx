@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ShoppingCart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ShoppingCart, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 type ProductType = "weight" | "piece";
@@ -337,6 +338,7 @@ function ProductCard({
 
 // Шапка
 function StoreHeader({ cart }: { cart: CartItem[] }) {
+  const navigate = useNavigate();
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
@@ -347,15 +349,25 @@ function StoreHeader({ cart }: { cart: CartItem[] }) {
         <p className="text-[10px] text-muted-foreground leading-tight">Оптовый каталог</p>
       </div>
 
-      <button className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3">
-        <ShoppingCart className="w-4 h-4 text-primary" />
-        <span className="text-xs font-semibold text-foreground">{formatPrice(totalPrice)}</span>
-        {totalItems > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-            {totalItems}
-          </span>
-        )}
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => navigate("/admin")}
+          className="flex items-center gap-1 bg-muted hover:bg-muted/80 transition-colors rounded-full py-1.5 px-3"
+        >
+          <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-xs font-medium text-foreground">Управление</span>
+        </button>
+
+        <button className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3">
+          <ShoppingCart className="w-4 h-4 text-primary" />
+          <span className="text-xs font-semibold text-foreground">{formatPrice(totalPrice)}</span>
+          {totalItems > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+              {totalItems}
+            </span>
+          )}
+        </button>
+      </div>
     </header>
   );
 }
