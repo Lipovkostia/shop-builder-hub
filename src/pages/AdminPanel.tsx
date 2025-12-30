@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Package } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -11,6 +11,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 type ProductType = "weight" | "piece";
 
@@ -38,6 +41,26 @@ interface Product {
   isHit: boolean;
 }
 
+interface MoySkladProduct {
+  id: string;
+  name: string;
+  description: string;
+  code: string;
+  article: string;
+  price: number;
+  buyPrice: number;
+  quantity: number;
+  stock: number;
+  productType: string;
+  images: string | null;
+  imagesCount: number;
+  uom: string;
+  weight: number;
+  volume: number;
+  archived: boolean;
+}
+
+// Local test products
 const testProducts: Product[] = [
   {
     id: "1",
@@ -217,9 +240,154 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
+type ActiveSection = "products" | "import";
+
 export default function AdminPanel() {
   const navigate = useNavigate();
-  const [activeSection] = useState<"products">("products");
+  const { toast } = useToast();
+  const [activeSection, setActiveSection] = useState<ActiveSection>("products");
+  
+  // MoySklad import state
+  const [isLoading, setIsLoading] = useState(false);
+  const [moyskladProducts, setMoyskladProducts] = useState<MoySkladProduct[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [importedProducts, setImportedProducts] = useState<Product[]>([]);
+  const [totalProducts, setTotalProducts] = useState(0);
+
+  const fetchMoySkladProducts = async () => {
+    setIsLoading(true);
+    try {
+      console.log("Fetching products from MoySklad...");
+      
+      const { data, error } = await supabase.functions.invoke('moysklad', {
+        body: { action: 'get_assortment', limit: 100, offset: 0 }
+      });
+
+      if (error) {
+        console.error("Error fetching products:", error);
+        toast({
+          title: "Ошибка",
+          description: "Не удалось загрузить товары из МойСклад. Проверьте токен API.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log("Fetched products:", data);
+      setMoyskladProducts(data.products || []);
+      setTotalProducts(data.meta?.size || 0);
+      
+      toast({
+        title: "Успешно",
+        description: `Загружено ${data.products?.length || 0} товаров из МойСклад`,
+      });
+    } catch (err) {
+      console.error("Error:", err);
+      toast({
+        title: "Ошибка",
+        description: "Произошла ошибка при подключении к МойСклад",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleProductSelection = (productId: string) => {
+    setSelectedProducts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(productId)) {
+        newSet.delete(productId);
+      } else {
+        newSet.add(productId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllProducts = () => {
+    if (selectedProducts.size === moyskladProducts.length) {
+      setSelectedProducts(new Set());
+    } else {
+      setSelectedProducts(new Set(moyskladProducts.map(p => p.id)));
+    }
+  };
+
+  const importSelectedProducts = async () => {
+    if (selectedProducts.size === 0) {
+      toast({
+        title: "Внимание",
+        description: "Выберите товары для импорта",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    const newProducts: Product[] = [];
+
+    for (const productId of selectedProducts) {
+      const msProduct = moyskladProducts.find(p => p.id === productId);
+      if (!msProduct) continue;
+
+      // Fetch images for this product
+      let imageUrl = "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop"; // default
+      
+      if (msProduct.imagesCount > 0) {
+        try {
+          const { data: imagesData } = await supabase.functions.invoke('moysklad', {
+            body: { action: 'get_product_images', productId: msProduct.id }
+          });
+          
+          if (imagesData?.images?.[0]?.miniature) {
+            // Get actual image content
+            const { data: imageContent } = await supabase.functions.invoke('moysklad', {
+              body: { action: 'get_image_content', imageUrl: imagesData.images[0].miniature }
+            });
+            if (imageContent?.imageData) {
+              imageUrl = imageContent.imageData;
+            }
+          }
+        } catch (err) {
+          console.log("Could not fetch image for product:", msProduct.id);
+        }
+      }
+
+      // Convert to local product format
+      const newProduct: Product = {
+        id: msProduct.id,
+        name: msProduct.name,
+        description: msProduct.description || "",
+        pricePerUnit: msProduct.price || 0,
+        unit: msProduct.uom || "кг",
+        image: imageUrl,
+        productType: msProduct.weight > 0 ? "weight" : "piece",
+        weightVariants: msProduct.weight > 0 ? [
+          { type: "full", weight: msProduct.weight },
+          { type: "half", weight: msProduct.weight / 2 },
+        ] : undefined,
+        pieceVariants: msProduct.weight <= 0 ? [
+          { type: "box", quantity: 10 },
+          { type: "single", quantity: 1 },
+        ] : undefined,
+        inStock: msProduct.quantity > 0 || msProduct.stock > 0,
+        isHit: false,
+      };
+
+      newProducts.push(newProduct);
+    }
+
+    setImportedProducts(prev => [...prev, ...newProducts]);
+    setSelectedProducts(new Set());
+    setIsLoading(false);
+
+    toast({
+      title: "Импорт завершён",
+      description: `Импортировано ${newProducts.length} товаров`,
+    });
+  };
+
+  const allProducts = [...testProducts, ...importedProducts];
 
   return (
     <div className="min-h-screen bg-background">
@@ -243,8 +411,9 @@ export default function AdminPanel() {
       <div className="flex">
         {/* Sidebar */}
         <aside className="w-56 border-r border-border min-h-[calc(100vh-56px)] bg-card">
-          <nav className="p-2">
+          <nav className="p-2 space-y-1">
             <button
+              onClick={() => setActiveSection("products")}
               className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeSection === "products"
                   ? "bg-primary text-primary-foreground"
@@ -254,81 +423,235 @@ export default function AdminPanel() {
               <Package className="h-4 w-4" />
               Все товары
             </button>
+            <button
+              onClick={() => setActiveSection("import")}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeSection === "import"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-foreground hover:bg-muted"
+              }`}
+            >
+              <Download className="h-4 w-4" />
+              Импорт из МойСклад
+            </button>
           </nav>
         </aside>
 
         {/* Main content */}
         <main className="flex-1 p-4">
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold text-foreground">Все товары</h2>
-            <p className="text-sm text-muted-foreground">
-              Всего товаров: {testProducts.length}
-            </p>
-          </div>
+          {activeSection === "products" && (
+            <>
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold text-foreground">Все товары</h2>
+                <p className="text-sm text-muted-foreground">
+                  Всего товаров: {allProducts.length}
+                </p>
+              </div>
 
-          <div className="bg-card rounded-lg border border-border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">Фото</TableHead>
-                  <TableHead>Название</TableHead>
-                  <TableHead>Описание</TableHead>
-                  <TableHead>Тип</TableHead>
-                  <TableHead>Цена/{"\u00A0"}ед.</TableHead>
-                  <TableHead>Варианты</TableHead>
-                  <TableHead>Статус</TableHead>
-                  <TableHead>Хит</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {testProducts.map((product) => (
-                  <TableRow key={product.id}>
-                    <TableCell>
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-10 h-10 rounded object-cover"
+              <div className="bg-card rounded-lg border border-border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]">Фото</TableHead>
+                      <TableHead>Название</TableHead>
+                      <TableHead>Описание</TableHead>
+                      <TableHead>Тип</TableHead>
+                      <TableHead>Цена/{"\u00A0"}ед.</TableHead>
+                      <TableHead>Варианты</TableHead>
+                      <TableHead>Статус</TableHead>
+                      <TableHead>Хит</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allProducts.map((product) => (
+                      <TableRow key={product.id}>
+                        <TableCell>
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-10 h-10 rounded object-cover"
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{product.name}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {product.description}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {product.productType === "weight" ? "Весовой" : "Штучный"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {formatPrice(product.pricePerUnit)}/{product.unit}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[200px]">
+                          {formatVariants(product)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={product.inStock ? "default" : "secondary"}
+                            className={`text-xs ${
+                              product.inStock
+                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {product.inStock ? "В наличии" : "Нет"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {product.isHit && (
+                            <Badge className="bg-destructive text-destructive-foreground text-xs">
+                              ХИТ
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+
+          {activeSection === "import" && (
+            <>
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">Импорт из МойСклад</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Подключитесь к МойСклад и выберите товары для импорта
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={fetchMoySkladProducts}
+                    disabled={isLoading}
+                    variant="outline"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Загрузить товары
+                  </Button>
+                  {moyskladProducts.length > 0 && (
+                    <Button
+                      onClick={importSelectedProducts}
+                      disabled={isLoading || selectedProducts.size === 0}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Импортировать ({selectedProducts.size})
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {moyskladProducts.length === 0 ? (
+                <div className="bg-card rounded-lg border border-border p-8 text-center">
+                  <Download className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="font-medium text-foreground mb-2">Нет загруженных товаров</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Нажмите "Загрузить товары", чтобы получить список из МойСклад
+                  </p>
+                  <Button onClick={fetchMoySkladProducts} disabled={isLoading}>
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Загрузить товары
+                  </Button>
+                </div>
+              ) : (
+                <div className="bg-card rounded-lg border border-border overflow-hidden">
+                  <div className="p-3 border-b border-border bg-muted/50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={selectedProducts.size === moyskladProducts.length}
+                        onCheckedChange={selectAllProducts}
                       />
-                    </TableCell>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {product.description}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {product.productType === "weight" ? "Весовой" : "Штучный"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {formatPrice(product.pricePerUnit)}/{product.unit}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-[200px]">
-                      {formatVariants(product)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={product.inStock ? "default" : "secondary"}
-                        className={`text-xs ${
-                          product.inStock
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {product.inStock ? "В наличии" : "Нет"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {product.isHit && (
-                        <Badge className="bg-destructive text-destructive-foreground text-xs">
-                          ХИТ
-                        </Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                      <span className="text-sm text-muted-foreground">
+                        Выбрано: {selectedProducts.size} из {moyskladProducts.length}
+                      </span>
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      Всего в МойСклад: {totalProducts}
+                    </span>
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[50px]"></TableHead>
+                        <TableHead>Название</TableHead>
+                        <TableHead>Артикул</TableHead>
+                        <TableHead>Код</TableHead>
+                        <TableHead>Цена продажи</TableHead>
+                        <TableHead>Закупочная</TableHead>
+                        <TableHead>Остаток</TableHead>
+                        <TableHead>Ед. изм.</TableHead>
+                        <TableHead>Фото</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {moyskladProducts.map((product) => (
+                        <TableRow 
+                          key={product.id}
+                          className={selectedProducts.has(product.id) ? "bg-primary/5" : ""}
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedProducts.has(product.id)}
+                              onCheckedChange={() => toggleProductSelection(product.id)}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">{product.name}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {product.article || "-"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {product.code || "-"}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {product.price > 0 ? formatPrice(product.price) : "-"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {product.buyPrice > 0 ? formatPrice(product.buyPrice) : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={product.quantity > 0 || product.stock > 0 ? "default" : "secondary"}
+                              className={`text-xs ${
+                                product.quantity > 0 || product.stock > 0
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {product.quantity || product.stock || 0}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {product.uom || "-"}
+                          </TableCell>
+                          <TableCell>
+                            {product.imagesCount > 0 ? (
+                              <Badge variant="outline" className="text-xs">
+                                <ImageIcon className="h-3 w-3 mr-1" />
+                                {product.imagesCount}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">-</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </>
+          )}
         </main>
       </div>
     </div>
