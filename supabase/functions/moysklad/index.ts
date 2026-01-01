@@ -14,20 +14,32 @@ serve(async (req) => {
   }
 
   try {
-    const moyskladToken = Deno.env.get('MOYSKLAD_TOKEN');
+    const body = await req.json();
+    const { action, productId, limit = 100, offset = 0, login, password } = body;
     
-    if (!moyskladToken) {
-      console.error('MOYSKLAD_TOKEN not configured');
-      return new Response(
-        JSON.stringify({ error: 'MOYSKLAD_TOKEN not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const { action, productId, limit = 100, offset = 0 } = await req.json();
     console.log(`MoySklad API action: ${action}, productId: ${productId}, limit: ${limit}, offset: ${offset}`);
 
-    const authHeader = `Bearer ${moyskladToken}`;
+    // Support both: 1) login/password from request, 2) stored token from env
+    let authHeader: string;
+    
+    if (login && password) {
+      // Use Basic Auth with login:password
+      const credentials = btoa(`${login}:${password}`);
+      authHeader = `Basic ${credentials}`;
+      console.log('Using Basic Auth with login/password');
+    } else {
+      // Fallback to stored token
+      const moyskladToken = Deno.env.get('MOYSKLAD_TOKEN');
+      if (!moyskladToken) {
+        console.error('No credentials provided and MOYSKLAD_TOKEN not configured');
+        return new Response(
+          JSON.stringify({ error: 'Требуется указать логин и пароль МойСклад' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      authHeader = `Bearer ${moyskladToken}`;
+      console.log('Using Bearer token from env');
+    }
 
     if (action === 'get_assortment') {
       // Fetch products/assortment list
@@ -151,7 +163,7 @@ serve(async (req) => {
 
     if (action === 'get_image_content') {
       // Fetch actual image content and return as base64 or URL
-      const { imageUrl } = await req.json();
+      const { imageUrl } = body;
       
       if (!imageUrl) {
         return new Response(
