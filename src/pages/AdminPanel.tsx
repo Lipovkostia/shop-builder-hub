@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
 type ProductType = "weight" | "piece";
 
 interface WeightVariant {
@@ -35,11 +36,16 @@ interface Product {
   pricePerUnit: number;
   unit: string;
   image: string;
+  imageFull?: string; // Full size image
   productType: ProductType;
   weightVariants?: WeightVariant[];
   pieceVariants?: PieceVariant[];
   inStock: boolean;
   isHit: boolean;
+  source?: "local" | "moysklad"; // Source of the product
+  moyskladId?: string; // Original MoySklad ID for sync
+  autoSync?: boolean; // Lock icon - auto-sync with MoySklad
+  buyPrice?: number; // Cost price from MoySklad
 }
 
 interface MoySkladProduct {
@@ -60,6 +66,9 @@ interface MoySkladProduct {
   volume: number;
   archived: boolean;
 }
+
+const MOYSKLAD_CREDENTIALS_KEY = "moysklad_credentials";
+const IMPORTED_PRODUCTS_KEY = "moysklad_imported_products";
 
 // Local test products
 const testProducts: Product[] = [
@@ -250,15 +259,103 @@ export default function AdminPanel() {
   
   // MoySklad import state
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [moyskladProducts, setMoyskladProducts] = useState<MoySkladProduct[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [importedProducts, setImportedProducts] = useState<Product[]>([]);
   const [totalProducts, setTotalProducts] = useState(0);
   
-  // MoySklad credentials
+  // MoySklad credentials - load from localStorage
   const [moyskladLogin, setMoyskladLogin] = useState("");
   const [moyskladPassword, setMoyskladPassword] = useState("");
   const [isConnected, setIsConnected] = useState(false);
+
+  // Load saved credentials and imported products on mount
+  useEffect(() => {
+    const savedCredentials = localStorage.getItem(MOYSKLAD_CREDENTIALS_KEY);
+    if (savedCredentials) {
+      try {
+        const { login, password } = JSON.parse(savedCredentials);
+        setMoyskladLogin(login);
+        setMoyskladPassword(password);
+        setIsConnected(true);
+      } catch (e) {
+        console.error("Failed to parse saved credentials");
+      }
+    }
+    
+    const savedProducts = localStorage.getItem(IMPORTED_PRODUCTS_KEY);
+    if (savedProducts) {
+      try {
+        setImportedProducts(JSON.parse(savedProducts));
+      } catch (e) {
+        console.error("Failed to parse saved products");
+      }
+    }
+  }, []);
+
+  // Save imported products to localStorage whenever they change
+  useEffect(() => {
+    if (importedProducts.length > 0) {
+      localStorage.setItem(IMPORTED_PRODUCTS_KEY, JSON.stringify(importedProducts));
+    }
+  }, [importedProducts]);
+
+  // Auto-sync products with MoySklad that have autoSync enabled
+  const syncAutoSyncProducts = async () => {
+    const productsToSync = importedProducts.filter(p => p.autoSync && p.moyskladId);
+    if (productsToSync.length === 0 || !moyskladLogin || !moyskladPassword) return;
+
+    setIsSyncing(true);
+    try {
+      const { data } = await supabase.functions.invoke('moysklad', {
+        body: { 
+          action: 'get_assortment', 
+          limit: 100, 
+          offset: 0,
+          login: moyskladLogin,
+          password: moyskladPassword
+        }
+      });
+
+      if (data?.products) {
+        const msProductsMap = new Map(data.products.map((p: MoySkladProduct) => [p.id, p]));
+        
+        setImportedProducts(prev => prev.map(product => {
+          if (product.autoSync && product.moyskladId) {
+            const msProduct = msProductsMap.get(product.moyskladId) as MoySkladProduct | undefined;
+            if (msProduct) {
+              return {
+                ...product,
+                pricePerUnit: msProduct.price || product.pricePerUnit,
+                buyPrice: msProduct.buyPrice,
+                inStock: msProduct.quantity > 0 || msProduct.stock > 0,
+              };
+            }
+          }
+          return product;
+        }));
+
+        toast({
+          title: "Синхронизация завершена",
+          description: `Обновлено ${productsToSync.length} товаров`,
+        });
+      }
+    } catch (err) {
+      console.error("Sync error:", err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Toggle auto-sync for a product
+  const toggleAutoSync = (productId: string) => {
+    setImportedProducts(prev => prev.map(product => 
+      product.id === productId 
+        ? { ...product, autoSync: !product.autoSync }
+        : product
+    ));
+  };
 
   const fetchMoySkladProducts = async () => {
     if (!moyskladLogin || !moyskladPassword) {
@@ -301,6 +398,9 @@ export default function AdminPanel() {
           description: "Неверный логин или пароль МойСклад",
           variant: "destructive",
         });
+        // Clear saved credentials on auth error
+        localStorage.removeItem(MOYSKLAD_CREDENTIALS_KEY);
+        setIsConnected(false);
         return;
       }
 
@@ -308,6 +408,12 @@ export default function AdminPanel() {
       setMoyskladProducts(data.products || []);
       setTotalProducts(data.meta?.size || 0);
       setIsConnected(true);
+      
+      // Save credentials to localStorage on successful connection
+      localStorage.setItem(MOYSKLAD_CREDENTIALS_KEY, JSON.stringify({
+        login: moyskladLogin,
+        password: moyskladPassword
+      }));
       
       toast({
         title: "Успешно подключено",
@@ -323,6 +429,18 @@ export default function AdminPanel() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const disconnectMoySklad = () => {
+    localStorage.removeItem(MOYSKLAD_CREDENTIALS_KEY);
+    setMoyskladLogin("");
+    setMoyskladPassword("");
+    setIsConnected(false);
+    setMoyskladProducts([]);
+    toast({
+      title: "Отключено",
+      description: "Подключение к МойСклад отключено",
+    });
   };
 
   const toggleProductSelection = (productId: string) => {
@@ -362,8 +480,14 @@ export default function AdminPanel() {
       const msProduct = moyskladProducts.find(p => p.id === productId);
       if (!msProduct) continue;
 
-      // Fetch images for this product
+      // Check if already imported
+      if (importedProducts.some(p => p.moyskladId === msProduct.id)) {
+        continue; // Skip already imported
+      }
+
+      // Fetch images for this product - both miniature and full size
       let imageUrl = "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop"; // default
+      let imageFullUrl = imageUrl;
       
       if (msProduct.imagesCount > 0) {
         try {
@@ -376,18 +500,37 @@ export default function AdminPanel() {
             }
           });
           
-          if (imagesData?.images?.[0]?.miniature) {
-            // Get actual image content
-            const { data: imageContent } = await supabase.functions.invoke('moysklad', {
-              body: { 
-                action: 'get_image_content', 
-                imageUrl: imagesData.images[0].miniature,
-                login: moyskladLogin,
-                password: moyskladPassword
+          if (imagesData?.images?.[0]) {
+            const imageInfo = imagesData.images[0];
+            
+            // Get miniature for thumbnail
+            if (imageInfo.miniature) {
+              const { data: imageContent } = await supabase.functions.invoke('moysklad', {
+                body: { 
+                  action: 'get_image_content', 
+                  imageUrl: imageInfo.miniature,
+                  login: moyskladLogin,
+                  password: moyskladPassword
+                }
+              });
+              if (imageContent?.imageData) {
+                imageUrl = imageContent.imageData;
               }
-            });
-            if (imageContent?.imageData) {
-              imageUrl = imageContent.imageData;
+            }
+            
+            // Get full size image
+            if (imageInfo.fullSize || imageInfo.downloadHref) {
+              const { data: fullImageContent } = await supabase.functions.invoke('moysklad', {
+                body: { 
+                  action: 'get_image_content', 
+                  imageUrl: imageInfo.fullSize || imageInfo.downloadHref,
+                  login: moyskladLogin,
+                  password: moyskladPassword
+                }
+              });
+              if (fullImageContent?.imageData) {
+                imageFullUrl = fullImageContent.imageData;
+              }
             }
           }
         } catch (err) {
@@ -397,12 +540,14 @@ export default function AdminPanel() {
 
       // Convert to local product format
       const newProduct: Product = {
-        id: msProduct.id,
+        id: `ms_${msProduct.id}`,
         name: msProduct.name,
         description: msProduct.description || "",
         pricePerUnit: msProduct.price || 0,
+        buyPrice: msProduct.buyPrice,
         unit: msProduct.uom || "кг",
         image: imageUrl,
+        imageFull: imageFullUrl,
         productType: msProduct.weight > 0 ? "weight" : "piece",
         weightVariants: msProduct.weight > 0 ? [
           { type: "full", weight: msProduct.weight },
@@ -414,6 +559,9 @@ export default function AdminPanel() {
         ] : undefined,
         inStock: msProduct.quantity > 0 || msProduct.stock > 0,
         isHit: false,
+        source: "moysklad",
+        moyskladId: msProduct.id,
+        autoSync: false,
       };
 
       newProducts.push(newProduct);
@@ -483,11 +631,28 @@ export default function AdminPanel() {
         <main className="flex-1 p-4">
           {activeSection === "products" && (
             <>
-              <div className="mb-4">
-                <h2 className="text-xl font-semibold text-foreground">Все товары</h2>
-                <p className="text-sm text-muted-foreground">
-                  Всего товаров: {allProducts.length}
-                </p>
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">Все товары</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Всего товаров: {allProducts.length} (из МойСклад: {importedProducts.length})
+                  </p>
+                </div>
+                {importedProducts.some(p => p.autoSync) && (
+                  <Button
+                    onClick={syncAutoSyncProducts}
+                    disabled={isSyncing}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {isSyncing ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Синхронизировать
+                  </Button>
+                )}
               </div>
 
               <div className="bg-card rounded-lg border border-border overflow-hidden">
@@ -496,12 +661,12 @@ export default function AdminPanel() {
                     <TableRow>
                       <TableHead className="w-[50px]">Фото</TableHead>
                       <TableHead>Название</TableHead>
-                      <TableHead>Описание</TableHead>
+                      <TableHead>Источник</TableHead>
                       <TableHead>Тип</TableHead>
                       <TableHead>Цена/{"\u00A0"}ед.</TableHead>
-                      <TableHead>Варианты</TableHead>
+                      <TableHead>Себестоимость</TableHead>
                       <TableHead>Статус</TableHead>
-                      <TableHead>Хит</TableHead>
+                      <TableHead>Синхр.</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -511,12 +676,34 @@ export default function AdminPanel() {
                           <img
                             src={product.image}
                             alt={product.name}
-                            className="w-10 h-10 rounded object-cover"
+                            className="w-10 h-10 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => {
+                              if (product.imageFull) {
+                                window.open(product.imageFull, '_blank');
+                              }
+                            }}
+                            title={product.imageFull ? "Нажмите для просмотра в полном размере" : ""}
                           />
                         </TableCell>
-                        <TableCell className="font-medium">{product.name}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {product.description}
+                        <TableCell className="font-medium">
+                          <div>
+                            {product.name}
+                            {product.description && (
+                              <p className="text-xs text-muted-foreground mt-0.5">{product.description}</p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {product.source === "moysklad" ? (
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              МойСклад
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">
+                              Локальный
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-xs">
@@ -526,8 +713,8 @@ export default function AdminPanel() {
                         <TableCell className="font-medium">
                           {formatPrice(product.pricePerUnit)}/{product.unit}
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground max-w-[200px]">
-                          {formatVariants(product)}
+                        <TableCell className="text-muted-foreground">
+                          {product.buyPrice ? formatPrice(product.buyPrice) : "-"}
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -542,10 +729,20 @@ export default function AdminPanel() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {product.isHit && (
-                            <Badge className="bg-destructive text-destructive-foreground text-xs">
-                              ХИТ
-                            </Badge>
+                          {product.source === "moysklad" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={`h-8 w-8 ${product.autoSync ? "text-primary" : "text-muted-foreground"}`}
+                              onClick={() => toggleAutoSync(product.id)}
+                              title={product.autoSync ? "Авто-синхронизация включена" : "Включить авто-синхронизацию"}
+                            >
+                              {product.autoSync ? (
+                                <Lock className="h-4 w-4" />
+                              ) : (
+                                <Unlock className="h-4 w-4" />
+                              )}
+                            </Button>
                           )}
                         </TableCell>
                       </TableRow>
@@ -632,6 +829,15 @@ export default function AdminPanel() {
                       <span className="text-sm text-muted-foreground">
                         {moyskladLogin}
                       </span>
+                      <Button
+                        onClick={disconnectMoySklad}
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Отключить
+                      </Button>
                     </div>
                     <div className="flex gap-2">
                       <Button

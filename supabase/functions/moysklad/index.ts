@@ -153,6 +153,8 @@ serve(async (req) => {
         miniature: img.miniature?.href || null,
         tiny: img.tiny?.href || null,
         downloadHref: img.meta?.downloadHref || null,
+        // Full size image URL - remove miniature parameter for full resolution
+        fullSize: img.meta?.downloadHref || null,
       })) || [];
 
       return new Response(
