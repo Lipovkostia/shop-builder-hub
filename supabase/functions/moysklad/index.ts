@@ -192,8 +192,17 @@ serve(async (req) => {
       }
 
       const arrayBuffer = await response.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const uint8Array = new Uint8Array(arrayBuffer);
       const contentType = response.headers.get('content-type') || 'image/jpeg';
+      
+      // Convert to base64 in chunks to avoid stack overflow for large images
+      let binary = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < uint8Array.length; i += chunkSize) {
+        const chunk = uint8Array.subarray(i, i + chunkSize);
+        binary += String.fromCharCode.apply(null, Array.from(chunk));
+      }
+      const base64 = btoa(binary);
 
       return new Response(
         JSON.stringify({ 
