@@ -806,14 +806,59 @@ export default function AdminPanel() {
                 </div>
               )}
 
-              {/* Connected state - show products */}
+              {/* Connected state - show load button */}
               {isConnected && moyskladProducts.length === 0 && (
-                <div className="bg-card rounded-lg border border-border p-8 text-center">
-                  <Download className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="font-medium text-foreground mb-2">Нет товаров</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    В вашем аккаунте МойСклад нет товаров
-                  </p>
+                <div className="bg-card rounded-lg border border-border p-6 mb-4 max-w-md">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Badge variant="outline" className="text-green-600 border-green-600">
+                      <Check className="h-3 w-3 mr-1" />
+                      Подключено
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">{moyskladLogin}</span>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="ms-login-edit">Логин</Label>
+                      <Input
+                        id="ms-login-edit"
+                        type="text"
+                        placeholder="admin@company"
+                        value={moyskladLogin}
+                        onChange={(e) => setMoyskladLogin(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ms-password-edit">Пароль</Label>
+                      <Input
+                        id="ms-password-edit"
+                        type="password"
+                        placeholder="••••••••"
+                        value={moyskladPassword}
+                        onChange={(e) => setMoyskladPassword(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={fetchMoySkladProducts}
+                        disabled={isLoading || !moyskladLogin || !moyskladPassword}
+                        className="flex-1"
+                      >
+                        {isLoading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4 mr-2" />
+                        )}
+                        Загрузить товары
+                      </Button>
+                      <Button
+                        onClick={disconnectMoySklad}
+                        variant="outline"
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
 
