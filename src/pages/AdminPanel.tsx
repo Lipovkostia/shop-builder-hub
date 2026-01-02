@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,13 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type ProductType = "weight" | "piece";
 
@@ -36,16 +43,17 @@ interface Product {
   pricePerUnit: number;
   unit: string;
   image: string;
-  imageFull?: string; // Full size image
+  imageFull?: string;
   productType: ProductType;
   weightVariants?: WeightVariant[];
   pieceVariants?: PieceVariant[];
   inStock: boolean;
   isHit: boolean;
-  source?: "local" | "moysklad"; // Source of the product
-  moyskladId?: string; // Original MoySklad ID for sync
-  autoSync?: boolean; // Lock icon - auto-sync with MoySklad
-  buyPrice?: number; // Cost price from MoySklad
+  source?: "local" | "moysklad";
+  moyskladId?: string;
+  autoSync?: boolean;
+  buyPrice?: number;
+  accountId?: string; // Which MoySklad account this product is from
 }
 
 interface MoySkladProduct {
@@ -67,7 +75,15 @@ interface MoySkladProduct {
   archived: boolean;
 }
 
-const MOYSKLAD_CREDENTIALS_KEY = "moysklad_credentials";
+interface MoySkladAccount {
+  id: string;
+  login: string;
+  password: string;
+  name: string; // Display name for the account
+  lastSync?: string;
+}
+
+const MOYSKLAD_ACCOUNTS_KEY = "moysklad_accounts";
 const IMPORTED_PRODUCTS_KEY = "moysklad_imported_products";
 
 // Local test products
@@ -251,11 +267,64 @@ const formatVariants = (product: Product) => {
 };
 
 type ActiveSection = "products" | "import";
+type ImportView = "accounts" | "catalog";
+
+// Filter component for column headers
+function ColumnFilter({ 
+  value, 
+  onChange, 
+  placeholder 
+}: { 
+  value: string; 
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div className="mt-1">
+      <Input
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-7 text-xs"
+      />
+    </div>
+  );
+}
+
+function SelectFilter({
+  value,
+  onChange,
+  options,
+  placeholder
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  placeholder: string;
+}) {
+  return (
+    <div className="mt-1">
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-7 text-xs">
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">{placeholder}</SelectItem>
+          {options.map(opt => (
+            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 export default function AdminPanel() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeSection, setActiveSection] = useState<ActiveSection>("products");
+  const [importView, setImportView] = useState<ImportView>("accounts");
   
   // MoySklad import state
   const [isLoading, setIsLoading] = useState(false);
@@ -265,22 +334,39 @@ export default function AdminPanel() {
   const [importedProducts, setImportedProducts] = useState<Product[]>([]);
   const [totalProducts, setTotalProducts] = useState(0);
   
-  // MoySklad credentials - load from localStorage
-  const [moyskladLogin, setMoyskladLogin] = useState("");
-  const [moyskladPassword, setMoyskladPassword] = useState("");
-  const [isConnected, setIsConnected] = useState(false);
+  // Multiple accounts support
+  const [accounts, setAccounts] = useState<MoySkladAccount[]>([]);
+  const [currentAccount, setCurrentAccount] = useState<MoySkladAccount | null>(null);
+  const [newAccountLogin, setNewAccountLogin] = useState("");
+  const [newAccountPassword, setNewAccountPassword] = useState("");
+  const [newAccountName, setNewAccountName] = useState("");
+  const [showAddAccount, setShowAddAccount] = useState(false);
 
-  // Load saved credentials and imported products on mount
+  // Filters for "All Products" table
+  const [allProductsFilters, setAllProductsFilters] = useState({
+    name: "",
+    source: "all",
+    type: "all",
+    status: "all",
+    sync: "all",
+  });
+
+  // Filters for MoySklad import table
+  const [importFilters, setImportFilters] = useState({
+    name: "",
+    article: "",
+    code: "",
+    stock: "all",
+  });
+
+  // Load saved accounts and imported products on mount
   useEffect(() => {
-    const savedCredentials = localStorage.getItem(MOYSKLAD_CREDENTIALS_KEY);
-    if (savedCredentials) {
+    const savedAccounts = localStorage.getItem(MOYSKLAD_ACCOUNTS_KEY);
+    if (savedAccounts) {
       try {
-        const { login, password } = JSON.parse(savedCredentials);
-        setMoyskladLogin(login);
-        setMoyskladPassword(password);
-        setIsConnected(true);
+        setAccounts(JSON.parse(savedAccounts));
       } catch (e) {
-        console.error("Failed to parse saved credentials");
+        console.error("Failed to parse saved accounts");
       }
     }
     
@@ -294,6 +380,13 @@ export default function AdminPanel() {
     }
   }, []);
 
+  // Save accounts to localStorage
+  useEffect(() => {
+    if (accounts.length > 0) {
+      localStorage.setItem(MOYSKLAD_ACCOUNTS_KEY, JSON.stringify(accounts));
+    }
+  }, [accounts]);
+
   // Save imported products to localStorage whenever they change
   useEffect(() => {
     if (importedProducts.length > 0) {
@@ -301,46 +394,77 @@ export default function AdminPanel() {
     }
   }, [importedProducts]);
 
+  // Check if a MoySklad product is linked (imported) to all products
+  const isProductLinked = (msProductId: string) => {
+    return importedProducts.some(p => p.moyskladId === msProductId);
+  };
+
+  // Get linked product from importedProducts
+  const getLinkedProduct = (msProductId: string) => {
+    return importedProducts.find(p => p.moyskladId === msProductId);
+  };
+
+  // Toggle auto-sync for a MoySklad product in import view
+  const toggleImportAutoSync = (msProductId: string) => {
+    const linkedProduct = getLinkedProduct(msProductId);
+    if (linkedProduct) {
+      toggleAutoSync(linkedProduct.id);
+    }
+  };
+
   // Auto-sync products with MoySklad that have autoSync enabled
   const syncAutoSyncProducts = async () => {
     const productsToSync = importedProducts.filter(p => p.autoSync && p.moyskladId);
-    if (productsToSync.length === 0 || !moyskladLogin || !moyskladPassword) return;
+    if (productsToSync.length === 0) return;
+
+    // Group products by account
+    const productsByAccount = productsToSync.reduce((acc, p) => {
+      const accountId = p.accountId || '';
+      if (!acc[accountId]) acc[accountId] = [];
+      acc[accountId].push(p);
+      return acc;
+    }, {} as Record<string, Product[]>);
 
     setIsSyncing(true);
     try {
-      const { data } = await supabase.functions.invoke('moysklad', {
-        body: { 
-          action: 'get_assortment', 
-          limit: 100, 
-          offset: 0,
-          login: moyskladLogin,
-          password: moyskladPassword
-        }
-      });
+      for (const [accountId, products] of Object.entries(productsByAccount)) {
+        const account = accounts.find(a => a.id === accountId);
+        if (!account) continue;
 
-      if (data?.products) {
-        const msProductsMap = new Map(data.products.map((p: MoySkladProduct) => [p.id, p]));
-        
-        setImportedProducts(prev => prev.map(product => {
-          if (product.autoSync && product.moyskladId) {
-            const msProduct = msProductsMap.get(product.moyskladId) as MoySkladProduct | undefined;
-            if (msProduct) {
-              return {
-                ...product,
-                pricePerUnit: msProduct.price || product.pricePerUnit,
-                buyPrice: msProduct.buyPrice,
-                inStock: msProduct.quantity > 0 || msProduct.stock > 0,
-              };
-            }
+        const { data } = await supabase.functions.invoke('moysklad', {
+          body: { 
+            action: 'get_assortment', 
+            limit: 100, 
+            offset: 0,
+            login: account.login,
+            password: account.password
           }
-          return product;
-        }));
-
-        toast({
-          title: "Синхронизация завершена",
-          description: `Обновлено ${productsToSync.length} товаров`,
         });
+
+        if (data?.products) {
+          const msProductsMap = new Map(data.products.map((p: MoySkladProduct) => [p.id, p]));
+          
+          setImportedProducts(prev => prev.map(product => {
+            if (product.autoSync && product.moyskladId && product.accountId === accountId) {
+              const msProduct = msProductsMap.get(product.moyskladId) as MoySkladProduct | undefined;
+              if (msProduct) {
+                return {
+                  ...product,
+                  pricePerUnit: msProduct.price || product.pricePerUnit,
+                  buyPrice: msProduct.buyPrice,
+                  inStock: msProduct.quantity > 0 || msProduct.stock > 0,
+                };
+              }
+            }
+            return product;
+          }));
+        }
       }
+
+      toast({
+        title: "Синхронизация завершена",
+        description: `Обновлено ${productsToSync.length} товаров`,
+      });
     } catch (err) {
       console.error("Sync error:", err);
     } finally {
@@ -357,15 +481,87 @@ export default function AdminPanel() {
     ));
   };
 
-  const fetchMoySkladProducts = async () => {
-    if (!moyskladLogin || !moyskladPassword) {
+  const addNewAccount = async () => {
+    if (!newAccountLogin || !newAccountPassword) {
       toast({
         title: "Ошибка",
-        description: "Введите логин и пароль МойСклад",
+        description: "Введите логин и пароль",
         variant: "destructive",
       });
       return;
     }
+
+    setIsLoading(true);
+    try {
+      // Test connection
+      const { data, error } = await supabase.functions.invoke('moysklad', {
+        body: { 
+          action: 'get_assortment', 
+          limit: 1, 
+          offset: 0,
+          login: newAccountLogin,
+          password: newAccountPassword
+        }
+      });
+
+      if (error || data.error) {
+        toast({
+          title: "Ошибка авторизации",
+          description: "Неверный логин или пароль МойСклад",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const newAccount: MoySkladAccount = {
+        id: `acc_${Date.now()}`,
+        login: newAccountLogin,
+        password: newAccountPassword,
+        name: newAccountName || newAccountLogin,
+        lastSync: new Date().toISOString(),
+      };
+
+      setAccounts(prev => [...prev, newAccount]);
+      setNewAccountLogin("");
+      setNewAccountPassword("");
+      setNewAccountName("");
+      setShowAddAccount(false);
+
+      toast({
+        title: "Аккаунт добавлен",
+        description: `Подключен аккаунт ${newAccount.name}`,
+      });
+    } catch (err) {
+      console.error("Error:", err);
+      toast({
+        title: "Ошибка",
+        description: "Произошла ошибка при подключении",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteAccount = (accountId: string) => {
+    setAccounts(prev => prev.filter(a => a.id !== accountId));
+    // Also remove products from this account
+    setImportedProducts(prev => prev.filter(p => p.accountId !== accountId));
+    toast({
+      title: "Аккаунт удалён",
+      description: "Аккаунт и связанные товары удалены",
+    });
+  };
+
+  const selectAccount = async (account: MoySkladAccount) => {
+    setCurrentAccount(account);
+    setImportView("catalog");
+    await fetchMoySkladProducts(account);
+  };
+
+  const fetchMoySkladProducts = async (account?: MoySkladAccount) => {
+    const acc = account || currentAccount;
+    if (!acc) return;
     
     setIsLoading(true);
     try {
@@ -376,8 +572,8 @@ export default function AdminPanel() {
           action: 'get_assortment', 
           limit: 100, 
           offset: 0,
-          login: moyskladLogin,
-          password: moyskladPassword
+          login: acc.login,
+          password: acc.password
         }
       });
 
@@ -385,7 +581,7 @@ export default function AdminPanel() {
         console.error("Error fetching products:", error);
         toast({
           title: "Ошибка",
-          description: "Не удалось загрузить товары из МойСклад. Проверьте логин и пароль.",
+          description: "Не удалось загрузить товары из МойСклад",
           variant: "destructive",
         });
         return;
@@ -398,26 +594,21 @@ export default function AdminPanel() {
           description: "Неверный логин или пароль МойСклад",
           variant: "destructive",
         });
-        // Clear saved credentials on auth error
-        localStorage.removeItem(MOYSKLAD_CREDENTIALS_KEY);
-        setIsConnected(false);
         return;
       }
 
       console.log("Fetched products:", data);
       setMoyskladProducts(data.products || []);
       setTotalProducts(data.meta?.size || 0);
-      setIsConnected(true);
       
-      // Save credentials to localStorage on successful connection
-      localStorage.setItem(MOYSKLAD_CREDENTIALS_KEY, JSON.stringify({
-        login: moyskladLogin,
-        password: moyskladPassword
-      }));
+      // Update account's last sync time
+      setAccounts(prev => prev.map(a => 
+        a.id === acc.id ? { ...a, lastSync: new Date().toISOString() } : a
+      ));
       
       toast({
-        title: "Успешно подключено",
-        description: `Загружено ${data.products?.length || 0} товаров из МойСклад`,
+        title: "Товары загружены",
+        description: `Загружено ${data.products?.length || 0} товаров`,
       });
     } catch (err) {
       console.error("Error:", err);
@@ -431,16 +622,11 @@ export default function AdminPanel() {
     }
   };
 
-  const disconnectMoySklad = () => {
-    localStorage.removeItem(MOYSKLAD_CREDENTIALS_KEY);
-    setMoyskladLogin("");
-    setMoyskladPassword("");
-    setIsConnected(false);
+  const backToAccounts = () => {
+    setImportView("accounts");
+    setCurrentAccount(null);
     setMoyskladProducts([]);
-    toast({
-      title: "Отключено",
-      description: "Подключение к МойСклад отключено",
-    });
+    setSelectedProducts(new Set());
   };
 
   const toggleProductSelection = (productId: string) => {
@@ -464,7 +650,7 @@ export default function AdminPanel() {
   };
 
   const importSelectedProducts = async () => {
-    if (selectedProducts.size === 0) {
+    if (selectedProducts.size === 0 || !currentAccount) {
       toast({
         title: "Внимание",
         description: "Выберите товары для импорта",
@@ -486,7 +672,7 @@ export default function AdminPanel() {
       }
 
       // Fetch images for this product - both miniature and full size
-      let imageUrl = "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop"; // default
+      let imageUrl = "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop";
       let imageFullUrl = imageUrl;
       
       if (msProduct.imagesCount > 0) {
@@ -495,8 +681,8 @@ export default function AdminPanel() {
             body: { 
               action: 'get_product_images', 
               productId: msProduct.id,
-              login: moyskladLogin,
-              password: moyskladPassword
+              login: currentAccount.login,
+              password: currentAccount.password
             }
           });
           
@@ -509,8 +695,8 @@ export default function AdminPanel() {
                 body: { 
                   action: 'get_image_content', 
                   imageUrl: imageInfo.miniature,
-                  login: moyskladLogin,
-                  password: moyskladPassword
+                  login: currentAccount.login,
+                  password: currentAccount.password
                 }
               });
               if (imageContent?.imageData) {
@@ -524,8 +710,8 @@ export default function AdminPanel() {
                 body: { 
                   action: 'get_image_content', 
                   imageUrl: imageInfo.fullSize || imageInfo.downloadHref,
-                  login: moyskladLogin,
-                  password: moyskladPassword
+                  login: currentAccount.login,
+                  password: currentAccount.password
                 }
               });
               if (fullImageContent?.imageData) {
@@ -562,6 +748,7 @@ export default function AdminPanel() {
         source: "moysklad",
         moyskladId: msProduct.id,
         autoSync: false,
+        accountId: currentAccount.id,
       };
 
       newProducts.push(newProduct);
@@ -578,6 +765,53 @@ export default function AdminPanel() {
   };
 
   const allProducts = [...testProducts, ...importedProducts];
+
+  // Filtered "All Products"
+  const filteredAllProducts = useMemo(() => {
+    return allProducts.filter(product => {
+      if (allProductsFilters.name && !product.name.toLowerCase().includes(allProductsFilters.name.toLowerCase())) {
+        return false;
+      }
+      if (allProductsFilters.source !== "all") {
+        const isMs = product.source === "moysklad";
+        if (allProductsFilters.source === "moysklad" && !isMs) return false;
+        if (allProductsFilters.source === "local" && isMs) return false;
+      }
+      if (allProductsFilters.type !== "all" && product.productType !== allProductsFilters.type) {
+        return false;
+      }
+      if (allProductsFilters.status !== "all") {
+        if (allProductsFilters.status === "inStock" && !product.inStock) return false;
+        if (allProductsFilters.status === "outOfStock" && product.inStock) return false;
+      }
+      if (allProductsFilters.sync !== "all" && product.source === "moysklad") {
+        if (allProductsFilters.sync === "synced" && !product.autoSync) return false;
+        if (allProductsFilters.sync === "notSynced" && product.autoSync) return false;
+      }
+      return true;
+    });
+  }, [allProducts, allProductsFilters]);
+
+  // Filtered MoySklad products
+  const filteredMoyskladProducts = useMemo(() => {
+    return moyskladProducts.filter(product => {
+      if (importFilters.name && !product.name.toLowerCase().includes(importFilters.name.toLowerCase())) {
+        return false;
+      }
+      if (importFilters.article && !product.article?.toLowerCase().includes(importFilters.article.toLowerCase())) {
+        return false;
+      }
+      if (importFilters.code && !product.code?.toLowerCase().includes(importFilters.code.toLowerCase())) {
+        return false;
+      }
+      if (importFilters.stock !== "all") {
+        const hasStock = product.quantity > 0 || product.stock > 0;
+        if (importFilters.stock === "inStock" && !hasStock) return false;
+        if (importFilters.stock === "outOfStock" && hasStock) return false;
+      }
+      return true;
+    });
+  }, [moyskladProducts, importFilters]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -614,7 +848,10 @@ export default function AdminPanel() {
               Все товары
             </button>
             <button
-              onClick={() => setActiveSection("import")}
+              onClick={() => {
+                setActiveSection("import");
+                setImportView("accounts");
+              }}
               className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeSection === "import"
                   ? "bg-primary text-primary-foreground"
@@ -635,7 +872,7 @@ export default function AdminPanel() {
                 <div>
                   <h2 className="text-xl font-semibold text-foreground">Все товары</h2>
                   <p className="text-sm text-muted-foreground">
-                    Всего товаров: {allProducts.length} (из МойСклад: {importedProducts.length})
+                    Всего товаров: {filteredAllProducts.length} (из МойСклад: {importedProducts.length})
                   </p>
                 </div>
                 {importedProducts.some(p => p.autoSync) && (
@@ -660,17 +897,68 @@ export default function AdminPanel() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[50px]">Фото</TableHead>
-                      <TableHead>Название</TableHead>
-                      <TableHead>Источник</TableHead>
-                      <TableHead>Тип</TableHead>
+                      <TableHead>
+                        Название
+                        <ColumnFilter 
+                          value={allProductsFilters.name} 
+                          onChange={(v) => setAllProductsFilters(f => ({...f, name: v}))}
+                          placeholder="Фильтр..."
+                        />
+                      </TableHead>
+                      <TableHead>
+                        Источник
+                        <SelectFilter
+                          value={allProductsFilters.source}
+                          onChange={(v) => setAllProductsFilters(f => ({...f, source: v}))}
+                          options={[
+                            { value: "moysklad", label: "МойСклад" },
+                            { value: "local", label: "Локальный" },
+                          ]}
+                          placeholder="Все"
+                        />
+                      </TableHead>
+                      <TableHead>
+                        Тип
+                        <SelectFilter
+                          value={allProductsFilters.type}
+                          onChange={(v) => setAllProductsFilters(f => ({...f, type: v}))}
+                          options={[
+                            { value: "weight", label: "Весовой" },
+                            { value: "piece", label: "Штучный" },
+                          ]}
+                          placeholder="Все"
+                        />
+                      </TableHead>
                       <TableHead>Цена/{"\u00A0"}ед.</TableHead>
                       <TableHead>Себестоимость</TableHead>
-                      <TableHead>Статус</TableHead>
-                      <TableHead>Синхр.</TableHead>
+                      <TableHead>
+                        Статус
+                        <SelectFilter
+                          value={allProductsFilters.status}
+                          onChange={(v) => setAllProductsFilters(f => ({...f, status: v}))}
+                          options={[
+                            { value: "inStock", label: "В наличии" },
+                            { value: "outOfStock", label: "Нет в наличии" },
+                          ]}
+                          placeholder="Все"
+                        />
+                      </TableHead>
+                      <TableHead>
+                        Синхр.
+                        <SelectFilter
+                          value={allProductsFilters.sync}
+                          onChange={(v) => setAllProductsFilters(f => ({...f, sync: v}))}
+                          options={[
+                            { value: "synced", label: "Включена" },
+                            { value: "notSynced", label: "Отключена" },
+                          ]}
+                          placeholder="Все"
+                        />
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {allProducts.map((product) => (
+                    {filteredAllProducts.map((product) => (
                       <TableRow key={product.id}>
                         <TableCell>
                           <img
@@ -755,243 +1043,352 @@ export default function AdminPanel() {
 
           {activeSection === "import" && (
             <>
-              <div className="mb-4">
-                <h2 className="text-xl font-semibold text-foreground">Импорт из МойСклад</h2>
-                <p className="text-sm text-muted-foreground">
-                  Подключитесь к МойСклад и выберите товары для импорта
-                </p>
-              </div>
-
-              {/* Login form */}
-              {!isConnected && (
-                <div className="bg-card rounded-lg border border-border p-6 mb-4 max-w-md">
-                  <div className="flex items-center gap-2 mb-4">
-                    <LogIn className="h-5 w-5 text-primary" />
-                    <h3 className="font-medium text-foreground">Подключение к МойСклад</h3>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="ms-login">Логин</Label>
-                      <Input
-                        id="ms-login"
-                        type="text"
-                        placeholder="admin@company"
-                        value={moyskladLogin}
-                        onChange={(e) => setMoyskladLogin(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ms-password">Пароль</Label>
-                      <Input
-                        id="ms-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={moyskladPassword}
-                        onChange={(e) => setMoyskladPassword(e.target.value)}
-                      />
-                    </div>
-                    <Button
-                      onClick={fetchMoySkladProducts}
-                      disabled={isLoading || !moyskladLogin || !moyskladPassword}
-                      className="w-full"
-                    >
-                      {isLoading ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <LogIn className="h-4 w-4 mr-2" />
-                      )}
-                      Подключиться и загрузить товары
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Connected state - show load button */}
-              {isConnected && moyskladProducts.length === 0 && (
-                <div className="bg-card rounded-lg border border-border p-6 mb-4 max-w-md">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Badge variant="outline" className="text-green-600 border-green-600">
-                      <Check className="h-3 w-3 mr-1" />
-                      Подключено
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">{moyskladLogin}</span>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="ms-login-edit">Логин</Label>
-                      <Input
-                        id="ms-login-edit"
-                        type="text"
-                        placeholder="admin@company"
-                        value={moyskladLogin}
-                        onChange={(e) => setMoyskladLogin(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ms-password-edit">Пароль</Label>
-                      <Input
-                        id="ms-password-edit"
-                        type="password"
-                        placeholder="••••••••"
-                        value={moyskladPassword}
-                        onChange={(e) => setMoyskladPassword(e.target.value)}
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={fetchMoySkladProducts}
-                        disabled={isLoading || !moyskladLogin || !moyskladPassword}
-                        className="flex-1"
-                      >
-                        {isLoading ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Download className="h-4 w-4 mr-2" />
-                        )}
-                        Загрузить товары
-                      </Button>
-                      <Button
-                        onClick={disconnectMoySklad}
-                        variant="outline"
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Products table */}
-              {isConnected && moyskladProducts.length > 0 && (
+              {importView === "accounts" && (
                 <>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-green-600 border-green-600">
-                        <Check className="h-3 w-3 mr-1" />
-                        Подключено
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {moyskladLogin}
-                      </span>
-                      <Button
-                        onClick={disconnectMoySklad}
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="h-3 w-3 mr-1" />
-                        Отключить
-                      </Button>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={fetchMoySkladProducts}
-                        disabled={isLoading}
-                        variant="outline"
-                        size="sm"
-                      >
-                        {isLoading ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                        )}
-                        Обновить
-                      </Button>
-                      <Button
-                        onClick={importSelectedProducts}
-                        disabled={isLoading || selectedProducts.size === 0}
-                        size="sm"
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Импортировать ({selectedProducts.size})
-                      </Button>
-                    </div>
+                  <div className="mb-4">
+                    <h2 className="text-xl font-semibold text-foreground">Импорт из МойСклад</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Выберите аккаунт МойСклад для просмотра каталога
+                    </p>
                   </div>
-                  <div className="bg-card rounded-lg border border-border overflow-hidden">
-                    <div className="p-3 border-b border-border bg-muted/50 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          checked={selectedProducts.size === moyskladProducts.length}
-                          onCheckedChange={selectAllProducts}
-                        />
-                        <span className="text-sm text-muted-foreground">
-                          Выбрано: {selectedProducts.size} из {moyskladProducts.length}
-                        </span>
-                      </div>
-                      <span className="text-sm text-muted-foreground">
-                        Всего в МойСклад: {totalProducts}
-                      </span>
-                    </div>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[50px]"></TableHead>
-                          <TableHead>Название</TableHead>
-                          <TableHead>Артикул</TableHead>
-                          <TableHead>Код</TableHead>
-                          <TableHead>Цена продажи</TableHead>
-                          <TableHead>Закупочная</TableHead>
-                          <TableHead>Остаток</TableHead>
-                          <TableHead>Ед. изм.</TableHead>
-                          <TableHead>Фото</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {moyskladProducts.map((product) => (
-                          <TableRow 
-                            key={product.id}
-                            className={selectedProducts.has(product.id) ? "bg-primary/5" : ""}
+
+                  {/* Accounts list */}
+                  <div className="space-y-3 mb-6">
+                    {accounts.map((account) => (
+                      <div
+                        key={account.id}
+                        className="bg-card rounded-lg border border-border p-4 flex items-center justify-between hover:border-primary/50 transition-colors cursor-pointer"
+                        onClick={() => selectAccount(account)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <LogIn className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <h3 className="font-medium text-foreground">{account.name}</h3>
+                            <p className="text-sm text-muted-foreground">{account.login}</p>
+                            {account.lastSync && (
+                              <p className="text-xs text-muted-foreground">
+                                Последняя синхр.: {new Date(account.lastSync).toLocaleDateString('ru-RU')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteAccount(account.id);
+                            }}
                           >
-                            <TableCell>
-                              <Checkbox
-                                checked={selectedProducts.has(product.id)}
-                                onCheckedChange={() => toggleProductSelection(product.id)}
-                              />
-                            </TableCell>
-                            <TableCell className="font-medium">{product.name}</TableCell>
-                            <TableCell className="text-muted-foreground text-sm">
-                              {product.article || "-"}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground text-sm">
-                              {product.code || "-"}
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              {product.price > 0 ? formatPrice(product.price) : "-"}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {product.buyPrice > 0 ? formatPrice(product.buyPrice) : "-"}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={product.quantity > 0 || product.stock > 0 ? "default" : "secondary"}
-                                className={`text-xs ${
-                                  product.quantity > 0 || product.stock > 0
-                                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                                    : "bg-muted text-muted-foreground"
-                                }`}
-                              >
-                                {product.quantity || product.stock || 0}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {product.uom || "-"}
-                            </TableCell>
-                            <TableCell>
-                              {product.imagesCount > 0 ? (
-                                <Badge variant="outline" className="text-xs">
-                                  <ImageIcon className="h-3 w-3 mr-1" />
-                                  {product.imagesCount}
-                                </Badge>
-                              ) : (
-                                <span className="text-muted-foreground text-xs">-</span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      </div>
+                    ))}
+
+                    {accounts.length === 0 && !showAddAccount && (
+                      <div className="bg-card rounded-lg border border-border p-8 text-center">
+                        <LogIn className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="font-medium text-foreground mb-2">Нет подключённых аккаунтов</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Добавьте аккаунт МойСклад для импорта товаров
+                        </p>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Add new account form */}
+                  {showAddAccount ? (
+                    <div className="bg-card rounded-lg border border-border p-6 max-w-md">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Plus className="h-5 w-5 text-primary" />
+                        <h3 className="font-medium text-foreground">Добавить аккаунт</h3>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="acc-name">Название (для отображения)</Label>
+                          <Input
+                            id="acc-name"
+                            type="text"
+                            placeholder="Мой магазин"
+                            value={newAccountName}
+                            onChange={(e) => setNewAccountName(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="acc-login">Логин</Label>
+                          <Input
+                            id="acc-login"
+                            type="text"
+                            placeholder="admin@company"
+                            value={newAccountLogin}
+                            onChange={(e) => setNewAccountLogin(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="acc-password">Пароль</Label>
+                          <Input
+                            id="acc-password"
+                            type="password"
+                            placeholder="••••••••"
+                            value={newAccountPassword}
+                            onChange={(e) => setNewAccountPassword(e.target.value)}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={addNewAccount}
+                            disabled={isLoading || !newAccountLogin || !newAccountPassword}
+                            className="flex-1"
+                          >
+                            {isLoading ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Check className="h-4 w-4 mr-2" />
+                            )}
+                            Подключить
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setShowAddAccount(false);
+                              setNewAccountLogin("");
+                              setNewAccountPassword("");
+                              setNewAccountName("");
+                            }}
+                            variant="outline"
+                          >
+                            Отмена
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={() => setShowAddAccount(true)}
+                      variant="outline"
+                      className="w-full max-w-md"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Добавить аккаунт МойСклад
+                    </Button>
+                  )}
+                </>
+              )}
+
+              {importView === "catalog" && currentAccount && (
+                <>
+                  <div className="mb-4 flex items-center gap-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={backToAccounts}
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Назад к аккаунтам
+                    </Button>
+                    <div>
+                      <h2 className="text-xl font-semibold text-foreground">{currentAccount.name}</h2>
+                      <p className="text-sm text-muted-foreground">{currentAccount.login}</p>
+                    </div>
+                  </div>
+
+                  {isLoading && moyskladProducts.length === 0 ? (
+                    <div className="bg-card rounded-lg border border-border p-8 text-center">
+                      <Loader2 className="h-12 w-12 mx-auto text-primary animate-spin mb-4" />
+                      <p className="text-muted-foreground">Загрузка товаров...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-green-600 border-green-600">
+                            <Check className="h-3 w-3 mr-1" />
+                            Подключено
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {filteredMoyskladProducts.length} товаров
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => fetchMoySkladProducts()}
+                            disabled={isLoading}
+                            variant="outline"
+                            size="sm"
+                          >
+                            {isLoading ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                            )}
+                            Обновить
+                          </Button>
+                          <Button
+                            onClick={importSelectedProducts}
+                            disabled={isLoading || selectedProducts.size === 0}
+                            size="sm"
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Импортировать ({selectedProducts.size})
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="bg-card rounded-lg border border-border overflow-hidden">
+                        <div className="p-3 border-b border-border bg-muted/50 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              checked={selectedProducts.size === filteredMoyskladProducts.length && filteredMoyskladProducts.length > 0}
+                              onCheckedChange={selectAllProducts}
+                            />
+                            <span className="text-sm text-muted-foreground">
+                              Выбрано: {selectedProducts.size} из {filteredMoyskladProducts.length}
+                            </span>
+                          </div>
+                          <span className="text-sm text-muted-foreground">
+                            Всего в МойСклад: {totalProducts}
+                          </span>
+                        </div>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[50px]"></TableHead>
+                              <TableHead>
+                                Название
+                                <ColumnFilter 
+                                  value={importFilters.name} 
+                                  onChange={(v) => setImportFilters(f => ({...f, name: v}))}
+                                  placeholder="Фильтр..."
+                                />
+                              </TableHead>
+                              <TableHead>
+                                Артикул
+                                <ColumnFilter 
+                                  value={importFilters.article} 
+                                  onChange={(v) => setImportFilters(f => ({...f, article: v}))}
+                                  placeholder="Фильтр..."
+                                />
+                              </TableHead>
+                              <TableHead>
+                                Код
+                                <ColumnFilter 
+                                  value={importFilters.code} 
+                                  onChange={(v) => setImportFilters(f => ({...f, code: v}))}
+                                  placeholder="Фильтр..."
+                                />
+                              </TableHead>
+                              <TableHead>Цена продажи</TableHead>
+                              <TableHead>Закупочная</TableHead>
+                              <TableHead>
+                                Остаток
+                                <SelectFilter
+                                  value={importFilters.stock}
+                                  onChange={(v) => setImportFilters(f => ({...f, stock: v}))}
+                                  options={[
+                                    { value: "inStock", label: "В наличии" },
+                                    { value: "outOfStock", label: "Нет в наличии" },
+                                  ]}
+                                  placeholder="Все"
+                                />
+                              </TableHead>
+                              <TableHead>Ед. изм.</TableHead>
+                              <TableHead>Фото</TableHead>
+                              <TableHead>Связь</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredMoyskladProducts.map((product) => {
+                              const linkedProduct = getLinkedProduct(product.id);
+                              const isLinked = !!linkedProduct;
+                              
+                              return (
+                                <TableRow 
+                                  key={product.id}
+                                  className={selectedProducts.has(product.id) ? "bg-primary/5" : ""}
+                                >
+                                  <TableCell>
+                                    <Checkbox
+                                      checked={selectedProducts.has(product.id)}
+                                      onCheckedChange={() => toggleProductSelection(product.id)}
+                                      disabled={isLinked}
+                                    />
+                                  </TableCell>
+                                  <TableCell className="font-medium">
+                                    <div className="flex items-center gap-2">
+                                      {product.name}
+                                      {isLinked && (
+                                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+                                          Импортирован
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-muted-foreground text-sm">
+                                    {product.article || "-"}
+                                  </TableCell>
+                                  <TableCell className="text-muted-foreground text-sm">
+                                    {product.code || "-"}
+                                  </TableCell>
+                                  <TableCell className="font-medium">
+                                    {product.price > 0 ? formatPrice(product.price) : "-"}
+                                  </TableCell>
+                                  <TableCell className="text-muted-foreground">
+                                    {product.buyPrice > 0 ? formatPrice(product.buyPrice) : "-"}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge
+                                      variant={product.quantity > 0 || product.stock > 0 ? "default" : "secondary"}
+                                      className={`text-xs ${
+                                        product.quantity > 0 || product.stock > 0
+                                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                                          : "bg-muted text-muted-foreground"
+                                      }`}
+                                    >
+                                      {product.quantity || product.stock || 0}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-sm text-muted-foreground">
+                                    {product.uom || "-"}
+                                  </TableCell>
+                                  <TableCell>
+                                    {product.imagesCount > 0 ? (
+                                      <Badge variant="outline" className="text-xs">
+                                        <ImageIcon className="h-3 w-3 mr-1" />
+                                        {product.imagesCount}
+                                      </Badge>
+                                    ) : (
+                                      <span className="text-muted-foreground text-xs">-</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {isLinked && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={`h-8 w-8 ${linkedProduct?.autoSync ? "text-primary" : "text-muted-foreground"}`}
+                                        onClick={() => toggleImportAutoSync(product.id)}
+                                        title={linkedProduct?.autoSync ? "Авто-синхронизация включена" : "Включить авто-синхронизацию"}
+                                      >
+                                        {linkedProduct?.autoSync ? (
+                                          <Lock className="h-4 w-4" />
+                                        ) : (
+                                          <Unlock className="h-4 w-4" />
+                                        )}
+                                      </Button>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </>
