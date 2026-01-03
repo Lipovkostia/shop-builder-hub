@@ -369,6 +369,7 @@ export default function AdminPanel() {
   const [catalogProductSearch, setCatalogProductSearch] = useState("");
   const [selectedCatalogProducts, setSelectedCatalogProducts] = useState<Set<string>>(new Set());
   const [editingCatalogName, setEditingCatalogName] = useState(false);
+  const [selectedCatalogBulkProducts, setSelectedCatalogBulkProducts] = useState<Set<string>>(new Set());
 
   // Product editing state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -2314,10 +2315,33 @@ export default function AdminPanel() {
                     />
                   </div>
 
+                  {/* Bulk Edit Panel for catalog products */}
+                  <BulkEditPanel
+                    selectedCount={selectedCatalogBulkProducts.size}
+                    onClearSelection={() => setSelectedCatalogBulkProducts(new Set())}
+                    onBulkUpdate={(updates) => {
+                      selectedCatalogBulkProducts.forEach(productId => {
+                        const product = allProducts.find(p => p.id === productId);
+                        if (product) {
+                          updateProduct({ ...product, ...updates });
+                        }
+                      });
+                      setSelectedCatalogBulkProducts(new Set());
+                      toast({
+                        title: "Товары обновлены",
+                        description: `Обновлено ${selectedCatalogBulkProducts.size} товаров`,
+                      });
+                    }}
+                    unitOptions={allUnitOptions}
+                    packagingOptions={allPackagingOptions}
+                    showDelete={false}
+                  />
+
                   <div className="bg-card rounded-lg border border-border overflow-x-auto">
                     <ResizableTable
                       storageKey="catalog-products-table"
                       columns={[
+                        { id: "bulkCheckbox", minWidth: 40, defaultWidth: 40 },
                         { id: "checkbox", minWidth: 50, defaultWidth: 50 },
                         { id: "photo", minWidth: 50, defaultWidth: 60 },
                         { id: "name", minWidth: 120, defaultWidth: 180 },
@@ -2336,18 +2360,24 @@ export default function AdminPanel() {
                     >
                       <ResizableTableHeader>
                         <ResizableTableRow>
-                          <ResizableTableHead columnId="checkbox">
+                          <ResizableTableHead columnId="bulkCheckbox">
                             <Checkbox
-                              checked={selectedCatalogProducts.size === allProducts.length && allProducts.length > 0}
+                              checked={(() => {
+                                const catalogProducts = allProducts.filter(p => selectedCatalogProducts.has(p.id));
+                                return catalogProducts.length > 0 && catalogProducts.every(p => selectedCatalogBulkProducts.has(p.id));
+                              })()}
                               onCheckedChange={() => {
-                                if (selectedCatalogProducts.size === allProducts.length) {
-                                  setSelectedCatalogProducts(new Set());
+                                const catalogProductIds = allProducts.filter(p => selectedCatalogProducts.has(p.id)).map(p => p.id);
+                                const allSelected = catalogProductIds.every(id => selectedCatalogBulkProducts.has(id));
+                                if (allSelected) {
+                                  setSelectedCatalogBulkProducts(new Set());
                                 } else {
-                                  setSelectedCatalogProducts(new Set(allProducts.map(p => p.id)));
+                                  setSelectedCatalogBulkProducts(new Set(catalogProductIds));
                                 }
                               }}
                             />
                           </ResizableTableHead>
+                          <ResizableTableHead columnId="checkbox">В прайс</ResizableTableHead>
                           <ResizableTableHead columnId="photo">Фото</ResizableTableHead>
                           <ResizableTableHead columnId="name">Название</ResizableTableHead>
                           <ResizableTableHead columnId="description">Описание</ResizableTableHead>
@@ -2378,8 +2408,24 @@ export default function AdminPanel() {
                             return (
                               <ResizableTableRow
                                 key={product.id}
-                                className={selectedCatalogProducts.has(product.id) ? "bg-primary/5" : ""}
+                                className={`${selectedCatalogProducts.has(product.id) ? "bg-primary/5" : ""} ${selectedCatalogBulkProducts.has(product.id) ? "bg-primary/10" : ""}`}
                               >
+                                <ResizableTableCell columnId="bulkCheckbox">
+                                  <Checkbox
+                                    checked={selectedCatalogBulkProducts.has(product.id)}
+                                    onCheckedChange={() => {
+                                      setSelectedCatalogBulkProducts(prev => {
+                                        const newSet = new Set(prev);
+                                        if (newSet.has(product.id)) {
+                                          newSet.delete(product.id);
+                                        } else {
+                                          newSet.add(product.id);
+                                        }
+                                        return newSet;
+                                      });
+                                    }}
+                                  />
+                                </ResizableTableCell>
                                 <ResizableTableCell columnId="checkbox">
                                   <Checkbox
                                     checked={selectedCatalogProducts.has(product.id)}

@@ -18,16 +18,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Product, PackagingType, MarkupSettings } from "./types";
+import { Product, PackagingType, MarkupSettings, ProductStatus } from "./types";
 import { InlineMarkupCell } from "./InlineMarkupCell";
 
 interface BulkEditPanelProps {
   selectedCount: number;
   onClearSelection: () => void;
   onBulkUpdate: (updates: Partial<Product>) => void;
-  onBulkDelete: () => void;
+  onBulkDelete?: () => void;
   unitOptions: { value: string; label: string }[];
   packagingOptions: { value: string; label: string }[];
+  showDelete?: boolean;
 }
 
 export function BulkEditPanel({
@@ -37,6 +38,7 @@ export function BulkEditPanel({
   onBulkDelete,
   unitOptions,
   packagingOptions,
+  showDelete = true,
 }: BulkEditPanelProps) {
   const [editField, setEditField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
@@ -54,6 +56,10 @@ export function BulkEditPanel({
         break;
       case "packagingType":
         updates.packagingType = editValue as PackagingType;
+        break;
+      case "status":
+        updates.status = editValue as ProductStatus;
+        updates.inStock = editValue === "in_stock";
         break;
       case "inStock":
         updates.inStock = editValue === "true";
@@ -76,7 +82,7 @@ export function BulkEditPanel({
 
   const handleDelete = () => {
     setShowDeleteConfirm(false);
-    onBulkDelete();
+    onBulkDelete?.();
   };
 
   if (selectedCount === 0) return null;
@@ -112,7 +118,7 @@ export function BulkEditPanel({
             <SelectContent>
               <SelectItem value="unit">Ед. измерения</SelectItem>
               <SelectItem value="packagingType">Вид</SelectItem>
-              <SelectItem value="inStock">Статус</SelectItem>
+              <SelectItem value="status">Статус</SelectItem>
               <SelectItem value="markup">Наценка</SelectItem>
               <SelectItem value="description">Описание</SelectItem>
             </SelectContent>
@@ -145,14 +151,15 @@ export function BulkEditPanel({
             </Select>
           )}
 
-          {editField === "inStock" && (
+          {editField === "status" && (
             <Select value={editValue} onValueChange={setEditValue}>
               <SelectTrigger className="h-8 w-[120px] bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
                 <SelectValue placeholder="Выбрать" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="true">В наличии</SelectItem>
-                <SelectItem value="false">Нет в наличии</SelectItem>
+                <SelectItem value="in_stock">В наличии</SelectItem>
+                <SelectItem value="out_of_stock">Нет в наличии</SelectItem>
+                <SelectItem value="hidden">Скрыт</SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -189,17 +196,21 @@ export function BulkEditPanel({
             </Button>
           )}
 
-          <div className="w-px h-6 bg-primary-foreground/20 mx-1" />
+          {showDelete && (
+            <>
+              <div className="w-px h-6 bg-primary-foreground/20 mx-1" />
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowDeleteConfirm(true)}
-            className="h-8 text-primary-foreground hover:bg-destructive hover:text-destructive-foreground"
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            Удалить
-          </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="h-8 text-primary-foreground hover:bg-destructive hover:text-destructive-foreground"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Удалить
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
