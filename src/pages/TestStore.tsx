@@ -1,33 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-
-type ProductType = "weight" | "piece";
-
-interface WeightVariant {
-  type: "full" | "half" | "quarter";
-  weight: number;
-}
-
-interface PieceVariant {
-  type: "box" | "single";
-  quantity: number;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  pricePerUnit: number;
-  unit: string;
-  image: string;
-  productType: ProductType;
-  weightVariants?: WeightVariant[];
-  pieceVariants?: PieceVariant[];
-  inStock: boolean;
-  isHit: boolean;
-}
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Product,
+  Catalog,
+  formatPrice,
+  calculatePackagingPrices,
+  calculateSalePrice,
+} from "@/components/admin/types";
 
 interface CartItem {
   productId: string;
@@ -36,164 +23,8 @@ interface CartItem {
   price: number;
 }
 
-const testProducts: Product[] = [
-  {
-    id: "1",
-    name: "Пармезан Reggiano 24 мес",
-    description: "Выдержка 24 месяца, Италия",
-    pricePerUnit: 2890,
-    unit: "кг",
-    image: "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop",
-    productType: "weight",
-    weightVariants: [
-      { type: "full", weight: 38 },
-      { type: "half", weight: 19 },
-      { type: "quarter", weight: 9.5 },
-    ],
-    inStock: true,
-    isHit: true,
-  },
-  {
-    id: "2",
-    name: "Грана Падано DOP",
-    description: "Выдержка 16 месяцев",
-    pricePerUnit: 1890,
-    unit: "кг",
-    image: "https://images.unsplash.com/photo-1552767059-ce182ead6c1b?w=400&h=400&fit=crop",
-    productType: "weight",
-    weightVariants: [
-      { type: "full", weight: 35 },
-      { type: "half", weight: 17.5 },
-    ],
-    inStock: true,
-    isHit: false,
-  },
-  {
-    id: "3",
-    name: "Хамон Серрано Резерва",
-    description: "Выдержка 18 месяцев, Испания",
-    pricePerUnit: 3490,
-    unit: "кг",
-    image: "https://images.unsplash.com/photo-1600891964092-4316c288032e?w=400&h=400&fit=crop",
-    productType: "weight",
-    weightVariants: [
-      { type: "full", weight: 7.5 },
-      { type: "half", weight: 3.75 },
-    ],
-    inStock: true,
-    isHit: true,
-  },
-  {
-    id: "4",
-    name: "Моцарелла Буффало",
-    description: "Свежая, 125г",
-    pricePerUnit: 390,
-    unit: "шт",
-    image: "https://images.unsplash.com/photo-1631379578550-7038263db699?w=400&h=400&fit=crop",
-    productType: "piece",
-    pieceVariants: [
-      { type: "box", quantity: 12 },
-      { type: "single", quantity: 1 },
-    ],
-    inStock: true,
-    isHit: false,
-  },
-  {
-    id: "5",
-    name: "Бри де Мо AOP",
-    description: "Мягкий сыр с белой плесенью",
-    pricePerUnit: 2190,
-    unit: "кг",
-    image: "https://images.unsplash.com/photo-1559561853-08451507cbe7?w=400&h=400&fit=crop",
-    productType: "weight",
-    weightVariants: [
-      { type: "full", weight: 2.8 },
-      { type: "half", weight: 1.4 },
-      { type: "quarter", weight: 0.7 },
-    ],
-    inStock: false,
-    isHit: false,
-  },
-  {
-    id: "6",
-    name: "Чоризо Иберико",
-    description: "Сыровяленая колбаса, 200г",
-    pricePerUnit: 890,
-    unit: "шт",
-    image: "https://images.unsplash.com/photo-1623653387945-2fd25214f8fc?w=400&h=400&fit=crop",
-    productType: "piece",
-    pieceVariants: [
-      { type: "box", quantity: 6 },
-      { type: "single", quantity: 1 },
-    ],
-    inStock: true,
-    isHit: false,
-  },
-  {
-    id: "7",
-    name: "Пекорино Романо DOP",
-    description: "Овечий сыр, 12 мес",
-    pricePerUnit: 2450,
-    unit: "кг",
-    image: "https://images.unsplash.com/photo-1589881133595-a3c085cb731d?w=400&h=400&fit=crop",
-    productType: "weight",
-    weightVariants: [
-      { type: "full", weight: 25 },
-      { type: "half", weight: 12.5 },
-    ],
-    inStock: true,
-    isHit: false,
-  },
-  {
-    id: "8",
-    name: "Горгонзола Дольче",
-    description: "Мягкая с голубой плесенью",
-    pricePerUnit: 1990,
-    unit: "кг",
-    image: "https://images.unsplash.com/photo-1452195100486-9cc805987862?w=400&h=400&fit=crop",
-    productType: "weight",
-    weightVariants: [
-      { type: "full", weight: 6 },
-      { type: "half", weight: 3 },
-    ],
-    inStock: true,
-    isHit: false,
-  },
-  {
-    id: "9",
-    name: "Манчего 6 мес",
-    description: "Испанский овечий сыр",
-    pricePerUnit: 2290,
-    unit: "кг",
-    image: "https://images.unsplash.com/photo-1634487359989-3e90c9432133?w=400&h=400&fit=crop",
-    productType: "weight",
-    weightVariants: [
-      { type: "full", weight: 3.2 },
-      { type: "half", weight: 1.6 },
-    ],
-    inStock: true,
-    isHit: true,
-  },
-  {
-    id: "10",
-    name: "Прошутто ди Парма",
-    description: "18 месяцев выдержки",
-    pricePerUnit: 4890,
-    unit: "кг",
-    image: "https://images.unsplash.com/photo-1551248429-40975aa4de74?w=400&h=400&fit=crop",
-    productType: "weight",
-    weightVariants: [
-      { type: "full", weight: 8 },
-      { type: "half", weight: 4 },
-    ],
-    inStock: true,
-    isHit: false,
-  },
-];
-
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat("ru-RU").format(Math.round(price)) + " ₽";
-};
+const CATALOGS_STORAGE_KEY = "admin_catalogs";
+const PRODUCTS_STORAGE_KEY = "admin_all_products";
 
 // Индикатор порции
 function PortionIndicator({ type }: { type: "full" | "half" | "quarter" }) {
@@ -225,14 +56,28 @@ function ProductCard({
     return item?.quantity || 0;
   };
 
+  // Расчёт цен с учётом наценки
+  const salePrice = calculateSalePrice(product.buyPrice || product.pricePerUnit, product.markup) || product.pricePerUnit;
+  
+  const packagingPrices = calculatePackagingPrices(
+    salePrice,
+    product.unitWeight,
+    product.packagingType,
+    product.customVariantPrices,
+    product.portionPrices
+  );
+
   const getFullPrice = () => {
+    if (packagingPrices) {
+      return packagingPrices.full;
+    }
     if (product.productType === "weight" && product.weightVariants) {
       const fullVariant = product.weightVariants.find(v => v.type === "full");
-      return fullVariant ? product.pricePerUnit * fullVariant.weight : null;
+      return fullVariant ? salePrice * fullVariant.weight : null;
     }
     if (product.productType === "piece" && product.pieceVariants) {
       const boxVariant = product.pieceVariants.find(v => v.type === "box");
-      return boxVariant ? product.pricePerUnit * boxVariant.quantity : null;
+      return boxVariant ? salePrice * boxVariant.quantity : null;
     }
     return null;
   };
@@ -267,7 +112,7 @@ function ProductCard({
 
         {/* Строка 2: Цена за кг и за головку */}
         <p className="text-[10px] text-muted-foreground leading-tight">
-          {formatPrice(product.pricePerUnit)}/{product.unit}
+          {formatPrice(salePrice)}/{product.unit}
           {fullPrice && (
             <span className="ml-1">
               · головка ~{formatPrice(fullPrice)}
@@ -276,56 +121,124 @@ function ProductCard({
         </p>
 
         {/* Строка 3: Кнопки */}
-        <div className="flex items-center gap-0.5 mt-0.5">
+        <div className="flex items-center gap-0.5 mt-0.5 flex-wrap">
           {product.inStock ? (
             <>
-              {product.productType === "weight" && product.weightVariants?.map((variant, idx) => {
-                const qty = getCartQuantity(idx);
-                const price = product.pricePerUnit * variant.weight;
-                return (
-                  <button
-                    key={variant.type}
-                    onClick={() => onAddToCart(product.id, idx, price)}
-                    className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                  >
-                    {qty > 0 && (
-                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                        {qty}
-                      </span>
-                    )}
-                    <PortionIndicator type={variant.type} />
-                    <span className="text-[9px] font-medium text-foreground">
-                      {formatPrice(price)}
-                    </span>
-                  </button>
-                );
-              })}
+              {/* Если есть packagingPrices (голова) - показываем кнопки с расчётными ценами */}
+              {packagingPrices ? (
+                <>
+                  {/* Целая */}
+                  {(() => {
+                    const qty = getCartQuantity(0);
+                    return (
+                      <button
+                        onClick={() => onAddToCart(product.id, 0, packagingPrices.full)}
+                        className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                      >
+                        {qty > 0 && (
+                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                            {qty}
+                          </span>
+                        )}
+                        <PortionIndicator type="full" />
+                        <span className="text-[9px] font-medium text-foreground">
+                          {formatPrice(packagingPrices.full)}
+                        </span>
+                      </button>
+                    );
+                  })()}
+                  {/* Половина */}
+                  {(() => {
+                    const qty = getCartQuantity(1);
+                    return (
+                      <button
+                        onClick={() => onAddToCart(product.id, 1, packagingPrices.half)}
+                        className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                      >
+                        {qty > 0 && (
+                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                            {qty}
+                          </span>
+                        )}
+                        <PortionIndicator type="half" />
+                        <span className="text-[9px] font-medium text-foreground">
+                          {formatPrice(packagingPrices.half)}
+                        </span>
+                      </button>
+                    );
+                  })()}
+                  {/* Четверть */}
+                  {(() => {
+                    const qty = getCartQuantity(2);
+                    return (
+                      <button
+                        onClick={() => onAddToCart(product.id, 2, packagingPrices.quarter)}
+                        className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                      >
+                        {qty > 0 && (
+                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                            {qty}
+                          </span>
+                        )}
+                        <PortionIndicator type="quarter" />
+                        <span className="text-[9px] font-medium text-foreground">
+                          {formatPrice(packagingPrices.quarter)}
+                        </span>
+                      </button>
+                    );
+                  })()}
+                </>
+              ) : (
+                <>
+                  {product.productType === "weight" && product.weightVariants?.map((variant, idx) => {
+                    const qty = getCartQuantity(idx);
+                    const price = salePrice * variant.weight;
+                    return (
+                      <button
+                        key={variant.type}
+                        onClick={() => onAddToCart(product.id, idx, price)}
+                        className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                      >
+                        {qty > 0 && (
+                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                            {qty}
+                          </span>
+                        )}
+                        <PortionIndicator type={variant.type} />
+                        <span className="text-[9px] font-medium text-foreground">
+                          {formatPrice(price)}
+                        </span>
+                      </button>
+                    );
+                  })}
 
-              {product.productType === "piece" && product.pieceVariants?.map((variant, idx) => {
-                const qty = getCartQuantity(idx);
-                const price = product.pricePerUnit * variant.quantity;
-                return (
-                  <button
-                    key={variant.type}
-                    onClick={() => onAddToCart(product.id, idx, price)}
-                    className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                  >
-                    {qty > 0 && (
-                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                        {qty}
-                      </span>
-                    )}
-                    <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[8px] font-bold ${
-                      variant.type === "box" ? "bg-primary text-primary-foreground" : "border border-primary text-primary"
-                    }`}>
-                      {variant.quantity}
-                    </span>
-                    <span className="text-[9px] font-medium text-foreground">
-                      {formatPrice(price)}
-                    </span>
-                  </button>
-                );
-              })}
+                  {product.productType === "piece" && product.pieceVariants?.map((variant, idx) => {
+                    const qty = getCartQuantity(idx);
+                    const price = salePrice * variant.quantity;
+                    return (
+                      <button
+                        key={variant.type}
+                        onClick={() => onAddToCart(product.id, idx, price)}
+                        className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                      >
+                        {qty > 0 && (
+                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                            {qty}
+                          </span>
+                        )}
+                        <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[8px] font-bold ${
+                          variant.type === "box" ? "bg-primary text-primary-foreground" : "border border-primary text-primary"
+                        }`}>
+                          {variant.quantity}
+                        </span>
+                        <span className="text-[9px] font-medium text-foreground">
+                          {formatPrice(price)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
             </>
           ) : (
             <span className="text-[10px] text-muted-foreground">Нет в наличии</span>
@@ -337,36 +250,86 @@ function ProductCard({
 }
 
 // Шапка
-function StoreHeader({ cart }: { cart: CartItem[] }) {
+function StoreHeader({ 
+  cart, 
+  catalogs, 
+  selectedCatalog, 
+  onSelectCatalog 
+}: { 
+  cart: CartItem[];
+  catalogs: Catalog[];
+  selectedCatalog: Catalog | null;
+  onSelectCatalog: (catalog: Catalog | null) => void;
+}) {
   const navigate = useNavigate();
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   return (
-    <header className="sticky top-0 z-50 bg-background border-b border-border h-12 flex items-center justify-between px-3">
-      <div>
-        <h1 className="font-bold text-sm text-foreground leading-tight">Сыры & Хамон</h1>
-        <p className="text-[10px] text-muted-foreground leading-tight">Оптовый каталог</p>
+    <header className="sticky top-0 z-50 bg-background border-b border-border">
+      <div className="h-12 flex items-center justify-between px-3">
+        <div>
+          <h1 className="font-bold text-sm text-foreground leading-tight">Сыры & Хамон</h1>
+          <p className="text-[10px] text-muted-foreground leading-tight">Оптовый каталог</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate("/admin")}
+            className="flex items-center gap-1 bg-muted hover:bg-muted/80 transition-colors rounded-full py-1.5 px-3"
+          >
+            <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-xs font-medium text-foreground">Управление</span>
+          </button>
+
+          <button className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3">
+            <ShoppingCart className="w-4 h-4 text-primary" />
+            <span className="text-xs font-semibold text-foreground">{formatPrice(totalPrice)}</span>
+            {totalItems > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                {totalItems}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => navigate("/admin")}
-          className="flex items-center gap-1 bg-muted hover:bg-muted/80 transition-colors rounded-full py-1.5 px-3"
-        >
-          <Settings className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-xs font-medium text-foreground">Управление</span>
-        </button>
-
-        <button className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3">
-          <ShoppingCart className="w-4 h-4 text-primary" />
-          <span className="text-xs font-semibold text-foreground">{formatPrice(totalPrice)}</span>
-          {totalItems > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-              {totalItems}
-            </span>
-          )}
-        </button>
+      {/* Селектор каталога */}
+      <div className="h-10 flex items-center px-3 border-t border-border bg-muted/30">
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <FolderOpen className="w-4 h-4" />
+            <span>{selectedCatalog?.name || "Все товары"}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-[200px] bg-popover z-50">
+            <DropdownMenuItem 
+              onClick={() => onSelectCatalog(null)}
+              className="cursor-pointer"
+            >
+              <span className={!selectedCatalog ? "font-semibold" : ""}>Все товары</span>
+            </DropdownMenuItem>
+            {catalogs.map((catalog) => (
+              <DropdownMenuItem
+                key={catalog.id}
+                onClick={() => onSelectCatalog(catalog)}
+                className="cursor-pointer"
+              >
+                <span className={selectedCatalog?.id === catalog.id ? "font-semibold" : ""}>
+                  {catalog.name}
+                </span>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {catalog.productIds.length}
+                </span>
+              </DropdownMenuItem>
+            ))}
+            {catalogs.length === 0 && (
+              <DropdownMenuItem disabled>
+                <span className="text-muted-foreground">Нет каталогов</span>
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
@@ -374,6 +337,37 @@ function StoreHeader({ cart }: { cart: CartItem[] }) {
 
 export default function TestStore() {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [catalogs, setCatalogs] = useState<Catalog[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [selectedCatalog, setSelectedCatalog] = useState<Catalog | null>(null);
+
+  // Загрузка каталогов и товаров из localStorage
+  useEffect(() => {
+    const storedCatalogs = localStorage.getItem(CATALOGS_STORAGE_KEY);
+    if (storedCatalogs) {
+      try {
+        const parsed = JSON.parse(storedCatalogs);
+        setCatalogs(parsed);
+      } catch (e) {
+        console.error("Error parsing catalogs:", e);
+      }
+    }
+
+    const storedProducts = localStorage.getItem(PRODUCTS_STORAGE_KEY);
+    if (storedProducts) {
+      try {
+        const parsed = JSON.parse(storedProducts);
+        setAllProducts(parsed);
+      } catch (e) {
+        console.error("Error parsing products:", e);
+      }
+    }
+  }, []);
+
+  // Фильтрация товаров по выбранному каталогу
+  const displayProducts = selectedCatalog
+    ? allProducts.filter(p => selectedCatalog.productIds.includes(p.id))
+    : allProducts;
 
   const handleAddToCart = (productId: string, variantIndex: number, price: number) => {
     setCart((prev) => {
@@ -393,16 +387,35 @@ export default function TestStore() {
 
   return (
     <div className="h-screen bg-background flex flex-col">
-      <StoreHeader cart={cart} />
+      <StoreHeader 
+        cart={cart} 
+        catalogs={catalogs}
+        selectedCatalog={selectedCatalog}
+        onSelectCatalog={setSelectedCatalog}
+      />
       <main className="flex-1 overflow-auto">
-        {testProducts.map((product) => (
-          <ProductCard 
-            key={product.id} 
-            product={product} 
-            cart={cart}
-            onAddToCart={handleAddToCart}
-          />
-        ))}
+        {displayProducts.length > 0 ? (
+          displayProducts.map((product) => (
+            <ProductCard 
+              key={product.id} 
+              product={product} 
+              cart={cart}
+              onAddToCart={handleAddToCart}
+            />
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-center p-6">
+            <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
+            <p className="text-muted-foreground">
+              {selectedCatalog 
+                ? `В каталоге "${selectedCatalog.name}" нет товаров`
+                : "Нет доступных товаров"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Добавьте товары в панели управления
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );
