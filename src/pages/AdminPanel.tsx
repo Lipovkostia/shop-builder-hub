@@ -392,6 +392,13 @@ export default function AdminPanel() {
   // Custom options state (for units and packaging types added by user)
   const [customUnits, setCustomUnits] = useState<string[]>([]);
   const [customPackagingTypes, setCustomPackagingTypes] = useState<string[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([
+    { id: "cheese", name: "Сыры" },
+    { id: "meat", name: "Мясо" },
+    { id: "fish", name: "Рыба" },
+    { id: "dairy", name: "Молочные продукты" },
+  ]);
+  const [newCategoryName, setNewCategoryName] = useState("");
 
   // Build combined options lists
   const allUnitOptions = [
@@ -2391,6 +2398,7 @@ export default function AdminPanel() {
                         { id: "bulkCheckbox", minWidth: 40, defaultWidth: 40 },
                         { id: "photo", minWidth: 50, defaultWidth: 60 },
                         { id: "name", minWidth: 120, defaultWidth: 180 },
+                        { id: "category", minWidth: 100, defaultWidth: 120 },
                         { id: "description", minWidth: 100, defaultWidth: 200 },
                         { id: "unit", minWidth: 60, defaultWidth: 80 },
                         { id: "volume", minWidth: 60, defaultWidth: 80 },
@@ -2425,6 +2433,7 @@ export default function AdminPanel() {
                           </ResizableTableHead>
                           <ResizableTableHead columnId="photo">Фото</ResizableTableHead>
                           <ResizableTableHead columnId="name">Название</ResizableTableHead>
+                          <ResizableTableHead columnId="category">Категория</ResizableTableHead>
                           <ResizableTableHead columnId="description">Описание</ResizableTableHead>
                           <ResizableTableHead columnId="unit">Ед. изм.</ResizableTableHead>
                           <ResizableTableHead columnId="volume">Объем</ResizableTableHead>
@@ -2484,6 +2493,21 @@ export default function AdminPanel() {
                                     value={product.name}
                                     onSave={(value) => updateProduct({ ...product, name: value })}
                                     placeholder="Название"
+                                  />
+                                </ResizableTableCell>
+                                <ResizableTableCell columnId="category">
+                                  <InlineSelectCell
+                                    value={product.category || ""}
+                                    options={[
+                                      { value: "", label: "Без категории" },
+                                      ...categories.map(c => ({ value: c.id, label: c.name }))
+                                    ]}
+                                    onSave={(value) => updateProduct({ ...product, category: value || undefined })}
+                                    onAddOption={(newCategory) => {
+                                      const newId = `cat_${Date.now()}`;
+                                      setCategories(prev => [...prev, { id: newId, name: newCategory }]);
+                                      updateProduct({ ...product, category: newId });
+                                    }}
                                   />
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="description">
