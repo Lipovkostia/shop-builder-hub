@@ -46,6 +46,80 @@ interface ResizableTableContextValue {
 
 const ResizableTableContext = React.createContext<ResizableTableContextValue | null>(null);
 
+// Context for column drag state
+interface ColumnDragContextValue {
+  isDragging: boolean;
+  activeId: string | null;
+}
+
+const ColumnDragContext = React.createContext<ColumnDragContextValue>({ isDragging: false, activeId: null });
+
+// Internal wrapper for column drag that goes outside the table (used automatically inside ResizableTable)
+function DraggableColumnWrapperInternal({ children }: { children: React.ReactNode }) {
+  const context = React.useContext(ResizableTableContext);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+    context?.setIsDraggingColumn(true);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    context?.setIsDraggingColumn(false);
+
+    if (over && active.id !== over.id && context) {
+      const oldIndex = context.columnOrder.indexOf(active.id as string);
+      const newIndex = context.columnOrder.indexOf(over.id as string);
+      context.setColumnOrder(arrayMove(context.columnOrder, oldIndex, newIndex));
+    }
+  };
+
+  if (!context) {
+    return <>{children}</>;
+  }
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <ColumnDragContext.Provider value={{ isDragging: !!activeId, activeId }}>
+        <SortableContext items={context.columnOrder} strategy={horizontalListSortingStrategy}>
+          {children}
+        </SortableContext>
+      </ColumnDragContext.Provider>
+      <DragOverlay dropAnimation={null}>
+        {activeId ? (
+          <div className="bg-primary/20 border border-primary rounded px-2 py-1 text-xs font-medium shadow-lg">
+            {activeId}
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  );
+}
+
 interface ResizableTableProps extends React.HTMLAttributes<HTMLTableElement> {
   columns: ColumnConfig[];
   storageKey?: string;
@@ -128,17 +202,19 @@ export function ResizableTable({
 
   return (
     <ResizableTableContext.Provider value={contextValue}>
-      <div className="relative w-full overflow-x-auto scrollbar-thin">
-        <table 
-          className={cn(
-            "w-max min-w-full caption-bottom text-xs border-collapse",
-            className
-          )} 
-          {...props}
-        >
-          {children}
-        </table>
-      </div>
+      <DraggableColumnWrapperInternal>
+        <div className="relative w-full overflow-x-auto scrollbar-thin">
+          <table 
+            className={cn(
+              "w-max min-w-full caption-bottom text-xs border-collapse",
+              className
+            )} 
+            {...props}
+          >
+            {children}
+          </table>
+        </div>
+      </DraggableColumnWrapperInternal>
     </ResizableTableContext.Provider>
   );
 }
@@ -147,89 +223,25 @@ interface ResizableTableHeaderProps extends React.HTMLAttributes<HTMLTableSectio
   enableColumnDrag?: boolean;
 }
 
+// Alias for external usage if needed
+export const DraggableColumnWrapper = DraggableColumnWrapperInternal;
+
 export function ResizableTableHeader({ 
   className, 
   children,
   enableColumnDrag = true,
   ...props 
 }: ResizableTableHeaderProps) {
-  const context = React.useContext(ResizableTableContext);
-  const [activeId, setActiveId] = useState<string | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200,
-        tolerance: 5,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-    context?.setIsDraggingColumn(true);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveId(null);
-    context?.setIsDraggingColumn(false);
-
-    if (over && active.id !== over.id && context) {
-      const oldIndex = context.columnOrder.indexOf(active.id as string);
-      const newIndex = context.columnOrder.indexOf(over.id as string);
-      context.setColumnOrder(arrayMove(context.columnOrder, oldIndex, newIndex));
-    }
-  };
-
-  if (!enableColumnDrag || !context) {
-    return (
-      <thead 
-        className={cn(
-          "[&_tr]:border-b bg-muted/30 sticky top-0 z-10",
-          className
-        )} 
-        {...props}
-      >
-        {children}
-      </thead>
-    );
-  }
-
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
+    <thead 
+      className={cn(
+        "[&_tr]:border-b bg-muted/30 sticky top-0 z-10",
+        className
+      )} 
+      {...props}
     >
-      <thead 
-        className={cn(
-          "[&_tr]:border-b bg-muted/30 sticky top-0 z-10",
-          className
-        )} 
-        {...props}
-      >
-        <SortableContext items={context.columnOrder} strategy={horizontalListSortingStrategy}>
-          {children}
-        </SortableContext>
-      </thead>
-      <DragOverlay>
-        {activeId ? (
-          <div className="bg-primary/20 border border-primary rounded px-2 py-1 text-xs font-medium">
-            {activeId}
-          </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+      {children}
+    </thead>
   );
 }
 
@@ -242,19 +254,25 @@ export function ResizableTableBody({
   );
 }
 
-// Sortable wrapper for rows
-interface SortableTableBodyProps extends React.HTMLAttributes<HTMLTableSectionElement> {
-  items: string[];
-  onReorder?: (items: string[]) => void;
+// Context for row drag and drop
+interface RowDndContextValue {
+  activeId: string | null;
 }
 
-export function SortableTableBody({ 
+const RowDndContext = React.createContext<RowDndContextValue | null>(null);
+
+// Wrapper that provides DndContext at the table container level (outside table element)
+interface DraggableTableWrapperProps {
+  items: string[];
+  onReorder?: (items: string[]) => void;
+  children: React.ReactNode;
+}
+
+export function DraggableTableWrapper({
   items,
   onReorder,
-  className, 
   children,
-  ...props 
-}: SortableTableBodyProps) {
+}: DraggableTableWrapperProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -296,21 +314,34 @@ export function SortableTableBody({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <SortableContext items={items} strategy={verticalListSortingStrategy}>
-        <tbody className={cn("[&_tr:last-child]:border-0", className)} {...props}>
+      <RowDndContext.Provider value={{ activeId }}>
+        <SortableContext items={items} strategy={verticalListSortingStrategy}>
           {children}
-        </tbody>
-      </SortableContext>
-      <DragOverlay>
+        </SortableContext>
+      </RowDndContext.Provider>
+      <DragOverlay dropAnimation={null}>
         {activeId ? (
-          <tr className="bg-card border shadow-lg">
-            <td className="px-3 py-2 text-xs" colSpan={100}>
-              Перемещение строки...
-            </td>
-          </tr>
+          <div className="bg-card border shadow-lg rounded px-3 py-2 text-xs">
+            Перемещение строки...
+          </div>
         ) : null}
       </DragOverlay>
     </DndContext>
+  );
+}
+
+// Sortable wrapper for rows - simplified version without DndContext
+interface SortableTableBodyProps extends React.HTMLAttributes<HTMLTableSectionElement> {}
+
+export function SortableTableBody({ 
+  className, 
+  children,
+  ...props 
+}: SortableTableBodyProps) {
+  return (
+    <tbody className={cn("[&_tr:last-child]:border-0", className)} {...props}>
+      {children}
+    </tbody>
   );
 }
 
@@ -478,7 +509,7 @@ export function SortableTableHead({
       ref={setNodeRef}
       className={cn(
         "h-10 px-3 text-left align-middle font-medium text-muted-foreground",
-        "whitespace-nowrap overflow-hidden relative select-none",
+        "whitespace-nowrap overflow-hidden relative select-none group/header",
         isDragging && "opacity-50 bg-primary/10",
         className
       )}
@@ -495,7 +526,7 @@ export function SortableTableHead({
         {draggable && (
           <button
             type="button"
-            className="p-0.5 cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground touch-none flex-shrink-0"
+            className="p-0.5 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground md:opacity-0 md:group-hover/header:opacity-100 transition-opacity touch-none flex-shrink-0"
             {...attributes}
             {...listeners}
           >
@@ -643,6 +674,36 @@ export function ResizableTableCell({
 export function useColumnOrder() {
   const context = React.useContext(ResizableTableContext);
   return context?.columnOrder ?? [];
+}
+
+// Component that renders children cells in the correct column order
+interface OrderedCellsProps {
+  columnId: string;
+  children: React.ReactNode;
+}
+
+interface OrderedCellsContainerProps {
+  cells: Record<string, React.ReactNode>;
+  fixedStart?: string[]; // Column IDs that should always be at the start (like drag handle)
+  fixedEnd?: string[]; // Column IDs that should always be at the end (like actions)
+}
+
+export function OrderedCellsContainer({ cells, fixedStart = [], fixedEnd = [] }: OrderedCellsContainerProps) {
+  const columnOrder = useColumnOrder();
+  
+  // Determine which columns are reorderable (not fixed)
+  const reorderableColumns = columnOrder.filter(
+    id => !fixedStart.includes(id) && !fixedEnd.includes(id)
+  );
+  
+  // Build final order: fixedStart + reorderable (in columnOrder sequence) + fixedEnd
+  const finalOrder = [...fixedStart, ...reorderableColumns, ...fixedEnd];
+  
+  return (
+    <>
+      {finalOrder.map(columnId => cells[columnId])}
+    </>
+  );
 }
 
 // Export context for external use if needed
