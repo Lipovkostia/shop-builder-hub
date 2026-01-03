@@ -410,7 +410,6 @@ export function ResizableTableRow({
     <tr
       className={cn(
         "border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50",
-        "h-11",
         className
       )}
       {...props}
@@ -511,7 +510,7 @@ export function SortableTableHead({
     <th
       ref={setNodeRef}
       className={cn(
-        "h-10 px-3 text-left align-middle font-medium text-muted-foreground",
+        "h-6 px-2 text-left align-middle font-medium text-muted-foreground text-xs",
         "whitespace-nowrap overflow-hidden relative select-none",
         draggable && "cursor-grab active:cursor-grabbing",
         isDragging && "opacity-50 bg-primary/10 z-50",
@@ -527,7 +526,7 @@ export function SortableTableHead({
       {...dragProps}
       {...props}
     >
-      <div className="truncate pr-2">{children}</div>
+      <div className="truncate">{children}</div>
       {resizable && (
         <div
           className={cn(
@@ -612,14 +611,14 @@ export function ResizableTableHead({
   return (
     <th
       className={cn(
-        "h-10 px-3 text-left align-middle font-medium text-muted-foreground",
+        "h-6 px-2 text-left align-middle font-medium text-muted-foreground text-xs",
         "whitespace-nowrap overflow-hidden relative select-none",
         className
       )}
       style={{ ...style, width: `${width}px`, minWidth: `${minWidth}px`, maxWidth: `${width}px` }}
       {...props}
     >
-      <div className="truncate pr-2">{children}</div>
+      <div className="truncate">{children}</div>
       {resizable && (
         <div
           className={cn(

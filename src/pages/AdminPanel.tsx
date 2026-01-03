@@ -260,15 +260,13 @@ function ColumnFilter({
   placeholder: string;
 }) {
   return (
-    <div className="mt-1">
-      <Input
-        type="text"
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-7 text-xs"
-      />
-    </div>
+    <Input
+      type="text"
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="h-5 text-[10px] px-1"
+    />
   );
 }
 
@@ -284,19 +282,17 @@ function SelectFilter({
   placeholder: string;
 }) {
   return (
-    <div className="mt-1">
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-7 text-xs">
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">{placeholder}</SelectItem>
-          {options.map(opt => (
-            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-5 text-[10px] px-1">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">{placeholder}</SelectItem>
+        {options.map(opt => (
+          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -1318,22 +1314,36 @@ export default function AdminPanel() {
                   ]}
                 >
                   <ResizableTableHeader enableColumnDrag={true}>
-                    <ResizableTableRow>
+                    {/* Row 1: Column names */}
+                    <ResizableTableRow className="h-6">
                       <SortableTableHead columnId="drag" minWidth={32} resizable={false} draggable={false}>
                         <span className="text-muted-foreground/50 text-[10px]">⋮⋮</span>
                       </SortableTableHead>
                       <SortableTableHead columnId="photo" minWidth={50} resizable={false}>Фото</SortableTableHead>
-                      <SortableTableHead columnId="name" minWidth={120}>
-                        <div>Название</div>
+                      <SortableTableHead columnId="name" minWidth={120}>Название</SortableTableHead>
+                      <SortableTableHead columnId="desc" minWidth={100}>Описание</SortableTableHead>
+                      <SortableTableHead columnId="source" minWidth={80}>Источник</SortableTableHead>
+                      <SortableTableHead columnId="unit" minWidth={60}>Ед.</SortableTableHead>
+                      <SortableTableHead columnId="type" minWidth={70}>Вид</SortableTableHead>
+                      <SortableTableHead columnId="volume" minWidth={70}>Объем</SortableTableHead>
+                      <SortableTableHead columnId="cost" minWidth={70}>Себест.</SortableTableHead>
+                      <SortableTableHead columnId="status" minWidth={70}>Статус</SortableTableHead>
+                      <SortableTableHead columnId="sync" minWidth={50} resizable={false}>Синхр.</SortableTableHead>
+                      <SortableTableHead columnId="actions" minWidth={40} resizable={false} draggable={false}></SortableTableHead>
+                    </ResizableTableRow>
+                    {/* Row 2: Filters */}
+                    <ResizableTableRow className="h-6 border-b-0">
+                      <ResizableTableHead columnId="drag" minWidth={32} resizable={false}></ResizableTableHead>
+                      <ResizableTableHead columnId="photo" minWidth={50} resizable={false}></ResizableTableHead>
+                      <ResizableTableHead columnId="name" minWidth={120} resizable={false}>
                         <ColumnFilter 
                           value={allProductsFilters.name} 
                           onChange={(v) => setAllProductsFilters(f => ({...f, name: v}))}
                           placeholder="Фильтр..."
                         />
-                      </SortableTableHead>
-                      <SortableTableHead columnId="desc" minWidth={100}>Описание</SortableTableHead>
-                      <SortableTableHead columnId="source" minWidth={80}>
-                        <div>Источник</div>
+                      </ResizableTableHead>
+                      <ResizableTableHead columnId="desc" minWidth={100} resizable={false}></ResizableTableHead>
+                      <ResizableTableHead columnId="source" minWidth={80} resizable={false}>
                         <SelectFilter
                           value={allProductsFilters.source}
                           onChange={(v) => setAllProductsFilters(f => ({...f, source: v}))}
@@ -1343,13 +1353,12 @@ export default function AdminPanel() {
                           ]}
                           placeholder="Все"
                         />
-                      </SortableTableHead>
-                      <SortableTableHead columnId="unit" minWidth={60}>Ед.</SortableTableHead>
-                      <SortableTableHead columnId="type" minWidth={70}>Вид</SortableTableHead>
-                      <SortableTableHead columnId="volume" minWidth={70}>Объем</SortableTableHead>
-                      <SortableTableHead columnId="cost" minWidth={70}>Себест.</SortableTableHead>
-                      <SortableTableHead columnId="status" minWidth={70}>
-                        <div>Статус</div>
+                      </ResizableTableHead>
+                      <ResizableTableHead columnId="unit" minWidth={60} resizable={false}></ResizableTableHead>
+                      <ResizableTableHead columnId="type" minWidth={70} resizable={false}></ResizableTableHead>
+                      <ResizableTableHead columnId="volume" minWidth={70} resizable={false}></ResizableTableHead>
+                      <ResizableTableHead columnId="cost" minWidth={70} resizable={false}></ResizableTableHead>
+                      <ResizableTableHead columnId="status" minWidth={70} resizable={false}>
                         <SelectFilter
                           value={allProductsFilters.status}
                           onChange={(v) => setAllProductsFilters(f => ({...f, status: v}))}
@@ -1359,9 +1368,8 @@ export default function AdminPanel() {
                           ]}
                           placeholder="Все"
                         />
-                      </SortableTableHead>
-                      <SortableTableHead columnId="sync" minWidth={50} resizable={false}>
-                        <div>Синхр.</div>
+                      </ResizableTableHead>
+                      <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
                         <SelectFilter
                           value={allProductsFilters.sync}
                           onChange={(v) => setAllProductsFilters(f => ({...f, sync: v}))}
@@ -1371,8 +1379,8 @@ export default function AdminPanel() {
                           ]}
                           placeholder="Все"
                         />
-                      </SortableTableHead>
-                      <SortableTableHead columnId="actions" minWidth={40} resizable={false} draggable={false}></SortableTableHead>
+                      </ResizableTableHead>
+                      <ResizableTableHead columnId="actions" minWidth={40} resizable={false}></ResizableTableHead>
                     </ResizableTableRow>
                   </ResizableTableHeader>
                   <SortableTableBody>
