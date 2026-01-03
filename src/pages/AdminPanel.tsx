@@ -2389,7 +2389,6 @@ export default function AdminPanel() {
                       storageKey="catalog-products-table"
                       columns={[
                         { id: "bulkCheckbox", minWidth: 40, defaultWidth: 40 },
-                        { id: "checkbox", minWidth: 50, defaultWidth: 50 },
                         { id: "photo", minWidth: 50, defaultWidth: 60 },
                         { id: "name", minWidth: 120, defaultWidth: 180 },
                         { id: "description", minWidth: 100, defaultWidth: 200 },
@@ -2424,7 +2423,6 @@ export default function AdminPanel() {
                               }}
                             />
                           </ResizableTableHead>
-                          <ResizableTableHead columnId="checkbox">В прайс</ResizableTableHead>
                           <ResizableTableHead columnId="photo">Фото</ResizableTableHead>
                           <ResizableTableHead columnId="name">Название</ResizableTableHead>
                           <ResizableTableHead columnId="description">Описание</ResizableTableHead>
@@ -2472,12 +2470,6 @@ export default function AdminPanel() {
                                         return newSet;
                                       });
                                     }}
-                                  />
-                                </ResizableTableCell>
-                                <ResizableTableCell columnId="checkbox">
-                                  <Checkbox
-                                    checked={selectedCatalogProducts.has(product.id)}
-                                    onCheckedChange={() => toggleCatalogProduct(product.id)}
                                   />
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="photo">
