@@ -2211,10 +2211,28 @@ export default function AdminPanel() {
                   </div>
 
                   <div className="bg-card rounded-lg border border-border overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[50px]">
+                    <ResizableTable
+                      storageKey="catalog-products-table"
+                      columns={[
+                        { id: "checkbox", minWidth: 50, defaultWidth: 50 },
+                        { id: "photo", minWidth: 50, defaultWidth: 60 },
+                        { id: "name", minWidth: 120, defaultWidth: 180 },
+                        { id: "description", minWidth: 100, defaultWidth: 200 },
+                        { id: "unit", minWidth: 60, defaultWidth: 80 },
+                        { id: "volume", minWidth: 60, defaultWidth: 80 },
+                        { id: "type", minWidth: 80, defaultWidth: 100 },
+                        { id: "buyPrice", minWidth: 70, defaultWidth: 90 },
+                        { id: "markup", minWidth: 70, defaultWidth: 90 },
+                        { id: "price", minWidth: 80, defaultWidth: 100 },
+                        { id: "priceFull", minWidth: 70, defaultWidth: 90 },
+                        { id: "priceHalf", minWidth: 70, defaultWidth: 90 },
+                        { id: "priceQuarter", minWidth: 70, defaultWidth: 90 },
+                        { id: "status", minWidth: 80, defaultWidth: 100 },
+                      ]}
+                    >
+                      <ResizableTableHeader>
+                        <ResizableTableRow>
+                          <ResizableTableHead columnId="checkbox">
                             <Checkbox
                               checked={selectedCatalogProducts.size === allProducts.length && allProducts.length > 0}
                               onCheckedChange={() => {
@@ -2225,21 +2243,23 @@ export default function AdminPanel() {
                                 }
                               }}
                             />
-                          </TableHead>
-                          <TableHead className="w-[50px]">Фото</TableHead>
-                          <TableHead>Название</TableHead>
-                          <TableHead>Описание</TableHead>
-                          <TableHead>Ед. изм.</TableHead>
-                          <TableHead>Объем</TableHead>
-                          <TableHead>Вид</TableHead>
-                          <TableHead>Себест-ть</TableHead>
-                          <TableHead>Наценка</TableHead>
-                          <TableHead>Цена</TableHead>
-                          <TableHead>Цены за ед.</TableHead>
-                          <TableHead>Статус</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
+                          </ResizableTableHead>
+                          <ResizableTableHead columnId="photo">Фото</ResizableTableHead>
+                          <ResizableTableHead columnId="name">Название</ResizableTableHead>
+                          <ResizableTableHead columnId="description">Описание</ResizableTableHead>
+                          <ResizableTableHead columnId="unit">Ед. изм.</ResizableTableHead>
+                          <ResizableTableHead columnId="volume">Объем</ResizableTableHead>
+                          <ResizableTableHead columnId="type">Вид</ResizableTableHead>
+                          <ResizableTableHead columnId="buyPrice">Себест-ть</ResizableTableHead>
+                          <ResizableTableHead columnId="markup">Наценка</ResizableTableHead>
+                          <ResizableTableHead columnId="price">Цена</ResizableTableHead>
+                          <ResizableTableHead columnId="priceFull">Целая</ResizableTableHead>
+                          <ResizableTableHead columnId="priceHalf">½</ResizableTableHead>
+                          <ResizableTableHead columnId="priceQuarter">¼</ResizableTableHead>
+                          <ResizableTableHead columnId="status">Статус</ResizableTableHead>
+                        </ResizableTableRow>
+                      </ResizableTableHeader>
+                      <ResizableTableBody>
                         {allProducts
                           .filter(p => !catalogProductSearch || p.name.toLowerCase().includes(catalogProductSearch.toLowerCase()))
                           .map((product) => {
@@ -2252,54 +2272,54 @@ export default function AdminPanel() {
                             );
                             
                             return (
-                              <TableRow
+                              <ResizableTableRow
                                 key={product.id}
                                 className={selectedCatalogProducts.has(product.id) ? "bg-primary/5" : ""}
                               >
-                                <TableCell>
+                                <ResizableTableCell columnId="checkbox">
                                   <Checkbox
                                     checked={selectedCatalogProducts.has(product.id)}
                                     onCheckedChange={() => toggleCatalogProduct(product.id)}
                                   />
-                                </TableCell>
-                                <TableCell>
+                                </ResizableTableCell>
+                                <ResizableTableCell columnId="photo">
                                   <img
                                     src={product.image}
                                     alt={product.name}
                                     className="w-10 h-10 rounded object-cover"
                                   />
-                                </TableCell>
-                                <TableCell className="font-medium">
+                                </ResizableTableCell>
+                                <ResizableTableCell columnId="name" className="font-medium">
                                   <InlineEditableCell
                                     value={product.name}
                                     onSave={(value) => updateProduct({ ...product, name: value })}
                                     placeholder="Название"
                                   />
-                                </TableCell>
-                                <TableCell className="max-w-[200px]">
+                                </ResizableTableCell>
+                                <ResizableTableCell columnId="description">
                                   <InlineEditableCell
                                     value={product.description || ""}
                                     onSave={(value) => updateProduct({ ...product, description: value })}
                                     placeholder="Описание"
                                   />
-                                </TableCell>
-                                <TableCell>
+                                </ResizableTableCell>
+                                <ResizableTableCell columnId="unit">
                                   <InlineSelectCell
                                     value={product.unit}
                                     options={allUnitOptions}
                                     onSave={(value) => updateProduct({ ...product, unit: value })}
                                     onAddOption={(newUnit) => setCustomUnits(prev => [...prev, newUnit])}
                                   />
-                                </TableCell>
-                                <TableCell>
+                                </ResizableTableCell>
+                                <ResizableTableCell columnId="volume">
                                   <InlinePriceCell
                                     value={product.unitWeight || 0}
                                     onSave={(value) => updateProduct({ ...product, unitWeight: value })}
                                     placeholder="0"
                                     suffix={product.unit === "л" ? "л" : "кг"}
                                   />
-                                </TableCell>
-                                <TableCell>
+                                </ResizableTableCell>
+                                <ResizableTableCell columnId="type">
                                   <Badge variant="outline" className="text-xs">
                                     {product.packagingType 
                                       ? packagingTypeLabels[product.packagingType] 
@@ -2310,44 +2330,59 @@ export default function AdminPanel() {
                                       {product.unitWeight} кг
                                     </span>
                                   )}
-                                </TableCell>
-                                <TableCell>
+                                </ResizableTableCell>
+                                <ResizableTableCell columnId="buyPrice">
                                   <InlinePriceCell
                                     value={product.buyPrice || 0}
                                     onSave={(value) => updateProduct({ ...product, buyPrice: value })}
                                     placeholder="0"
                                   />
-                                </TableCell>
-                                <TableCell>
+                                </ResizableTableCell>
+                                <ResizableTableCell columnId="markup">
                                   <InlineMarkupCell
                                     value={product.markup}
                                     onSave={(markup) => updateProduct({ ...product, markup })}
                                   />
-                                </TableCell>
-                                <TableCell className="font-medium">
+                                </ResizableTableCell>
+                                <ResizableTableCell columnId="price" className="font-medium">
                                   {formatPrice(salePrice)}/{product.unit}
-                                </TableCell>
-                                <TableCell>
+                                </ResizableTableCell>
+                                <ResizableTableCell columnId="priceFull">
                                   {packagingPrices ? (
-                                    <div className="text-xs space-y-0.5">
-                                      <div className="flex justify-between gap-2">
-                                        <span className="text-muted-foreground">Целая:</span>
-                                        <span className="font-medium">{formatPrice(packagingPrices.full)}</span>
-                                      </div>
-                                      <div className="flex justify-between gap-2">
-                                        <span className="text-muted-foreground">½:</span>
-                                        <span className="font-medium">{formatPrice(packagingPrices.half)}</span>
-                                      </div>
-                                      <div className="flex justify-between gap-2">
-                                        <span className="text-muted-foreground">¼:</span>
-                                        <span className="font-medium">{formatPrice(packagingPrices.quarter)}</span>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    "-"
-                                  )}
-                                </TableCell>
-                                <TableCell>
+                                    <span className="text-xs font-medium">{formatPrice(packagingPrices.full)}</span>
+                                  ) : "-"}
+                                </ResizableTableCell>
+                                <ResizableTableCell columnId="priceHalf">
+                                  {product.packagingType === "head" ? (
+                                    <InlinePriceCell
+                                      value={product.customVariantPrices?.halfPrice}
+                                      onSave={(value) => updateProduct({ 
+                                        ...product, 
+                                        customVariantPrices: { 
+                                          ...product.customVariantPrices, 
+                                          halfPrice: value 
+                                        } 
+                                      })}
+                                      placeholder="авто"
+                                    />
+                                  ) : "-"}
+                                </ResizableTableCell>
+                                <ResizableTableCell columnId="priceQuarter">
+                                  {product.packagingType === "head" ? (
+                                    <InlinePriceCell
+                                      value={product.customVariantPrices?.quarterPrice}
+                                      onSave={(value) => updateProduct({ 
+                                        ...product, 
+                                        customVariantPrices: { 
+                                          ...product.customVariantPrices, 
+                                          quarterPrice: value 
+                                        } 
+                                      })}
+                                      placeholder="авто"
+                                    />
+                                  ) : "-"}
+                                </ResizableTableCell>
+                                <ResizableTableCell columnId="status">
                                   <Badge
                                     variant={product.inStock ? "default" : "secondary"}
                                     className={`text-xs ${
@@ -2358,12 +2393,12 @@ export default function AdminPanel() {
                                   >
                                     {product.inStock ? "В наличии" : "Нет"}
                                   </Badge>
-                                </TableCell>
-                              </TableRow>
+                                </ResizableTableCell>
+                              </ResizableTableRow>
                             );
                           })}
-                      </TableBody>
-                    </Table>
+                      </ResizableTableBody>
+                    </ResizableTable>
                   </div>
                 </>
               )}
