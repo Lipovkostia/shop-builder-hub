@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -51,6 +52,7 @@ import { InlineProductRow } from "@/components/admin/InlineProductRow";
 import { InlineEditableCell } from "@/components/admin/InlineEditableCell";
 import { InlineSelectCell } from "@/components/admin/InlineSelectCell";
 import { InlinePriceCell } from "@/components/admin/InlinePriceCell";
+import { MobileTabNav } from "@/components/admin/MobileTabNav";
 
 const MOYSKLAD_ACCOUNTS_KEY = "moysklad_accounts";
 const IMPORTED_PRODUCTS_KEY = "moysklad_imported_products";
@@ -294,9 +296,10 @@ function SelectFilter({
 
 export default function AdminPanel() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { user, profile, isSuperAdmin, loading: authLoading } = useAuth();
+  const isMobile = useIsMobile();
   
   // Store context - for super admin switching
   const storeIdFromUrl = searchParams.get('storeId');
@@ -305,7 +308,13 @@ export default function AdminPanel() {
   const [currentStoreName, setCurrentStoreName] = useState<string | null>(null);
   const [userStoreId, setUserStoreId] = useState<string | null>(null);
   
-  const [activeSection, setActiveSection] = useState<ActiveSection>("products");
+  const [activeSection, setActiveSection] = useState<ActiveSection>(() => {
+    const section = searchParams.get('section');
+    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'roles') {
+      return section;
+    }
+    return "products";
+  });
   const [importView, setImportView] = useState<ImportView>("accounts");
   
   // MoySklad import state
@@ -430,6 +439,23 @@ export default function AdminPanel() {
     
     fetchStoreContext();
   }, [user, profile, storeIdFromUrl, isSuperAdmin, sectionFromUrl]);
+
+  // Handle section change with URL update
+  const handleSectionChange = useCallback((section: ActiveSection) => {
+    setActiveSection(section);
+    
+    // Update URL with section for SPA navigation
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('section', section);
+    setSearchParams(newParams, { replace: true });
+    
+    // Reset sub-views when switching sections
+    if (section === "import") {
+      setImportView("accounts");
+    } else if (section === "catalogs") {
+      setCatalogView("list");
+    }
+  }, [searchParams, setSearchParams]);
 
   // Load saved accounts, imported products, and catalogs on mount
   useEffect(() => {
@@ -1188,65 +1214,74 @@ export default function AdminPanel() {
         </div>
       </header>
 
+      {/* Mobile Tab Navigation */}
+      {isMobile && (
+        <MobileTabNav
+          activeSection={activeSection}
+          onSectionChange={handleSectionChange}
+        />
+      )}
+
       <div className="flex">
-        {/* Sidebar */}
-        <aside className="w-56 border-r border-border min-h-[calc(100vh-56px)] bg-card">
-          <nav className="p-2 space-y-1">
-            <button
-              onClick={() => setActiveSection("products")}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === "products"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-muted"
-              }`}
-            >
-              <Package className="h-4 w-4" />
-              Все товары
-            </button>
-            <button
-              onClick={() => {
-                setActiveSection("import");
-                setImportView("accounts");
-              }}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === "import"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-muted"
-              }`}
-            >
-              <Download className="h-4 w-4" />
-              Импорт из МойСклад
-            </button>
-            <button
-              onClick={() => {
-                setActiveSection("catalogs");
-                setCatalogView("list");
-              }}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === "catalogs"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-muted"
-              }`}
-            >
-              <FolderOpen className="h-4 w-4" />
-              Каталоги
-            </button>
-            <button
-              onClick={() => setActiveSection("roles")}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === "roles"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-muted"
-              }`}
-            >
-              <Users className="h-4 w-4" />
-              Роли клиентов
-            </button>
-          </nav>
-        </aside>
+        {/* Sidebar - Desktop only */}
+        {!isMobile && (
+          <aside className="w-56 border-r border-border min-h-[calc(100vh-56px)] bg-card">
+            <nav className="p-2 space-y-1">
+              <button
+                onClick={() => handleSectionChange("products")}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeSection === "products"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                <Package className="h-4 w-4" />
+                Все товары
+              </button>
+              <button
+                onClick={() => handleSectionChange("import")}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeSection === "import"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                <Download className="h-4 w-4" />
+                Импорт из МойСклад
+              </button>
+              <button
+                onClick={() => handleSectionChange("catalogs")}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeSection === "catalogs"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                <FolderOpen className="h-4 w-4" />
+                Каталоги
+              </button>
+              <button
+                onClick={() => handleSectionChange("roles")}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeSection === "roles"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                Роли клиентов
+              </button>
+            </nav>
+          </aside>
+        )}
 
         {/* Main content */}
-        <main className="flex-1 p-4">
+        <main 
+          id={`panel-${activeSection}`}
+          role="tabpanel"
+          aria-labelledby={`tab-${activeSection}`}
+          className={`flex-1 p-4 ${isMobile ? 'min-h-[calc(100vh-112px)] overflow-y-auto' : ''}`}
+        >
           {activeSection === "products" && (
             <>
               <div className="mb-4 flex items-center justify-between">
