@@ -404,11 +404,119 @@ export default function AdminPanel() {
     return importedProducts.find(p => p.moyskladId === msProductId);
   };
 
-  // Toggle auto-sync for a MoySklad product in import view
-  const toggleImportAutoSync = (msProductId: string) => {
+  // Toggle auto-sync for a MoySklad product in import view (works for both linked and non-linked products)
+  const toggleImportAutoSync = async (msProductId: string) => {
     const linkedProduct = getLinkedProduct(msProductId);
     if (linkedProduct) {
+      // Already imported - just toggle sync
       toggleAutoSync(linkedProduct.id);
+    } else {
+      // Not imported yet - import with auto-sync enabled
+      await importAndLinkProduct(msProductId);
+    }
+  };
+
+  // Import a single product and enable auto-sync
+  const importAndLinkProduct = async (msProductId: string) => {
+    if (!currentAccount) return;
+    
+    const msProduct = moyskladProducts.find(p => p.id === msProductId);
+    if (!msProduct) return;
+
+    setIsLoading(true);
+    try {
+      // Fetch images
+      let imageUrl = "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop";
+      let imageFullUrl = imageUrl;
+      
+      if (msProduct.imagesCount > 0) {
+        try {
+          const { data: imagesData } = await supabase.functions.invoke('moysklad', {
+            body: { 
+              action: 'get_product_images', 
+              productId: msProduct.id,
+              login: currentAccount.login,
+              password: currentAccount.password
+            }
+          });
+          
+          if (imagesData?.images?.[0]) {
+            const imageInfo = imagesData.images[0];
+            
+            if (imageInfo.miniature) {
+              const { data: imageContent } = await supabase.functions.invoke('moysklad', {
+                body: { 
+                  action: 'get_image_content', 
+                  imageUrl: imageInfo.miniature,
+                  login: currentAccount.login,
+                  password: currentAccount.password
+                }
+              });
+              if (imageContent?.imageData) {
+                imageUrl = imageContent.imageData;
+              }
+            }
+            
+            if (imageInfo.fullSize || imageInfo.downloadHref) {
+              const { data: fullImageContent } = await supabase.functions.invoke('moysklad', {
+                body: { 
+                  action: 'get_image_content', 
+                  imageUrl: imageInfo.fullSize || imageInfo.downloadHref,
+                  login: currentAccount.login,
+                  password: currentAccount.password
+                }
+              });
+              if (fullImageContent?.imageData) {
+                imageFullUrl = fullImageContent.imageData;
+              }
+            }
+          }
+        } catch (err) {
+          console.log("Could not fetch image for product:", msProduct.id);
+        }
+      }
+
+      const newProduct: Product = {
+        id: `ms_${msProduct.id}`,
+        name: msProduct.name,
+        description: msProduct.description || "",
+        pricePerUnit: msProduct.price || 0,
+        buyPrice: msProduct.buyPrice,
+        unit: msProduct.uom || "кг",
+        image: imageUrl,
+        imageFull: imageFullUrl,
+        productType: msProduct.weight > 0 ? "weight" : "piece",
+        weightVariants: msProduct.weight > 0 ? [
+          { type: "full", weight: msProduct.weight },
+          { type: "half", weight: msProduct.weight / 2 },
+        ] : undefined,
+        pieceVariants: msProduct.weight <= 0 ? [
+          { type: "box", quantity: 10 },
+          { type: "single", quantity: 1 },
+        ] : undefined,
+        inStock: msProduct.quantity > 0 || msProduct.stock > 0,
+        isHit: false,
+        source: "moysklad",
+        moyskladId: msProduct.id,
+        autoSync: true, // Enable auto-sync by default when linking
+        accountId: currentAccount.id,
+      };
+
+      setImportedProducts(prev => [...prev, newProduct]);
+      
+      toast({
+        title: "Товар связан",
+        description: `${msProduct.name} добавлен с авто-синхронизацией`,
+      });
+    } catch (err) {
+      console.error("Error importing product:", err);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось импортировать товар",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1365,21 +1473,27 @@ export default function AdminPanel() {
                                     )}
                                   </TableCell>
                                   <TableCell>
-                                    {isLinked && (
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className={`h-8 w-8 ${linkedProduct?.autoSync ? "text-primary" : "text-muted-foreground"}`}
-                                        onClick={() => toggleImportAutoSync(product.id)}
-                                        title={linkedProduct?.autoSync ? "Авто-синхронизация включена" : "Включить авто-синхронизацию"}
-                                      >
-                                        {linkedProduct?.autoSync ? (
-                                          <Lock className="h-4 w-4" />
-                                        ) : (
-                                          <Unlock className="h-4 w-4" />
-                                        )}
-                                      </Button>
-                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className={`h-8 w-8 ${
+                                        isLinked && linkedProduct?.autoSync 
+                                          ? "text-primary" 
+                                          : "text-muted-foreground hover:text-primary"
+                                      }`}
+                                      onClick={() => toggleImportAutoSync(product.id)}
+                                      title={
+                                        isLinked 
+                                          ? (linkedProduct?.autoSync ? "Авто-синхронизация включена" : "Включить авто-синхронизацию")
+                                          : "Связать и включить авто-синхронизацию"
+                                      }
+                                    >
+                                      {isLinked && linkedProduct?.autoSync ? (
+                                        <Lock className="h-4 w-4" />
+                                      ) : (
+                                        <Unlock className="h-4 w-4" />
+                                      )}
+                                    </Button>
                                   </TableCell>
                                 </TableRow>
                               );
