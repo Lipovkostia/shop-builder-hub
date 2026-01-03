@@ -22,7 +22,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, GripHorizontal } from "lucide-react";
+import { GripVertical } from "lucide-react";
 
 /**
  * Resizable Table - extends standard table styling with column resize and drag-and-drop functionality
@@ -452,7 +452,7 @@ export function SortableTableHead({
 
   const width = context?.columnWidths[columnId] ?? minWidth;
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsResizing(true);
@@ -460,7 +460,7 @@ export function SortableTableHead({
     startWidth.current = width;
   }, [width]);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+  const handleResizeTouchStart = useCallback((e: React.TouchEvent) => {
     e.stopPropagation();
     setIsResizing(true);
     startX.current = e.touches[0].clientX;
@@ -504,13 +504,17 @@ export function SortableTableHead({
     transition,
   };
 
+  // Combine drag listeners with the header cell itself (no separate handle)
+  const dragProps = draggable ? { ...attributes, ...listeners } : {};
+
   return (
     <th
       ref={setNodeRef}
       className={cn(
         "h-10 px-3 text-left align-middle font-medium text-muted-foreground",
-        "whitespace-nowrap overflow-hidden relative select-none group/header",
-        isDragging && "opacity-50 bg-primary/10",
+        "whitespace-nowrap overflow-hidden relative select-none",
+        draggable && "cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-50 bg-primary/10 z-50",
         className
       )}
       style={{ 
@@ -520,29 +524,18 @@ export function SortableTableHead({
         minWidth: `${minWidth}px`, 
         maxWidth: `${width}px` 
       }}
+      {...dragProps}
       {...props}
     >
-      <div className="flex items-center gap-1">
-        {draggable && (
-          <button
-            type="button"
-            className="p-0.5 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground md:opacity-0 md:group-hover/header:opacity-100 transition-opacity touch-none flex-shrink-0"
-            {...attributes}
-            {...listeners}
-          >
-            <GripHorizontal className="h-3 w-3" />
-          </button>
-        )}
-        <div className="truncate flex-1">{children}</div>
-      </div>
+      <div className="truncate pr-2">{children}</div>
       {resizable && (
         <div
           className={cn(
             "absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/50 transition-colors touch-none",
             isResizing && "bg-primary"
           )}
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleTouchStart}
+          onMouseDown={handleResizeMouseDown}
+          onTouchStart={handleResizeTouchStart}
         />
       )}
     </th>
