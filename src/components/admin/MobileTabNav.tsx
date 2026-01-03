@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
-import { Package, Download, FolderOpen, Users } from "lucide-react";
+import { Package, Download, FolderOpen, Users, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type ActiveSection = "products" | "import" | "catalogs" | "roles";
+type ActiveSection = "products" | "import" | "catalogs" | "roles" | "visibility";
 
 interface NavItem {
   id: ActiveSection;
@@ -14,6 +14,7 @@ const navItems: NavItem[] = [
   { id: "products", label: "Товары", icon: Package },
   { id: "import", label: "Импорт", icon: Download },
   { id: "catalogs", label: "Прайс-листы", icon: FolderOpen },
+  { id: "visibility", label: "Видимость", icon: Eye },
   { id: "roles", label: "Клиенты", icon: Users },
 ];
 

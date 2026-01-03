@@ -246,7 +246,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "import" | "catalogs" | "roles";
+type ActiveSection = "products" | "import" | "catalogs" | "roles" | "visibility";
 type ImportView = "accounts" | "catalog";
 type CatalogView = "list" | "detail";
 
@@ -315,11 +315,14 @@ export default function AdminPanel() {
   
   const [activeSection, setActiveSection] = useState<ActiveSection>(() => {
     const section = searchParams.get('section');
-    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'roles') {
+    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'roles' || section === 'visibility') {
       return section;
     }
     return "products";
   });
+  
+  // Product visibility in catalogs state
+  const [productCatalogVisibility, setProductCatalogVisibility] = useState<Record<string, Set<string>>>({});
   const [importView, setImportView] = useState<ImportView>("accounts");
   
   // MoySklad import state
@@ -522,6 +525,50 @@ export default function AdminPanel() {
   useEffect(() => {
     localStorage.setItem(CATALOGS_KEY, JSON.stringify(catalogs));
   }, [catalogs]);
+
+  // Initialize visibility state from catalogs
+  useEffect(() => {
+    const visibility: Record<string, Set<string>> = {};
+    catalogs.forEach(catalog => {
+      catalog.productIds.forEach(productId => {
+        if (!visibility[productId]) {
+          visibility[productId] = new Set();
+        }
+        visibility[productId].add(catalog.id);
+      });
+    });
+    setProductCatalogVisibility(visibility);
+  }, [catalogs]);
+
+  // Toggle product visibility in a catalog
+  const toggleProductCatalogVisibility = (productId: string, catalogId: string) => {
+    // Update local visibility state
+    setProductCatalogVisibility(prev => {
+      const newVisibility = { ...prev };
+      if (!newVisibility[productId]) {
+        newVisibility[productId] = new Set();
+      }
+      const productCatalogs = new Set(newVisibility[productId]);
+      if (productCatalogs.has(catalogId)) {
+        productCatalogs.delete(catalogId);
+      } else {
+        productCatalogs.add(catalogId);
+      }
+      newVisibility[productId] = productCatalogs;
+      return newVisibility;
+    });
+
+    // Update catalogs state
+    setCatalogs(prev => prev.map(catalog => {
+      if (catalog.id !== catalogId) return catalog;
+      const hasProduct = catalog.productIds.includes(productId);
+      if (hasProduct) {
+        return { ...catalog, productIds: catalog.productIds.filter(id => id !== productId) };
+      } else {
+        return { ...catalog, productIds: [...catalog.productIds, productId] };
+      }
+    }));
+  };
 
   // Save all products to localStorage for TestStore
   useEffect(() => {
@@ -2585,6 +2632,78 @@ export default function AdminPanel() {
                     </ResizableTable>
                   </div>
                 </>
+              )}
+            </>
+          )}
+
+          {activeSection === "visibility" && (
+            <>
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold text-foreground">Видимость товаров в прайс-листах</h2>
+                <p className="text-sm text-muted-foreground">
+                  Управляйте отображением товаров в различных прайс-листах
+                </p>
+              </div>
+
+              {catalogs.length === 0 ? (
+                <div className="bg-card rounded-lg border border-border p-8 text-center">
+                  <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-2">Нет прайс-листов</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Сначала создайте прайс-листы в разделе "Прайс-листы"
+                  </p>
+                  <Button onClick={() => handleSectionChange("catalogs")}>
+                    Перейти к прайс-листам
+                  </Button>
+                </div>
+              ) : (
+                <div className="bg-card rounded-lg border border-border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="sticky left-0 bg-card z-10 min-w-[200px]">Товар</TableHead>
+                        <TableHead className="min-w-[100px]">Себестоимость</TableHead>
+                        {catalogs.map(catalog => (
+                          <TableHead key={catalog.id} className="text-center min-w-[120px]">
+                            {catalog.name}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {allProducts.map(product => {
+                        const productCatalogs = productCatalogVisibility[product.id] || new Set();
+                        return (
+                          <TableRow key={product.id}>
+                            <TableCell className="sticky left-0 bg-card z-10 font-medium">
+                              <div className="flex items-center gap-2">
+                                {product.image && (
+                                  <img 
+                                    src={product.image} 
+                                    alt={product.name} 
+                                    className="w-8 h-8 rounded object-cover"
+                                  />
+                                )}
+                                <span className="truncate max-w-[150px]">{product.name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {product.buyPrice ? formatPrice(product.buyPrice) : "-"}
+                            </TableCell>
+                            {catalogs.map(catalog => (
+                              <TableCell key={catalog.id} className="text-center">
+                                <Checkbox
+                                  checked={productCatalogs.has(catalog.id)}
+                                  onCheckedChange={() => toggleProductCatalogVisibility(product.id, catalog.id)}
+                                />
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </>
           )}
