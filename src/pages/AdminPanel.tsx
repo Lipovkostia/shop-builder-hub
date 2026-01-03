@@ -13,6 +13,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  ResizableTable,
+  ResizableTableBody,
+  ResizableTableCell,
+  ResizableTableHead,
+  ResizableTableHeader,
+  ResizableTableRow,
+} from "@/components/admin/ResizableTable";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
@@ -1265,22 +1273,39 @@ export default function AdminPanel() {
                 )}
               </div>
 
-              <div className="bg-card rounded-lg border border-border overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">Фото</TableHead>
-                      <TableHead>
-                        Название
+              <div className="bg-card rounded-lg border border-border">
+                <ResizableTable
+                  storageKey="admin-products"
+                  columns={[
+                    { id: "photo", minWidth: 50, defaultWidth: 50 },
+                    { id: "name", minWidth: 120, defaultWidth: 180 },
+                    { id: "desc", minWidth: 100, defaultWidth: 150 },
+                    { id: "source", minWidth: 80, defaultWidth: 90 },
+                    { id: "unit", minWidth: 60, defaultWidth: 70 },
+                    { id: "type", minWidth: 70, defaultWidth: 85 },
+                    { id: "cost", minWidth: 70, defaultWidth: 90 },
+                    { id: "markup", minWidth: 60, defaultWidth: 70 },
+                    { id: "price", minWidth: 80, defaultWidth: 100 },
+                    { id: "prices", minWidth: 100, defaultWidth: 130 },
+                    { id: "status", minWidth: 70, defaultWidth: 80 },
+                    { id: "sync", minWidth: 50, defaultWidth: 50 },
+                    { id: "actions", minWidth: 40, defaultWidth: 40 },
+                  ]}
+                >
+                  <ResizableTableHeader>
+                    <ResizableTableRow>
+                      <ResizableTableHead columnId="photo" minWidth={50} resizable={false}>Фото</ResizableTableHead>
+                      <ResizableTableHead columnId="name" minWidth={120}>
+                        <div>Название</div>
                         <ColumnFilter 
                           value={allProductsFilters.name} 
                           onChange={(v) => setAllProductsFilters(f => ({...f, name: v}))}
                           placeholder="Фильтр..."
                         />
-                      </TableHead>
-                      <TableHead>Описание</TableHead>
-                      <TableHead>
-                        Источник
+                      </ResizableTableHead>
+                      <ResizableTableHead columnId="desc" minWidth={100}>Описание</ResizableTableHead>
+                      <ResizableTableHead columnId="source" minWidth={80}>
+                        <div>Источник</div>
                         <SelectFilter
                           value={allProductsFilters.source}
                           onChange={(v) => setAllProductsFilters(f => ({...f, source: v}))}
@@ -1290,41 +1315,41 @@ export default function AdminPanel() {
                           ]}
                           placeholder="Все"
                         />
-                      </TableHead>
-                      <TableHead>Ед. изм.</TableHead>
-                      <TableHead>Вид</TableHead>
-                      <TableHead>Себест-ть</TableHead>
-                      <TableHead>Наценка</TableHead>
-                      <TableHead>Цена</TableHead>
-                      <TableHead>Цены за ед.</TableHead>
-                      <TableHead>
-                        Статус
+                      </ResizableTableHead>
+                      <ResizableTableHead columnId="unit" minWidth={60}>Ед.</ResizableTableHead>
+                      <ResizableTableHead columnId="type" minWidth={70}>Вид</ResizableTableHead>
+                      <ResizableTableHead columnId="cost" minWidth={70}>Себест.</ResizableTableHead>
+                      <ResizableTableHead columnId="markup" minWidth={60}>Нацен.</ResizableTableHead>
+                      <ResizableTableHead columnId="price" minWidth={80}>Цена</ResizableTableHead>
+                      <ResizableTableHead columnId="prices" minWidth={100}>Цены</ResizableTableHead>
+                      <ResizableTableHead columnId="status" minWidth={70}>
+                        <div>Статус</div>
                         <SelectFilter
                           value={allProductsFilters.status}
                           onChange={(v) => setAllProductsFilters(f => ({...f, status: v}))}
                           options={[
                             { value: "inStock", label: "В наличии" },
-                            { value: "outOfStock", label: "Нет в наличии" },
+                            { value: "outOfStock", label: "Нет" },
                           ]}
                           placeholder="Все"
                         />
-                      </TableHead>
-                      <TableHead>
-                        Синхр.
+                      </ResizableTableHead>
+                      <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
+                        <div>Синхр.</div>
                         <SelectFilter
                           value={allProductsFilters.sync}
                           onChange={(v) => setAllProductsFilters(f => ({...f, sync: v}))}
                           options={[
-                            { value: "synced", label: "Включена" },
-                            { value: "notSynced", label: "Отключена" },
+                            { value: "synced", label: "Вкл" },
+                            { value: "notSynced", label: "Выкл" },
                           ]}
                           placeholder="Все"
                         />
-                      </TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                      </ResizableTableHead>
+                      <ResizableTableHead columnId="actions" minWidth={40} resizable={false}></ResizableTableHead>
+                    </ResizableTableRow>
+                  </ResizableTableHeader>
+                  <ResizableTableBody>
                     {filteredAllProducts.map((product) => {
                       const salePrice = getProductSalePrice(product);
                       const packagingPrices = calculatePackagingPrices(
@@ -1335,57 +1360,56 @@ export default function AdminPanel() {
                       );
                       
                       return (
-                        <TableRow key={product.id}>
-                          <TableCell>
+                        <ResizableTableRow key={product.id}>
+                          <ResizableTableCell columnId="photo">
                             <img
                               src={product.image}
                               alt={product.name}
-                              className="w-10 h-10 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                              className="w-8 h-8 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
                               onClick={() => {
                                 if (product.imageFull) {
                                   window.open(product.imageFull, '_blank');
                                 }
                               }}
-                              title={product.imageFull ? "Нажмите для просмотра в полном размере" : ""}
+                              title={product.imageFull ? "Нажмите для просмотра" : ""}
                             />
-                          </TableCell>
-                          <TableCell className="font-medium">
+                          </ResizableTableCell>
+                          <ResizableTableCell columnId="name">
                             <InlineEditableCell
                               value={product.name}
                               onSave={(newName) => updateProduct({ ...product, name: newName })}
-                              placeholder="Название товара"
+                              placeholder="Название"
                             />
-                          </TableCell>
-                          <TableCell className="max-w-[200px]">
+                          </ResizableTableCell>
+                          <ResizableTableCell columnId="desc">
                             <InlineEditableCell
                               value={product.description || ""}
                               onSave={(newDesc) => updateProduct({ ...product, description: newDesc })}
-                              placeholder="Добавить описание..."
-                              className="text-sm text-muted-foreground"
+                              placeholder="Описание..."
+                              className="text-muted-foreground"
                             />
-                          </TableCell>
-                          <TableCell>
+                          </ResizableTableCell>
+                          <ResizableTableCell columnId="source">
                             {product.source === "moysklad" ? (
-                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
-                                <ExternalLink className="h-3 w-3 mr-1" />
-                                МойСклад
+                              <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 whitespace-nowrap">
+                                МС
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="text-xs">
-                                Локальный
+                              <Badge variant="outline" className="text-[10px] whitespace-nowrap">
+                                Лок
                               </Badge>
                             )}
-                          </TableCell>
-                          <TableCell>
+                          </ResizableTableCell>
+                          <ResizableTableCell columnId="unit">
                             <InlineSelectCell
                               value={product.unit}
                               options={allUnitOptions}
                               onSave={(newUnit) => updateProduct({ ...product, unit: newUnit })}
                               onAddOption={(newUnit) => setCustomUnits(prev => [...prev, newUnit])}
-                              addNewPlaceholder="Ед. изм..."
+                              addNewPlaceholder="Ед..."
                             />
-                          </TableCell>
-                          <TableCell>
+                          </ResizableTableCell>
+                          <ResizableTableCell columnId="type">
                             <InlineSelectCell
                               value={product.packagingType || (product.productType === "weight" ? "head" : "piece")}
                               options={allPackagingOptions}
@@ -1393,96 +1417,82 @@ export default function AdminPanel() {
                               onAddOption={(newType) => setCustomPackagingTypes(prev => [...prev, newType])}
                               addNewPlaceholder="Вид..."
                             />
-                            {product.packagingType === "head" && product.unitWeight && (
-                              <span className="text-xs text-muted-foreground block mt-0.5">
-                                {product.unitWeight} кг
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell>
+                          </ResizableTableCell>
+                          <ResizableTableCell columnId="cost">
                             <InlinePriceCell
                               value={product.buyPrice}
                               onSave={(newPrice) => updateProduct({ ...product, buyPrice: newPrice })}
-                              placeholder="Себестоимость"
+                              placeholder="0"
                             />
-                          </TableCell>
-                          <TableCell className="text-sm">
+                          </ResizableTableCell>
+                          <ResizableTableCell columnId="markup">
                             {product.markup ? (
-                              <span className="text-green-600 dark:text-green-400">
+                              <span className="text-green-600 dark:text-green-400 text-[11px] whitespace-nowrap">
                                 +{product.markup.value}{product.markup.type === "percent" ? "%" : "₽"}
                               </span>
                             ) : (
-                              "-"
+                              <span className="text-muted-foreground">-</span>
                             )}
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {formatPrice(salePrice)}/{product.unit}
-                          </TableCell>
-                          <TableCell>
+                          </ResizableTableCell>
+                          <ResizableTableCell columnId="price">
+                            <span className="font-medium text-[11px] whitespace-nowrap">{formatPrice(salePrice)}/{product.unit}</span>
+                          </ResizableTableCell>
+                          <ResizableTableCell columnId="prices">
                             {packagingPrices ? (
-                              <div className="text-xs space-y-0.5">
-                                <div className="flex justify-between gap-2">
-                                  <span className="text-muted-foreground">Целая:</span>
-                                  <span className="font-medium">{formatPrice(packagingPrices.full)}</span>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                  <span className="text-muted-foreground">½:</span>
-                                  <span className="font-medium">{formatPrice(packagingPrices.half)}</span>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                  <span className="text-muted-foreground">¼:</span>
-                                  <span className="font-medium">{formatPrice(packagingPrices.quarter)}</span>
-                                </div>
+                              <div className="text-[10px] leading-tight">
+                                <span className="text-muted-foreground">1:</span>{formatPrice(packagingPrices.full).replace(' ₽', '')} 
+                                <span className="text-muted-foreground ml-1">½:</span>{formatPrice(packagingPrices.half).replace(' ₽', '')} 
+                                <span className="text-muted-foreground ml-1">¼:</span>{formatPrice(packagingPrices.quarter).replace(' ₽', '')}
                               </div>
                             ) : (
-                              "-"
+                              <span className="text-muted-foreground">-</span>
                             )}
-                          </TableCell>
-                          <TableCell>
+                          </ResizableTableCell>
+                          <ResizableTableCell columnId="status">
                             <Badge
                               variant={product.inStock ? "default" : "secondary"}
-                              className={`text-xs ${
+                              className={`text-[10px] whitespace-nowrap ${
                                 product.inStock
                                   ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
                                   : "bg-muted text-muted-foreground"
                               }`}
                             >
-                              {product.inStock ? "В наличии" : "Нет"}
+                              {product.inStock ? "Есть" : "Нет"}
                             </Badge>
-                          </TableCell>
-                          <TableCell>
+                          </ResizableTableCell>
+                          <ResizableTableCell columnId="sync">
                             {product.source === "moysklad" && (
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className={`h-8 w-8 ${product.autoSync ? "text-primary" : "text-muted-foreground"}`}
+                                className={`h-6 w-6 ${product.autoSync ? "text-primary" : "text-muted-foreground"}`}
                                 onClick={() => toggleAutoSync(product.id)}
-                                title={product.autoSync ? "Авто-синхронизация включена" : "Включить авто-синхронизацию"}
+                                title={product.autoSync ? "Синхр. вкл" : "Синхр. выкл"}
                               >
                                 {product.autoSync ? (
-                                  <Lock className="h-4 w-4" />
+                                  <Lock className="h-3 w-3" />
                                 ) : (
-                                  <Unlock className="h-4 w-4" />
+                                  <Unlock className="h-3 w-3" />
                                 )}
                               </Button>
                             )}
-                          </TableCell>
-                          <TableCell>
+                          </ResizableTableCell>
+                          <ResizableTableCell columnId="actions">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-primary"
+                              className="h-6 w-6 text-muted-foreground hover:text-primary"
                               onClick={() => openEditDialog(product)}
-                              title="Редактировать товар"
+                              title="Редактировать"
                             >
-                              <Settings className="h-4 w-4" />
+                              <Settings className="h-3 w-3" />
                             </Button>
-                          </TableCell>
-                        </TableRow>
+                          </ResizableTableCell>
+                        </ResizableTableRow>
                       );
                     })}
-                  </TableBody>
-                </Table>
+                  </ResizableTableBody>
+                </ResizableTable>
               </div>
 
               {/* Product Pricing Dialog */}
