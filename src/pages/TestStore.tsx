@@ -142,7 +142,7 @@ function ProductCard({
                         )}
                         <PortionIndicator type="full" />
                         <span className="text-[9px] font-medium text-foreground">
-                          {formatPrice(packagingPrices.full)}
+                          {Math.round(packagingPrices.full)}
                         </span>
                       </button>
                     );
@@ -162,7 +162,7 @@ function ProductCard({
                         )}
                         <PortionIndicator type="half" />
                         <span className="text-[9px] font-medium text-foreground">
-                          {formatPrice(packagingPrices.half)}
+                          {Math.round(packagingPrices.half)}
                         </span>
                       </button>
                     );
@@ -182,11 +182,32 @@ function ProductCard({
                         )}
                         <PortionIndicator type="quarter" />
                         <span className="text-[9px] font-medium text-foreground">
-                          {formatPrice(packagingPrices.quarter)}
+                          {Math.round(packagingPrices.quarter)}
                         </span>
                       </button>
                     );
                   })()}
+                  {/* Порция */}
+                  {packagingPrices.portion && (
+                    (() => {
+                      const qty = getCartQuantity(3);
+                      return (
+                        <button
+                          onClick={() => onAddToCart(product.id, 3, packagingPrices.portion!)}
+                          className="relative flex items-center gap-1 h-7 px-2 rounded border border-primary bg-primary/10 hover:bg-primary/20 transition-all"
+                        >
+                          {qty > 0 && (
+                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                              {qty}
+                            </span>
+                          )}
+                          <span className="text-[9px] font-medium text-primary">
+                            Порция {Math.round(packagingPrices.portion!)}
+                          </span>
+                        </button>
+                      );
+                    })()
+                  )}
                 </>
               ) : (
                 <>
@@ -206,7 +227,7 @@ function ProductCard({
                         )}
                         <PortionIndicator type={variant.type} />
                         <span className="text-[9px] font-medium text-foreground">
-                          {formatPrice(price)}
+                          {Math.round(price)}
                         </span>
                       </button>
                     );
@@ -232,7 +253,7 @@ function ProductCard({
                           {variant.quantity}
                         </span>
                         <span className="text-[9px] font-medium text-foreground">
-                          {formatPrice(price)}
+                          {Math.round(price)}
                         </span>
                       </button>
                     );
