@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2 } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -266,8 +266,18 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "import";
+type ActiveSection = "products" | "import" | "catalogs";
 type ImportView = "accounts" | "catalog";
+type CatalogView = "list" | "detail";
+
+interface Catalog {
+  id: string;
+  name: string;
+  productIds: string[];
+  createdAt: string;
+}
+
+const CATALOGS_KEY = "admin_catalogs";
 
 // Filter component for column headers
 function ColumnFilter({ 
@@ -359,7 +369,17 @@ export default function AdminPanel() {
     stock: "all",
   });
 
-  // Load saved accounts and imported products on mount
+  // Catalogs state
+  const [catalogs, setCatalogs] = useState<Catalog[]>([]);
+  const [catalogView, setCatalogView] = useState<CatalogView>("list");
+  const [currentCatalog, setCurrentCatalog] = useState<Catalog | null>(null);
+  const [newCatalogName, setNewCatalogName] = useState("");
+  const [showAddCatalog, setShowAddCatalog] = useState(false);
+  const [catalogProductSearch, setCatalogProductSearch] = useState("");
+  const [selectedCatalogProducts, setSelectedCatalogProducts] = useState<Set<string>>(new Set());
+  const [editingCatalogName, setEditingCatalogName] = useState(false);
+
+  // Load saved accounts, imported products, and catalogs on mount
   useEffect(() => {
     const savedAccounts = localStorage.getItem(MOYSKLAD_ACCOUNTS_KEY);
     if (savedAccounts) {
@@ -378,6 +398,15 @@ export default function AdminPanel() {
         console.error("Failed to parse saved products");
       }
     }
+
+    const savedCatalogs = localStorage.getItem(CATALOGS_KEY);
+    if (savedCatalogs) {
+      try {
+        setCatalogs(JSON.parse(savedCatalogs));
+      } catch (e) {
+        console.error("Failed to parse saved catalogs");
+      }
+    }
   }, []);
 
   // Save accounts to localStorage
@@ -393,6 +422,11 @@ export default function AdminPanel() {
       localStorage.setItem(IMPORTED_PRODUCTS_KEY, JSON.stringify(importedProducts));
     }
   }, [importedProducts]);
+
+  // Save catalogs to localStorage
+  useEffect(() => {
+    localStorage.setItem(CATALOGS_KEY, JSON.stringify(catalogs));
+  }, [catalogs]);
 
   // Check if a MoySklad product is linked (imported) to all products
   const isProductLinked = (msProductId: string) => {
@@ -587,6 +621,95 @@ export default function AdminPanel() {
         ? { ...product, autoSync: !product.autoSync }
         : product
     ));
+  };
+
+  // Catalog management functions
+  const createCatalog = () => {
+    if (!newCatalogName.trim()) {
+      toast({
+        title: "Ошибка",
+        description: "Введите название каталога",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newCatalog: Catalog = {
+      id: `catalog_${Date.now()}`,
+      name: newCatalogName.trim(),
+      productIds: [],
+      createdAt: new Date().toISOString(),
+    };
+
+    setCatalogs(prev => [...prev, newCatalog]);
+    setNewCatalogName("");
+    setShowAddCatalog(false);
+    
+    toast({
+      title: "Каталог создан",
+      description: `Каталог "${newCatalog.name}" успешно создан`,
+    });
+  };
+
+  const deleteCatalog = (catalogId: string) => {
+    setCatalogs(prev => prev.filter(c => c.id !== catalogId));
+    if (currentCatalog?.id === catalogId) {
+      setCurrentCatalog(null);
+      setCatalogView("list");
+    }
+    toast({
+      title: "Каталог удалён",
+    });
+  };
+
+  const openCatalog = (catalog: Catalog) => {
+    setCurrentCatalog(catalog);
+    setSelectedCatalogProducts(new Set(catalog.productIds));
+    setCatalogView("detail");
+  };
+
+  const saveCatalogProducts = () => {
+    if (!currentCatalog) return;
+    
+    setCatalogs(prev => prev.map(c => 
+      c.id === currentCatalog.id 
+        ? { ...c, productIds: Array.from(selectedCatalogProducts) }
+        : c
+    ));
+    setCurrentCatalog(prev => prev ? { ...prev, productIds: Array.from(selectedCatalogProducts) } : null);
+    
+    toast({
+      title: "Каталог сохранён",
+      description: `Добавлено ${selectedCatalogProducts.size} товаров`,
+    });
+  };
+
+  const updateCatalogName = (newName: string) => {
+    if (!currentCatalog || !newName.trim()) return;
+    
+    setCatalogs(prev => prev.map(c => 
+      c.id === currentCatalog.id 
+        ? { ...c, name: newName.trim() }
+        : c
+    ));
+    setCurrentCatalog(prev => prev ? { ...prev, name: newName.trim() } : null);
+    setEditingCatalogName(false);
+  };
+
+  const toggleCatalogProduct = (productId: string) => {
+    setSelectedCatalogProducts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(productId)) {
+        newSet.delete(productId);
+      } else {
+        newSet.add(productId);
+      }
+      return newSet;
+    });
+  };
+
+  const getCatalogProducts = (catalog: Catalog) => {
+    return allProducts.filter(p => catalog.productIds.includes(p.id));
   };
 
   const addNewAccount = async () => {
@@ -968,6 +1091,20 @@ export default function AdminPanel() {
             >
               <Download className="h-4 w-4" />
               Импорт из МойСклад
+            </button>
+            <button
+              onClick={() => {
+                setActiveSection("catalogs");
+                setCatalogView("list");
+              }}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeSection === "catalogs"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-foreground hover:bg-muted"
+              }`}
+            >
+              <FolderOpen className="h-4 w-4" />
+              Каталоги
             </button>
           </nav>
         </aside>
@@ -1503,6 +1640,258 @@ export default function AdminPanel() {
                       </div>
                     </>
                   )}
+                </>
+              )}
+            </>
+          )}
+
+          {activeSection === "catalogs" && (
+            <>
+              {catalogView === "list" && (
+                <>
+                  <div className="mb-4">
+                    <h2 className="text-xl font-semibold text-foreground">Каталоги</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Создавайте каталоги и добавляйте в них товары
+                    </p>
+                  </div>
+
+                  {/* Catalogs list */}
+                  <div className="space-y-3 mb-6">
+                    {catalogs.map((catalog) => {
+                      const catalogProducts = getCatalogProducts(catalog);
+                      return (
+                        <div
+                          key={catalog.id}
+                          className="bg-card rounded-lg border border-border p-4 flex items-center justify-between hover:border-primary/50 transition-colors cursor-pointer"
+                          onClick={() => openCatalog(catalog)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                              <FolderOpen className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <h3 className="font-medium text-foreground">{catalog.name}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                {catalogProducts.length} товаров
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteCatalog(catalog.id);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {catalogs.length === 0 && !showAddCatalog && (
+                      <div className="bg-card rounded-lg border border-border p-8 text-center">
+                        <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="font-medium text-foreground mb-2">Нет каталогов</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Создайте каталог для группировки товаров
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add new catalog form */}
+                  {showAddCatalog ? (
+                    <div className="bg-card rounded-lg border border-border p-6 max-w-md">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Plus className="h-5 w-5 text-primary" />
+                        <h3 className="font-medium text-foreground">Новый каталог</h3>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="catalog-name">Название каталога</Label>
+                          <Input
+                            id="catalog-name"
+                            type="text"
+                            placeholder="Например: Сыры премиум"
+                            value={newCatalogName}
+                            onChange={(e) => setNewCatalogName(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && createCatalog()}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={createCatalog}
+                            disabled={!newCatalogName.trim()}
+                            className="flex-1"
+                          >
+                            <Check className="h-4 w-4 mr-2" />
+                            Создать
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setShowAddCatalog(false);
+                              setNewCatalogName("");
+                            }}
+                            variant="outline"
+                          >
+                            Отмена
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={() => setShowAddCatalog(true)}
+                      variant="outline"
+                      className="w-full max-w-md"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Создать каталог
+                    </Button>
+                  )}
+                </>
+              )}
+
+              {catalogView === "detail" && currentCatalog && (
+                <>
+                  <div className="mb-4 flex items-center gap-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setCatalogView("list");
+                        setCurrentCatalog(null);
+                        setSelectedCatalogProducts(new Set());
+                        setCatalogProductSearch("");
+                      }}
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Назад к каталогам
+                    </Button>
+                    <div className="flex items-center gap-2">
+                      {editingCatalogName ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={currentCatalog.name}
+                            onChange={(e) => setCurrentCatalog(prev => prev ? { ...prev, name: e.target.value } : null)}
+                            className="h-8 w-48"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") updateCatalogName(currentCatalog.name);
+                              if (e.key === "Escape") setEditingCatalogName(false);
+                            }}
+                          />
+                          <Button size="sm" variant="ghost" onClick={() => updateCatalogName(currentCatalog.name)}>
+                            <Check className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <h2 className="text-xl font-semibold text-foreground">{currentCatalog.name}</h2>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => setEditingCatalogName(true)}
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">
+                        Выбрано: {selectedCatalogProducts.size} из {allProducts.length}
+                      </Badge>
+                    </div>
+                    <Button onClick={saveCatalogProducts} size="sm">
+                      <Check className="h-4 w-4 mr-2" />
+                      Сохранить
+                    </Button>
+                  </div>
+
+                  <div className="mb-4">
+                    <Input
+                      type="text"
+                      placeholder="Поиск товаров..."
+                      value={catalogProductSearch}
+                      onChange={(e) => setCatalogProductSearch(e.target.value)}
+                      className="max-w-sm"
+                    />
+                  </div>
+
+                  <div className="bg-card rounded-lg border border-border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[50px]">
+                            <Checkbox
+                              checked={selectedCatalogProducts.size === allProducts.length && allProducts.length > 0}
+                              onCheckedChange={() => {
+                                if (selectedCatalogProducts.size === allProducts.length) {
+                                  setSelectedCatalogProducts(new Set());
+                                } else {
+                                  setSelectedCatalogProducts(new Set(allProducts.map(p => p.id)));
+                                }
+                              }}
+                            />
+                          </TableHead>
+                          <TableHead className="w-[50px]">Фото</TableHead>
+                          <TableHead>Название</TableHead>
+                          <TableHead>Цена</TableHead>
+                          <TableHead>Статус</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {allProducts
+                          .filter(p => !catalogProductSearch || p.name.toLowerCase().includes(catalogProductSearch.toLowerCase()))
+                          .map((product) => (
+                            <TableRow
+                              key={product.id}
+                              className={selectedCatalogProducts.has(product.id) ? "bg-primary/5" : ""}
+                            >
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedCatalogProducts.has(product.id)}
+                                  onCheckedChange={() => toggleCatalogProduct(product.id)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <img
+                                  src={product.image}
+                                  alt={product.name}
+                                  className="w-10 h-10 rounded object-cover"
+                                />
+                              </TableCell>
+                              <TableCell className="font-medium">{product.name}</TableCell>
+                              <TableCell>{formatPrice(product.pricePerUnit)}/{product.unit}</TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={product.inStock ? "default" : "secondary"}
+                                  className={`text-xs ${
+                                    product.inStock
+                                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                                      : "bg-muted text-muted-foreground"
+                                  }`}
+                                >
+                                  {product.inStock ? "В наличии" : "Нет"}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </>
               )}
             </>
