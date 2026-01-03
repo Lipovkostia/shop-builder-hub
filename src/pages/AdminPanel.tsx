@@ -2123,11 +2123,12 @@ export default function AdminPanel() {
                             return (
                               <TableRow key={catalog.id} className="h-8">
                                 <TableCell className="px-2 py-1">
-                                  <InlineEditableCell
-                                    value={catalog.name}
-                                    onSave={(value) => updateCatalogField(catalog.id, 'name', value)}
-                                    placeholder="Название"
-                                  />
+                                  <button
+                                    onClick={() => openCatalog(catalog)}
+                                    className="text-left font-medium text-primary hover:underline focus:outline-none focus:underline"
+                                  >
+                                    {catalog.name}
+                                  </button>
                                 </TableCell>
                                 <TableCell className="px-2 py-1">
                                   <InlineEditableCell
