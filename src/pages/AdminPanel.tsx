@@ -2227,6 +2227,7 @@ export default function AdminPanel() {
                           </TableHead>
                           <TableHead className="w-[50px]">Фото</TableHead>
                           <TableHead>Название</TableHead>
+                          <TableHead>Описание</TableHead>
                           <TableHead>Ед. изм.</TableHead>
                           <TableHead>Вид</TableHead>
                           <TableHead>Себест-ть</TableHead>
@@ -2267,12 +2268,10 @@ export default function AdminPanel() {
                                   />
                                 </TableCell>
                                 <TableCell className="font-medium">
-                                  <div>
-                                    {product.name}
-                                    {product.description && (
-                                      <p className="text-xs text-muted-foreground mt-0.5 max-w-[200px] truncate">{product.description}</p>
-                                    )}
-                                  </div>
+                                  {product.name}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground max-w-[200px]">
+                                  <span className="truncate block">{product.description || "-"}</span>
                                 </TableCell>
                                 <TableCell>
                                   <Badge variant="outline" className="text-xs">
