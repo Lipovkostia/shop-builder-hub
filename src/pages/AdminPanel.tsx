@@ -2316,6 +2316,7 @@ export default function AdminPanel() {
                                     value={product.unitWeight || 0}
                                     onSave={(value) => updateProduct({ ...product, unitWeight: value })}
                                     placeholder="0"
+                                    suffix=""
                                   />
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="type">
