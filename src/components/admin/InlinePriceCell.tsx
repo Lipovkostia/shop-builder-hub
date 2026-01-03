@@ -104,7 +104,7 @@ export function InlinePriceCell({
       title="Нажмите для редактирования"
     >
       <span className={`text-xs whitespace-nowrap ${value ? "text-muted-foreground" : "text-muted-foreground italic"}`}>
-        {value ? `${formatPrice(value)}` : "-"}
+        {value ? `${formatPrice(value)}${suffix ? ` ${suffix}` : ""}` : "-"}
       </span>
       <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" />
     </div>

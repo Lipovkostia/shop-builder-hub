@@ -1310,7 +1310,7 @@ export default function AdminPanel() {
 
               <div className="bg-card rounded-lg border border-border">
                 <ResizableTable
-                  storageKey="admin-products"
+                  storageKey="admin-products-v2"
                   columns={[
                     { id: "photo", minWidth: 50, defaultWidth: 50 },
                     { id: "name", minWidth: 120, defaultWidth: 180 },
@@ -1318,10 +1318,8 @@ export default function AdminPanel() {
                     { id: "source", minWidth: 80, defaultWidth: 90 },
                     { id: "unit", minWidth: 60, defaultWidth: 70 },
                     { id: "type", minWidth: 70, defaultWidth: 85 },
+                    { id: "volume", minWidth: 70, defaultWidth: 80 },
                     { id: "cost", minWidth: 70, defaultWidth: 90 },
-                    { id: "markup", minWidth: 60, defaultWidth: 70 },
-                    { id: "price", minWidth: 80, defaultWidth: 100 },
-                    { id: "prices", minWidth: 100, defaultWidth: 130 },
                     { id: "status", minWidth: 70, defaultWidth: 80 },
                     { id: "sync", minWidth: 50, defaultWidth: 50 },
                     { id: "actions", minWidth: 40, defaultWidth: 40 },
@@ -1353,10 +1351,8 @@ export default function AdminPanel() {
                       </ResizableTableHead>
                       <ResizableTableHead columnId="unit" minWidth={60}>Ед.</ResizableTableHead>
                       <ResizableTableHead columnId="type" minWidth={70}>Вид</ResizableTableHead>
+                      <ResizableTableHead columnId="volume" minWidth={70}>Объем</ResizableTableHead>
                       <ResizableTableHead columnId="cost" minWidth={70}>Себест.</ResizableTableHead>
-                      <ResizableTableHead columnId="markup" minWidth={60}>Нацен.</ResizableTableHead>
-                      <ResizableTableHead columnId="price" minWidth={80}>Цена</ResizableTableHead>
-                      <ResizableTableHead columnId="prices" minWidth={100}>Цены</ResizableTableHead>
                       <ResizableTableHead columnId="status" minWidth={70}>
                         <div>Статус</div>
                         <SelectFilter
@@ -1453,35 +1449,20 @@ export default function AdminPanel() {
                               addNewPlaceholder="Вид..."
                             />
                           </ResizableTableCell>
+                          <ResizableTableCell columnId="volume">
+                            <InlinePriceCell
+                              value={product.unitWeight}
+                              onSave={(newVolume) => updateProduct({ ...product, unitWeight: newVolume })}
+                              placeholder="0"
+                              suffix={product.unit}
+                            />
+                          </ResizableTableCell>
                           <ResizableTableCell columnId="cost">
                             <InlinePriceCell
                               value={product.buyPrice}
                               onSave={(newPrice) => updateProduct({ ...product, buyPrice: newPrice })}
                               placeholder="0"
                             />
-                          </ResizableTableCell>
-                          <ResizableTableCell columnId="markup">
-                            {product.markup ? (
-                              <span className="text-green-600 dark:text-green-400 text-[11px] whitespace-nowrap">
-                                +{product.markup.value}{product.markup.type === "percent" ? "%" : "₽"}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </ResizableTableCell>
-                          <ResizableTableCell columnId="price">
-                            <span className="font-medium text-[11px] whitespace-nowrap">{formatPrice(salePrice)}/{product.unit}</span>
-                          </ResizableTableCell>
-                          <ResizableTableCell columnId="prices">
-                            {packagingPrices ? (
-                              <div className="text-[10px] leading-tight">
-                                <span className="text-muted-foreground">1:</span>{formatPrice(packagingPrices.full).replace(' ₽', '')} 
-                                <span className="text-muted-foreground ml-1">½:</span>{formatPrice(packagingPrices.half).replace(' ₽', '')} 
-                                <span className="text-muted-foreground ml-1">¼:</span>{formatPrice(packagingPrices.quarter).replace(' ₽', '')}
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
                           </ResizableTableCell>
                           <ResizableTableCell columnId="status">
                             <Badge
