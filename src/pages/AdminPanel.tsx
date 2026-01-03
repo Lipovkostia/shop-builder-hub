@@ -60,6 +60,7 @@ import { InlineSelectCell } from "@/components/admin/InlineSelectCell";
 import { InlinePriceCell } from "@/components/admin/InlinePriceCell";
 import { InlineMarkupCell } from "@/components/admin/InlineMarkupCell";
 import { MobileTabNav } from "@/components/admin/MobileTabNav";
+import { BulkEditPanel } from "@/components/admin/BulkEditPanel";
 
 const MOYSKLAD_ACCOUNTS_KEY = "moysklad_accounts";
 const IMPORTED_PRODUCTS_KEY = "moysklad_imported_products";
@@ -375,6 +376,9 @@ export default function AdminPanel() {
   
   // Product order state for drag and drop
   const [productOrder, setProductOrder] = useState<string[]>([]);
+  
+  // Bulk selection state for products
+  const [selectedBulkProducts, setSelectedBulkProducts] = useState<Set<string>>(new Set());
 
   // Customer roles state
   const [customerRoles, setCustomerRoles] = useState<CustomerRole[]>([]);
@@ -1127,6 +1131,63 @@ export default function AdminPanel() {
     setEditDialogOpen(true);
   };
 
+  // Bulk update products
+  const bulkUpdateProducts = (updates: Partial<Product>) => {
+    const selectedIds = Array.from(selectedBulkProducts);
+    
+    // Update imported products
+    setImportedProducts(prev => prev.map(p => {
+      if (selectedIds.includes(p.id)) {
+        return { ...p, ...updates };
+      }
+      return p;
+    }));
+    
+    // Update local products
+    setLocalTestProducts(prev => prev.map(p => {
+      if (selectedIds.includes(p.id)) {
+        return { ...p, ...updates };
+      }
+      return p;
+    }));
+    
+    toast({
+      title: "Товары обновлены",
+      description: `Изменено ${selectedIds.length} товар(ов)`,
+    });
+    
+    setSelectedBulkProducts(new Set());
+  };
+
+  // Bulk delete products
+  const bulkDeleteProducts = () => {
+    const selectedIds = Array.from(selectedBulkProducts);
+    
+    setImportedProducts(prev => prev.filter(p => !selectedIds.includes(p.id)));
+    setLocalTestProducts(prev => prev.filter(p => !selectedIds.includes(p.id)));
+    
+    toast({
+      title: "Товары удалены",
+      description: `Удалено ${selectedIds.length} товар(ов)`,
+    });
+    
+    setSelectedBulkProducts(new Set());
+  };
+
+  // Toggle bulk product selection
+  const toggleBulkProductSelection = (productId: string) => {
+    setSelectedBulkProducts(prev => {
+      const next = new Set(prev);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        next.add(productId);
+      }
+      return next;
+    });
+  };
+
+
   // Get sale price with markup
   const getProductSalePrice = (product: Product): number => {
     if (product.buyPrice && product.markup) {
@@ -1191,6 +1252,15 @@ export default function AdminPanel() {
   
   // Product IDs for sortable rows
   const productIds = useMemo(() => filteredAllProducts.map(p => p.id), [filteredAllProducts]);
+
+  // Select all filtered products
+  const selectAllBulkProducts = () => {
+    if (selectedBulkProducts.size === filteredAllProducts.length) {
+      setSelectedBulkProducts(new Set());
+    } else {
+      setSelectedBulkProducts(new Set(filteredAllProducts.map(p => p.id)));
+    }
+  };
   
   // Handle row reorder
   const handleProductReorder = useCallback((newOrder: string[]) => {
@@ -1333,11 +1403,22 @@ export default function AdminPanel() {
                 )}
               </div>
 
+              {/* Bulk Edit Panel */}
+              <BulkEditPanel
+                selectedCount={selectedBulkProducts.size}
+                onClearSelection={() => setSelectedBulkProducts(new Set())}
+                onBulkUpdate={bulkUpdateProducts}
+                onBulkDelete={bulkDeleteProducts}
+                unitOptions={allUnitOptions}
+                packagingOptions={allPackagingOptions}
+              />
+
               <div className="bg-card rounded-lg border border-border">
                 <DraggableTableWrapper items={productIds} onReorder={handleProductReorder}>
                 <ResizableTable
-                  storageKey="admin-products-v3"
+                  storageKey="admin-products-v4"
                   columns={[
+                    { id: "checkbox", minWidth: 40, defaultWidth: 40 },
                     { id: "drag", minWidth: 32, defaultWidth: 32 },
                     { id: "photo", minWidth: 50, defaultWidth: 50 },
                     { id: "name", minWidth: 120, defaultWidth: 180 },
@@ -1355,6 +1436,12 @@ export default function AdminPanel() {
                   <ResizableTableHeader enableColumnDrag={true}>
                     {/* Row 1: Column names */}
                     <ResizableTableRow className="h-6">
+                      <SortableTableHead columnId="checkbox" minWidth={40} resizable={false} draggable={false}>
+                        <Checkbox
+                          checked={selectedBulkProducts.size === filteredAllProducts.length && filteredAllProducts.length > 0}
+                          onCheckedChange={selectAllBulkProducts}
+                        />
+                      </SortableTableHead>
                       <SortableTableHead columnId="drag" minWidth={32} resizable={false} draggable={false}>
                         <span className="text-muted-foreground/50 text-[10px]">⋮⋮</span>
                       </SortableTableHead>
@@ -1372,6 +1459,7 @@ export default function AdminPanel() {
                     </ResizableTableRow>
                     {/* Row 2: Filters */}
                     <ResizableTableRow className="h-6 border-b-0">
+                      <ResizableTableHead columnId="checkbox" minWidth={40} resizable={false}></ResizableTableHead>
                       <ResizableTableHead columnId="drag" minWidth={32} resizable={false}></ResizableTableHead>
                       <ResizableTableHead columnId="photo" minWidth={50} resizable={false}></ResizableTableHead>
                       <ResizableTableHead columnId="name" minWidth={120} resizable={false}>
@@ -1474,6 +1562,14 @@ export default function AdminPanel() {
                       
                       // Define all cells with their column IDs
                       const cellsMap: Record<string, React.ReactNode> = {
+                        checkbox: (
+                          <ResizableTableCell key="checkbox" columnId="checkbox">
+                            <Checkbox
+                              checked={selectedBulkProducts.has(product.id)}
+                              onCheckedChange={() => toggleBulkProductSelection(product.id)}
+                            />
+                          </ResizableTableCell>
+                        ),
                         photo: (
                           <ResizableTableCell key="photo" columnId="photo">
                             <img
@@ -1614,7 +1710,7 @@ export default function AdminPanel() {
                         <SortableTableRow key={product.id} id={product.id}>
                           <OrderedCellsContainer 
                             cells={cellsMap} 
-                            fixedStart={["drag"]} 
+                            fixedStart={["checkbox", "drag"]} 
                             fixedEnd={["actions"]}
                           />
                         </SortableTableRow>
