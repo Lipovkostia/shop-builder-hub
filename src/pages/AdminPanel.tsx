@@ -2409,6 +2409,7 @@ export default function AdminPanel() {
                         { id: "priceFull", minWidth: 70, defaultWidth: 90 },
                         { id: "priceHalf", minWidth: 70, defaultWidth: 90 },
                         { id: "priceQuarter", minWidth: 70, defaultWidth: 90 },
+                        { id: "pricePortion", minWidth: 70, defaultWidth: 90 },
                         { id: "status", minWidth: 80, defaultWidth: 100 },
                       ]}
                     >
@@ -2444,6 +2445,7 @@ export default function AdminPanel() {
                           <ResizableTableHead columnId="priceFull">Целая</ResizableTableHead>
                           <ResizableTableHead columnId="priceHalf">½</ResizableTableHead>
                           <ResizableTableHead columnId="priceQuarter">¼</ResizableTableHead>
+                          <ResizableTableHead columnId="pricePortion">Порция</ResizableTableHead>
                           <ResizableTableHead columnId="status">Статус</ResizableTableHead>
                         </ResizableTableRow>
                       </ResizableTableHeader>
@@ -2610,6 +2612,22 @@ export default function AdminPanel() {
                                         </span>
                                       )}
                                     </div>
+                                  ) : "-"}
+                                </ResizableTableCell>
+                                <ResizableTableCell columnId="pricePortion">
+                                  {product.packagingType === "head" ? (
+                                    <InlinePriceCell
+                                      value={product.portionPrices?.portionPrice}
+                                      onSave={(value) => updateProduct({ 
+                                        ...product, 
+                                        portionPrices: { 
+                                          ...product.portionPrices, 
+                                          portionPrice: value 
+                                        } 
+                                      })}
+                                      placeholder="—"
+                                      suffix=""
+                                    />
                                   ) : "-"}
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="status">
