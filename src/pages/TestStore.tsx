@@ -364,10 +364,11 @@ export default function TestStore() {
     }
   }, []);
 
-  // Фильтрация товаров по выбранному каталогу
-  const displayProducts = selectedCatalog
+  // Фильтрация товаров по выбранному каталогу и скрытие hidden товаров
+  const displayProducts = (selectedCatalog
     ? allProducts.filter(p => selectedCatalog.productIds.includes(p.id))
-    : allProducts;
+    : allProducts
+  ).filter(p => p.status !== "hidden");
 
   const handleAddToCart = (productId: string, variantIndex: number, price: number) => {
     setCart((prev) => {

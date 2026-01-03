@@ -30,6 +30,8 @@ export interface CustomVariantPrices {
   quarterPrice?: number;
 }
 
+export type ProductStatus = "in_stock" | "out_of_stock" | "hidden";
+
 export interface Product {
   id: string;
   name: string;
@@ -46,6 +48,7 @@ export interface Product {
   pieceVariants?: PieceVariant[];
   inStock: boolean;
   isHit: boolean;
+  status?: ProductStatus;       // Статус товара: в наличии, нет, скрыт
   source?: "local" | "moysklad";
   moyskladId?: string;
   autoSync?: boolean;

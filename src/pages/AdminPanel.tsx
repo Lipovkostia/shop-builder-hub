@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/select";
 import {
   Product,
+  ProductStatus,
   MoySkladProduct,
   MoySkladAccount,
   Catalog,
@@ -2501,16 +2502,34 @@ export default function AdminPanel() {
                                   ) : "-"}
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="status">
-                                  <Badge
-                                    variant={product.inStock ? "default" : "secondary"}
-                                    className={`text-xs ${
-                                      product.inStock
-                                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                                        : "bg-muted text-muted-foreground"
-                                    }`}
+                                  <button
+                                    onClick={() => {
+                                      const currentStatus = product.status || (product.inStock ? "in_stock" : "out_of_stock");
+                                      const nextStatus: ProductStatus = 
+                                        currentStatus === "in_stock" ? "out_of_stock" :
+                                        currentStatus === "out_of_stock" ? "hidden" : "in_stock";
+                                      updateProduct({ 
+                                        ...product, 
+                                        status: nextStatus,
+                                        inStock: nextStatus === "in_stock"
+                                      });
+                                    }}
+                                    className="focus:outline-none"
                                   >
-                                    {product.inStock ? "В наличии" : "Нет"}
-                                  </Badge>
+                                    <Badge
+                                      variant={product.status === "hidden" ? "outline" : (product.status === "in_stock" || (!product.status && product.inStock)) ? "default" : "secondary"}
+                                      className={`text-xs cursor-pointer transition-colors ${
+                                        product.status === "hidden"
+                                          ? "bg-muted/50 text-muted-foreground border-dashed"
+                                          : (product.status === "in_stock" || (!product.status && product.inStock))
+                                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800"
+                                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                      }`}
+                                    >
+                                      {product.status === "hidden" ? "Скрыт" : 
+                                       (product.status === "in_stock" || (!product.status && product.inStock)) ? "В наличии" : "Нет"}
+                                    </Badge>
+                                  </button>
                                 </ResizableTableCell>
                               </ResizableTableRow>
                             );
