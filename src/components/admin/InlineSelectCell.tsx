@@ -35,7 +35,7 @@ export function InlineSelectCell({
   addNewPlaceholder = "Новое значение...",
   className = "",
 }: InlineSelectCellProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newOptionValue, setNewOptionValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -49,11 +49,12 @@ export function InlineSelectCell({
   const handleSelect = (selectedValue: string) => {
     if (selectedValue === "__add_new__") {
       setIsAddingNew(true);
+      setIsOpen(false);
     } else {
       if (selectedValue !== value) {
         onSave(selectedValue);
       }
-      setIsEditing(false);
+      setIsOpen(false);
     }
   };
 
@@ -64,7 +65,6 @@ export function InlineSelectCell({
       onSave(trimmed);
       setNewOptionValue("");
       setIsAddingNew(false);
-      setIsEditing(false);
     }
   };
 
@@ -114,43 +114,33 @@ export function InlineSelectCell({
     );
   }
 
-  if (isEditing) {
-    return (
-      <Select value={value} onValueChange={handleSelect}>
-        <SelectTrigger 
-          className="h-6 text-xs min-w-[70px] px-1.5"
-          onBlur={() => setTimeout(() => setIsEditing(false), 200)}
-          autoFocus
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value} className="text-xs">
-              {option.label}
-            </SelectItem>
-          ))}
-          {allowAddNew && (
-            <SelectItem value="__add_new__" className="text-xs text-primary">
-              <div className="flex items-center gap-1">
-                <Plus className="h-2.5 w-2.5" />
-                Добавить
-              </div>
-            </SelectItem>
-          )}
-        </SelectContent>
-      </Select>
-    );
-  }
-
   return (
-    <Badge 
-      variant="outline" 
-      className={`text-[10px] cursor-pointer hover:bg-muted transition-colors whitespace-nowrap px-1.5 py-0.5 ${className}`}
-      onClick={() => setIsEditing(true)}
-      title="Нажмите для изменения"
+    <Select 
+      value={value} 
+      onValueChange={handleSelect} 
+      open={isOpen} 
+      onOpenChange={setIsOpen}
     >
-      {displayLabel}
-    </Badge>
+      <SelectTrigger 
+        className="h-6 text-xs min-w-[70px] px-1.5 border-dashed"
+      >
+        <SelectValue placeholder={displayLabel} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem key={option.value} value={option.value} className="text-xs">
+            {option.label}
+          </SelectItem>
+        ))}
+        {allowAddNew && (
+          <SelectItem value="__add_new__" className="text-xs text-primary">
+            <div className="flex items-center gap-1">
+              <Plus className="h-2.5 w-2.5" />
+              Добавить
+            </div>
+          </SelectItem>
+        )}
+      </SelectContent>
+    </Select>
   );
 }
