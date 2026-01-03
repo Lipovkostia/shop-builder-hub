@@ -338,8 +338,12 @@ export default function AdminPanel() {
   // Filters for "All Products" table
   const [allProductsFilters, setAllProductsFilters] = useState({
     name: "",
+    desc: "",
     source: "all",
+    unit: "all",
     type: "all",
+    volume: "",
+    cost: "",
     status: "all",
     sync: "all",
   });
@@ -1116,13 +1120,27 @@ export default function AdminPanel() {
       if (allProductsFilters.name && !product.name.toLowerCase().includes(allProductsFilters.name.toLowerCase())) {
         return false;
       }
+      if (allProductsFilters.desc && !(product.description || '').toLowerCase().includes(allProductsFilters.desc.toLowerCase())) {
+        return false;
+      }
       if (allProductsFilters.source !== "all") {
         const isMs = product.source === "moysklad";
         if (allProductsFilters.source === "moysklad" && !isMs) return false;
         if (allProductsFilters.source === "local" && isMs) return false;
       }
+      if (allProductsFilters.unit !== "all" && product.unit !== allProductsFilters.unit) {
+        return false;
+      }
       if (allProductsFilters.type !== "all" && product.productType !== allProductsFilters.type) {
         return false;
+      }
+      if (allProductsFilters.volume) {
+        const volumeStr = product.unitWeight?.toString() || '';
+        if (!volumeStr.includes(allProductsFilters.volume)) return false;
+      }
+      if (allProductsFilters.cost) {
+        const costStr = product.buyPrice?.toString() || '';
+        if (!costStr.includes(allProductsFilters.cost)) return false;
       }
       if (allProductsFilters.status !== "all") {
         if (allProductsFilters.status === "inStock" && !product.inStock) return false;
@@ -1339,31 +1357,71 @@ export default function AdminPanel() {
                         <ColumnFilter 
                           value={allProductsFilters.name} 
                           onChange={(v) => setAllProductsFilters(f => ({...f, name: v}))}
-                          placeholder="Фильтр..."
+                          placeholder="Поиск..."
                         />
                       </ResizableTableHead>
-                      <ResizableTableHead columnId="desc" minWidth={100} resizable={false}></ResizableTableHead>
+                      <ResizableTableHead columnId="desc" minWidth={100} resizable={false}>
+                        <ColumnFilter 
+                          value={allProductsFilters.desc} 
+                          onChange={(v) => setAllProductsFilters(f => ({...f, desc: v}))}
+                          placeholder="Поиск..."
+                        />
+                      </ResizableTableHead>
                       <ResizableTableHead columnId="source" minWidth={80} resizable={false}>
                         <SelectFilter
                           value={allProductsFilters.source}
                           onChange={(v) => setAllProductsFilters(f => ({...f, source: v}))}
                           options={[
-                            { value: "moysklad", label: "МойСклад" },
-                            { value: "local", label: "Локальный" },
+                            { value: "moysklad", label: "МС" },
+                            { value: "local", label: "Лок" },
                           ]}
                           placeholder="Все"
                         />
                       </ResizableTableHead>
-                      <ResizableTableHead columnId="unit" minWidth={60} resizable={false}></ResizableTableHead>
-                      <ResizableTableHead columnId="type" minWidth={70} resizable={false}></ResizableTableHead>
-                      <ResizableTableHead columnId="volume" minWidth={70} resizable={false}></ResizableTableHead>
-                      <ResizableTableHead columnId="cost" minWidth={70} resizable={false}></ResizableTableHead>
+                      <ResizableTableHead columnId="unit" minWidth={60} resizable={false}>
+                        <SelectFilter
+                          value={allProductsFilters.unit}
+                          onChange={(v) => setAllProductsFilters(f => ({...f, unit: v}))}
+                          options={[
+                            { value: "кг", label: "кг" },
+                            { value: "шт", label: "шт" },
+                            { value: "л", label: "л" },
+                            { value: "уп", label: "уп" },
+                          ]}
+                          placeholder="Все"
+                        />
+                      </ResizableTableHead>
+                      <ResizableTableHead columnId="type" minWidth={70} resizable={false}>
+                        <SelectFilter
+                          value={allProductsFilters.type}
+                          onChange={(v) => setAllProductsFilters(f => ({...f, type: v}))}
+                          options={[
+                            { value: "weight", label: "Вес" },
+                            { value: "piece", label: "Шт" },
+                          ]}
+                          placeholder="Все"
+                        />
+                      </ResizableTableHead>
+                      <ResizableTableHead columnId="volume" minWidth={70} resizable={false}>
+                        <ColumnFilter 
+                          value={allProductsFilters.volume} 
+                          onChange={(v) => setAllProductsFilters(f => ({...f, volume: v}))}
+                          placeholder="Поиск..."
+                        />
+                      </ResizableTableHead>
+                      <ResizableTableHead columnId="cost" minWidth={70} resizable={false}>
+                        <ColumnFilter 
+                          value={allProductsFilters.cost} 
+                          onChange={(v) => setAllProductsFilters(f => ({...f, cost: v}))}
+                          placeholder="Поиск..."
+                        />
+                      </ResizableTableHead>
                       <ResizableTableHead columnId="status" minWidth={70} resizable={false}>
                         <SelectFilter
                           value={allProductsFilters.status}
                           onChange={(v) => setAllProductsFilters(f => ({...f, status: v}))}
                           options={[
-                            { value: "inStock", label: "В наличии" },
+                            { value: "inStock", label: "Да" },
                             { value: "outOfStock", label: "Нет" },
                           ]}
                           placeholder="Все"
@@ -1374,8 +1432,8 @@ export default function AdminPanel() {
                           value={allProductsFilters.sync}
                           onChange={(v) => setAllProductsFilters(f => ({...f, sync: v}))}
                           options={[
-                            { value: "synced", label: "Вкл" },
-                            { value: "notSynced", label: "Выкл" },
+                            { value: "synced", label: "Да" },
+                            { value: "notSynced", label: "Нет" },
                           ]}
                           placeholder="Все"
                         />
