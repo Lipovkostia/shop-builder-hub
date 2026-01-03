@@ -81,7 +81,7 @@ export function InlineMarkupCell({
             value={editedValue}
             onChange={(e) => setEditedValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="h-7 w-20 text-xs pl-2 pr-8 rounded-md border-primary/50 focus-visible:ring-1 focus-visible:ring-primary"
+            className="h-7 w-20 text-xs pl-2 pr-8 rounded-md border-primary/50 focus-visible:ring-1 focus-visible:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             placeholder="0"
             min="0"
             step="0.01"
