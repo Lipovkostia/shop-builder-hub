@@ -40,6 +40,7 @@ import {
 import { ProductPricingDialog } from "@/components/admin/ProductPricingDialog";
 import { CustomerRolesManager } from "@/components/admin/CustomerRolesManager";
 import { InlineProductRow } from "@/components/admin/InlineProductRow";
+import { InlineEditableCell } from "@/components/admin/InlineEditableCell";
 
 const MOYSKLAD_ACCOUNTS_KEY = "moysklad_accounts";
 const IMPORTED_PRODUCTS_KEY = "moysklad_imported_products";
@@ -1251,6 +1252,7 @@ export default function AdminPanel() {
                           placeholder="Фильтр..."
                         />
                       </TableHead>
+                      <TableHead>Описание</TableHead>
                       <TableHead>
                         Источник
                         <SelectFilter
@@ -1322,12 +1324,19 @@ export default function AdminPanel() {
                             />
                           </TableCell>
                           <TableCell className="font-medium">
-                            <div>
-                              {product.name}
-                              {product.description && (
-                                <p className="text-xs text-muted-foreground mt-0.5 max-w-[200px] truncate">{product.description}</p>
-                              )}
-                            </div>
+                            <InlineEditableCell
+                              value={product.name}
+                              onSave={(newName) => updateProduct({ ...product, name: newName })}
+                              placeholder="Название товара"
+                            />
+                          </TableCell>
+                          <TableCell className="max-w-[200px]">
+                            <InlineEditableCell
+                              value={product.description || ""}
+                              onSave={(newDesc) => updateProduct({ ...product, description: newDesc })}
+                              placeholder="Добавить описание..."
+                              className="text-sm text-muted-foreground"
+                            />
                           </TableCell>
                           <TableCell>
                             {product.source === "moysklad" ? (
