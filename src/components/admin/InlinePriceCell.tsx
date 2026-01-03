@@ -72,7 +72,7 @@ export function InlinePriceCell({
           onChange={(e) => setEditedValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={handleSave}
-          className="h-7 w-24 text-xs"
+          className="h-6 w-16 text-xs px-1.5"
           placeholder={placeholder}
           min="0"
           step="0.01"
@@ -80,18 +80,18 @@ export function InlinePriceCell({
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-6 w-6 text-green-600 flex-shrink-0" 
+          className="h-5 w-5 text-green-600 flex-shrink-0" 
           onClick={handleSave}
         >
-          <Check className="h-3 w-3" />
+          <Check className="h-2.5 w-2.5" />
         </Button>
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-6 w-6 text-destructive flex-shrink-0" 
+          className="h-5 w-5 text-destructive flex-shrink-0" 
           onClick={handleCancel}
         >
-          <X className="h-3 w-3" />
+          <X className="h-2.5 w-2.5" />
         </Button>
       </div>
     );
@@ -99,14 +99,14 @@ export function InlinePriceCell({
 
   return (
     <div 
-      className={`group flex items-center gap-1 cursor-pointer hover:text-primary transition-colors ${className}`}
+      className={`group flex items-center gap-0.5 cursor-pointer hover:text-primary transition-colors ${className}`}
       onClick={() => setIsEditing(true)}
       title="Нажмите для редактирования"
     >
-      <span className={value ? "text-muted-foreground text-sm" : "text-muted-foreground italic text-sm"}>
-        {value ? `${formatPrice(value)} ${suffix}` : "-"}
+      <span className={`text-xs whitespace-nowrap ${value ? "text-muted-foreground" : "text-muted-foreground italic"}`}>
+        {value ? `${formatPrice(value)}` : "-"}
       </span>
-      <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" />
+      <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" />
     </div>
   );
 }

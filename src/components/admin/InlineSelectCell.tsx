@@ -91,24 +91,24 @@ export function InlineSelectCell({
           value={newOptionValue}
           onChange={(e) => setNewOptionValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="h-7 min-w-[100px] text-xs"
+          className="h-6 min-w-[70px] text-xs px-1.5"
           placeholder={addNewPlaceholder}
         />
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-6 w-6 text-green-600 flex-shrink-0" 
+          className="h-5 w-5 text-green-600 flex-shrink-0" 
           onClick={handleAddNew}
         >
-          <Check className="h-3 w-3" />
+          <Check className="h-2.5 w-2.5" />
         </Button>
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-6 w-6 text-destructive flex-shrink-0" 
+          className="h-5 w-5 text-destructive flex-shrink-0" 
           onClick={handleCancelAdd}
         >
-          <X className="h-3 w-3" />
+          <X className="h-2.5 w-2.5" />
         </Button>
       </div>
     );
@@ -118,7 +118,7 @@ export function InlineSelectCell({
     return (
       <Select value={value} onValueChange={handleSelect}>
         <SelectTrigger 
-          className="h-7 text-xs min-w-[100px]"
+          className="h-6 text-xs min-w-[70px] px-1.5"
           onBlur={() => setTimeout(() => setIsEditing(false), 200)}
           autoFocus
         >
@@ -133,7 +133,7 @@ export function InlineSelectCell({
           {allowAddNew && (
             <SelectItem value="__add_new__" className="text-xs text-primary">
               <div className="flex items-center gap-1">
-                <Plus className="h-3 w-3" />
+                <Plus className="h-2.5 w-2.5" />
                 Добавить
               </div>
             </SelectItem>
@@ -146,7 +146,7 @@ export function InlineSelectCell({
   return (
     <Badge 
       variant="outline" 
-      className={`text-xs cursor-pointer hover:bg-muted transition-colors ${className}`}
+      className={`text-[10px] cursor-pointer hover:bg-muted transition-colors whitespace-nowrap px-1.5 py-0.5 ${className}`}
       onClick={() => setIsEditing(true)}
       title="Нажмите для изменения"
     >
