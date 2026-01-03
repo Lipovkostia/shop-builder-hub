@@ -361,6 +361,7 @@ export default function AdminPanel() {
   const [catalogView, setCatalogView] = useState<CatalogView>("list");
   const [currentCatalog, setCurrentCatalog] = useState<Catalog | null>(null);
   const [newCatalogName, setNewCatalogName] = useState("");
+  const [newCatalogDescription, setNewCatalogDescription] = useState("");
   const [showAddCatalog, setShowAddCatalog] = useState(false);
   const [catalogProductSearch, setCatalogProductSearch] = useState("");
   const [selectedCatalogProducts, setSelectedCatalogProducts] = useState<Set<string>>(new Set());
@@ -724,12 +725,14 @@ export default function AdminPanel() {
     const newCatalog: Catalog = {
       id: `catalog_${Date.now()}`,
       name: newCatalogName.trim(),
+      description: newCatalogDescription.trim() || undefined,
       productIds: [],
       createdAt: new Date().toISOString(),
     };
 
     setCatalogs(prev => [...prev, newCatalog]);
     setNewCatalogName("");
+    setNewCatalogDescription("");
     setShowAddCatalog(false);
     
     toast({
@@ -781,6 +784,17 @@ export default function AdminPanel() {
     ));
     setCurrentCatalog(prev => prev ? { ...prev, name: newName.trim() } : null);
     setEditingCatalogName(false);
+  };
+
+  const updateCatalogField = (catalogId: string, field: keyof Catalog, value: string) => {
+    setCatalogs(prev => prev.map(c => 
+      c.id === catalogId 
+        ? { ...c, [field]: value.trim() || undefined }
+        : c
+    ));
+    toast({
+      title: "Сохранено",
+    });
   };
 
   const toggleCatalogProduct = (productId: string) => {
@@ -1987,55 +2001,79 @@ export default function AdminPanel() {
                     </p>
                   </div>
 
-                  {/* Catalogs list */}
-                  <div className="space-y-3 mb-6">
-                    {catalogs.map((catalog) => {
-                      const catalogProducts = getCatalogProducts(catalog);
-                      return (
-                        <div
-                          key={catalog.id}
-                          className="bg-card rounded-lg border border-border p-4 flex items-center justify-between hover:border-primary/50 transition-colors cursor-pointer"
-                          onClick={() => openCatalog(catalog)}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                              <FolderOpen className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <h3 className="font-medium text-foreground">{catalog.name}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                {catalogProducts.length} товаров
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteCatalog(catalog.id);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {catalogs.length === 0 && !showAddCatalog && (
-                      <div className="bg-card rounded-lg border border-border p-8 text-center">
-                        <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                        <h3 className="font-medium text-foreground mb-2">Нет каталогов</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Создайте каталог для группировки товаров
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                  {/* Catalogs table */}
+                  {catalogs.length > 0 ? (
+                    <div className="bg-card rounded-lg border border-border overflow-x-auto mb-6">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="h-6">
+                            <TableHead className="h-6 px-2 text-xs">Название</TableHead>
+                            <TableHead className="h-6 px-2 text-xs">Описание</TableHead>
+                            <TableHead className="h-6 px-2 text-xs w-[100px]">Товаров</TableHead>
+                            <TableHead className="h-6 px-2 text-xs w-[80px]">Действия</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {catalogs.map((catalog) => {
+                            const catalogProducts = getCatalogProducts(catalog);
+                            return (
+                              <TableRow key={catalog.id} className="h-8">
+                                <TableCell className="px-2 py-1">
+                                  <InlineEditableCell
+                                    value={catalog.name}
+                                    onSave={(value) => updateCatalogField(catalog.id, 'name', value)}
+                                    placeholder="Название"
+                                  />
+                                </TableCell>
+                                <TableCell className="px-2 py-1">
+                                  <InlineEditableCell
+                                    value={catalog.description || ""}
+                                    onSave={(value) => updateCatalogField(catalog.id, 'description', value)}
+                                    placeholder="Описание"
+                                  />
+                                </TableCell>
+                                <TableCell className="px-2 py-1 text-center">
+                                  <Badge variant="outline" className="text-xs">
+                                    {catalogProducts.length}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="px-2 py-1">
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={() => openCatalog(catalog)}
+                                      title="Открыть"
+                                    >
+                                      <FolderOpen className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                      onClick={() => deleteCatalog(catalog.id)}
+                                      title="Удалить"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : !showAddCatalog ? (
+                    <div className="bg-card rounded-lg border border-border p-8 text-center mb-6">
+                      <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="font-medium text-foreground mb-2">Нет каталогов</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Создайте каталог для группировки товаров
+                      </p>
+                    </div>
+                  ) : null}
 
                   {/* Add new catalog form */}
                   {showAddCatalog ? (
@@ -2053,7 +2091,16 @@ export default function AdminPanel() {
                             placeholder="Например: Сыры премиум"
                             value={newCatalogName}
                             onChange={(e) => setNewCatalogName(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && createCatalog()}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="catalog-desc">Описание</Label>
+                          <Input
+                            id="catalog-desc"
+                            type="text"
+                            placeholder="Описание каталога"
+                            value={newCatalogDescription}
+                            onChange={(e) => setNewCatalogDescription(e.target.value)}
                           />
                         </div>
                         <div className="flex gap-2">
@@ -2069,6 +2116,7 @@ export default function AdminPanel() {
                             onClick={() => {
                               setShowAddCatalog(false);
                               setNewCatalogName("");
+                              setNewCatalogDescription("");
                             }}
                             variant="outline"
                           >

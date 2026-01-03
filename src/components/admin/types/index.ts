@@ -87,6 +87,7 @@ export interface MoySkladAccount {
 export interface Catalog {
   id: string;
   name: string;
+  description?: string;
   productIds: string[];
   createdAt: string;
 }
