@@ -21,6 +21,10 @@ import {
   ResizableTableHead,
   ResizableTableHeader,
   ResizableTableRow,
+  SortableTableBody,
+  SortableTableRow,
+  SortableTableHead,
+  useColumnOrder,
 } from "@/components/admin/ResizableTable";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -364,6 +368,9 @@ export default function AdminPanel() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [localTestProducts, setLocalTestProducts] = useState<Product[]>(testProducts);
+  
+  // Product order state for drag and drop
+  const [productOrder, setProductOrder] = useState<string[]>([]);
 
   // Customer roles state
   const [customerRoles, setCustomerRoles] = useState<CustomerRole[]>([]);
@@ -1107,7 +1114,7 @@ export default function AdminPanel() {
 
   // Filtered "All Products"
   const filteredAllProducts = useMemo(() => {
-    return allProducts.filter(product => {
+    const filtered = allProducts.filter(product => {
       if (allProductsFilters.name && !product.name.toLowerCase().includes(allProductsFilters.name.toLowerCase())) {
         return false;
       }
@@ -1129,7 +1136,43 @@ export default function AdminPanel() {
       }
       return true;
     });
-  }, [allProducts, allProductsFilters]);
+    
+    // Sort by custom order if available
+    if (productOrder.length > 0) {
+      return [...filtered].sort((a, b) => {
+        const indexA = productOrder.indexOf(a.id);
+        const indexB = productOrder.indexOf(b.id);
+        if (indexA === -1 && indexB === -1) return 0;
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+      });
+    }
+    
+    return filtered;
+  }, [allProducts, allProductsFilters, productOrder]);
+  
+  // Product IDs for sortable rows
+  const productIds = useMemo(() => filteredAllProducts.map(p => p.id), [filteredAllProducts]);
+  
+  // Handle row reorder
+  const handleProductReorder = useCallback((newOrder: string[]) => {
+    setProductOrder(newOrder);
+    // Save to localStorage
+    localStorage.setItem('admin-products-row-order', JSON.stringify(newOrder));
+  }, []);
+  
+  // Load saved product order on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('admin-products-row-order');
+    if (saved) {
+      try {
+        setProductOrder(JSON.parse(saved));
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, []);
 
   // Filtered MoySklad products
   const filteredMoyskladProducts = useMemo(() => {
@@ -1255,8 +1298,9 @@ export default function AdminPanel() {
 
               <div className="bg-card rounded-lg border border-border">
                 <ResizableTable
-                  storageKey="admin-products-v2"
+                  storageKey="admin-products-v3"
                   columns={[
+                    { id: "drag", minWidth: 32, defaultWidth: 32 },
                     { id: "photo", minWidth: 50, defaultWidth: 50 },
                     { id: "name", minWidth: 120, defaultWidth: 180 },
                     { id: "desc", minWidth: 100, defaultWidth: 150 },
@@ -1270,8 +1314,11 @@ export default function AdminPanel() {
                     { id: "actions", minWidth: 40, defaultWidth: 40 },
                   ]}
                 >
-                  <ResizableTableHeader>
+                  <ResizableTableHeader enableColumnDrag={true}>
                     <ResizableTableRow>
+                      <ResizableTableHead columnId="drag" minWidth={32} resizable={false}>
+                        <span className="text-muted-foreground/50 text-[10px]">⋮⋮</span>
+                      </ResizableTableHead>
                       <ResizableTableHead columnId="photo" minWidth={50} resizable={false}>Фото</ResizableTableHead>
                       <ResizableTableHead columnId="name" minWidth={120}>
                         <div>Название</div>
@@ -1325,7 +1372,7 @@ export default function AdminPanel() {
                       <ResizableTableHead columnId="actions" minWidth={40} resizable={false}></ResizableTableHead>
                     </ResizableTableRow>
                   </ResizableTableHeader>
-                  <ResizableTableBody>
+                  <SortableTableBody items={productIds} onReorder={handleProductReorder}>
                     {filteredAllProducts.map((product) => {
                       const salePrice = getProductSalePrice(product);
                       const packagingPrices = calculatePackagingPrices(
@@ -1336,7 +1383,7 @@ export default function AdminPanel() {
                       );
                       
                       return (
-                        <ResizableTableRow key={product.id}>
+                        <SortableTableRow key={product.id} id={product.id}>
                           <ResizableTableCell columnId="photo">
                             <img
                               src={product.image}
@@ -1449,10 +1496,10 @@ export default function AdminPanel() {
                               <Settings className="h-3 w-3" />
                             </Button>
                           </ResizableTableCell>
-                        </ResizableTableRow>
+                        </SortableTableRow>
                       );
                     })}
-                  </ResizableTableBody>
+                  </SortableTableBody>
                 </ResizableTable>
               </div>
 
