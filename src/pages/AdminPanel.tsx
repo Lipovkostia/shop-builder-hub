@@ -1214,74 +1214,19 @@ export default function AdminPanel() {
         </div>
       </header>
 
-      {/* Mobile Tab Navigation */}
-      {isMobile && (
-        <MobileTabNav
-          activeSection={activeSection}
-          onSectionChange={handleSectionChange}
-        />
-      )}
+      {/* Tab Navigation - same for mobile and desktop */}
+      <MobileTabNav
+        activeSection={activeSection}
+        onSectionChange={handleSectionChange}
+      />
 
-      <div className="flex">
-        {/* Sidebar - Desktop only */}
-        {!isMobile && (
-          <aside className="w-56 border-r border-border min-h-[calc(100vh-56px)] bg-card">
-            <nav className="p-2 space-y-1">
-              <button
-                onClick={() => handleSectionChange("products")}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeSection === "products"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-foreground hover:bg-muted"
-                }`}
-              >
-                <Package className="h-4 w-4" />
-                Все товары
-              </button>
-              <button
-                onClick={() => handleSectionChange("import")}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeSection === "import"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-foreground hover:bg-muted"
-                }`}
-              >
-                <Download className="h-4 w-4" />
-                Импорт из МойСклад
-              </button>
-              <button
-                onClick={() => handleSectionChange("catalogs")}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeSection === "catalogs"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-foreground hover:bg-muted"
-                }`}
-              >
-                <FolderOpen className="h-4 w-4" />
-                Каталоги
-              </button>
-              <button
-                onClick={() => handleSectionChange("roles")}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeSection === "roles"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-foreground hover:bg-muted"
-                }`}
-              >
-                <Users className="h-4 w-4" />
-                Роли клиентов
-              </button>
-            </nav>
-          </aside>
-        )}
-
-        {/* Main content */}
-        <main 
-          id={`panel-${activeSection}`}
-          role="tabpanel"
-          aria-labelledby={`tab-${activeSection}`}
-          className={`flex-1 p-4 ${isMobile ? 'min-h-[calc(100vh-112px)] overflow-y-auto' : ''}`}
-        >
+      {/* Main content */}
+      <main 
+        id={`panel-${activeSection}`}
+        role="tabpanel"
+        aria-labelledby={`tab-${activeSection}`}
+        className="flex-1 p-4 min-h-[calc(100vh-112px)] overflow-y-auto"
+      >
           {activeSection === "products" && (
             <>
               <div className="mb-4 flex items-center justify-between">
@@ -2232,7 +2177,6 @@ export default function AdminPanel() {
             />
           )}
         </main>
-      </div>
     </div>
   );
 }
