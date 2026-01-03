@@ -517,6 +517,12 @@ export default function AdminPanel() {
     localStorage.setItem(CATALOGS_KEY, JSON.stringify(catalogs));
   }, [catalogs]);
 
+  // Save all products to localStorage for TestStore
+  useEffect(() => {
+    const allProductsData = [...localTestProducts, ...importedProducts];
+    localStorage.setItem("admin_all_products", JSON.stringify(allProductsData));
+  }, [localTestProducts, importedProducts]);
+
   // Check if a MoySklad product is linked (imported) to all products
   const isProductLinked = (msProductId: string) => {
     return importedProducts.some(p => p.moyskladId === msProductId);
