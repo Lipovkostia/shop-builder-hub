@@ -2442,6 +2442,7 @@ export default function AdminPanel() {
                       </ResizableTableHeader>
                       <ResizableTableBody>
                         {allProducts
+                          .filter(p => selectedCatalogProducts.has(p.id))
                           .filter(p => !catalogProductSearch || p.name.toLowerCase().includes(catalogProductSearch.toLowerCase()))
                           .map((product) => {
                             const salePrice = getProductSalePrice(product);
