@@ -58,6 +58,13 @@ export interface Product {
   customVariantPrices?: CustomVariantPrices;
   portionPrices?: PortionPrices;  // Цены для порций
   roleVisibility?: string[];      // ID ролей которые видят товар
+  category?: string;              // Категория товара
+}
+
+// Категория товара
+export interface Category {
+  id: string;
+  name: string;
 }
 
 export interface MoySkladProduct {
