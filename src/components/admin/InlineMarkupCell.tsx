@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { Check, X, Pencil } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { MarkupSettings } from "@/components/admin/types";
+import { cn } from "@/lib/utils";
 
 interface InlineMarkupCellProps {
   value: MarkupSettings | undefined;
@@ -20,6 +19,7 @@ export function InlineMarkupCell({
   const [editedType, setEditedType] = useState<"percent" | "rubles">(value?.type || "percent");
   const [editedValue, setEditedValue] = useState(value?.value?.toString() || "");
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setEditedType(value?.type || "percent");
@@ -33,19 +33,26 @@ export function InlineMarkupCell({
     }
   }, [isEditing]);
 
+  useEffect(() => {
+    if (!isEditing) return;
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        handleSave();
+      }
+    };
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isEditing, editedValue, editedType]);
+
   const handleSave = () => {
     const numValue = parseFloat(editedValue);
-    if (!isNaN(numValue) && numValue >= 0) {
+    if (!isNaN(numValue) && numValue > 0) {
       onSave({ type: editedType, value: numValue });
-    } else if (editedValue === "" || numValue === 0) {
+    } else {
       onSave(undefined);
     }
-    setIsEditing(false);
-  };
-
-  const handleCancel = () => {
-    setEditedType(value?.type || "percent");
-    setEditedValue(value?.value?.toString() || "");
     setIsEditing(false);
   };
 
@@ -53,70 +60,75 @@ export function InlineMarkupCell({
     if (e.key === "Enter") {
       handleSave();
     } else if (e.key === "Escape") {
-      handleCancel();
+      setEditedType(value?.type || "percent");
+      setEditedValue(value?.value?.toString() || "");
+      setIsEditing(false);
     }
+  };
+
+  const toggleType = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditedType(prev => prev === "percent" ? "rubles" : "percent");
   };
 
   if (isEditing) {
     return (
-      <div className="flex items-center gap-1.5">
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-          <span className={editedType === "percent" ? "text-foreground font-medium" : ""}>%</span>
-          <Switch
-            checked={editedType === "rubles"}
-            onCheckedChange={(checked) => setEditedType(checked ? "rubles" : "percent")}
-            className="h-4 w-7 data-[state=checked]:bg-primary data-[state=unchecked]:bg-primary"
+      <div ref={containerRef} className="flex items-center">
+        <div className="relative flex items-center">
+          <Input
+            ref={inputRef}
+            type="number"
+            value={editedValue}
+            onChange={(e) => setEditedValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="h-7 w-20 text-xs pl-2 pr-8 rounded-md border-primary/50 focus-visible:ring-1 focus-visible:ring-primary"
+            placeholder="0"
+            min="0"
+            step="0.01"
           />
-          <span className={editedType === "rubles" ? "text-foreground font-medium" : ""}>₽</span>
+          <button
+            type="button"
+            onClick={toggleType}
+            className={cn(
+              "absolute right-1 h-5 w-5 rounded text-[10px] font-semibold transition-all",
+              "flex items-center justify-center",
+              "hover:scale-110 active:scale-95",
+              editedType === "percent" 
+                ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" 
+                : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+            )}
+            title={editedType === "percent" ? "Проценты → Рубли" : "Рубли → Проценты"}
+          >
+            {editedType === "percent" ? "%" : "₽"}
+          </button>
         </div>
-        <Input
-          ref={inputRef}
-          type="number"
-          value={editedValue}
-          onChange={(e) => setEditedValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="h-6 w-14 text-xs px-1.5"
-          placeholder="0"
-          min="0"
-          step="0.01"
-        />
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-5 w-5 text-green-600 flex-shrink-0" 
-          onClick={handleSave}
-        >
-          <Check className="h-2.5 w-2.5" />
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-5 w-5 text-destructive flex-shrink-0" 
-          onClick={(e) => {
-            e.stopPropagation();
-            handleCancel();
-          }}
-        >
-          <X className="h-2.5 w-2.5" />
-        </Button>
       </div>
     );
   }
 
   return (
     <div 
-      className={`group flex items-center gap-0.5 cursor-pointer hover:text-primary transition-colors ${className}`}
+      className={cn(
+        "group flex items-center gap-1 cursor-pointer transition-all",
+        "hover:opacity-80",
+        className
+      )}
       onClick={() => setIsEditing(true)}
       title="Нажмите для редактирования"
     >
       {value && value.value > 0 ? (
-        <span className="text-xs text-green-600 dark:text-green-400 whitespace-nowrap">
+        <span className={cn(
+          "text-xs font-medium px-1.5 py-0.5 rounded",
+          value.type === "percent" 
+            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" 
+            : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+        )}>
           +{value.value}{value.type === "percent" ? "%" : "₽"}
         </span>
       ) : (
-        <span className="text-xs text-muted-foreground italic">-</span>
+        <span className="text-xs text-muted-foreground/50 italic">—</span>
       )}
-      <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" />
+      <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-40 transition-opacity flex-shrink-0" />
     </div>
   );
 }
