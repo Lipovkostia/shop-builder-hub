@@ -2268,15 +2268,26 @@ export default function AdminPanel() {
                                   />
                                 </TableCell>
                                 <TableCell className="font-medium">
-                                  {product.name}
+                                  <InlineEditableCell
+                                    value={product.name}
+                                    onSave={(value) => updateProduct({ ...product, name: value })}
+                                    placeholder="Название"
+                                  />
                                 </TableCell>
-                                <TableCell className="text-sm text-muted-foreground max-w-[200px]">
-                                  <span className="truncate block">{product.description || "-"}</span>
+                                <TableCell className="max-w-[200px]">
+                                  <InlineEditableCell
+                                    value={product.description || ""}
+                                    onSave={(value) => updateProduct({ ...product, description: value })}
+                                    placeholder="Описание"
+                                  />
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant="outline" className="text-xs">
-                                    {product.unit}
-                                  </Badge>
+                                  <InlineSelectCell
+                                    value={product.unit}
+                                    options={allUnitOptions}
+                                    onSave={(value) => updateProduct({ ...product, unit: value })}
+                                    onAddOption={(newUnit) => setCustomUnits(prev => [...prev, newUnit])}
+                                  />
                                 </TableCell>
                                 <TableCell>
                                   <Badge variant="outline" className="text-xs">
@@ -2290,8 +2301,12 @@ export default function AdminPanel() {
                                     </span>
                                   )}
                                 </TableCell>
-                                <TableCell className="text-muted-foreground text-sm">
-                                  {product.buyPrice ? formatPrice(product.buyPrice) : "-"}
+                                <TableCell>
+                                  <InlinePriceCell
+                                    value={product.buyPrice || 0}
+                                    onSave={(value) => updateProduct({ ...product, buyPrice: value })}
+                                    placeholder="0"
+                                  />
                                 </TableCell>
                                 <TableCell className="text-sm">
                                   {product.markup ? (
