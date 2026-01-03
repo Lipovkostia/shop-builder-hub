@@ -270,7 +270,7 @@ function StoreHeader({
       <div className="h-12 flex items-center justify-between px-3">
         <div>
           <h1 className="font-bold text-sm text-foreground leading-tight">Сыры & Хамон</h1>
-          <p className="text-[10px] text-muted-foreground leading-tight">Оптовый каталог</p>
+          <p className="text-[10px] text-muted-foreground leading-tight">Оптовый прайс-лист</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -294,7 +294,7 @@ function StoreHeader({
         </div>
       </div>
 
-      {/* Селектор каталога */}
+      {/* Селектор прайс-листа */}
       <div className="h-10 flex items-center px-3 border-t border-border bg-muted/30">
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors">
@@ -325,7 +325,7 @@ function StoreHeader({
             ))}
             {catalogs.length === 0 && (
               <DropdownMenuItem disabled>
-                <span className="text-muted-foreground">Нет каталогов</span>
+                <span className="text-muted-foreground">Нет прайс-листов</span>
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
@@ -341,7 +341,7 @@ export default function TestStore() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [selectedCatalog, setSelectedCatalog] = useState<Catalog | null>(null);
 
-  // Загрузка каталогов и товаров из localStorage
+  // Загрузка прайс-листов и товаров из localStorage
   useEffect(() => {
     const storedCatalogs = localStorage.getItem(CATALOGS_STORAGE_KEY);
     if (storedCatalogs) {
@@ -408,7 +408,7 @@ export default function TestStore() {
             <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
             <p className="text-muted-foreground">
               {selectedCatalog 
-                ? `В каталоге "${selectedCatalog.name}" нет товаров`
+                ? `В прайс-листе "${selectedCatalog.name}" нет товаров`
                 : "Нет доступных товаров"}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
