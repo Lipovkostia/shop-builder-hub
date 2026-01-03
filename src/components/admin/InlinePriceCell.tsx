@@ -72,7 +72,7 @@ export function InlinePriceCell({
           onChange={(e) => setEditedValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={handleSave}
-          className="h-6 w-16 text-xs px-1.5"
+          className="h-6 w-16 text-xs px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           placeholder={placeholder}
           min="0"
           step="0.01"
