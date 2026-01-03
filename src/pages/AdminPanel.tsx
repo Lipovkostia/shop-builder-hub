@@ -58,6 +58,7 @@ import { InlineProductRow } from "@/components/admin/InlineProductRow";
 import { InlineEditableCell } from "@/components/admin/InlineEditableCell";
 import { InlineSelectCell } from "@/components/admin/InlineSelectCell";
 import { InlinePriceCell } from "@/components/admin/InlinePriceCell";
+import { InlineMarkupCell } from "@/components/admin/InlineMarkupCell";
 import { MobileTabNav } from "@/components/admin/MobileTabNav";
 
 const MOYSKLAD_ACCOUNTS_KEY = "moysklad_accounts";
@@ -2308,14 +2309,11 @@ export default function AdminPanel() {
                                     placeholder="0"
                                   />
                                 </TableCell>
-                                <TableCell className="text-sm">
-                                  {product.markup ? (
-                                    <span className="text-green-600 dark:text-green-400">
-                                      +{product.markup.value}{product.markup.type === "percent" ? "%" : "₽"}
-                                    </span>
-                                  ) : (
-                                    "-"
-                                  )}
+                                <TableCell>
+                                  <InlineMarkupCell
+                                    value={product.markup}
+                                    onSave={(markup) => updateProduct({ ...product, markup })}
+                                  />
                                 </TableCell>
                                 <TableCell className="font-medium">
                                   {formatPrice(salePrice)}/{product.unit}
