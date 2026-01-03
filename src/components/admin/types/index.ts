@@ -158,12 +158,12 @@ export const calculatePackagingPrices = (
   
   return {
     full: calculatedFull,
-    half: customVariantPrices?.halfPrice ?? calculatedHalf,
-    quarter: customVariantPrices?.quarterPrice ?? calculatedQuarter,
+    half: calculatedHalf,
+    quarter: calculatedQuarter,
     portion: portionPrices?.portionPrice,
     isFullCustom: portionPrices?.fullPricePerKg !== undefined,
-    isHalfCustom: customVariantPrices?.halfPrice !== undefined || portionPrices?.halfPricePerKg !== undefined,
-    isQuarterCustom: customVariantPrices?.quarterPrice !== undefined || portionPrices?.quarterPricePerKg !== undefined,
+    isHalfCustom: portionPrices?.halfPricePerKg !== undefined,
+    isQuarterCustom: portionPrices?.quarterPricePerKg !== undefined,
     fullPricePerKg,
     halfPricePerKg,
     quarterPricePerKg,

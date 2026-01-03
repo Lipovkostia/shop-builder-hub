@@ -2354,32 +2354,48 @@ export default function AdminPanel() {
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="priceHalf">
                                   {product.packagingType === "head" ? (
-                                    <InlinePriceCell
-                                      value={product.customVariantPrices?.halfPrice}
-                                      onSave={(value) => updateProduct({ 
-                                        ...product, 
-                                        customVariantPrices: { 
-                                          ...product.customVariantPrices, 
-                                          halfPrice: value 
-                                        } 
-                                      })}
-                                      placeholder="авто"
-                                    />
+                                    <div className="flex flex-col gap-0.5">
+                                      <InlinePriceCell
+                                        value={product.portionPrices?.halfPricePerKg}
+                                        onSave={(value) => updateProduct({ 
+                                          ...product, 
+                                          portionPrices: { 
+                                            ...product.portionPrices, 
+                                            halfPricePerKg: value 
+                                          } 
+                                        })}
+                                        placeholder="авто"
+                                        suffix={`/${product.unit}`}
+                                      />
+                                      {product.unitWeight && product.portionPrices?.halfPricePerKg && (
+                                        <span className="text-[10px] text-muted-foreground">
+                                          = {formatPrice(product.portionPrices.halfPricePerKg * (product.unitWeight / 2))}
+                                        </span>
+                                      )}
+                                    </div>
                                   ) : "-"}
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="priceQuarter">
                                   {product.packagingType === "head" ? (
-                                    <InlinePriceCell
-                                      value={product.customVariantPrices?.quarterPrice}
-                                      onSave={(value) => updateProduct({ 
-                                        ...product, 
-                                        customVariantPrices: { 
-                                          ...product.customVariantPrices, 
-                                          quarterPrice: value 
-                                        } 
-                                      })}
-                                      placeholder="авто"
-                                    />
+                                    <div className="flex flex-col gap-0.5">
+                                      <InlinePriceCell
+                                        value={product.portionPrices?.quarterPricePerKg}
+                                        onSave={(value) => updateProduct({ 
+                                          ...product, 
+                                          portionPrices: { 
+                                            ...product.portionPrices, 
+                                            quarterPricePerKg: value 
+                                          } 
+                                        })}
+                                        placeholder="авто"
+                                        suffix={`/${product.unit}`}
+                                      />
+                                      {product.unitWeight && product.portionPrices?.quarterPricePerKg && (
+                                        <span className="text-[10px] text-muted-foreground">
+                                          = {formatPrice(product.portionPrices.quarterPricePerKg * (product.unitWeight / 4))}
+                                        </span>
+                                      )}
+                                    </div>
                                   ) : "-"}
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="status">
