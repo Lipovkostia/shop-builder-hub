@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,14 +28,17 @@ import {
   MoySkladProduct,
   MoySkladAccount,
   Catalog,
+  CustomerRole,
+  RoleProductPricing,
   formatPrice,
   calculateSalePrice,
   calculatePackagingPrices,
   packagingTypeLabels,
   PackagingType,
-  CustomVariantPrices,
-} from "@/components/admin/ProductTypes";
-import { ProductEditDialog } from "@/components/admin/ProductEditDialog";
+} from "@/components/admin/types";
+import { ProductPricingDialog } from "@/components/admin/ProductPricingDialog";
+import { CustomerRolesManager } from "@/components/admin/CustomerRolesManager";
+import { InlineProductRow } from "@/components/admin/InlineProductRow";
 
 const MOYSKLAD_ACCOUNTS_KEY = "moysklad_accounts";
 const IMPORTED_PRODUCTS_KEY = "moysklad_imported_products";
@@ -220,7 +223,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "import" | "catalogs";
+type ActiveSection = "products" | "import" | "catalogs" | "roles";
 type ImportView = "accounts" | "catalog";
 type CatalogView = "list" | "detail";
 
@@ -330,6 +333,13 @@ export default function AdminPanel() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [localTestProducts, setLocalTestProducts] = useState<Product[]>(testProducts);
+
+  // Customer roles state
+  const [customerRoles, setCustomerRoles] = useState<CustomerRole[]>([]);
+  const [rolePricing, setRolePricing] = useState<RoleProductPricing[]>([]);
+
+  // Temporary store ID (in real app would come from auth context)
+  const tempStoreId = "temp-store-id";
 
   // Load saved accounts, imported products, and catalogs on mount
   useEffect(() => {
@@ -1088,6 +1098,17 @@ export default function AdminPanel() {
               <FolderOpen className="h-4 w-4" />
               Каталоги
             </button>
+            <button
+              onClick={() => setActiveSection("roles")}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeSection === "roles"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-foreground hover:bg-muted"
+              }`}
+            >
+              <Users className="h-4 w-4" />
+              Роли клиентов
+            </button>
           </nav>
         </aside>
 
@@ -1321,12 +1342,15 @@ export default function AdminPanel() {
                 </Table>
               </div>
 
-              {/* Product Edit Dialog */}
-              <ProductEditDialog
+              {/* Product Pricing Dialog */}
+              <ProductPricingDialog
                 product={editingProduct}
                 open={editDialogOpen}
                 onOpenChange={setEditDialogOpen}
                 onSave={updateProduct}
+                customerRoles={customerRoles}
+                rolePricing={rolePricing}
+                onSaveRolePricing={setRolePricing}
               />
             </>
           )}
@@ -2013,6 +2037,30 @@ export default function AdminPanel() {
                 </>
               )}
             </>
+          )}
+
+          {activeSection === "roles" && (
+            <CustomerRolesManager
+              roles={customerRoles}
+              storeId={tempStoreId}
+              onCreateRole={(role) => {
+                const newRole: CustomerRole = {
+                  ...role,
+                  id: `role_${Date.now()}`,
+                  created_at: new Date().toISOString(),
+                };
+                setCustomerRoles((prev) => [...prev, newRole]);
+              }}
+              onUpdateRole={(role) => {
+                setCustomerRoles((prev) =>
+                  prev.map((r) => (r.id === role.id ? role : r))
+                );
+              }}
+              onDeleteRole={(roleId) => {
+                setCustomerRoles((prev) => prev.filter((r) => r.id !== roleId));
+                setRolePricing((prev) => prev.filter((rp) => rp.role_id !== roleId));
+              }}
+            />
           )}
         </main>
       </div>

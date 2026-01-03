@@ -65,6 +65,77 @@ export type Database = {
           },
         ]
       }
+      customer_role_assignments: {
+        Row: {
+          created_at: string
+          id: string
+          role_id: string
+          store_customer_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role_id: string
+          store_customer_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role_id?: string
+          store_customer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_role_assignments_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "customer_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_role_assignments_store_customer_id_fkey"
+            columns: ["store_customer_id"]
+            isOneToOne: false
+            referencedRelation: "store_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_roles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          sort_order: number | null
+          store_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          sort_order?: number | null
+          store_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          sort_order?: number | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_roles_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           id: string
@@ -173,8 +244,48 @@ export type Database = {
           },
         ]
       }
+      product_role_visibility: {
+        Row: {
+          created_at: string
+          id: string
+          is_visible: boolean
+          product_id: string
+          role_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          product_id: string
+          role_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          product_id?: string
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_role_visibility_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_role_visibility_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "customer_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
+          buy_price: number | null
           category_id: string | null
           compare_price: number | null
           created_at: string
@@ -182,15 +293,26 @@ export type Database = {
           id: string
           images: string[] | null
           is_active: boolean | null
+          markup_type: string | null
+          markup_value: number | null
           name: string
+          packaging_type: string | null
+          portion_weight: number | null
           price: number
+          price_full: number | null
+          price_half: number | null
+          price_portion: number | null
+          price_quarter: number | null
           quantity: number
           sku: string | null
           slug: string
           store_id: string
+          unit: string | null
+          unit_weight: number | null
           updated_at: string
         }
         Insert: {
+          buy_price?: number | null
           category_id?: string | null
           compare_price?: number | null
           created_at?: string
@@ -198,15 +320,26 @@ export type Database = {
           id?: string
           images?: string[] | null
           is_active?: boolean | null
+          markup_type?: string | null
+          markup_value?: number | null
           name: string
+          packaging_type?: string | null
+          portion_weight?: number | null
           price: number
+          price_full?: number | null
+          price_half?: number | null
+          price_portion?: number | null
+          price_quarter?: number | null
           quantity?: number
           sku?: string | null
           slug: string
           store_id: string
+          unit?: string | null
+          unit_weight?: number | null
           updated_at?: string
         }
         Update: {
+          buy_price?: number | null
           category_id?: string | null
           compare_price?: number | null
           created_at?: string
@@ -214,12 +347,22 @@ export type Database = {
           id?: string
           images?: string[] | null
           is_active?: boolean | null
+          markup_type?: string | null
+          markup_value?: number | null
           name?: string
+          packaging_type?: string | null
+          portion_weight?: number | null
           price?: number
+          price_full?: number | null
+          price_half?: number | null
+          price_portion?: number | null
+          price_quarter?: number | null
           quantity?: number
           sku?: string | null
           slug?: string
           store_id?: string
+          unit?: string | null
+          unit_weight?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -274,6 +417,48 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      role_product_pricing: {
+        Row: {
+          created_at: string
+          id: string
+          markup_type: string
+          markup_value: number
+          product_id: string
+          role_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          markup_type?: string
+          markup_value?: number
+          product_id: string
+          role_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          markup_type?: string
+          markup_value?: number
+          product_id?: string
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_product_pricing_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_product_pricing_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "customer_roles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       store_customers: {
         Row: {
