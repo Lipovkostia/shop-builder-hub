@@ -2497,12 +2497,12 @@ export default function AdminPanel() {
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="category">
                                   <InlineSelectCell
-                                    value={product.category || ""}
+                                    value={product.category || "__none__"}
                                     options={[
-                                      { value: "", label: "Без категории" },
+                                      { value: "__none__", label: "Без категории" },
                                       ...categories.map(c => ({ value: c.id, label: c.name }))
                                     ]}
-                                    onSave={(value) => updateProduct({ ...product, category: value || undefined })}
+                                    onSave={(value) => updateProduct({ ...product, category: value === "__none__" ? undefined : value })}
                                     onAddOption={(newCategory) => {
                                       const newId = `cat_${Date.now()}`;
                                       setCategories(prev => [...prev, { id: newId, name: newCategory }]);
