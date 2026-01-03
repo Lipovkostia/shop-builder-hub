@@ -2230,6 +2230,7 @@ export default function AdminPanel() {
                           <TableHead>Название</TableHead>
                           <TableHead>Описание</TableHead>
                           <TableHead>Ед. изм.</TableHead>
+                          <TableHead>Объем</TableHead>
                           <TableHead>Вид</TableHead>
                           <TableHead>Себест-ть</TableHead>
                           <TableHead>Наценка</TableHead>
@@ -2288,6 +2289,14 @@ export default function AdminPanel() {
                                     options={allUnitOptions}
                                     onSave={(value) => updateProduct({ ...product, unit: value })}
                                     onAddOption={(newUnit) => setCustomUnits(prev => [...prev, newUnit])}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <InlinePriceCell
+                                    value={product.unitWeight || 0}
+                                    onSave={(value) => updateProduct({ ...product, unitWeight: value })}
+                                    placeholder="0"
+                                    suffix={product.unit === "л" ? "л" : "кг"}
                                   />
                                 </TableCell>
                                 <TableCell>
