@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -282,7 +283,17 @@ function SelectFilter({
 
 export default function AdminPanel() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { user, profile, isSuperAdmin, loading: authLoading } = useAuth();
+  
+  // Store context - for super admin switching
+  const storeIdFromUrl = searchParams.get('storeId');
+  const sectionFromUrl = searchParams.get('section');
+  const [currentStoreId, setCurrentStoreId] = useState<string | null>(null);
+  const [currentStoreName, setCurrentStoreName] = useState<string | null>(null);
+  const [userStoreId, setUserStoreId] = useState<string | null>(null);
+  
   const [activeSection, setActiveSection] = useState<ActiveSection>("products");
   const [importView, setImportView] = useState<ImportView>("accounts");
   
@@ -338,8 +349,52 @@ export default function AdminPanel() {
   const [customerRoles, setCustomerRoles] = useState<CustomerRole[]>([]);
   const [rolePricing, setRolePricing] = useState<RoleProductPricing[]>([]);
 
-  // Temporary store ID (in real app would come from auth context)
-  const tempStoreId = "temp-store-id";
+  // Determine which store context to use
+  const effectiveStoreId = storeIdFromUrl || userStoreId;
+  const isSuperAdminContext = !!storeIdFromUrl && isSuperAdmin;
+
+  // Fetch user's own store or the store from URL (for super admin)
+  useEffect(() => {
+    const fetchStoreContext = async () => {
+      if (!user || !profile) return;
+      
+      // If super admin with storeId in URL
+      if (storeIdFromUrl && isSuperAdmin) {
+        const { data: store } = await supabase
+          .from('stores')
+          .select('id, name')
+          .eq('id', storeIdFromUrl)
+          .single();
+        
+        if (store) {
+          setCurrentStoreId(store.id);
+          setCurrentStoreName(store.name);
+          
+          // Set section if provided
+          if (sectionFromUrl === 'products') {
+            setActiveSection('products');
+          } else if (sectionFromUrl === 'customers') {
+            setActiveSection('roles'); // Customers section
+          }
+        }
+      } else if (profile.role === 'seller') {
+        // Fetch seller's own store
+        const { data: store } = await supabase
+          .from('stores')
+          .select('id, name')
+          .eq('owner_id', profile.id)
+          .single();
+        
+        if (store) {
+          setUserStoreId(store.id);
+          setCurrentStoreId(store.id);
+          setCurrentStoreName(store.name);
+        }
+      }
+    };
+    
+    fetchStoreContext();
+  }, [user, profile, storeIdFromUrl, isSuperAdmin, sectionFromUrl]);
 
   // Load saved accounts, imported products, and catalogs on mount
   useEffect(() => {
@@ -1036,8 +1091,36 @@ export default function AdminPanel() {
     });
   }, [moyskladProducts, importFilters]);
 
+  // Loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Super Admin Context Banner */}
+      {isSuperAdminContext && (
+        <div className="bg-amber-500 text-amber-950 px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            <span className="font-medium">Режим супер-администратора:</span>
+            <span>Вы просматриваете магазин "{currentStoreName}"</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-white/20 border-amber-950/30 hover:bg-white/30"
+            onClick={() => window.close()}
+          >
+            Закрыть вкладку
+          </Button>
+        </div>
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card border-b border-border">
         <div className="flex items-center justify-between px-4 h-14">
@@ -1050,8 +1133,23 @@ export default function AdminPanel() {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="font-semibold text-lg text-foreground">Панель управления</h1>
+            <h1 className="font-semibold text-lg text-foreground">
+              {currentStoreName ? `${currentStoreName} — Управление` : 'Панель управления'}
+            </h1>
           </div>
+          
+          {/* Super admin quick link */}
+          {isSuperAdmin && !isSuperAdminContext && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/super-admin')}
+              className="flex items-center gap-2"
+            >
+              <Shield className="h-4 w-4" />
+              Панель супер-админа
+            </Button>
+          )}
         </div>
       </header>
 
@@ -2039,10 +2137,10 @@ export default function AdminPanel() {
             </>
           )}
 
-          {activeSection === "roles" && (
+          {activeSection === "roles" && effectiveStoreId && (
             <CustomerRolesManager
               roles={customerRoles}
-              storeId={tempStoreId}
+              storeId={effectiveStoreId}
               onCreateRole={(role) => {
                 const newRole: CustomerRole = {
                   ...role,

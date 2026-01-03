@@ -244,6 +244,27 @@ export type Database = {
           },
         ]
       }
+      platform_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["platform_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["platform_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["platform_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       product_role_visibility: {
         Row: {
           created_at: string
@@ -503,12 +524,14 @@ export type Database = {
           contact_email: string | null
           contact_phone: string | null
           created_at: string
+          customers_count: number | null
           description: string | null
           id: string
           logo_url: string | null
           name: string
           owner_id: string
           primary_color: string | null
+          products_count: number | null
           secondary_color: string | null
           status: Database["public"]["Enums"]["store_status"]
           subdomain: string
@@ -520,12 +543,14 @@ export type Database = {
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
+          customers_count?: number | null
           description?: string | null
           id?: string
           logo_url?: string | null
           name: string
           owner_id: string
           primary_color?: string | null
+          products_count?: number | null
           secondary_color?: string | null
           status?: Database["public"]["Enums"]["store_status"]
           subdomain: string
@@ -537,12 +562,14 @@ export type Database = {
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
+          customers_count?: number | null
           description?: string | null
           id?: string
           logo_url?: string | null
           name?: string
           owner_id?: string
           primary_color?: string | null
+          products_count?: number | null
           secondary_color?: string | null
           status?: Database["public"]["Enums"]["store_status"]
           subdomain?: string
@@ -563,7 +590,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_platform_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["platform_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       order_status:
@@ -572,6 +605,7 @@ export type Database = {
         | "shipped"
         | "delivered"
         | "cancelled"
+      platform_role: "super_admin"
       store_status: "pending" | "active" | "suspended"
       user_role: "seller" | "customer"
     }
@@ -708,6 +742,7 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
+      platform_role: ["super_admin"],
       store_status: ["pending", "active", "suspended"],
       user_role: ["seller", "customer"],
     },
