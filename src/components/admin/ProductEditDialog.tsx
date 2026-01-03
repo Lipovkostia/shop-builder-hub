@@ -20,6 +20,7 @@ import {
   Product,
   PackagingType,
   MarkupSettings,
+  CustomVariantPrices,
   packagingTypeLabels,
   unitOptions,
   formatPrice,
@@ -77,8 +78,46 @@ export function ProductEditDialog({
   const packagingPrices = calculatePackagingPrices(
     salePriceWithMarkup,
     editedProduct.unitWeight,
-    editedProduct.packagingType
+    editedProduct.packagingType,
+    editedProduct.customVariantPrices
   );
+
+  const updateCustomPrice = (field: keyof CustomVariantPrices, value: string) => {
+    setEditedProduct((prev) => {
+      if (!prev) return prev;
+      const numValue = parseFloat(value);
+      const currentPrices = prev.customVariantPrices || {};
+      
+      // Если значение пустое или 0, удаляем кастомную цену
+      if (!value || numValue === 0) {
+        const { [field]: _, ...rest } = currentPrices;
+        return {
+          ...prev,
+          customVariantPrices: Object.keys(rest).length > 0 ? rest : undefined,
+        };
+      }
+      
+      return {
+        ...prev,
+        customVariantPrices: {
+          ...currentPrices,
+          [field]: numValue,
+        },
+      };
+    });
+  };
+
+  const clearCustomPrice = (field: keyof CustomVariantPrices) => {
+    setEditedProduct((prev) => {
+      if (!prev) return prev;
+      const currentPrices = prev.customVariantPrices || {};
+      const { [field]: _, ...rest } = currentPrices;
+      return {
+        ...prev,
+        customVariantPrices: Object.keys(rest).length > 0 ? rest : undefined,
+      };
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -237,7 +276,7 @@ export function ProductEditDialog({
 
           {/* Расчёт цен для головки сыра */}
           {packagingPrices && (
-            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
               <Label className="text-sm font-medium">Цены за единицы</Label>
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="bg-background rounded p-2">
@@ -257,6 +296,9 @@ export function ProductEditDialog({
                   <div className="text-xs text-muted-foreground">
                     {(editedProduct.unitWeight || 0) / 2} кг
                   </div>
+                  {packagingPrices.isHalfCustom && (
+                    <div className="text-xs text-primary">своя цена</div>
+                  )}
                 </div>
                 <div className="bg-background rounded p-2">
                   <div className="text-xs text-muted-foreground">Четверть</div>
@@ -265,6 +307,62 @@ export function ProductEditDialog({
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {(editedProduct.unitWeight || 0) / 4} кг
+                  </div>
+                  {packagingPrices.isQuarterCustom && (
+                    <div className="text-xs text-primary">своя цена</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Кастомные цены */}
+              <div className="border-t pt-3 mt-3 space-y-3">
+                <Label className="text-xs text-muted-foreground">
+                  Своя цена за половину / четверть (оставьте пустым для авторасчёта)
+                </Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Половина</Label>
+                    <div className="flex gap-1">
+                      <Input
+                        type="number"
+                        placeholder="Авто"
+                        value={editedProduct.customVariantPrices?.halfPrice || ""}
+                        onChange={(e) => updateCustomPrice("halfPrice", e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                      {editedProduct.customVariantPrices?.halfPrice && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2"
+                          onClick={() => clearCustomPrice("halfPrice")}
+                        >
+                          ✕
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Четверть</Label>
+                    <div className="flex gap-1">
+                      <Input
+                        type="number"
+                        placeholder="Авто"
+                        value={editedProduct.customVariantPrices?.quarterPrice || ""}
+                        onChange={(e) => updateCustomPrice("quarterPrice", e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                      {editedProduct.customVariantPrices?.quarterPrice && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2"
+                          onClick={() => clearCustomPrice("quarterPrice")}
+                        >
+                          ✕
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -19,6 +19,12 @@ export interface MarkupSettings {
   value: number;
 }
 
+// Кастомные цены для вариантов (половина, четверть)
+export interface CustomVariantPrices {
+  halfPrice?: number;    // Кастомная цена за половину
+  quarterPrice?: number; // Кастомная цена за четверть
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -40,6 +46,7 @@ export interface Product {
   buyPrice?: number; // Себестоимость
   markup?: MarkupSettings; // Наценка
   accountId?: string;
+  customVariantPrices?: CustomVariantPrices; // Кастомные цены для вариантов
 }
 
 export interface MoySkladProduct {
@@ -93,17 +100,25 @@ export const calculateSalePrice = (buyPrice: number, markup?: MarkupSettings): n
 };
 
 // Расчёт цен для различных вариантов (целая головка, половина, четверть)
+// Поддерживает кастомные цены для половины и четверти
 export const calculatePackagingPrices = (
   pricePerKg: number,
   unitWeight?: number,
-  packagingType?: PackagingType
-): { full: number; half: number; quarter: number } | null => {
+  packagingType?: PackagingType,
+  customVariantPrices?: CustomVariantPrices
+): { full: number; half: number; quarter: number; isHalfCustom: boolean; isQuarterCustom: boolean } | null => {
   if (!unitWeight || packagingType !== "head") return null;
   
+  const calculatedFull = pricePerKg * unitWeight;
+  const calculatedHalf = pricePerKg * (unitWeight / 2);
+  const calculatedQuarter = pricePerKg * (unitWeight / 4);
+  
   return {
-    full: pricePerKg * unitWeight,
-    half: pricePerKg * (unitWeight / 2),
-    quarter: pricePerKg * (unitWeight / 4),
+    full: calculatedFull,
+    half: customVariantPrices?.halfPrice ?? calculatedHalf,
+    quarter: customVariantPrices?.quarterPrice ?? calculatedQuarter,
+    isHalfCustom: customVariantPrices?.halfPrice !== undefined,
+    isQuarterCustom: customVariantPrices?.quarterPrice !== undefined,
   };
 };
 

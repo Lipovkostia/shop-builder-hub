@@ -33,6 +33,7 @@ import {
   calculatePackagingPrices,
   packagingTypeLabels,
   PackagingType,
+  CustomVariantPrices,
 } from "@/components/admin/ProductTypes";
 import { ProductEditDialog } from "@/components/admin/ProductEditDialog";
 
@@ -1182,7 +1183,8 @@ export default function AdminPanel() {
                       const packagingPrices = calculatePackagingPrices(
                         salePrice,
                         product.unitWeight,
-                        product.packagingType
+                        product.packagingType,
+                        product.customVariantPrices
                       );
                       
                       return (
@@ -1908,7 +1910,8 @@ export default function AdminPanel() {
                             const packagingPrices = calculatePackagingPrices(
                               salePrice,
                               product.unitWeight,
-                              product.packagingType
+                              product.packagingType,
+                              product.customVariantPrices
                             );
                             
                             return (
