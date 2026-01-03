@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import {
   Product,
   PackagingType,
@@ -190,7 +190,7 @@ export function ProductEditDialog({
           {editedProduct.buyPrice !== undefined && editedProduct.buyPrice > 0 && (
             <div className="space-y-2">
               <Label>Наценка</Label>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-3">
                 <Input
                   type="number"
                   className="flex-1"
@@ -198,18 +198,18 @@ export function ProductEditDialog({
                   onChange={(e) => updateMarkup("value", e.target.value)}
                   placeholder="Значение наценки"
                 />
-                <Select
-                  value={editedProduct.markup?.type || "percent"}
-                  onValueChange={(value) => updateMarkup("type", value)}
-                >
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="percent">%</SelectItem>
-                    <SelectItem value="rubles">₽</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2 min-w-[100px]">
+                  <span className={`text-sm font-medium ${(editedProduct.markup?.type || "percent") === "rubles" ? "text-muted-foreground" : "text-foreground"}`}>
+                    %
+                  </span>
+                  <Switch
+                    checked={(editedProduct.markup?.type || "percent") === "rubles"}
+                    onCheckedChange={(checked) => updateMarkup("type", checked ? "rubles" : "percent")}
+                  />
+                  <span className={`text-sm font-medium ${(editedProduct.markup?.type || "percent") === "rubles" ? "text-foreground" : "text-muted-foreground"}`}>
+                    ₽
+                  </span>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground">
                 Цена продажи: {formatPrice(salePriceWithMarkup)}/{editedProduct.unit}
