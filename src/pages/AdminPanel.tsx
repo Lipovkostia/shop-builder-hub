@@ -25,6 +25,8 @@ import {
   SortableTableRow,
   SortableTableHead,
   useColumnOrder,
+  OrderedCellsContainer,
+  DraggableTableWrapper,
 } from "@/components/admin/ResizableTable";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1297,6 +1299,7 @@ export default function AdminPanel() {
               </div>
 
               <div className="bg-card rounded-lg border border-border">
+                <DraggableTableWrapper items={productIds} onReorder={handleProductReorder}>
                 <ResizableTable
                   storageKey="admin-products-v3"
                   columns={[
@@ -1316,20 +1319,20 @@ export default function AdminPanel() {
                 >
                   <ResizableTableHeader enableColumnDrag={true}>
                     <ResizableTableRow>
-                      <ResizableTableHead columnId="drag" minWidth={32} resizable={false}>
+                      <SortableTableHead columnId="drag" minWidth={32} resizable={false} draggable={false}>
                         <span className="text-muted-foreground/50 text-[10px]">⋮⋮</span>
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="photo" minWidth={50} resizable={false}>Фото</ResizableTableHead>
-                      <ResizableTableHead columnId="name" minWidth={120}>
+                      </SortableTableHead>
+                      <SortableTableHead columnId="photo" minWidth={50} resizable={false}>Фото</SortableTableHead>
+                      <SortableTableHead columnId="name" minWidth={120}>
                         <div>Название</div>
                         <ColumnFilter 
                           value={allProductsFilters.name} 
                           onChange={(v) => setAllProductsFilters(f => ({...f, name: v}))}
                           placeholder="Фильтр..."
                         />
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="desc" minWidth={100}>Описание</ResizableTableHead>
-                      <ResizableTableHead columnId="source" minWidth={80}>
+                      </SortableTableHead>
+                      <SortableTableHead columnId="desc" minWidth={100}>Описание</SortableTableHead>
+                      <SortableTableHead columnId="source" minWidth={80}>
                         <div>Источник</div>
                         <SelectFilter
                           value={allProductsFilters.source}
@@ -1340,12 +1343,12 @@ export default function AdminPanel() {
                           ]}
                           placeholder="Все"
                         />
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="unit" minWidth={60}>Ед.</ResizableTableHead>
-                      <ResizableTableHead columnId="type" minWidth={70}>Вид</ResizableTableHead>
-                      <ResizableTableHead columnId="volume" minWidth={70}>Объем</ResizableTableHead>
-                      <ResizableTableHead columnId="cost" minWidth={70}>Себест.</ResizableTableHead>
-                      <ResizableTableHead columnId="status" minWidth={70}>
+                      </SortableTableHead>
+                      <SortableTableHead columnId="unit" minWidth={60}>Ед.</SortableTableHead>
+                      <SortableTableHead columnId="type" minWidth={70}>Вид</SortableTableHead>
+                      <SortableTableHead columnId="volume" minWidth={70}>Объем</SortableTableHead>
+                      <SortableTableHead columnId="cost" minWidth={70}>Себест.</SortableTableHead>
+                      <SortableTableHead columnId="status" minWidth={70}>
                         <div>Статус</div>
                         <SelectFilter
                           value={allProductsFilters.status}
@@ -1356,8 +1359,8 @@ export default function AdminPanel() {
                           ]}
                           placeholder="Все"
                         />
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
+                      </SortableTableHead>
+                      <SortableTableHead columnId="sync" minWidth={50} resizable={false}>
                         <div>Синхр.</div>
                         <SelectFilter
                           value={allProductsFilters.sync}
@@ -1368,11 +1371,11 @@ export default function AdminPanel() {
                           ]}
                           placeholder="Все"
                         />
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="actions" minWidth={40} resizable={false}></ResizableTableHead>
+                      </SortableTableHead>
+                      <SortableTableHead columnId="actions" minWidth={40} resizable={false} draggable={false}></SortableTableHead>
                     </ResizableTableRow>
                   </ResizableTableHeader>
-                  <SortableTableBody items={productIds} onReorder={handleProductReorder}>
+                  <SortableTableBody>
                     {filteredAllProducts.map((product) => {
                       const salePrice = getProductSalePrice(product);
                       const packagingPrices = calculatePackagingPrices(
@@ -1382,9 +1385,10 @@ export default function AdminPanel() {
                         product.customVariantPrices
                       );
                       
-                      return (
-                        <SortableTableRow key={product.id} id={product.id}>
-                          <ResizableTableCell columnId="photo">
+                      // Define all cells with their column IDs
+                      const cellsMap: Record<string, React.ReactNode> = {
+                        photo: (
+                          <ResizableTableCell key="photo" columnId="photo">
                             <img
                               src={product.image}
                               alt={product.name}
@@ -1397,14 +1401,18 @@ export default function AdminPanel() {
                               title={product.imageFull ? "Нажмите для просмотра" : ""}
                             />
                           </ResizableTableCell>
-                          <ResizableTableCell columnId="name">
+                        ),
+                        name: (
+                          <ResizableTableCell key="name" columnId="name">
                             <InlineEditableCell
                               value={product.name}
                               onSave={(newName) => updateProduct({ ...product, name: newName })}
                               placeholder="Название"
                             />
                           </ResizableTableCell>
-                          <ResizableTableCell columnId="desc">
+                        ),
+                        desc: (
+                          <ResizableTableCell key="desc" columnId="desc">
                             <InlineEditableCell
                               value={product.description || ""}
                               onSave={(newDesc) => updateProduct({ ...product, description: newDesc })}
@@ -1412,7 +1420,9 @@ export default function AdminPanel() {
                               className="text-muted-foreground"
                             />
                           </ResizableTableCell>
-                          <ResizableTableCell columnId="source">
+                        ),
+                        source: (
+                          <ResizableTableCell key="source" columnId="source">
                             {product.source === "moysklad" ? (
                               <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 whitespace-nowrap">
                                 МС
@@ -1423,7 +1433,9 @@ export default function AdminPanel() {
                               </Badge>
                             )}
                           </ResizableTableCell>
-                          <ResizableTableCell columnId="unit">
+                        ),
+                        unit: (
+                          <ResizableTableCell key="unit" columnId="unit">
                             <InlineSelectCell
                               value={product.unit}
                               options={allUnitOptions}
@@ -1432,7 +1444,9 @@ export default function AdminPanel() {
                               addNewPlaceholder="Ед..."
                             />
                           </ResizableTableCell>
-                          <ResizableTableCell columnId="type">
+                        ),
+                        type: (
+                          <ResizableTableCell key="type" columnId="type">
                             <InlineSelectCell
                               value={product.packagingType || (product.productType === "weight" ? "head" : "piece")}
                               options={allPackagingOptions}
@@ -1441,7 +1455,9 @@ export default function AdminPanel() {
                               addNewPlaceholder="Вид..."
                             />
                           </ResizableTableCell>
-                          <ResizableTableCell columnId="volume">
+                        ),
+                        volume: (
+                          <ResizableTableCell key="volume" columnId="volume">
                             <InlinePriceCell
                               value={product.unitWeight}
                               onSave={(newVolume) => updateProduct({ ...product, unitWeight: newVolume })}
@@ -1449,14 +1465,18 @@ export default function AdminPanel() {
                               suffix={product.unit}
                             />
                           </ResizableTableCell>
-                          <ResizableTableCell columnId="cost">
+                        ),
+                        cost: (
+                          <ResizableTableCell key="cost" columnId="cost">
                             <InlinePriceCell
                               value={product.buyPrice}
                               onSave={(newPrice) => updateProduct({ ...product, buyPrice: newPrice })}
                               placeholder="0"
                             />
                           </ResizableTableCell>
-                          <ResizableTableCell columnId="status">
+                        ),
+                        status: (
+                          <ResizableTableCell key="status" columnId="status">
                             <Badge
                               variant={product.inStock ? "default" : "secondary"}
                               className={`text-[10px] whitespace-nowrap ${
@@ -1468,7 +1488,9 @@ export default function AdminPanel() {
                               {product.inStock ? "Есть" : "Нет"}
                             </Badge>
                           </ResizableTableCell>
-                          <ResizableTableCell columnId="sync">
+                        ),
+                        sync: (
+                          <ResizableTableCell key="sync" columnId="sync">
                             {product.source === "moysklad" && (
                               <Button
                                 variant="ghost"
@@ -1485,7 +1507,9 @@ export default function AdminPanel() {
                               </Button>
                             )}
                           </ResizableTableCell>
-                          <ResizableTableCell columnId="actions">
+                        ),
+                        actions: (
+                          <ResizableTableCell key="actions" columnId="actions">
                             <Button
                               variant="ghost"
                               size="icon"
@@ -1496,11 +1520,22 @@ export default function AdminPanel() {
                               <Settings className="h-3 w-3" />
                             </Button>
                           </ResizableTableCell>
+                        ),
+                      };
+                      
+                      return (
+                        <SortableTableRow key={product.id} id={product.id}>
+                          <OrderedCellsContainer 
+                            cells={cellsMap} 
+                            fixedStart={["drag"]} 
+                            fixedEnd={["actions"]}
+                          />
                         </SortableTableRow>
                       );
                     })}
                   </SortableTableBody>
                 </ResizableTable>
+                </DraggableTableWrapper>
               </div>
 
               {/* Product Pricing Dialog */}
