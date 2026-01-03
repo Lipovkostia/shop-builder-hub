@@ -727,7 +727,7 @@ export default function AdminPanel() {
     if (!newCatalogName.trim()) {
       toast({
         title: "Ошибка",
-        description: "Введите название каталога",
+        description: "Введите название прайс-листа",
         variant: "destructive",
       });
       return;
@@ -747,8 +747,8 @@ export default function AdminPanel() {
     setShowAddCatalog(false);
     
     toast({
-      title: "Каталог создан",
-      description: `Каталог "${newCatalog.name}" успешно создан`,
+      title: "Прайс-лист создан",
+      description: `Прайс-лист "${newCatalog.name}" успешно создан`,
     });
   };
 
@@ -759,7 +759,7 @@ export default function AdminPanel() {
       setCatalogView("list");
     }
     toast({
-      title: "Каталог удалён",
+      title: "Прайс-лист удалён",
     });
   };
 
@@ -780,7 +780,7 @@ export default function AdminPanel() {
     setCurrentCatalog(prev => prev ? { ...prev, productIds: Array.from(selectedCatalogProducts) } : null);
     
     toast({
-      title: "Каталог сохранён",
+      title: "Прайс-лист сохранён",
       description: `Добавлено ${selectedCatalogProducts.size} товаров`,
     });
   };
@@ -2098,9 +2098,9 @@ export default function AdminPanel() {
               {catalogView === "list" && (
                 <>
                   <div className="mb-4">
-                    <h2 className="text-xl font-semibold text-foreground">Каталоги</h2>
+                    <h2 className="text-xl font-semibold text-foreground">Прайс-листы</h2>
                     <p className="text-sm text-muted-foreground">
-                      Создавайте каталоги и добавляйте в них товары
+                      Создавайте прайс-листы и добавляйте в них товары
                     </p>
                   </div>
 
@@ -2171,9 +2171,9 @@ export default function AdminPanel() {
                   ) : !showAddCatalog ? (
                     <div className="bg-card rounded-lg border border-border p-8 text-center mb-6">
                       <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="font-medium text-foreground mb-2">Нет каталогов</h3>
+                      <h3 className="font-medium text-foreground mb-2">Нет прайс-листов</h3>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Создайте каталог для группировки товаров
+                        Создайте прайс-лист для группировки товаров
                       </p>
                     </div>
                   ) : null}
@@ -2183,11 +2183,11 @@ export default function AdminPanel() {
                     <div className="bg-card rounded-lg border border-border p-6 max-w-md">
                       <div className="flex items-center gap-2 mb-4">
                         <Plus className="h-5 w-5 text-primary" />
-                        <h3 className="font-medium text-foreground">Новый каталог</h3>
+                        <h3 className="font-medium text-foreground">Новый прайс-лист</h3>
                       </div>
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="catalog-name">Название каталога</Label>
+                          <Label htmlFor="catalog-name">Название прайс-листа</Label>
                           <Input
                             id="catalog-name"
                             type="text"
@@ -2201,7 +2201,7 @@ export default function AdminPanel() {
                           <Input
                             id="catalog-desc"
                             type="text"
-                            placeholder="Описание каталога"
+                            placeholder="Описание прайс-листа"
                             value={newCatalogDescription}
                             onChange={(e) => setNewCatalogDescription(e.target.value)}
                           />
@@ -2235,7 +2235,7 @@ export default function AdminPanel() {
                       className="w-full max-w-md"
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Создать каталог
+                      Создать прайс-лист
                     </Button>
                   )}
                 </>
@@ -2255,7 +2255,7 @@ export default function AdminPanel() {
                       }}
                     >
                       <ArrowLeft className="h-4 w-4 mr-2" />
-                      Назад к каталогам
+                      Назад к прайс-листам
                     </Button>
                     <div className="flex items-center gap-2">
                       {editingCatalogName ? (

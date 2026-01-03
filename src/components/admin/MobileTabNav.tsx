@@ -13,7 +13,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: "products", label: "Товары", icon: Package },
   { id: "import", label: "Импорт", icon: Download },
-  { id: "catalogs", label: "Каталоги", icon: FolderOpen },
+  { id: "catalogs", label: "Прайс-листы", icon: FolderOpen },
   { id: "roles", label: "Клиенты", icon: Users },
 ];
 
