@@ -2,6 +2,11 @@ import * as React from "react";
 import { useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 
+/**
+ * Resizable Table - extends standard table styling with column resize functionality
+ * Inherits all standardized table styles (fixed heights, no wrap, alignment, truncation)
+ */
+
 interface ColumnConfig {
   id: string;
   minWidth: number;
@@ -58,7 +63,10 @@ export function ResizableTable({
     <ResizableTableContext.Provider value={{ columnWidths, setColumnWidth }}>
       <div className="relative w-full overflow-x-auto scrollbar-thin">
         <table 
-          className={cn("w-max min-w-full caption-bottom text-xs", className)} 
+          className={cn(
+            "w-max min-w-full caption-bottom text-xs border-collapse",
+            className
+          )} 
           {...props}
         >
           {children}
@@ -74,7 +82,13 @@ export function ResizableTableHeader({
   ...props 
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
-    <thead className={cn("[&_tr]:border-b bg-muted/30 sticky top-0 z-10", className)} {...props}>
+    <thead 
+      className={cn(
+        "[&_tr]:border-b bg-muted/30 sticky top-0 z-10",
+        className
+      )} 
+      {...props}
+    >
       {children}
     </thead>
   );
@@ -96,7 +110,8 @@ export function ResizableTableRow({
   return (
     <tr
       className={cn(
-        "border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50 h-11",
+        "border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50",
+        "h-11", // Fixed row height - matches standard Table
         className
       )}
       {...props}
@@ -158,7 +173,8 @@ export function ResizableTableHead({
   return (
     <th
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium text-muted-foreground whitespace-nowrap relative select-none",
+        "h-10 px-3 text-left align-middle font-medium text-muted-foreground",
+        "whitespace-nowrap overflow-hidden relative select-none", // No text wrap
         className
       )}
       style={{ ...style, width: `${width}px`, minWidth: `${minWidth}px`, maxWidth: `${width}px` }}
@@ -195,7 +211,8 @@ export function ResizableTableCell({
   return (
     <td 
       className={cn(
-        "px-2 py-1.5 align-middle whitespace-nowrap overflow-hidden",
+        "px-3 py-2 align-middle",
+        "whitespace-nowrap overflow-hidden", // No text wrap - matches standard Table
         className
       )} 
       style={{ ...style, width: width ? `${width}px` : undefined, maxWidth: width ? `${width}px` : undefined }}
@@ -205,3 +222,6 @@ export function ResizableTableCell({
     </td>
   );
 }
+
+// Export context for external use if needed
+export { ResizableTableContext };
