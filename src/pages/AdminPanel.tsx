@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2 } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,65 +23,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-type ProductType = "weight" | "piece";
-
-interface WeightVariant {
-  type: "full" | "half" | "quarter";
-  weight: number;
-}
-
-interface PieceVariant {
-  type: "box" | "single";
-  quantity: number;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  pricePerUnit: number;
-  unit: string;
-  image: string;
-  imageFull?: string;
-  productType: ProductType;
-  weightVariants?: WeightVariant[];
-  pieceVariants?: PieceVariant[];
-  inStock: boolean;
-  isHit: boolean;
-  source?: "local" | "moysklad";
-  moyskladId?: string;
-  autoSync?: boolean;
-  buyPrice?: number;
-  accountId?: string; // Which MoySklad account this product is from
-}
-
-interface MoySkladProduct {
-  id: string;
-  name: string;
-  description: string;
-  code: string;
-  article: string;
-  price: number;
-  buyPrice: number;
-  quantity: number;
-  stock: number;
-  productType: string;
-  images: string | null;
-  imagesCount: number;
-  uom: string;
-  weight: number;
-  volume: number;
-  archived: boolean;
-}
-
-interface MoySkladAccount {
-  id: string;
-  login: string;
-  password: string;
-  name: string; // Display name for the account
-  lastSync?: string;
-}
+import {
+  Product,
+  MoySkladProduct,
+  MoySkladAccount,
+  Catalog,
+  formatPrice,
+  calculateSalePrice,
+  calculatePackagingPrices,
+  packagingTypeLabels,
+  PackagingType,
+} from "@/components/admin/ProductTypes";
+import { ProductEditDialog } from "@/components/admin/ProductEditDialog";
 
 const MOYSKLAD_ACCOUNTS_KEY = "moysklad_accounts";
 const IMPORTED_PRODUCTS_KEY = "moysklad_imported_products";
@@ -93,9 +46,13 @@ const testProducts: Product[] = [
     name: "Пармезан Reggiano 24 мес",
     description: "Выдержка 24 месяца, Италия",
     pricePerUnit: 2890,
+    buyPrice: 2200,
+    markup: { type: "percent", value: 30 },
     unit: "кг",
     image: "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop",
     productType: "weight",
+    packagingType: "head",
+    unitWeight: 38,
     weightVariants: [
       { type: "full", weight: 38 },
       { type: "half", weight: 19 },
@@ -242,10 +199,6 @@ const testProducts: Product[] = [
   },
 ];
 
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat("ru-RU").format(Math.round(price)) + " ₽";
-};
-
 const formatVariants = (product: Product) => {
   if (product.productType === "weight" && product.weightVariants) {
     return product.weightVariants
@@ -269,13 +222,6 @@ const formatVariants = (product: Product) => {
 type ActiveSection = "products" | "import" | "catalogs";
 type ImportView = "accounts" | "catalog";
 type CatalogView = "list" | "detail";
-
-interface Catalog {
-  id: string;
-  name: string;
-  productIds: string[];
-  createdAt: string;
-}
 
 const CATALOGS_KEY = "admin_catalogs";
 
@@ -378,6 +324,11 @@ export default function AdminPanel() {
   const [catalogProductSearch, setCatalogProductSearch] = useState("");
   const [selectedCatalogProducts, setSelectedCatalogProducts] = useState<Set<string>>(new Set());
   const [editingCatalogName, setEditingCatalogName] = useState(false);
+
+  // Product editing state
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [localTestProducts, setLocalTestProducts] = useState<Product[]>(testProducts);
 
   // Load saved accounts, imported products, and catalogs on mount
   useEffect(() => {
@@ -995,7 +946,37 @@ export default function AdminPanel() {
     });
   };
 
-  const allProducts = [...testProducts, ...importedProducts];
+  const allProducts = [...localTestProducts, ...importedProducts];
+
+  // Update product (works for both local and imported)
+  const updateProduct = (updatedProduct: Product) => {
+    if (updatedProduct.source === "moysklad") {
+      setImportedProducts(prev => prev.map(p => 
+        p.id === updatedProduct.id ? updatedProduct : p
+      ));
+    } else {
+      setLocalTestProducts(prev => prev.map(p => 
+        p.id === updatedProduct.id ? updatedProduct : p
+      ));
+    }
+    toast({
+      title: "Товар сохранён",
+      description: `${updatedProduct.name} обновлён`,
+    });
+  };
+
+  const openEditDialog = (product: Product) => {
+    setEditingProduct(product);
+    setEditDialogOpen(true);
+  };
+
+  // Get sale price with markup
+  const getProductSalePrice = (product: Product): number => {
+    if (product.buyPrice && product.markup) {
+      return calculateSalePrice(product.buyPrice, product.markup);
+    }
+    return product.pricePerUnit;
+  };
 
   // Filtered "All Products"
   const filteredAllProducts = useMemo(() => {
@@ -1137,7 +1118,7 @@ export default function AdminPanel() {
                 )}
               </div>
 
-              <div className="bg-card rounded-lg border border-border overflow-hidden">
+              <div className="bg-card rounded-lg border border-border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1162,20 +1143,12 @@ export default function AdminPanel() {
                           placeholder="Все"
                         />
                       </TableHead>
-                      <TableHead>
-                        Тип
-                        <SelectFilter
-                          value={allProductsFilters.type}
-                          onChange={(v) => setAllProductsFilters(f => ({...f, type: v}))}
-                          options={[
-                            { value: "weight", label: "Весовой" },
-                            { value: "piece", label: "Штучный" },
-                          ]}
-                          placeholder="Все"
-                        />
-                      </TableHead>
-                      <TableHead>Цена/{"\u00A0"}ед.</TableHead>
-                      <TableHead>Себестоимость</TableHead>
+                      <TableHead>Ед. изм.</TableHead>
+                      <TableHead>Вид</TableHead>
+                      <TableHead>Себест-ть</TableHead>
+                      <TableHead>Наценка</TableHead>
+                      <TableHead>Цена</TableHead>
+                      <TableHead>Цены за ед.</TableHead>
                       <TableHead>
                         Статус
                         <SelectFilter
@@ -1200,89 +1173,159 @@ export default function AdminPanel() {
                           placeholder="Все"
                         />
                       </TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredAllProducts.map((product) => (
-                      <TableRow key={product.id}>
-                        <TableCell>
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-10 h-10 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => {
-                              if (product.imageFull) {
-                                window.open(product.imageFull, '_blank');
-                              }
-                            }}
-                            title={product.imageFull ? "Нажмите для просмотра в полном размере" : ""}
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          <div>
-                            {product.name}
-                            {product.description && (
-                              <p className="text-xs text-muted-foreground mt-0.5">{product.description}</p>
+                    {filteredAllProducts.map((product) => {
+                      const salePrice = getProductSalePrice(product);
+                      const packagingPrices = calculatePackagingPrices(
+                        salePrice,
+                        product.unitWeight,
+                        product.packagingType
+                      );
+                      
+                      return (
+                        <TableRow key={product.id}>
+                          <TableCell>
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-10 h-10 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => {
+                                if (product.imageFull) {
+                                  window.open(product.imageFull, '_blank');
+                                }
+                              }}
+                              title={product.imageFull ? "Нажмите для просмотра в полном размере" : ""}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            <div>
+                              {product.name}
+                              {product.description && (
+                                <p className="text-xs text-muted-foreground mt-0.5 max-w-[200px] truncate">{product.description}</p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {product.source === "moysklad" ? (
+                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                                <ExternalLink className="h-3 w-3 mr-1" />
+                                МойСклад
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs">
+                                Локальный
+                              </Badge>
                             )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {product.source === "moysklad" ? (
-                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
-                              <ExternalLink className="h-3 w-3 mr-1" />
-                              МойСклад
-                            </Badge>
-                          ) : (
+                          </TableCell>
+                          <TableCell>
                             <Badge variant="outline" className="text-xs">
-                              Локальный
+                              {product.unit}
                             </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">
-                            {product.productType === "weight" ? "Весовой" : "Штучный"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {formatPrice(product.pricePerUnit)}/{product.unit}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {product.buyPrice ? formatPrice(product.buyPrice) : "-"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={product.inStock ? "default" : "secondary"}
-                            className={`text-xs ${
-                              product.inStock
-                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                                : "bg-muted text-muted-foreground"
-                            }`}
-                          >
-                            {product.inStock ? "В наличии" : "Нет"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {product.source === "moysklad" && (
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {product.packagingType 
+                                ? packagingTypeLabels[product.packagingType] 
+                                : (product.productType === "weight" ? "Весовой" : "Штучный")}
+                            </Badge>
+                            {product.packagingType === "head" && product.unitWeight && (
+                              <span className="text-xs text-muted-foreground block mt-0.5">
+                                {product.unitWeight} кг
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {product.buyPrice ? formatPrice(product.buyPrice) : "-"}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {product.markup ? (
+                              <span className="text-green-600 dark:text-green-400">
+                                +{product.markup.value}{product.markup.type === "percent" ? "%" : "₽"}
+                              </span>
+                            ) : (
+                              "-"
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {formatPrice(salePrice)}/{product.unit}
+                          </TableCell>
+                          <TableCell>
+                            {packagingPrices ? (
+                              <div className="text-xs space-y-0.5">
+                                <div className="flex justify-between gap-2">
+                                  <span className="text-muted-foreground">Целая:</span>
+                                  <span className="font-medium">{formatPrice(packagingPrices.full)}</span>
+                                </div>
+                                <div className="flex justify-between gap-2">
+                                  <span className="text-muted-foreground">½:</span>
+                                  <span className="font-medium">{formatPrice(packagingPrices.half)}</span>
+                                </div>
+                                <div className="flex justify-between gap-2">
+                                  <span className="text-muted-foreground">¼:</span>
+                                  <span className="font-medium">{formatPrice(packagingPrices.quarter)}</span>
+                                </div>
+                              </div>
+                            ) : (
+                              "-"
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={product.inStock ? "default" : "secondary"}
+                              className={`text-xs ${
+                                product.inStock
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {product.inStock ? "В наличии" : "Нет"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {product.source === "moysklad" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`h-8 w-8 ${product.autoSync ? "text-primary" : "text-muted-foreground"}`}
+                                onClick={() => toggleAutoSync(product.id)}
+                                title={product.autoSync ? "Авто-синхронизация включена" : "Включить авто-синхронизацию"}
+                              >
+                                {product.autoSync ? (
+                                  <Lock className="h-4 w-4" />
+                                ) : (
+                                  <Unlock className="h-4 w-4" />
+                                )}
+                              </Button>
+                            )}
+                          </TableCell>
+                          <TableCell>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className={`h-8 w-8 ${product.autoSync ? "text-primary" : "text-muted-foreground"}`}
-                              onClick={() => toggleAutoSync(product.id)}
-                              title={product.autoSync ? "Авто-синхронизация включена" : "Включить авто-синхронизацию"}
+                              className="h-8 w-8 text-muted-foreground hover:text-primary"
+                              onClick={() => openEditDialog(product)}
+                              title="Редактировать товар"
                             >
-                              {product.autoSync ? (
-                                <Lock className="h-4 w-4" />
-                              ) : (
-                                <Unlock className="h-4 w-4" />
-                              )}
+                              <Settings className="h-4 w-4" />
                             </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Product Edit Dialog */}
+              <ProductEditDialog
+                product={editingProduct}
+                open={editDialogOpen}
+                onOpenChange={setEditDialogOpen}
+                onSave={updateProduct}
+              />
             </>
           )}
 
@@ -1830,7 +1873,7 @@ export default function AdminPanel() {
                     />
                   </div>
 
-                  <div className="bg-card rounded-lg border border-border overflow-hidden">
+                  <div className="bg-card rounded-lg border border-border overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -1848,47 +1891,119 @@ export default function AdminPanel() {
                           </TableHead>
                           <TableHead className="w-[50px]">Фото</TableHead>
                           <TableHead>Название</TableHead>
+                          <TableHead>Ед. изм.</TableHead>
+                          <TableHead>Вид</TableHead>
+                          <TableHead>Себест-ть</TableHead>
+                          <TableHead>Наценка</TableHead>
                           <TableHead>Цена</TableHead>
+                          <TableHead>Цены за ед.</TableHead>
                           <TableHead>Статус</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {allProducts
                           .filter(p => !catalogProductSearch || p.name.toLowerCase().includes(catalogProductSearch.toLowerCase()))
-                          .map((product) => (
-                            <TableRow
-                              key={product.id}
-                              className={selectedCatalogProducts.has(product.id) ? "bg-primary/5" : ""}
-                            >
-                              <TableCell>
-                                <Checkbox
-                                  checked={selectedCatalogProducts.has(product.id)}
-                                  onCheckedChange={() => toggleCatalogProduct(product.id)}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <img
-                                  src={product.image}
-                                  alt={product.name}
-                                  className="w-10 h-10 rounded object-cover"
-                                />
-                              </TableCell>
-                              <TableCell className="font-medium">{product.name}</TableCell>
-                              <TableCell>{formatPrice(product.pricePerUnit)}/{product.unit}</TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant={product.inStock ? "default" : "secondary"}
-                                  className={`text-xs ${
-                                    product.inStock
-                                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                                      : "bg-muted text-muted-foreground"
-                                  }`}
-                                >
-                                  {product.inStock ? "В наличии" : "Нет"}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                          .map((product) => {
+                            const salePrice = getProductSalePrice(product);
+                            const packagingPrices = calculatePackagingPrices(
+                              salePrice,
+                              product.unitWeight,
+                              product.packagingType
+                            );
+                            
+                            return (
+                              <TableRow
+                                key={product.id}
+                                className={selectedCatalogProducts.has(product.id) ? "bg-primary/5" : ""}
+                              >
+                                <TableCell>
+                                  <Checkbox
+                                    checked={selectedCatalogProducts.has(product.id)}
+                                    onCheckedChange={() => toggleCatalogProduct(product.id)}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <img
+                                    src={product.image}
+                                    alt={product.name}
+                                    className="w-10 h-10 rounded object-cover"
+                                  />
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  <div>
+                                    {product.name}
+                                    {product.description && (
+                                      <p className="text-xs text-muted-foreground mt-0.5 max-w-[200px] truncate">{product.description}</p>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="text-xs">
+                                    {product.unit}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="text-xs">
+                                    {product.packagingType 
+                                      ? packagingTypeLabels[product.packagingType] 
+                                      : (product.productType === "weight" ? "Весовой" : "Штучный")}
+                                  </Badge>
+                                  {product.packagingType === "head" && product.unitWeight && (
+                                    <span className="text-xs text-muted-foreground block mt-0.5">
+                                      {product.unitWeight} кг
+                                    </span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-muted-foreground text-sm">
+                                  {product.buyPrice ? formatPrice(product.buyPrice) : "-"}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {product.markup ? (
+                                    <span className="text-green-600 dark:text-green-400">
+                                      +{product.markup.value}{product.markup.type === "percent" ? "%" : "₽"}
+                                    </span>
+                                  ) : (
+                                    "-"
+                                  )}
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  {formatPrice(salePrice)}/{product.unit}
+                                </TableCell>
+                                <TableCell>
+                                  {packagingPrices ? (
+                                    <div className="text-xs space-y-0.5">
+                                      <div className="flex justify-between gap-2">
+                                        <span className="text-muted-foreground">Целая:</span>
+                                        <span className="font-medium">{formatPrice(packagingPrices.full)}</span>
+                                      </div>
+                                      <div className="flex justify-between gap-2">
+                                        <span className="text-muted-foreground">½:</span>
+                                        <span className="font-medium">{formatPrice(packagingPrices.half)}</span>
+                                      </div>
+                                      <div className="flex justify-between gap-2">
+                                        <span className="text-muted-foreground">¼:</span>
+                                        <span className="font-medium">{formatPrice(packagingPrices.quarter)}</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    "-"
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={product.inStock ? "default" : "secondary"}
+                                    className={`text-xs ${
+                                      product.inStock
+                                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                                        : "bg-muted text-muted-foreground"
+                                    }`}
+                                  >
+                                    {product.inStock ? "В наличии" : "Нет"}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                       </TableBody>
                     </Table>
                   </div>
