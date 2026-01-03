@@ -2320,16 +2320,16 @@ export default function AdminPanel() {
                                   />
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="type">
-                                  <Badge variant="outline" className="text-xs">
-                                    {product.packagingType 
-                                      ? packagingTypeLabels[product.packagingType] 
-                                      : (product.productType === "weight" ? "Весовой" : "Штучный")}
-                                  </Badge>
-                                  {product.packagingType === "head" && product.unitWeight && (
-                                    <span className="text-xs text-muted-foreground block mt-0.5">
-                                      {product.unitWeight} кг
-                                    </span>
-                                  )}
+                                  <InlineSelectCell
+                                    value={product.packagingType || "piece"}
+                                    options={allPackagingOptions}
+                                    onSave={(value) => updateProduct({ 
+                                      ...product, 
+                                      packagingType: value as PackagingType,
+                                      productType: value === "head" ? "weight" : "piece"
+                                    })}
+                                    onAddOption={(newType) => setCustomPackagingTypes(prev => [...prev, newType])}
+                                  />
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="buyPrice">
                                   <InlinePriceCell
