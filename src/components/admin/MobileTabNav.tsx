@@ -1,0 +1,113 @@
+import { useEffect, useRef } from "react";
+import { Package, Download, FolderOpen, Users } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type ActiveSection = "products" | "import" | "catalogs" | "roles";
+
+interface NavItem {
+  id: ActiveSection;
+  label: string;
+  icon: React.ElementType;
+}
+
+const navItems: NavItem[] = [
+  { id: "products", label: "Товары", icon: Package },
+  { id: "import", label: "Импорт", icon: Download },
+  { id: "catalogs", label: "Каталоги", icon: FolderOpen },
+  { id: "roles", label: "Клиенты", icon: Users },
+];
+
+interface MobileTabNavProps {
+  activeSection: ActiveSection;
+  onSectionChange: (section: ActiveSection) => void;
+}
+
+export function MobileTabNav({ activeSection, onSectionChange }: MobileTabNavProps) {
+  const navRef = useRef<HTMLDivElement>(null);
+  const activeTabRef = useRef<HTMLButtonElement>(null);
+
+  // Scroll active tab into view
+  useEffect(() => {
+    if (activeTabRef.current && navRef.current) {
+      const nav = navRef.current;
+      const tab = activeTabRef.current;
+      const navRect = nav.getBoundingClientRect();
+      const tabRect = tab.getBoundingClientRect();
+      
+      // Calculate center position
+      const scrollLeft = tab.offsetLeft - navRect.width / 2 + tabRect.width / 2;
+      
+      nav.scrollTo({
+        left: Math.max(0, scrollLeft),
+        behavior: "smooth",
+      });
+    }
+  }, [activeSection]);
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent, currentIndex: number) => {
+    let newIndex = currentIndex;
+    
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      newIndex = currentIndex > 0 ? currentIndex - 1 : navItems.length - 1;
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      newIndex = currentIndex < navItems.length - 1 ? currentIndex + 1 : 0;
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      newIndex = 0;
+    } else if (e.key === "End") {
+      e.preventDefault();
+      newIndex = navItems.length - 1;
+    } else {
+      return;
+    }
+    
+    onSectionChange(navItems[newIndex].id);
+  };
+
+  return (
+    <nav
+      ref={navRef}
+      role="tablist"
+      aria-label="Навигация панели управления"
+      className="sticky top-14 z-40 bg-card border-b border-border overflow-x-auto scrollbar-hide"
+      style={{ 
+        scrollbarWidth: "none", 
+        msOverflowStyle: "none",
+        WebkitOverflowScrolling: "touch"
+      }}
+    >
+      <div className="flex min-w-max px-2 py-1.5 gap-1">
+        {navItems.map((item, index) => {
+          const isActive = activeSection === item.id;
+          const Icon = item.icon;
+          
+          return (
+            <button
+              key={item.id}
+              ref={isActive ? activeTabRef : null}
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={`panel-${item.id}`}
+              tabIndex={isActive ? 0 : -1}
+              onClick={() => onSectionChange(item.id)}
+              onKeyDown={(e) => handleKeyDown(e, index)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 ease-out flex-shrink-0",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                isActive
+                  ? "bg-primary text-primary-foreground shadow-sm transform scale-[1.02]"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted/80"
+              )}
+            >
+              <Icon className="h-4 w-4 flex-shrink-0" />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
