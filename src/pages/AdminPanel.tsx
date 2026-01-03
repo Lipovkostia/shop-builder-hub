@@ -41,6 +41,8 @@ import { ProductPricingDialog } from "@/components/admin/ProductPricingDialog";
 import { CustomerRolesManager } from "@/components/admin/CustomerRolesManager";
 import { InlineProductRow } from "@/components/admin/InlineProductRow";
 import { InlineEditableCell } from "@/components/admin/InlineEditableCell";
+import { InlineSelectCell } from "@/components/admin/InlineSelectCell";
+import { InlinePriceCell } from "@/components/admin/InlinePriceCell";
 
 const MOYSKLAD_ACCOUNTS_KEY = "moysklad_accounts";
 const IMPORTED_PRODUCTS_KEY = "moysklad_imported_products";
@@ -349,6 +351,30 @@ export default function AdminPanel() {
   // Customer roles state
   const [customerRoles, setCustomerRoles] = useState<CustomerRole[]>([]);
   const [rolePricing, setRolePricing] = useState<RoleProductPricing[]>([]);
+
+  // Custom options state (for units and packaging types added by user)
+  const [customUnits, setCustomUnits] = useState<string[]>([]);
+  const [customPackagingTypes, setCustomPackagingTypes] = useState<string[]>([]);
+
+  // Build combined options lists
+  const allUnitOptions = [
+    { value: "кг", label: "кг" },
+    { value: "шт", label: "шт" },
+    { value: "л", label: "л" },
+    { value: "уп", label: "уп" },
+    { value: "г", label: "г" },
+    { value: "мл", label: "мл" },
+    ...customUnits.map(u => ({ value: u, label: u })),
+  ];
+
+  const allPackagingOptions = [
+    { value: "head", label: "Голова" },
+    { value: "package", label: "Упаковка" },
+    { value: "piece", label: "Штука" },
+    { value: "can", label: "Банка" },
+    { value: "box", label: "Ящик" },
+    ...customPackagingTypes.map(p => ({ value: p, label: p })),
+  ];
 
   // Determine which store context to use
   const effectiveStoreId = storeIdFromUrl || userStoreId;
@@ -1351,24 +1377,34 @@ export default function AdminPanel() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-xs">
-                              {product.unit}
-                            </Badge>
+                            <InlineSelectCell
+                              value={product.unit}
+                              options={allUnitOptions}
+                              onSave={(newUnit) => updateProduct({ ...product, unit: newUnit })}
+                              onAddOption={(newUnit) => setCustomUnits(prev => [...prev, newUnit])}
+                              addNewPlaceholder="Ед. изм..."
+                            />
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-xs">
-                              {product.packagingType 
-                                ? packagingTypeLabels[product.packagingType] 
-                                : (product.productType === "weight" ? "Весовой" : "Штучный")}
-                            </Badge>
+                            <InlineSelectCell
+                              value={product.packagingType || (product.productType === "weight" ? "head" : "piece")}
+                              options={allPackagingOptions}
+                              onSave={(newType) => updateProduct({ ...product, packagingType: newType as PackagingType })}
+                              onAddOption={(newType) => setCustomPackagingTypes(prev => [...prev, newType])}
+                              addNewPlaceholder="Вид..."
+                            />
                             {product.packagingType === "head" && product.unitWeight && (
                               <span className="text-xs text-muted-foreground block mt-0.5">
                                 {product.unitWeight} кг
                               </span>
                             )}
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {product.buyPrice ? formatPrice(product.buyPrice) : "-"}
+                          <TableCell>
+                            <InlinePriceCell
+                              value={product.buyPrice}
+                              onSave={(newPrice) => updateProduct({ ...product, buyPrice: newPrice })}
+                              placeholder="Себестоимость"
+                            />
                           </TableCell>
                           <TableCell className="text-sm">
                             {product.markup ? (
