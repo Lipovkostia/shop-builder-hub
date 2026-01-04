@@ -17,7 +17,6 @@ import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  horizontalListSortingStrategy,
   verticalListSortingStrategy,
   useSortable,
 } from "@dnd-kit/sortable";
@@ -25,8 +24,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 
 /**
- * Resizable Table - extends standard table styling with column resize and drag-and-drop functionality
- * Supports reordering of both columns and rows with touch support for mobile
+ * Resizable Table - extends standard table styling with column resize and row drag-and-drop functionality
  */
 
 interface ColumnConfig {
@@ -39,97 +37,18 @@ interface ResizableTableContextValue {
   columnWidths: Record<string, number>;
   setColumnWidth: (id: string, width: number) => void;
   columnOrder: string[];
-  setColumnOrder: (order: string[]) => void;
-  isDraggingColumn: boolean;
-  setIsDraggingColumn: (v: boolean) => void;
 }
 
 const ResizableTableContext = React.createContext<ResizableTableContextValue | null>(null);
 
-// Context for column drag state
-interface ColumnDragContextValue {
-  isDragging: boolean;
-  activeId: string | null;
-}
-
-const ColumnDragContext = React.createContext<ColumnDragContextValue>({ isDragging: false, activeId: null });
-
-// Internal wrapper for column drag that goes outside the table (used automatically inside ResizableTable)
-function DraggableColumnWrapperInternal({ children }: { children: React.ReactNode }) {
-  const context = React.useContext(ResizableTableContext);
-  const [activeId, setActiveId] = useState<string | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200,
-        tolerance: 5,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-    context?.setIsDraggingColumn(true);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveId(null);
-    context?.setIsDraggingColumn(false);
-
-    if (over && active.id !== over.id && context) {
-      const oldIndex = context.columnOrder.indexOf(active.id as string);
-      const newIndex = context.columnOrder.indexOf(over.id as string);
-      context.setColumnOrder(arrayMove(context.columnOrder, oldIndex, newIndex));
-    }
-  };
-
-  if (!context) {
-    return <>{children}</>;
-  }
-
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <ColumnDragContext.Provider value={{ isDragging: !!activeId, activeId }}>
-        <SortableContext items={context.columnOrder} strategy={horizontalListSortingStrategy}>
-          {children}
-        </SortableContext>
-      </ColumnDragContext.Provider>
-      <DragOverlay dropAnimation={null}>
-        {activeId ? (
-          <div className="bg-primary/20 border border-primary rounded px-2 py-1 text-xs font-medium shadow-lg">
-            {activeId}
-          </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
-  );
-}
-
 interface ResizableTableProps extends React.HTMLAttributes<HTMLTableElement> {
   columns: ColumnConfig[];
   storageKey?: string;
-  onColumnOrderChange?: (order: string[]) => void;
 }
 
 export function ResizableTable({ 
   columns, 
   storageKey,
-  onColumnOrderChange,
   className, 
   children,
   ...props 
@@ -151,27 +70,7 @@ export function ResizableTable({
     }, {} as Record<string, number>);
   });
 
-  const [columnOrder, setColumnOrderState] = useState<string[]>(() => {
-    if (storageKey) {
-      const saved = localStorage.getItem(`table-column-order-${storageKey}`);
-      if (saved) {
-        try {
-          const savedOrder = JSON.parse(saved);
-          // Validate that all columns are present
-          const columnIds = columns.map(c => c.id);
-          if (savedOrder.length === columnIds.length && 
-              savedOrder.every((id: string) => columnIds.includes(id))) {
-            return savedOrder;
-          }
-        } catch (e) {
-          // ignore
-        }
-      }
-    }
-    return columns.map(c => c.id);
-  });
-
-  const [isDraggingColumn, setIsDraggingColumn] = useState(false);
+  const columnOrder = useMemo(() => columns.map(c => c.id), [columns]);
 
   const setColumnWidth = useCallback((id: string, width: number) => {
     setColumnWidthsState(prev => {
@@ -183,55 +82,34 @@ export function ResizableTable({
     });
   }, [storageKey]);
 
-  const setColumnOrder = useCallback((order: string[]) => {
-    setColumnOrderState(order);
-    if (storageKey) {
-      localStorage.setItem(`table-column-order-${storageKey}`, JSON.stringify(order));
-    }
-    onColumnOrderChange?.(order);
-  }, [storageKey, onColumnOrderChange]);
-
   const contextValue = useMemo(() => ({
     columnWidths,
     setColumnWidth,
     columnOrder,
-    setColumnOrder,
-    isDraggingColumn,
-    setIsDraggingColumn,
-  }), [columnWidths, setColumnWidth, columnOrder, setColumnOrder, isDraggingColumn]);
+  }), [columnWidths, setColumnWidth, columnOrder]);
 
   return (
     <ResizableTableContext.Provider value={contextValue}>
-      <DraggableColumnWrapperInternal>
-        <div className="relative w-full overflow-x-auto scrollbar-thin">
-          <table 
-            className={cn(
-              "w-max min-w-full caption-bottom text-xs border-collapse",
-              className
-            )} 
-            {...props}
-          >
-            {children}
-          </table>
-        </div>
-      </DraggableColumnWrapperInternal>
+      <div className="relative w-full overflow-x-auto scrollbar-thin">
+        <table 
+          className={cn(
+            "w-max min-w-full caption-bottom text-xs border-collapse",
+            className
+          )} 
+          {...props}
+        >
+          {children}
+        </table>
+      </div>
     </ResizableTableContext.Provider>
   );
 }
 
-interface ResizableTableHeaderProps extends React.HTMLAttributes<HTMLTableSectionElement> {
-  enableColumnDrag?: boolean;
-}
-
-// Alias for external usage if needed
-export const DraggableColumnWrapper = DraggableColumnWrapperInternal;
-
 export function ResizableTableHeader({ 
   className, 
   children,
-  enableColumnDrag = true,
   ...props 
-}: ResizableTableHeaderProps) {
+}: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
     <thead 
       className={cn(
@@ -417,130 +295,6 @@ export function ResizableTableRow({
   );
 }
 
-// Sortable header cell wrapper
-interface SortableTableHeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
-  columnId: string;
-  minWidth?: number;
-  resizable?: boolean;
-  draggable?: boolean;
-}
-
-export function SortableTableHead({ 
-  columnId,
-  minWidth = 50,
-  resizable = true,
-  draggable = true,
-  className, 
-  children,
-  style,
-  ...props 
-}: SortableTableHeadProps) {
-  const context = React.useContext(ResizableTableContext);
-  const [isResizing, setIsResizing] = useState(false);
-  const startX = useRef(0);
-  const startWidth = useRef(0);
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: columnId, disabled: !draggable });
-
-  const width = context?.columnWidths[columnId] ?? minWidth;
-
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsResizing(true);
-    startX.current = e.clientX;
-    startWidth.current = width;
-  }, [width]);
-
-  const handleResizeTouchStart = useCallback((e: React.TouchEvent) => {
-    e.stopPropagation();
-    setIsResizing(true);
-    startX.current = e.touches[0].clientX;
-    startWidth.current = width;
-  }, [width]);
-
-  React.useEffect(() => {
-    if (!isResizing) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const diff = e.clientX - startX.current;
-      const newWidth = Math.max(minWidth, startWidth.current + diff);
-      context?.setColumnWidth(columnId, newWidth);
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      const diff = e.touches[0].clientX - startX.current;
-      const newWidth = Math.max(minWidth, startWidth.current + diff);
-      context?.setColumnWidth(columnId, newWidth);
-    };
-
-    const handleEnd = () => {
-      setIsResizing(false);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleEnd);
-    document.addEventListener('touchmove', handleTouchMove);
-    document.addEventListener('touchend', handleEnd);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleEnd);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleEnd);
-    };
-  }, [isResizing, columnId, minWidth, context]);
-
-  const dragStyle = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  // Combine drag listeners with the header cell itself (no separate handle)
-  const dragProps = draggable ? { ...attributes, ...listeners } : {};
-
-  return (
-    <th
-      ref={setNodeRef}
-      className={cn(
-        "h-6 px-2 text-left align-middle font-medium text-muted-foreground text-xs",
-        "whitespace-nowrap overflow-hidden relative select-none",
-        draggable && "cursor-grab active:cursor-grabbing",
-        isDragging && "opacity-50 bg-primary/10 z-50",
-        className
-      )}
-      style={{ 
-        ...style, 
-        ...dragStyle,
-        width: `${width}px`, 
-        minWidth: `${minWidth}px`, 
-        maxWidth: `${width}px` 
-      }}
-      {...dragProps}
-      {...props}
-    >
-      <div className="truncate">{children}</div>
-      {resizable && (
-        <div
-          className={cn(
-            "absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/50 transition-colors touch-none",
-            isResizing && "bg-primary"
-          )}
-          onMouseDown={handleResizeMouseDown}
-          onTouchStart={handleResizeTouchStart}
-        />
-      )}
-    </th>
-  );
-}
-
 interface ResizableTableHeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   columnId: string;
   minWidth?: number;
@@ -669,26 +423,19 @@ export function useColumnOrder() {
 }
 
 // Component that renders children cells in the correct column order
-interface OrderedCellsProps {
-  columnId: string;
-  children: React.ReactNode;
-}
-
 interface OrderedCellsContainerProps {
   cells: Record<string, React.ReactNode>;
-  fixedStart?: string[]; // Column IDs that should always be at the start (like drag handle)
-  fixedEnd?: string[]; // Column IDs that should always be at the end (like actions)
+  fixedStart?: string[];
+  fixedEnd?: string[];
 }
 
 export function OrderedCellsContainer({ cells, fixedStart = [], fixedEnd = [] }: OrderedCellsContainerProps) {
   const columnOrder = useColumnOrder();
   
-  // Determine which columns are reorderable (not fixed)
   const reorderableColumns = columnOrder.filter(
     id => !fixedStart.includes(id) && !fixedEnd.includes(id)
   );
   
-  // Build final order: fixedStart + reorderable (in columnOrder sequence) + fixedEnd
   const finalOrder = [...fixedStart, ...reorderableColumns, ...fixedEnd];
   
   return (
@@ -700,3 +447,7 @@ export function OrderedCellsContainer({ cells, fixedStart = [], fixedEnd = [] }:
 
 // Export context for external use if needed
 export { ResizableTableContext };
+
+// Legacy exports for compatibility (SortableTableHead now just uses ResizableTableHead)
+export const SortableTableHead = ResizableTableHead;
+export const DraggableColumnWrapper = ({ children }: { children: React.ReactNode }) => <>{children}</>;
