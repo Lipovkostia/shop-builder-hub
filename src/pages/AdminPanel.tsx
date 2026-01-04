@@ -373,6 +373,7 @@ export default function AdminPanel() {
   const [selectedCatalogProducts, setSelectedCatalogProducts] = useState<Set<string>>(new Set());
   const [editingCatalogName, setEditingCatalogName] = useState(false);
   const [selectedCatalogBulkProducts, setSelectedCatalogBulkProducts] = useState<Set<string>>(new Set());
+  const [expandedCatalogId, setExpandedCatalogId] = useState<string | null>(null);
 
   // Product editing state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -2160,70 +2161,67 @@ export default function AdminPanel() {
                     </p>
                   </div>
 
-                  {/* Catalogs table */}
+                  {/* Catalogs list */}
                   {catalogs.length > 0 ? (
-                    <div className="bg-card rounded-lg border border-border overflow-x-auto mb-6">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="h-6">
-                            <TableHead className="h-6 px-2 text-xs">Название</TableHead>
-                            <TableHead className="h-6 px-2 text-xs">Описание</TableHead>
-                            <TableHead className="h-6 px-2 text-xs w-[100px]">Товаров</TableHead>
-                            <TableHead className="h-6 px-2 text-xs w-[80px]">Действия</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {catalogs.map((catalog) => {
-                            const catalogProducts = getCatalogProducts(catalog);
-                            return (
-                              <TableRow key={catalog.id} className="h-8">
-                                <TableCell className="px-2 py-1">
-                                  <button
-                                    onClick={() => openCatalog(catalog)}
-                                    className="text-left font-medium text-primary hover:underline focus:outline-none focus:underline"
-                                  >
-                                    {catalog.name}
-                                  </button>
-                                </TableCell>
-                                <TableCell className="px-2 py-1">
-                                  <InlineEditableCell
-                                    value={catalog.description || ""}
-                                    onSave={(value) => updateCatalogField(catalog.id, 'description', value)}
-                                    placeholder="Описание"
-                                  />
-                                </TableCell>
-                                <TableCell className="px-2 py-1 text-center">
-                                  <Badge variant="outline" className="text-xs">
-                                    {catalogProducts.length}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="px-2 py-1">
-                                  <div className="flex items-center gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6"
-                                      onClick={() => openCatalog(catalog)}
-                                      title="Открыть"
-                                    >
-                                      <FolderOpen className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                      onClick={() => deleteCatalog(catalog.id)}
-                                      title="Удалить"
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
+                    <div className="space-y-2 mb-6">
+                      {catalogs.map((catalog) => {
+                        const catalogProducts = getCatalogProducts(catalog);
+                        const isExpanded = expandedCatalogId === catalog.id;
+                        
+                        return (
+                          <div key={catalog.id} className="bg-card rounded-lg border border-border overflow-hidden">
+                            {/* Main row */}
+                            <div className="flex items-center justify-between px-4 py-3">
+                              <button
+                                onClick={() => openCatalog(catalog)}
+                                className="flex items-center gap-3 text-left hover:text-primary transition-colors"
+                              >
+                                <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-medium text-foreground">{catalog.name}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {catalogProducts.length}
+                                </Badge>
+                              </button>
+                              
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`h-8 w-8 transition-colors ${isExpanded ? 'bg-muted text-primary' : ''}`}
+                                onClick={() => setExpandedCatalogId(isExpanded ? null : catalog.id)}
+                                title="Настройки"
+                              >
+                                <Settings className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            
+                            {/* Expanded toolbar */}
+                            {isExpanded && (
+                              <div className="border-t border-border bg-muted/30 px-4 py-3 flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openCatalog(catalog)}
+                                >
+                                  <Edit2 className="h-3 w-3 mr-2" />
+                                  Редактировать
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => {
+                                    deleteCatalog(catalog.id);
+                                    setExpandedCatalogId(null);
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3 mr-2" />
+                                  Удалить
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : !showAddCatalog ? (
                     <div className="bg-card rounded-lg border border-border p-8 text-center mb-6">
