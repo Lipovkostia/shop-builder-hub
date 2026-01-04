@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -2172,7 +2172,7 @@ export default function AdminPanel() {
                         return (
                           <div key={catalog.id} className="bg-card rounded-lg border border-border overflow-hidden">
                             {/* Main row */}
-                            <div className="flex items-center justify-between px-4 py-3">
+                            <div className="flex items-center justify-between px-4 py-3 gap-2">
                               <button
                                 onClick={() => openCatalog(catalog)}
                                 className="flex items-center gap-3 text-left hover:text-primary transition-colors flex-1 min-w-0"
@@ -2182,96 +2182,94 @@ export default function AdminPanel() {
                                 <Badge variant="outline" className="text-xs flex-shrink-0">
                                   {catalogProducts.length}
                                 </Badge>
-                                {catalog.categoryIds && catalog.categoryIds.length > 0 && (
-                                  <div className="flex gap-1 flex-shrink-0 ml-2">
-                                    {catalog.categoryIds.slice(0, 3).map(catId => {
-                                      const cat = categories.find(c => c.id === catId);
-                                      return cat ? (
-                                        <Badge key={catId} variant="secondary" className="text-[10px] px-1.5 py-0">
-                                          {cat.name}
-                                        </Badge>
-                                      ) : null;
-                                    })}
-                                    {catalog.categoryIds.length > 3 && (
-                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                                        +{catalog.categoryIds.length - 3}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                )}
                               </button>
                               
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={`h-8 w-8 transition-colors flex-shrink-0 ${isExpanded ? 'bg-muted text-primary' : ''}`}
-                                onClick={() => setExpandedCatalogId(isExpanded ? null : catalog.id)}
-                                title="Настройки"
-                              >
-                                <Settings className="h-4 w-4" />
-                              </Button>
-                            </div>
-                            
-                            {/* Expanded toolbar */}
-                            {isExpanded && (
-                              <div className="border-t border-border bg-muted/30 px-4 py-3 space-y-3">
-                                {/* Category selection */}
-                                <div className="space-y-2">
-                                  <Label className="text-xs text-muted-foreground">Категории</Label>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {categories.map((cat) => {
-                                      const isSelected = catalog.categoryIds?.includes(cat.id) ?? false;
-                                      return (
-                                        <button
-                                          key={cat.id}
-                                          onClick={() => {
-                                            setCatalogs(prev => prev.map(c => {
-                                              if (c.id !== catalog.id) return c;
-                                              const currentIds = c.categoryIds || [];
-                                              const newIds = isSelected
-                                                ? currentIds.filter(id => id !== cat.id)
-                                                : [...currentIds, cat.id];
-                                              return { ...c, categoryIds: newIds };
-                                            }));
-                                          }}
-                                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                            isSelected
-                                              ? "bg-primary text-primary-foreground"
-                                              : "bg-background border border-border text-muted-foreground hover:border-primary"
-                                          }`}
-                                        >
-                                          {cat.name}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
+                              {/* Category multi-select dropdown */}
+                              <div className="relative flex-shrink-0">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedCatalogId(isExpanded ? null : catalog.id);
+                                  }}
+                                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                                    isExpanded 
+                                      ? "bg-primary text-primary-foreground border-primary" 
+                                      : catalog.categoryIds && catalog.categoryIds.length > 0
+                                        ? "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20"
+                                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                                  }`}
+                                >
+                                  <Tag className="h-3 w-3" />
+                                  {catalog.categoryIds && catalog.categoryIds.length > 0 ? (
+                                    <span>{catalog.categoryIds.length}</span>
+                                  ) : (
+                                    <span>Категории</span>
+                                  )}
+                                  <ChevronDown className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                </button>
                                 
-                                {/* Actions */}
-                                <div className="flex items-center gap-2 pt-2 border-t border-border">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => openCatalog(catalog)}
+                                {/* Dropdown menu */}
+                                {isExpanded && (
+                                  <div 
+                                    className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg min-w-[200px] max-h-[300px] overflow-y-auto"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
-                                    <Edit2 className="h-3 w-3 mr-2" />
-                                    Редактировать товары
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => {
-                                      deleteCatalog(catalog.id);
-                                      setExpandedCatalogId(null);
-                                    }}
-                                  >
-                                    <Trash2 className="h-3 w-3 mr-2" />
-                                    Удалить
-                                  </Button>
-                                </div>
+                                    <div className="p-2 space-y-1">
+                                      {categories.length > 0 ? (
+                                        categories.map((cat) => {
+                                          const isSelected = catalog.categoryIds?.includes(cat.id) ?? false;
+                                          return (
+                                            <label
+                                              key={cat.id}
+                                              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                                            >
+                                              <Checkbox
+                                                checked={isSelected}
+                                                onCheckedChange={() => {
+                                                  setCatalogs(prev => prev.map(c => {
+                                                    if (c.id !== catalog.id) return c;
+                                                    const currentIds = c.categoryIds || [];
+                                                    const newIds = isSelected
+                                                      ? currentIds.filter(id => id !== cat.id)
+                                                      : [...currentIds, cat.id];
+                                                    return { ...c, categoryIds: newIds };
+                                                  }));
+                                                }}
+                                              />
+                                              <span className="text-sm">{cat.name}</span>
+                                            </label>
+                                          );
+                                        })
+                                      ) : (
+                                        <p className="text-sm text-muted-foreground px-2 py-1">Нет категорий</p>
+                                      )}
+                                    </div>
+                                    <div className="border-t border-border p-2 flex gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex-1 text-xs h-7"
+                                        onClick={() => openCatalog(catalog)}
+                                      >
+                                        <Edit2 className="h-3 w-3 mr-1" />
+                                        Товары
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2"
+                                        onClick={() => {
+                                          deleteCatalog(catalog.id);
+                                          setExpandedCatalogId(null);
+                                        }}
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            </div>
                           </div>
                         );
                       })}
