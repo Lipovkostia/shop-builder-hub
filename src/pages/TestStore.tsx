@@ -26,14 +26,22 @@ interface CartItem {
 const CATALOGS_STORAGE_KEY = "admin_catalogs";
 const PRODUCTS_STORAGE_KEY = "admin_all_products";
 
+// Форматирование цены с пробелом
+function formatPriceSpaced(price: number): string {
+  return Math.round(price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
 // Индикатор порции
-function PortionIndicator({ type }: { type: "full" | "half" | "quarter" }) {
+function PortionIndicator({ type }: { type: "full" | "half" | "quarter" | "portion" }) {
   return (
-    <div className="w-3.5 h-3.5 rounded-full overflow-hidden border border-primary bg-background">
+    <div className="w-3.5 h-3.5 rounded-full overflow-hidden border border-primary bg-background flex items-center justify-center">
       {type === "full" && <div className="w-full h-full bg-primary" />}
       {type === "half" && <div className="w-1/2 h-full bg-primary" />}
       {type === "quarter" && (
         <div className="w-1/2 h-1/2 bg-primary" style={{ borderBottomRightRadius: "100%" }} />
+      )}
+      {type === "portion" && (
+        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
       )}
     </div>
   );
@@ -142,7 +150,7 @@ function ProductCard({
                         )}
                         <PortionIndicator type="full" />
                         <span className="text-[9px] font-medium text-foreground">
-                          {Math.round(packagingPrices.full)}
+                          {formatPriceSpaced(packagingPrices.full)}
                         </span>
                       </button>
                     );
@@ -162,7 +170,7 @@ function ProductCard({
                         )}
                         <PortionIndicator type="half" />
                         <span className="text-[9px] font-medium text-foreground">
-                          {Math.round(packagingPrices.half)}
+                          {formatPriceSpaced(packagingPrices.half)}
                         </span>
                       </button>
                     );
@@ -182,7 +190,7 @@ function ProductCard({
                         )}
                         <PortionIndicator type="quarter" />
                         <span className="text-[9px] font-medium text-foreground">
-                          {Math.round(packagingPrices.quarter)}
+                          {formatPriceSpaced(packagingPrices.quarter)}
                         </span>
                       </button>
                     );
@@ -194,15 +202,16 @@ function ProductCard({
                       return (
                         <button
                           onClick={() => onAddToCart(product.id, 3, packagingPrices.portion!)}
-                          className="relative flex items-center gap-1 h-7 px-2 rounded border border-primary bg-primary/10 hover:bg-primary/20 transition-all"
+                          className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
                         >
                           {qty > 0 && (
                             <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
                               {qty}
                             </span>
                           )}
-                          <span className="text-[9px] font-medium text-primary">
-                            Порция {Math.round(packagingPrices.portion!)}
+                          <PortionIndicator type="portion" />
+                          <span className="text-[9px] font-medium text-foreground">
+                            {formatPriceSpaced(packagingPrices.portion!)}
                           </span>
                         </button>
                       );
@@ -227,7 +236,7 @@ function ProductCard({
                         )}
                         <PortionIndicator type={variant.type} />
                         <span className="text-[9px] font-medium text-foreground">
-                          {Math.round(price)}
+                          {formatPriceSpaced(price)}
                         </span>
                       </button>
                     );
@@ -253,7 +262,7 @@ function ProductCard({
                           {variant.quantity}
                         </span>
                         <span className="text-[9px] font-medium text-foreground">
-                          {Math.round(price)}
+                          {formatPriceSpaced(price)}
                         </span>
                       </button>
                     );
