@@ -23,10 +23,8 @@ import {
   ResizableTableRow,
   SortableTableBody,
   SortableTableRow,
-  SortableTableHead,
-  useColumnOrder,
-  OrderedCellsContainer,
   DraggableTableWrapper,
+  OrderedCellsContainer,
 } from "@/components/admin/ResizableTable";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1490,29 +1488,29 @@ export default function AdminPanel() {
                     { id: "actions", minWidth: 40, defaultWidth: 40 },
                   ]}
                 >
-                  <ResizableTableHeader enableColumnDrag={true}>
+                  <ResizableTableHeader>
                     {/* Row 1: Column names */}
                     <ResizableTableRow className="h-6">
-                      <SortableTableHead columnId="checkbox" minWidth={40} resizable={false} draggable={false}>
+                      <ResizableTableHead columnId="checkbox" minWidth={40} resizable={false}>
                         <Checkbox
                           checked={selectedBulkProducts.size === filteredAllProducts.length && filteredAllProducts.length > 0}
                           onCheckedChange={selectAllBulkProducts}
                         />
-                      </SortableTableHead>
-                      <SortableTableHead columnId="drag" minWidth={32} resizable={false} draggable={false}>
+                      </ResizableTableHead>
+                      <ResizableTableHead columnId="drag" minWidth={32} resizable={false}>
                         <span className="text-muted-foreground/50 text-[10px]">⋮⋮</span>
-                      </SortableTableHead>
-                      <SortableTableHead columnId="photo" minWidth={50} resizable={false}>Фото</SortableTableHead>
-                      <SortableTableHead columnId="name" minWidth={120}>Название</SortableTableHead>
-                      <SortableTableHead columnId="desc" minWidth={100}>Описание</SortableTableHead>
-                      <SortableTableHead columnId="source" minWidth={80}>Источник</SortableTableHead>
-                      <SortableTableHead columnId="unit" minWidth={60}>Ед.</SortableTableHead>
-                      <SortableTableHead columnId="type" minWidth={70}>Вид</SortableTableHead>
-                      <SortableTableHead columnId="volume" minWidth={70}>Объем</SortableTableHead>
-                      <SortableTableHead columnId="cost" minWidth={70}>Себест.</SortableTableHead>
-                      <SortableTableHead columnId="status" minWidth={70}>Статус</SortableTableHead>
-                      <SortableTableHead columnId="sync" minWidth={50} resizable={false}>Синхр.</SortableTableHead>
-                      <SortableTableHead columnId="actions" minWidth={40} resizable={false} draggable={false}></SortableTableHead>
+                      </ResizableTableHead>
+                      <ResizableTableHead columnId="photo" minWidth={50} resizable={false}>Фото</ResizableTableHead>
+                      <ResizableTableHead columnId="name" minWidth={120}>Название</ResizableTableHead>
+                      <ResizableTableHead columnId="desc" minWidth={100}>Описание</ResizableTableHead>
+                      <ResizableTableHead columnId="source" minWidth={80}>Источник</ResizableTableHead>
+                      <ResizableTableHead columnId="unit" minWidth={60}>Ед.</ResizableTableHead>
+                      <ResizableTableHead columnId="type" minWidth={70}>Вид</ResizableTableHead>
+                      <ResizableTableHead columnId="volume" minWidth={70}>Объем</ResizableTableHead>
+                      <ResizableTableHead columnId="cost" minWidth={70}>Себест.</ResizableTableHead>
+                      <ResizableTableHead columnId="status" minWidth={70}>Статус</ResizableTableHead>
+                      <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>Синхр.</ResizableTableHead>
+                      <ResizableTableHead columnId="actions" minWidth={40} resizable={false}></ResizableTableHead>
                     </ResizableTableRow>
                     {/* Row 2: Filters */}
                     <ResizableTableRow className="h-6 border-b-0">
