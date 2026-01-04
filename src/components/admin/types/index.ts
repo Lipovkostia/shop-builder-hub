@@ -99,6 +99,7 @@ export interface Catalog {
   name: string;
   description?: string;
   productIds: string[];
+  categoryIds?: string[];  // Категории в которых будет отображаться прайс-лист
   createdAt: string;
 }
 

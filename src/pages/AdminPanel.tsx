@@ -366,6 +366,7 @@ export default function AdminPanel() {
   const [currentCatalog, setCurrentCatalog] = useState<Catalog | null>(null);
   const [newCatalogName, setNewCatalogName] = useState("");
   const [newCatalogDescription, setNewCatalogDescription] = useState("");
+  const [newCatalogCategories, setNewCatalogCategories] = useState<Set<string>>(new Set());
   const [showAddCatalog, setShowAddCatalog] = useState(false);
   const [catalogProductSearch, setCatalogProductSearch] = useState("");
   const [selectedCatalogProducts, setSelectedCatalogProducts] = useState<Set<string>>(new Set());
@@ -793,12 +794,14 @@ export default function AdminPanel() {
       name: newCatalogName.trim(),
       description: newCatalogDescription.trim() || undefined,
       productIds: [],
+      categoryIds: Array.from(newCatalogCategories),
       createdAt: new Date().toISOString(),
     };
 
     setCatalogs(prev => [...prev, newCatalog]);
     setNewCatalogName("");
     setNewCatalogDescription("");
+    setNewCatalogCategories(new Set());
     setShowAddCatalog(false);
     
     toast({
@@ -2172,19 +2175,36 @@ export default function AdminPanel() {
                             <div className="flex items-center justify-between px-4 py-3">
                               <button
                                 onClick={() => openCatalog(catalog)}
-                                className="flex items-center gap-3 text-left hover:text-primary transition-colors"
+                                className="flex items-center gap-3 text-left hover:text-primary transition-colors flex-1 min-w-0"
                               >
-                                <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                                <span className="font-medium text-foreground">{catalog.name}</span>
-                                <Badge variant="outline" className="text-xs">
+                                <FolderOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <span className="font-medium text-foreground truncate">{catalog.name}</span>
+                                <Badge variant="outline" className="text-xs flex-shrink-0">
                                   {catalogProducts.length}
                                 </Badge>
+                                {catalog.categoryIds && catalog.categoryIds.length > 0 && (
+                                  <div className="flex gap-1 flex-shrink-0 ml-2">
+                                    {catalog.categoryIds.slice(0, 3).map(catId => {
+                                      const cat = categories.find(c => c.id === catId);
+                                      return cat ? (
+                                        <Badge key={catId} variant="secondary" className="text-[10px] px-1.5 py-0">
+                                          {cat.name}
+                                        </Badge>
+                                      ) : null;
+                                    })}
+                                    {catalog.categoryIds.length > 3 && (
+                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                        +{catalog.categoryIds.length - 3}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                )}
                               </button>
                               
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className={`h-8 w-8 transition-colors ${isExpanded ? 'bg-muted text-primary' : ''}`}
+                                className={`h-8 w-8 transition-colors flex-shrink-0 ${isExpanded ? 'bg-muted text-primary' : ''}`}
                                 onClick={() => setExpandedCatalogId(isExpanded ? null : catalog.id)}
                                 title="Настройки"
                               >
@@ -2194,27 +2214,62 @@ export default function AdminPanel() {
                             
                             {/* Expanded toolbar */}
                             {isExpanded && (
-                              <div className="border-t border-border bg-muted/30 px-4 py-3 flex items-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openCatalog(catalog)}
-                                >
-                                  <Edit2 className="h-3 w-3 mr-2" />
-                                  Редактировать
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  onClick={() => {
-                                    deleteCatalog(catalog.id);
-                                    setExpandedCatalogId(null);
-                                  }}
-                                >
-                                  <Trash2 className="h-3 w-3 mr-2" />
-                                  Удалить
-                                </Button>
+                              <div className="border-t border-border bg-muted/30 px-4 py-3 space-y-3">
+                                {/* Category selection */}
+                                <div className="space-y-2">
+                                  <Label className="text-xs text-muted-foreground">Категории</Label>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {categories.map((cat) => {
+                                      const isSelected = catalog.categoryIds?.includes(cat.id) ?? false;
+                                      return (
+                                        <button
+                                          key={cat.id}
+                                          onClick={() => {
+                                            setCatalogs(prev => prev.map(c => {
+                                              if (c.id !== catalog.id) return c;
+                                              const currentIds = c.categoryIds || [];
+                                              const newIds = isSelected
+                                                ? currentIds.filter(id => id !== cat.id)
+                                                : [...currentIds, cat.id];
+                                              return { ...c, categoryIds: newIds };
+                                            }));
+                                          }}
+                                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                            isSelected
+                                              ? "bg-primary text-primary-foreground"
+                                              : "bg-background border border-border text-muted-foreground hover:border-primary"
+                                          }`}
+                                        >
+                                          {cat.name}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                                
+                                {/* Actions */}
+                                <div className="flex items-center gap-2 pt-2 border-t border-border">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openCatalog(catalog)}
+                                  >
+                                    <Edit2 className="h-3 w-3 mr-2" />
+                                    Редактировать товары
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => {
+                                      deleteCatalog(catalog.id);
+                                      setExpandedCatalogId(null);
+                                    }}
+                                  >
+                                    <Trash2 className="h-3 w-3 mr-2" />
+                                    Удалить
+                                  </Button>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -2259,6 +2314,42 @@ export default function AdminPanel() {
                             onChange={(e) => setNewCatalogDescription(e.target.value)}
                           />
                         </div>
+                        <div className="space-y-2">
+                          <Label>Категории</Label>
+                          <p className="text-xs text-muted-foreground">
+                            Выберите категории, в которых будет отображаться прайс-лист
+                          </p>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {categories.map((cat) => (
+                              <button
+                                key={cat.id}
+                                onClick={() => {
+                                  setNewCatalogCategories(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(cat.id)) {
+                                      next.delete(cat.id);
+                                    } else {
+                                      next.add(cat.id);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                                  newCatalogCategories.has(cat.id)
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                }`}
+                              >
+                                {cat.name}
+                              </button>
+                            ))}
+                          </div>
+                          {newCatalogCategories.size > 0 && (
+                            <p className="text-xs text-primary mt-1">
+                              Выбрано: {newCatalogCategories.size}
+                            </p>
+                          )}
+                        </div>
                         <div className="flex gap-2">
                           <Button
                             onClick={createCatalog}
@@ -2273,6 +2364,7 @@ export default function AdminPanel() {
                               setShowAddCatalog(false);
                               setNewCatalogName("");
                               setNewCatalogDescription("");
+                              setNewCatalogCategories(new Set());
                             }}
                             variant="outline"
                           >
