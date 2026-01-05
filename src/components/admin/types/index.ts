@@ -108,12 +108,19 @@ export interface MoySkladAccount {
   lastSync?: string;
 }
 
-// Индивидуальные настройки цен товара в каталоге
+// Индивидуальные настройки товара в каталоге (всё кроме себестоимости)
 export interface CatalogProductPricing {
   productId: string;
+  // Переопределяемые поля для каталога
+  name?: string;                        // Название товара
+  description?: string;                 // Описание товара
+  unit?: string;                        // Единица измерения
+  unitWeight?: number;                  // Объём/вес единицы
+  packagingType?: PackagingType;        // Тип упаковки
   markup?: MarkupSettings;              // Наценка для этого каталога
   portionPrices?: PortionPrices;        // Цены порций для этого каталога
   status?: ProductStatus;               // Статус в этом каталоге
+  categories?: string[];                // Категории в этом каталоге
 }
 
 export interface Catalog {
