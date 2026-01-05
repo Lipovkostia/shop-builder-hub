@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, ChevronDown } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, ChevronDown, Filter, Image } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -51,11 +51,13 @@ function PortionIndicator({ type }: { type: "full" | "half" | "quarter" | "porti
 function ProductCard({ 
   product, 
   cart, 
-  onAddToCart 
+  onAddToCart,
+  showImages = true
 }: { 
   product: Product;
   cart: CartItem[];
   onAddToCart: (productId: string, variantIndex: number, price: number) => void;
+  showImages?: boolean;
 }) {
   const getCartQuantity = (variantIndex: number) => {
     const item = cart.find(
@@ -93,43 +95,45 @@ function ProductCard({
   const fullPrice = getFullPrice();
 
   return (
-    <div className="flex gap-1.5 px-1.5 py-0.5 h-[calc((100vh-44px)/8)] min-h-[72px] bg-background border-b border-border">
+    <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border ${showImages ? 'h-[calc((100vh-44px)/8)] min-h-[72px]' : 'h-9 min-h-[36px]'}`}>
       {/* Изображение */}
-      <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-center">
-        <img
-          src={product.image}
-          alt={product.name}
-          className="w-full h-full object-cover"
-        />
-        {product.isHit && (
-          <Badge className="absolute -top-0.5 -left-0.5 bg-destructive text-destructive-foreground text-[8px] px-1 py-0 rounded leading-tight">
-            ХИТ
-          </Badge>
-        )}
-      </div>
+      {showImages && (
+        <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-center">
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-full object-cover"
+          />
+          {product.isHit && (
+            <Badge className="absolute -top-0.5 -left-0.5 bg-destructive text-destructive-foreground text-[8px] px-1 py-0 rounded leading-tight">
+              ХИТ
+            </Badge>
+          )}
+        </div>
+      )}
 
       {/* Контент справа */}
-      <div className="flex-1 min-w-0 flex flex-col justify-center gap-0">
-        {/* Строка 1: Название */}
-        <div className="relative overflow-hidden">
-          <h3 className="font-medium text-xs text-foreground leading-tight whitespace-nowrap pr-6">
+      <div className={`flex-1 min-w-0 flex ${showImages ? 'flex-col justify-center gap-0' : 'flex-row items-center gap-2'}`}>
+        {/* Название */}
+        <div className={`relative overflow-hidden ${showImages ? '' : 'flex-1 min-w-0'}`}>
+          <h3 className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px]'}`}>
             {product.name}
           </h3>
-          <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />
+          {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />}
         </div>
 
-        {/* Строка 2: Цена за кг и за головку */}
-        <p className="text-[10px] text-muted-foreground leading-tight">
+        {/* Цена за кг */}
+        <p className={`text-muted-foreground leading-tight ${showImages ? 'text-[10px]' : 'text-[9px] whitespace-nowrap'}`}>
           {formatPrice(salePrice)}/{product.unit}
-          {fullPrice && (
+          {showImages && fullPrice && (
             <span className="ml-1">
               · головка ~{formatPrice(fullPrice)}
             </span>
           )}
         </p>
 
-        {/* Строка 3: Кнопки */}
-        <div className="flex items-center gap-0.5 mt-0.5 flex-wrap">
+        {/* Кнопки */}
+        <div className={`flex items-center gap-0.5 flex-wrap ${showImages ? 'mt-0.5' : ''}`}>
           {product.inStock ? (
             <>
               {/* Если есть packagingPrices (голова) - показываем кнопки с расчётными ценами */}
@@ -284,12 +288,16 @@ function StoreHeader({
   cart, 
   catalogs, 
   selectedCatalog, 
-  onSelectCatalog 
+  onSelectCatalog,
+  showImages,
+  onToggleImages
 }: { 
   cart: CartItem[];
   catalogs: Catalog[];
   selectedCatalog: Catalog | null;
   onSelectCatalog: (catalog: Catalog | null) => void;
+  showImages: boolean;
+  onToggleImages: () => void;
 }) {
   const navigate = useNavigate();
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -316,42 +324,61 @@ function StoreHeader({
         </button>
       </div>
 
-      {/* Селектор прайс-листа */}
-      <div className="h-10 flex items-center px-3 border-t border-border bg-muted/30">
-        <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors">
-            <FolderOpen className="w-4 h-4" />
-            <span>{selectedCatalog?.name || "Все товары"}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-[200px] bg-popover z-50">
-            <DropdownMenuItem 
-              onClick={() => onSelectCatalog(null)}
-              className="cursor-pointer"
-            >
-              <span className={!selectedCatalog ? "font-semibold" : ""}>Все товары</span>
-            </DropdownMenuItem>
-            {catalogs.map((catalog) => (
-              <DropdownMenuItem
-                key={catalog.id}
-                onClick={() => onSelectCatalog(catalog)}
+      {/* Панель управления с иконками */}
+      <div className="h-10 flex items-center justify-between px-3 border-t border-border bg-muted/30">
+        <div className="flex items-center gap-1">
+          {/* Селектор прайс-листа */}
+          <DropdownMenu>
+            <DropdownMenuTrigger className="p-2 rounded hover:bg-muted transition-colors">
+              <FolderOpen className="w-4 h-4 text-muted-foreground" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[200px] bg-popover z-50">
+              <DropdownMenuItem 
+                onClick={() => onSelectCatalog(null)}
                 className="cursor-pointer"
               >
-                <span className={selectedCatalog?.id === catalog.id ? "font-semibold" : ""}>
-                  {catalog.name}
-                </span>
-                <span className="ml-auto text-xs text-muted-foreground">
-                  {catalog.productIds.length}
-                </span>
+                <span className={!selectedCatalog ? "font-semibold" : ""}>Все товары</span>
               </DropdownMenuItem>
-            ))}
-            {catalogs.length === 0 && (
-              <DropdownMenuItem disabled>
-                <span className="text-muted-foreground">Нет прайс-листов</span>
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              {catalogs.map((catalog) => (
+                <DropdownMenuItem
+                  key={catalog.id}
+                  onClick={() => onSelectCatalog(catalog)}
+                  className="cursor-pointer"
+                >
+                  <span className={selectedCatalog?.id === catalog.id ? "font-semibold" : ""}>
+                    {catalog.name}
+                  </span>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {catalog.productIds.length}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+              {catalogs.length === 0 && (
+                <DropdownMenuItem disabled>
+                  <span className="text-muted-foreground">Нет прайс-листов</span>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Фильтр */}
+          <button className="p-2 rounded hover:bg-muted transition-colors">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+          </button>
+
+          {/* Переключатель изображений */}
+          <button 
+            onClick={onToggleImages}
+            className={`p-2 rounded transition-colors ${showImages ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+          >
+            <Image className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Название выбранного каталога */}
+        <span className="text-xs text-muted-foreground">
+          {selectedCatalog?.name || "Все товары"}
+        </span>
       </div>
     </header>
   );
@@ -362,6 +389,7 @@ export default function TestStore() {
   const [catalogs, setCatalogs] = useState<Catalog[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [selectedCatalog, setSelectedCatalog] = useState<Catalog | null>(null);
+  const [showImages, setShowImages] = useState(true);
 
   // Загрузка прайс-листов и товаров из localStorage
   useEffect(() => {
@@ -415,6 +443,8 @@ export default function TestStore() {
         catalogs={catalogs}
         selectedCatalog={selectedCatalog}
         onSelectCatalog={setSelectedCatalog}
+        showImages={showImages}
+        onToggleImages={() => setShowImages(!showImages)}
       />
       <main className="flex-1 overflow-auto">
         {displayProducts.length > 0 ? (
@@ -424,6 +454,7 @@ export default function TestStore() {
               product={product} 
               cart={cart}
               onAddToCart={handleAddToCart}
+              showImages={showImages}
             />
           ))
         ) : (
