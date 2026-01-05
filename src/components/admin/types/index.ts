@@ -61,12 +61,24 @@ export interface Product {
   roleVisibility?: string[];      // ID ролей которые видят товар
   category?: string;              // Категория товара (legacy, для обратной совместимости)
   categories?: string[];          // Категории товара (массив ID категорий)
+  syncedMoyskladImages?: string[]; // URL изображений из МойСклад которые были синхронизированы
 }
 
 // Категория товара
 export interface Category {
   id: string;
   name: string;
+}
+
+// Информация об изображении из МойСклад
+export interface MoySkladImageInfo {
+  miniature?: string;
+  fullSize?: string;
+  downloadHref?: string;
+  // Локальная информация о синхронизации
+  isSynced?: boolean;
+  syncedUrl?: string;
+  isSelected?: boolean;
 }
 
 export interface MoySkladProduct {

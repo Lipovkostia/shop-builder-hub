@@ -328,6 +328,7 @@ export type Database = {
           sku: string | null
           slug: string
           store_id: string
+          synced_moysklad_images: Json | null
           unit: string | null
           unit_weight: number | null
           updated_at: string
@@ -355,6 +356,7 @@ export type Database = {
           sku?: string | null
           slug: string
           store_id: string
+          synced_moysklad_images?: Json | null
           unit?: string | null
           unit_weight?: number | null
           updated_at?: string
@@ -382,6 +384,7 @@ export type Database = {
           sku?: string | null
           slug?: string
           store_id?: string
+          synced_moysklad_images?: Json | null
           unit?: string | null
           unit_weight?: number | null
           updated_at?: string
