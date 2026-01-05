@@ -108,12 +108,21 @@ export interface MoySkladAccount {
   lastSync?: string;
 }
 
+// Индивидуальные настройки цен товара в каталоге
+export interface CatalogProductPricing {
+  productId: string;
+  markup?: MarkupSettings;              // Наценка для этого каталога
+  portionPrices?: PortionPrices;        // Цены порций для этого каталога
+  status?: ProductStatus;               // Статус в этом каталоге
+}
+
 export interface Catalog {
   id: string;
   name: string;
   description?: string;
   productIds: string[];
   categoryIds?: string[];  // Категории в которых будет отображаться прайс-лист
+  productPricing?: CatalogProductPricing[];  // Индивидуальные цены для каждого товара в каталоге
   createdAt: string;
 }
 

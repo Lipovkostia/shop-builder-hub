@@ -44,6 +44,7 @@ import {
   MoySkladAccount,
   MoySkladImageInfo,
   Catalog,
+  CatalogProductPricing,
   CustomerRole,
   RoleProductPricing,
   formatPrice,
@@ -51,6 +52,8 @@ import {
   calculatePackagingPrices,
   packagingTypeLabels,
   PackagingType,
+  MarkupSettings,
+  PortionPrices,
 } from "@/components/admin/types";
 import { ProductPricingDialog } from "@/components/admin/ProductPricingDialog";
 import { CustomerRolesManager } from "@/components/admin/CustomerRolesManager";
@@ -1225,6 +1228,83 @@ export default function AdminPanel() {
 
   const getCatalogProducts = (catalog: Catalog) => {
     return allProducts.filter(p => catalog.productIds.includes(p.id));
+  };
+
+  // Get catalog-specific pricing for a product
+  const getCatalogProductPricing = (catalogId: string, productId: string): CatalogProductPricing | undefined => {
+    const catalog = catalogs.find(c => c.id === catalogId);
+    return catalog?.productPricing?.find(p => p.productId === productId);
+  };
+
+  // Update catalog-specific pricing for a product
+  const updateCatalogProductPricing = (
+    catalogId: string, 
+    productId: string, 
+    updates: Partial<CatalogProductPricing>
+  ) => {
+    setCatalogs(prev => prev.map(catalog => {
+      if (catalog.id !== catalogId) return catalog;
+      
+      const existingPricing = catalog.productPricing || [];
+      const existingIndex = existingPricing.findIndex(p => p.productId === productId);
+      
+      if (existingIndex >= 0) {
+        // Update existing pricing
+        const updatedPricing = [...existingPricing];
+        updatedPricing[existingIndex] = { 
+          ...updatedPricing[existingIndex], 
+          ...updates 
+        };
+        return { ...catalog, productPricing: updatedPricing };
+      } else {
+        // Add new pricing entry
+        return { 
+          ...catalog, 
+          productPricing: [
+            ...existingPricing, 
+            { productId, ...updates }
+          ] 
+        };
+      }
+    }));
+
+    // Also update currentCatalog if it's the same
+    if (currentCatalog?.id === catalogId) {
+      setCurrentCatalog(prev => {
+        if (!prev) return null;
+        const existingPricing = prev.productPricing || [];
+        const existingIndex = existingPricing.findIndex(p => p.productId === productId);
+        
+        if (existingIndex >= 0) {
+          const updatedPricing = [...existingPricing];
+          updatedPricing[existingIndex] = { 
+            ...updatedPricing[existingIndex], 
+            ...updates 
+          };
+          return { ...prev, productPricing: updatedPricing };
+        } else {
+          return { 
+            ...prev, 
+            productPricing: [
+              ...existingPricing, 
+              { productId, ...updates }
+            ] 
+          };
+        }
+      });
+    }
+  };
+
+  // Get effective sale price for catalog (using catalog markup or falling back to base product)
+  const getCatalogSalePrice = (product: Product, catalogPricing?: CatalogProductPricing): number => {
+    const buyPrice = product.buyPrice || 0;
+    const markup = catalogPricing?.markup || product.markup;
+    return calculateSalePrice(buyPrice, markup);
+  };
+
+  // Get effective status for catalog
+  const getCatalogProductStatus = (product: Product, catalogPricing?: CatalogProductPricing): ProductStatus => {
+    return catalogPricing?.status || product.status || (product.inStock ? "in_stock" : "out_of_stock");
   };
 
   const addNewAccount = async () => {
@@ -3294,6 +3374,9 @@ export default function AdminPanel() {
                     showDelete={false}
                   />
 
+                  <p className="text-xs text-muted-foreground mb-2">
+                    * Себестоимость берётся из ассортимента. Наценка, цены порций и статус — индивидуальны для каждого прайс-листа.
+                  </p>
                   <div className="bg-card rounded-lg border border-border overflow-x-auto">
                     <ResizableTable
                       storageKey="catalog-products-table"
@@ -3342,7 +3425,7 @@ export default function AdminPanel() {
                           <ResizableTableHead columnId="unit">Ед. изм.</ResizableTableHead>
                           <ResizableTableHead columnId="volume">Объем</ResizableTableHead>
                           <ResizableTableHead columnId="type">Вид</ResizableTableHead>
-                          <ResizableTableHead columnId="buyPrice">Себест-ть</ResizableTableHead>
+                          <ResizableTableHead columnId="buyPrice" title="Себестоимость из ассортимента (только чтение)">Себест-ть*</ResizableTableHead>
                           <ResizableTableHead columnId="markup">Наценка</ResizableTableHead>
                           <ResizableTableHead columnId="price">Цена</ResizableTableHead>
                           <ResizableTableHead columnId="priceFull">Целая</ResizableTableHead>
@@ -3357,12 +3440,22 @@ export default function AdminPanel() {
                           .filter(p => selectedCatalogProducts.has(p.id))
                           .filter(p => !catalogProductSearch || p.name.toLowerCase().includes(catalogProductSearch.toLowerCase()))
                           .map((product) => {
-                            const salePrice = getProductSalePrice(product);
+                            // Get catalog-specific pricing
+                            const catalogPricing = currentCatalog ? getCatalogProductPricing(currentCatalog.id, product.id) : undefined;
+                            
+                            // Use catalog markup or fall back to product markup
+                            const effectiveMarkup = catalogPricing?.markup || product.markup;
+                            const effectivePortionPrices = catalogPricing?.portionPrices || product.portionPrices;
+                            const effectiveStatus = getCatalogProductStatus(product, catalogPricing);
+                            
+                            // Calculate prices using catalog-specific markup
+                            const salePrice = getCatalogSalePrice(product, catalogPricing);
                             const packagingPrices = calculatePackagingPrices(
                               salePrice,
                               product.unitWeight,
                               product.packagingType,
-                              product.customVariantPrices
+                              product.customVariantPrices,
+                              effectivePortionPrices
                             );
                             
                             return (
@@ -3394,169 +3487,156 @@ export default function AdminPanel() {
                                   />
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="name" className="font-medium">
-                                  <InlineEditableCell
-                                    value={product.name}
-                                    onSave={(value) => updateProduct({ ...product, name: value })}
-                                    placeholder="Название"
-                                  />
+                                  <span className="text-xs">{product.name}</span>
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="category">
-                                  <InlineMultiSelectCell
-                                    values={product.categories || (product.category ? [product.category] : [])}
-                                    options={categories.map(c => ({ value: c.id, label: c.name }))}
-                                    onSave={(values) => updateProduct({ ...product, categories: values, category: undefined })}
-                                    onAddOption={(newCategory) => {
-                                      const newId = `cat_${Date.now()}`;
-                                      setCategories(prev => [...prev, { id: newId, name: newCategory }]);
-                                    }}
-                                    placeholder="Без категории"
-                                  />
+                                  <span className="text-xs text-muted-foreground">
+                                    {product.categories?.map(catId => 
+                                      categories.find(c => c.id === catId)?.name
+                                    ).filter(Boolean).join(", ") || "-"}
+                                  </span>
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="description">
-                                  <InlineEditableCell
-                                    value={product.description || ""}
-                                    onSave={(value) => updateProduct({ ...product, description: value })}
-                                    placeholder="Описание"
-                                  />
+                                  <span className="text-xs text-muted-foreground truncate max-w-[150px] block">
+                                    {product.description || "-"}
+                                  </span>
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="unit">
-                                  <InlineSelectCell
-                                    value={product.unit}
-                                    options={allUnitOptions}
-                                    onSave={(value) => updateProduct({ ...product, unit: value })}
-                                    onAddOption={(newUnit) => setCustomUnits(prev => [...prev, newUnit])}
-                                  />
+                                  <span className="text-xs text-muted-foreground">{product.unit}</span>
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="volume">
-                                  <InlinePriceCell
-                                    value={product.unitWeight || 0}
-                                    onSave={(value) => updateProduct({ ...product, unitWeight: value })}
-                                    placeholder="0"
-                                    suffix=""
-                                  />
+                                  <span className="text-xs text-muted-foreground">
+                                    {product.unitWeight || "-"}
+                                  </span>
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="type">
-                                  <InlineSelectCell
-                                    value={product.packagingType || "piece"}
-                                    options={allPackagingOptions}
-                                    onSave={(value) => updateProduct({ 
-                                      ...product, 
-                                      packagingType: value as PackagingType,
-                                      productType: value === "head" ? "weight" : "piece"
-                                    })}
-                                    onAddOption={(newType) => setCustomPackagingTypes(prev => [...prev, newType])}
-                                  />
+                                  <span className="text-xs text-muted-foreground">
+                                    {product.packagingType ? packagingTypeLabels[product.packagingType as PackagingType] || product.packagingType : "-"}
+                                  </span>
                                 </ResizableTableCell>
+                                {/* Себестоимость - read-only, берётся из ассортимента */}
                                 <ResizableTableCell columnId="buyPrice">
-                                  <InlinePriceCell
-                                    value={product.buyPrice || 0}
-                                    onSave={(value) => updateProduct({ ...product, buyPrice: value })}
-                                    placeholder="0"
-                                  />
+                                  <span className="text-xs text-muted-foreground">
+                                    {product.buyPrice ? formatPrice(product.buyPrice) : "-"}
+                                  </span>
                                 </ResizableTableCell>
+                                {/* Наценка - независимая для каждого каталога */}
                                 <ResizableTableCell columnId="markup">
                                   <InlineMarkupCell
-                                    value={product.markup}
-                                    onSave={(markup) => updateProduct({ ...product, markup })}
+                                    value={effectiveMarkup}
+                                    onSave={(markup) => {
+                                      if (currentCatalog) {
+                                        updateCatalogProductPricing(currentCatalog.id, product.id, { markup });
+                                      }
+                                    }}
                                   />
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="price" className="font-medium">
-                                  {formatPrice(salePrice)}/{product.unit}
+                                  <span className="text-xs">{formatPrice(salePrice)}/{product.unit}</span>
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="priceFull">
                                   {packagingPrices ? (
                                     <span className="text-xs font-medium">{formatPrice(packagingPrices.full)}</span>
                                   ) : "-"}
                                 </ResizableTableCell>
+                                {/* Цена за ½ - независимая для каждого каталога */}
                                 <ResizableTableCell columnId="priceHalf">
                                   {product.packagingType === "head" ? (
                                     <div className="flex flex-col gap-0.5">
                                       <InlinePriceCell
-                                        value={product.portionPrices?.halfPricePerKg}
-                                        onSave={(value) => updateProduct({ 
-                                          ...product, 
-                                          portionPrices: { 
-                                            ...product.portionPrices, 
-                                            halfPricePerKg: value 
-                                          } 
-                                        })}
+                                        value={effectivePortionPrices?.halfPricePerKg}
+                                        onSave={(value) => {
+                                          if (currentCatalog) {
+                                            updateCatalogProductPricing(currentCatalog.id, product.id, { 
+                                              portionPrices: { 
+                                                ...effectivePortionPrices, 
+                                                halfPricePerKg: value 
+                                              } 
+                                            });
+                                          }
+                                        }}
                                         placeholder="авто"
                                         suffix={`/${product.unit}`}
                                       />
-                                      {product.unitWeight && product.portionPrices?.halfPricePerKg && (
+                                      {product.unitWeight && effectivePortionPrices?.halfPricePerKg && (
                                         <span className="text-[10px] text-muted-foreground">
-                                          = {formatPrice(product.portionPrices.halfPricePerKg * (product.unitWeight / 2))}
+                                          = {formatPrice(effectivePortionPrices.halfPricePerKg * (product.unitWeight / 2))}
                                         </span>
                                       )}
                                     </div>
                                   ) : "-"}
                                 </ResizableTableCell>
+                                {/* Цена за ¼ - независимая для каждого каталога */}
                                 <ResizableTableCell columnId="priceQuarter">
                                   {product.packagingType === "head" ? (
                                     <div className="flex flex-col gap-0.5">
                                       <InlinePriceCell
-                                        value={product.portionPrices?.quarterPricePerKg}
-                                        onSave={(value) => updateProduct({ 
-                                          ...product, 
-                                          portionPrices: { 
-                                            ...product.portionPrices, 
-                                            quarterPricePerKg: value 
-                                          } 
-                                        })}
+                                        value={effectivePortionPrices?.quarterPricePerKg}
+                                        onSave={(value) => {
+                                          if (currentCatalog) {
+                                            updateCatalogProductPricing(currentCatalog.id, product.id, { 
+                                              portionPrices: { 
+                                                ...effectivePortionPrices, 
+                                                quarterPricePerKg: value 
+                                              } 
+                                            });
+                                          }
+                                        }}
                                         placeholder="авто"
                                         suffix={`/${product.unit}`}
                                       />
-                                      {product.unitWeight && product.portionPrices?.quarterPricePerKg && (
+                                      {product.unitWeight && effectivePortionPrices?.quarterPricePerKg && (
                                         <span className="text-[10px] text-muted-foreground">
-                                          = {formatPrice(product.portionPrices.quarterPricePerKg * (product.unitWeight / 4))}
+                                          = {formatPrice(effectivePortionPrices.quarterPricePerKg * (product.unitWeight / 4))}
                                         </span>
                                       )}
                                     </div>
                                   ) : "-"}
                                 </ResizableTableCell>
+                                {/* Цена за порцию - независимая для каждого каталога */}
                                 <ResizableTableCell columnId="pricePortion">
                                   {product.packagingType === "head" ? (
                                     <InlinePriceCell
-                                      value={product.portionPrices?.portionPrice}
-                                      onSave={(value) => updateProduct({ 
-                                        ...product, 
-                                        portionPrices: { 
-                                          ...product.portionPrices, 
-                                          portionPrice: value 
-                                        } 
-                                      })}
+                                      value={effectivePortionPrices?.portionPrice}
+                                      onSave={(value) => {
+                                        if (currentCatalog) {
+                                          updateCatalogProductPricing(currentCatalog.id, product.id, { 
+                                            portionPrices: { 
+                                              ...effectivePortionPrices, 
+                                              portionPrice: value 
+                                            } 
+                                          });
+                                        }
+                                      }}
                                       placeholder="—"
                                       suffix=""
                                     />
                                   ) : "-"}
                                 </ResizableTableCell>
+                                {/* Статус - независимый для каждого каталога */}
                                 <ResizableTableCell columnId="status">
                                   <button
                                     onClick={() => {
-                                      const currentStatus = product.status || (product.inStock ? "in_stock" : "out_of_stock");
+                                      if (!currentCatalog) return;
                                       const nextStatus: ProductStatus = 
-                                        currentStatus === "in_stock" ? "out_of_stock" :
-                                        currentStatus === "out_of_stock" ? "hidden" : "in_stock";
-                                      updateProduct({ 
-                                        ...product, 
-                                        status: nextStatus,
-                                        inStock: nextStatus === "in_stock"
-                                      });
+                                        effectiveStatus === "in_stock" ? "out_of_stock" :
+                                        effectiveStatus === "out_of_stock" ? "hidden" : "in_stock";
+                                      updateCatalogProductPricing(currentCatalog.id, product.id, { status: nextStatus });
                                     }}
                                     className="focus:outline-none"
                                   >
                                     <Badge
-                                      variant={product.status === "hidden" ? "outline" : (product.status === "in_stock" || (!product.status && product.inStock)) ? "default" : "secondary"}
+                                      variant={effectiveStatus === "hidden" ? "outline" : effectiveStatus === "in_stock" ? "default" : "secondary"}
                                       className={`text-xs cursor-pointer transition-colors ${
-                                        product.status === "hidden"
+                                        effectiveStatus === "hidden"
                                           ? "bg-muted/50 text-muted-foreground border-dashed"
-                                          : (product.status === "in_stock" || (!product.status && product.inStock))
+                                          : effectiveStatus === "in_stock"
                                             ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800"
                                             : "bg-muted text-muted-foreground hover:bg-muted/80"
                                       }`}
                                     >
-                                      {product.status === "hidden" ? "Скрыт" : 
-                                       (product.status === "in_stock" || (!product.status && product.inStock)) ? "В наличии" : "Нет"}
+                                      {effectiveStatus === "hidden" ? "Скрыт" : 
+                                       effectiveStatus === "in_stock" ? "В наличии" : "Нет"}
                                     </Badge>
                                   </button>
                                 </ResizableTableCell>
