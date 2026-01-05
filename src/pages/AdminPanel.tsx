@@ -308,6 +308,15 @@ export default function AdminPanel() {
   const { toast } = useToast();
   const { user, profile, isSuperAdmin, loading: authLoading } = useAuth();
   const isMobile = useIsMobile();
+
+  // Require auth for admin actions (uploads need an authenticated session)
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      const redirect = `${window.location.pathname}${window.location.search}`;
+      navigate(`/auth?redirect=${encodeURIComponent(redirect)}`);
+    }
+  }, [authLoading, user, navigate]);
   
   // Store context - for super admin switching
   const storeIdFromUrl = searchParams.get('storeId');
@@ -1280,6 +1289,17 @@ export default function AdminPanel() {
 
   // Download selected images for a product
   const downloadSelectedImages = async (productId: string) => {
+    if (!user) {
+      const redirect = `${window.location.pathname}${window.location.search}`;
+      toast({
+        title: "Нужен вход",
+        description: "Чтобы загружать фото, войдите в аккаунт",
+        variant: "destructive",
+      });
+      navigate(`/auth?redirect=${encodeURIComponent(redirect)}`);
+      return;
+    }
+
     const selectedIndexes = selectedImagesForDownload[productId];
     if (!selectedIndexes || selectedIndexes.size === 0 || !currentAccount) return;
 

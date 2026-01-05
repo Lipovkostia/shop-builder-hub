@@ -22,6 +22,8 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const redirectTo = searchParams.get("redirect") || "/dashboard";
   
   const [isLogin, setIsLogin] = useState(searchParams.get("mode") !== "register");
   const [isLoading, setIsLoading] = useState(false);
@@ -31,20 +33,20 @@ const Auth = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        navigate("/dashboard");
+        navigate(redirectTo);
       }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        navigate("/dashboard");
+        navigate(redirectTo);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, redirectTo]);
 
   const validateForm = () => {
     try {
