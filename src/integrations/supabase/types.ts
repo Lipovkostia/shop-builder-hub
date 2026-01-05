@@ -424,6 +424,7 @@ export type Database = {
       }
       products: {
         Row: {
+          auto_sync: boolean | null
           buy_price: number | null
           category_id: string | null
           compare_price: number | null
@@ -434,6 +435,8 @@ export type Database = {
           is_active: boolean | null
           markup_type: string | null
           markup_value: number | null
+          moysklad_account_id: string | null
+          moysklad_id: string | null
           name: string
           packaging_type: string | null
           portion_weight: number | null
@@ -445,6 +448,7 @@ export type Database = {
           quantity: number
           sku: string | null
           slug: string
+          source: string | null
           store_id: string
           synced_moysklad_images: Json | null
           unit: string | null
@@ -452,6 +456,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auto_sync?: boolean | null
           buy_price?: number | null
           category_id?: string | null
           compare_price?: number | null
@@ -462,6 +467,8 @@ export type Database = {
           is_active?: boolean | null
           markup_type?: string | null
           markup_value?: number | null
+          moysklad_account_id?: string | null
+          moysklad_id?: string | null
           name: string
           packaging_type?: string | null
           portion_weight?: number | null
@@ -473,6 +480,7 @@ export type Database = {
           quantity?: number
           sku?: string | null
           slug: string
+          source?: string | null
           store_id: string
           synced_moysklad_images?: Json | null
           unit?: string | null
@@ -480,6 +488,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auto_sync?: boolean | null
           buy_price?: number | null
           category_id?: string | null
           compare_price?: number | null
@@ -490,6 +499,8 @@ export type Database = {
           is_active?: boolean | null
           markup_type?: string | null
           markup_value?: number | null
+          moysklad_account_id?: string | null
+          moysklad_id?: string | null
           name?: string
           packaging_type?: string | null
           portion_weight?: number | null
@@ -501,6 +512,7 @@ export type Database = {
           quantity?: number
           sku?: string | null
           slug?: string
+          source?: string | null
           store_id?: string
           synced_moysklad_images?: Json | null
           unit?: string | null
@@ -513,6 +525,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_moysklad_account_id_fkey"
+            columns: ["moysklad_account_id"]
+            isOneToOne: false
+            referencedRelation: "moysklad_accounts"
             referencedColumns: ["id"]
           },
           {
