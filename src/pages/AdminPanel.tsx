@@ -1329,10 +1329,32 @@ export default function AdminPanel() {
 
       if (newImages.length > 0) {
         // Update product with new images
+        const updatedImages = [...(linkedProduct.images || []), ...newImages];
+        const updatedSyncedMoyskladImages = [...(linkedProduct.syncedMoyskladImages || []), ...newSyncedUrls];
+        
+        // Save to database
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({
+            images: updatedImages,
+            synced_moysklad_images: updatedSyncedMoyskladImages,
+          })
+          .eq('id', linkedProduct.id);
+
+        if (updateError) {
+          console.error("Error saving images to database:", updateError);
+          toast({
+            title: "Ошибка",
+            description: "Изображения загружены, но не удалось сохранить в базу данных",
+            variant: "destructive",
+          });
+          return;
+        }
+
         const updatedProduct = {
           ...linkedProduct,
-          images: [...(linkedProduct.images || []), ...newImages],
-          syncedMoyskladImages: [...(linkedProduct.syncedMoyskladImages || []), ...newSyncedUrls],
+          images: updatedImages,
+          syncedMoyskladImages: updatedSyncedMoyskladImages,
         };
         
         setImportedProducts(prev => prev.map(p => 
