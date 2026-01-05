@@ -38,6 +38,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
+import {
   Product,
   ProductStatus,
   MoySkladProduct,
@@ -418,6 +424,39 @@ export default function AdminPanel() {
   
   // Bulk selection state for products
   const [selectedBulkProducts, setSelectedBulkProducts] = useState<Set<string>>(new Set());
+
+  // Column visibility state for products table
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
+    drag: true,
+    sync: true,
+    checkbox: true,
+    photo: true,
+    name: true,
+    desc: true,
+    source: true,
+    unit: true,
+    type: true,
+    volume: true,
+    cost: true,
+  });
+
+  const columnLabels: Record<string, string> = {
+    drag: "⋮⋮",
+    sync: "Синхр.",
+    checkbox: "Выбор",
+    photo: "Фото",
+    name: "Название",
+    desc: "Описание",
+    source: "Источник",
+    unit: "Ед.",
+    type: "Вид",
+    volume: "Объем",
+    cost: "Себест.",
+  };
+
+  const toggleColumnVisibility = (columnId: string) => {
+    setVisibleColumns(prev => ({ ...prev, [columnId]: !prev[columnId] }));
+  };
 
   // Customer roles state
   const [customerRoles, setCustomerRoles] = useState<CustomerRole[]>([]);
@@ -2290,28 +2329,56 @@ export default function AdminPanel() {
       >
           {activeSection === "products" && (
             <>
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground">Все товары</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Всего товаров: {filteredAllProducts.length} (из МойСклад: {importedProducts.length})
-                  </p>
+              <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Товары</span>
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
+                    {filteredAllProducts.length}
+                  </Badge>
+                  {importedProducts.length > 0 && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
+                      МС: {importedProducts.length}
+                    </Badge>
+                  )}
                 </div>
-                {importedProducts.some(p => p.autoSync) && (
-                  <Button
-                    onClick={() => syncAutoSyncProducts()}
-                    disabled={isSyncing}
-                    variant="outline"
-                    size="sm"
-                  >
-                    {isSyncing ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                    )}
-                    Синхронизировать
-                  </Button>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {importedProducts.some(p => p.autoSync) && (
+                    <Button
+                      onClick={() => syncAutoSyncProducts()}
+                      disabled={isSyncing}
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                    >
+                      {isSyncing ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3" />
+                      )}
+                      <span className="hidden sm:inline ml-1">Синхр.</span>
+                    </Button>
+                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1">
+                        <Settings className="h-3 w-3" />
+                        <span className="hidden sm:inline">Столбцы</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      {Object.entries(columnLabels).map(([id, label]) => (
+                        <DropdownMenuCheckboxItem
+                          key={id}
+                          checked={visibleColumns[id]}
+                          onCheckedChange={() => toggleColumnVisibility(id)}
+                          className="text-xs"
+                        >
+                          {label}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
               {/* Bulk Edit Panel */}
@@ -2347,105 +2414,148 @@ export default function AdminPanel() {
                   <ResizableTableHeader>
                     {/* Row 1: Column names */}
                     <ResizableTableRow className="h-6">
-                      <ResizableTableHead columnId="drag" minWidth={32} resizable={false}>
-                        <span className="text-muted-foreground/50 text-[10px]">⋮⋮</span>
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>Синхр.</ResizableTableHead>
-                      <ResizableTableHead columnId="checkbox" minWidth={40} resizable={false}>
-                        <Checkbox
-                          checked={selectedBulkProducts.size === filteredAllProducts.length && filteredAllProducts.length > 0}
-                          onCheckedChange={selectAllBulkProducts}
-                        />
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="photo" minWidth={50} resizable={false}>Фото</ResizableTableHead>
-                      <ResizableTableHead columnId="name" minWidth={120}>Название</ResizableTableHead>
-                      <ResizableTableHead columnId="desc" minWidth={100}>Описание</ResizableTableHead>
-                      <ResizableTableHead columnId="source" minWidth={80}>Источник</ResizableTableHead>
-                      <ResizableTableHead columnId="unit" minWidth={60}>Ед.</ResizableTableHead>
-                      <ResizableTableHead columnId="type" minWidth={70}>Вид</ResizableTableHead>
-                      <ResizableTableHead columnId="volume" minWidth={70}>Объем</ResizableTableHead>
-                      <ResizableTableHead columnId="cost" minWidth={70}>Себест.</ResizableTableHead>
+                      {visibleColumns.drag && (
+                        <ResizableTableHead columnId="drag" minWidth={32} resizable={false}>
+                          <span className="text-muted-foreground/50 text-[10px]">⋮⋮</span>
+                        </ResizableTableHead>
+                      )}
+                      {visibleColumns.sync && (
+                        <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>Синхр.</ResizableTableHead>
+                      )}
+                      {visibleColumns.checkbox && (
+                        <ResizableTableHead columnId="checkbox" minWidth={40} resizable={false}>
+                          <Checkbox
+                            checked={selectedBulkProducts.size === filteredAllProducts.length && filteredAllProducts.length > 0}
+                            onCheckedChange={selectAllBulkProducts}
+                          />
+                        </ResizableTableHead>
+                      )}
+                      {visibleColumns.photo && (
+                        <ResizableTableHead columnId="photo" minWidth={50} resizable={false}>Фото</ResizableTableHead>
+                      )}
+                      {visibleColumns.name && (
+                        <ResizableTableHead columnId="name" minWidth={120}>Название</ResizableTableHead>
+                      )}
+                      {visibleColumns.desc && (
+                        <ResizableTableHead columnId="desc" minWidth={100}>Описание</ResizableTableHead>
+                      )}
+                      {visibleColumns.source && (
+                        <ResizableTableHead columnId="source" minWidth={80}>Источник</ResizableTableHead>
+                      )}
+                      {visibleColumns.unit && (
+                        <ResizableTableHead columnId="unit" minWidth={60}>Ед.</ResizableTableHead>
+                      )}
+                      {visibleColumns.type && (
+                        <ResizableTableHead columnId="type" minWidth={70}>Вид</ResizableTableHead>
+                      )}
+                      {visibleColumns.volume && (
+                        <ResizableTableHead columnId="volume" minWidth={70}>Объем</ResizableTableHead>
+                      )}
+                      {visibleColumns.cost && (
+                        <ResizableTableHead columnId="cost" minWidth={70}>Себест.</ResizableTableHead>
+                      )}
                     </ResizableTableRow>
                     {/* Row 2: Filters */}
                     <ResizableTableRow className="h-6 border-b-0">
-                      <ResizableTableHead columnId="drag" minWidth={32} resizable={false}></ResizableTableHead>
-                      <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
-                        <SelectFilter
-                          value={allProductsFilters.sync}
-                          onChange={(v) => setAllProductsFilters(f => ({...f, sync: v}))}
-                          options={[
-                            { value: "synced", label: "Да" },
-                            { value: "notSynced", label: "Нет" },
-                          ]}
-                          placeholder="Все"
-                        />
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="checkbox" minWidth={40} resizable={false}></ResizableTableHead>
-                      <ResizableTableHead columnId="photo" minWidth={50} resizable={false}></ResizableTableHead>
-                      <ResizableTableHead columnId="name" minWidth={120} resizable={false}>
-                        <ColumnFilter 
-                          value={allProductsFilters.name} 
-                          onChange={(v) => setAllProductsFilters(f => ({...f, name: v}))}
-                          placeholder="Поиск..."
-                        />
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="desc" minWidth={100} resizable={false}>
-                        <ColumnFilter 
-                          value={allProductsFilters.desc} 
-                          onChange={(v) => setAllProductsFilters(f => ({...f, desc: v}))}
-                          placeholder="Поиск..."
-                        />
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="source" minWidth={80} resizable={false}>
-                        <SelectFilter
-                          value={allProductsFilters.source}
-                          onChange={(v) => setAllProductsFilters(f => ({...f, source: v}))}
-                          options={[
-                            { value: "moysklad", label: "МС" },
-                            { value: "local", label: "Лок" },
-                          ]}
-                          placeholder="Все"
-                        />
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="unit" minWidth={60} resizable={false}>
-                        <SelectFilter
-                          value={allProductsFilters.unit}
-                          onChange={(v) => setAllProductsFilters(f => ({...f, unit: v}))}
-                          options={[
-                            { value: "кг", label: "кг" },
-                            { value: "шт", label: "шт" },
-                            { value: "л", label: "л" },
-                            { value: "уп", label: "уп" },
-                          ]}
-                          placeholder="Все"
-                        />
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="type" minWidth={70} resizable={false}>
-                        <SelectFilter
-                          value={allProductsFilters.type}
-                          onChange={(v) => setAllProductsFilters(f => ({...f, type: v}))}
-                          options={[
-                            { value: "weight", label: "Вес" },
-                            { value: "piece", label: "Шт" },
-                          ]}
-                          placeholder="Все"
-                        />
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="volume" minWidth={70} resizable={false}>
-                        <ColumnFilter 
-                          value={allProductsFilters.volume} 
-                          onChange={(v) => setAllProductsFilters(f => ({...f, volume: v}))}
-                          placeholder="Поиск..."
-                        />
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="cost" minWidth={70} resizable={false}>
-                        <ColumnFilter 
-                          value={allProductsFilters.cost} 
-                          onChange={(v) => setAllProductsFilters(f => ({...f, cost: v}))}
-                          placeholder="Поиск..."
-                        />
-                      </ResizableTableHead>
-                      
+                      {visibleColumns.drag && (
+                        <ResizableTableHead columnId="drag" minWidth={32} resizable={false}></ResizableTableHead>
+                      )}
+                      {visibleColumns.sync && (
+                        <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
+                          <SelectFilter
+                            value={allProductsFilters.sync}
+                            onChange={(v) => setAllProductsFilters(f => ({...f, sync: v}))}
+                            options={[
+                              { value: "synced", label: "Да" },
+                              { value: "notSynced", label: "Нет" },
+                            ]}
+                            placeholder="Все"
+                          />
+                        </ResizableTableHead>
+                      )}
+                      {visibleColumns.checkbox && (
+                        <ResizableTableHead columnId="checkbox" minWidth={40} resizable={false}></ResizableTableHead>
+                      )}
+                      {visibleColumns.photo && (
+                        <ResizableTableHead columnId="photo" minWidth={50} resizable={false}></ResizableTableHead>
+                      )}
+                      {visibleColumns.name && (
+                        <ResizableTableHead columnId="name" minWidth={120} resizable={false}>
+                          <ColumnFilter 
+                            value={allProductsFilters.name} 
+                            onChange={(v) => setAllProductsFilters(f => ({...f, name: v}))}
+                            placeholder="Поиск..."
+                          />
+                        </ResizableTableHead>
+                      )}
+                      {visibleColumns.desc && (
+                        <ResizableTableHead columnId="desc" minWidth={100} resizable={false}>
+                          <ColumnFilter 
+                            value={allProductsFilters.desc} 
+                            onChange={(v) => setAllProductsFilters(f => ({...f, desc: v}))}
+                            placeholder="Поиск..."
+                          />
+                        </ResizableTableHead>
+                      )}
+                      {visibleColumns.source && (
+                        <ResizableTableHead columnId="source" minWidth={80} resizable={false}>
+                          <SelectFilter
+                            value={allProductsFilters.source}
+                            onChange={(v) => setAllProductsFilters(f => ({...f, source: v}))}
+                            options={[
+                              { value: "moysklad", label: "МС" },
+                              { value: "local", label: "Лок" },
+                            ]}
+                            placeholder="Все"
+                          />
+                        </ResizableTableHead>
+                      )}
+                      {visibleColumns.unit && (
+                        <ResizableTableHead columnId="unit" minWidth={60} resizable={false}>
+                          <SelectFilter
+                            value={allProductsFilters.unit}
+                            onChange={(v) => setAllProductsFilters(f => ({...f, unit: v}))}
+                            options={[
+                              { value: "кг", label: "кг" },
+                              { value: "шт", label: "шт" },
+                              { value: "л", label: "л" },
+                              { value: "уп", label: "уп" },
+                            ]}
+                            placeholder="Все"
+                          />
+                        </ResizableTableHead>
+                      )}
+                      {visibleColumns.type && (
+                        <ResizableTableHead columnId="type" minWidth={70} resizable={false}>
+                          <SelectFilter
+                            value={allProductsFilters.type}
+                            onChange={(v) => setAllProductsFilters(f => ({...f, type: v}))}
+                            options={[
+                              { value: "weight", label: "Вес" },
+                              { value: "piece", label: "Шт" },
+                            ]}
+                            placeholder="Все"
+                          />
+                        </ResizableTableHead>
+                      )}
+                      {visibleColumns.volume && (
+                        <ResizableTableHead columnId="volume" minWidth={70} resizable={false}>
+                          <ColumnFilter 
+                            value={allProductsFilters.volume} 
+                            onChange={(v) => setAllProductsFilters(f => ({...f, volume: v}))}
+                            placeholder="Поиск..."
+                          />
+                        </ResizableTableHead>
+                      )}
+                      {visibleColumns.cost && (
+                        <ResizableTableHead columnId="cost" minWidth={70} resizable={false}>
+                          <ColumnFilter 
+                            value={allProductsFilters.cost} 
+                            onChange={(v) => setAllProductsFilters(f => ({...f, cost: v}))}
+                            placeholder="Поиск..."
+                          />
+                        </ResizableTableHead>
+                      )}
                     </ResizableTableRow>
                   </ResizableTableHeader>
                   <SortableTableBody>
@@ -2604,6 +2714,7 @@ export default function AdminPanel() {
                             <OrderedCellsContainer 
                               cells={cellsMap} 
                               fixedStart={["drag", "sync", "checkbox"]}
+                              visibleColumns={visibleColumns}
                             />
                           </SortableTableRow>
                           {/* Expanded images row */}
