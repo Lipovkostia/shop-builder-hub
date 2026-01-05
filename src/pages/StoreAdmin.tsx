@@ -10,10 +10,10 @@ import { useCustomerRoles } from "@/hooks/useCustomerRoles";
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Import existing admin components
-import { ProductPricingDialog } from "@/components/admin/ProductPricingDialog";
+// Import admin components
 import { CustomerRolesManager } from "@/components/admin/CustomerRolesManager";
 import { CustomerRole } from "@/components/admin/types";
+import { ProductCard } from "@/components/admin/ProductCard";
 
 // Loading Skeleton
 function AdminSkeleton() {
@@ -76,8 +76,7 @@ export default function StoreAdmin() {
   const { roles, createRole, updateRole, deleteRole } = useCustomerRoles(store?.id || null);
   
   const [activeTab, setActiveTab] = useState("products");
-  const [editingProduct, setEditingProduct] = useState<any>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
 
   // Check loading states
   const isLoading = authLoading || storeLoading || ownerLoading;
@@ -108,56 +107,20 @@ export default function StoreAdmin() {
     return <AccessDenied />;
   }
 
-  // Convert products to format expected by existing components
-  const formattedProducts = products.map(p => ({
-    id: p.id,
-    name: p.name,
-    description: p.description || "",
-    pricePerUnit: p.price,
-    buyPrice: p.buy_price || undefined,
-    markup: p.markup_type && p.markup_value !== null ? {
-      type: p.markup_type as "percent" | "rubles",
-      value: p.markup_value,
-    } : undefined,
-    unit: p.unit || "шт",
-    image: p.images?.[0] || "",
-    images: p.images || [],
-    productType: "weight" as const,
-    packagingType: (p.packaging_type as any) || "piece",
-    unitWeight: p.unit_weight || undefined,
-    portionWeight: p.portion_weight || undefined,
-    inStock: p.is_active !== false,
-    isHit: false,
-    status: p.is_active === false ? "hidden" as const : "in_stock" as const,
-    source: "local" as const,
-    portionPrices: {
-      fullPricePerKg: p.price_full || undefined,
-      halfPricePerKg: p.price_half || undefined,
-      quarterPricePerKg: p.price_quarter || undefined,
-      portionPrice: p.price_portion || undefined,
-    },
-  }));
+  // Helper to get catalog IDs for a product
+  const getProductCatalogIds = (productId: string): string[] => {
+    const catalogSet = productVisibility[productId];
+    return catalogSet ? Array.from(catalogSet) : [];
+  };
 
-  const handleProductSave = async (updatedProduct: any) => {
-    await updateProduct(updatedProduct.id, {
-      name: updatedProduct.name,
-      description: updatedProduct.description,
-      price: updatedProduct.pricePerUnit,
-      buy_price: updatedProduct.buyPrice,
-      markup_type: updatedProduct.markup?.type,
-      markup_value: updatedProduct.markup?.value,
-      unit: updatedProduct.unit,
-      packaging_type: updatedProduct.packagingType,
-      unit_weight: updatedProduct.unitWeight,
-      portion_weight: updatedProduct.portionWeight,
-      is_active: updatedProduct.status !== "hidden",
-      price_full: updatedProduct.portionPrices?.fullPricePerKg,
-      price_half: updatedProduct.portionPrices?.halfPricePerKg,
-      price_quarter: updatedProduct.portionPrices?.quarterPricePerKg,
-      price_portion: updatedProduct.portionPrices?.portionPrice,
-    });
-    setEditDialogOpen(false);
-    setEditingProduct(null);
+  // Handle inline product save
+  const handleProductSave = async (productId: string, updates: Partial<typeof products[0]>) => {
+    await updateProduct(productId, updates);
+  };
+
+  // Handle catalog changes for a product
+  const handleCatalogsChange = (productId: string, catalogIds: string[]) => {
+    setProductCatalogs(productId, catalogIds);
   };
 
   return (
@@ -237,42 +200,22 @@ export default function StoreAdmin() {
                   <p className="text-sm">Добавьте первый товар или импортируйте из МойСклад</p>
                 </div>
               ) : (
-                <div className="divide-y">
+                <div>
                   {products.map((product) => (
-                    <div
+                    <ProductCard
                       key={product.id}
-                      className="p-4 flex items-center gap-4 hover:bg-muted/30 cursor-pointer"
-                      onClick={() => {
-                        const formatted = formattedProducts.find(p => p.id === product.id);
-                        if (formatted) {
-                          setEditingProduct(formatted);
-                          setEditDialogOpen(true);
-                        }
-                      }}
-                    >
-                      <div className="w-12 h-12 rounded bg-muted flex-shrink-0 overflow-hidden">
-                        {product.images?.[0] ? (
-                          <img
-                            src={product.images[0]}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="h-6 w-6 text-muted-foreground" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{product.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {product.price} ₽ / {product.unit || "шт"}
-                        </p>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {productVisibility[product.id]?.size || 0} прайс-листов
-                      </div>
-                    </div>
+                      product={product}
+                      isExpanded={expandedProductId === product.id}
+                      onToggleExpand={() => 
+                        setExpandedProductId(
+                          expandedProductId === product.id ? null : product.id
+                        )
+                      }
+                      catalogs={catalogs}
+                      productCatalogIds={getProductCatalogIds(product.id)}
+                      onSave={handleProductSave}
+                      onCatalogsChange={handleCatalogsChange}
+                    />
                   ))}
                 </div>
               )}
@@ -353,18 +296,6 @@ export default function StoreAdmin() {
         </Tabs>
       </main>
 
-      {/* Product Edit Dialog */}
-      {editingProduct && (
-        <ProductPricingDialog
-          product={editingProduct}
-          open={editDialogOpen}
-          onOpenChange={setEditDialogOpen}
-          onSave={handleProductSave}
-          customerRoles={[]}
-          rolePricing={[]}
-          onSaveRolePricing={() => {}}
-        />
-      )}
     </div>
   );
 }
