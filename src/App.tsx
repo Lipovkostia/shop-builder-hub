@@ -10,6 +10,8 @@ import Dashboard from "./pages/Dashboard";
 import TestStore from "./pages/TestStore";
 import AdminPanel from "./pages/AdminPanel";
 import SuperAdmin from "./pages/SuperAdmin";
+import StoreFront from "./pages/StoreFront";
+import StoreAdmin from "./pages/StoreAdmin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +30,9 @@ const App = () => (
             <Route path="/test-store" element={<TestStore />} />
             <Route path="/admin" element={<AdminPanel />} />
             <Route path="/super-admin" element={<SuperAdmin />} />
+            {/* Store routes */}
+            <Route path="/store/:subdomain" element={<StoreFront />} />
+            <Route path="/store/:subdomain/admin" element={<StoreAdmin />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
