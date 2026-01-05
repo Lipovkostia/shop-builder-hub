@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, Tag } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -374,6 +374,11 @@ export default function AdminPanel() {
   const [editingCatalogName, setEditingCatalogName] = useState(false);
   const [selectedCatalogBulkProducts, setSelectedCatalogBulkProducts] = useState<Set<string>>(new Set());
   const [expandedCatalogId, setExpandedCatalogId] = useState<string | null>(null);
+
+  // Expanded product images state for import section
+  const [expandedProductImages, setExpandedProductImages] = useState<string | null>(null);
+  const [productImagesCache, setProductImagesCache] = useState<Record<string, { miniature: string; fullSize: string }[]>>({});
+  const [loadingProductImages, setLoadingProductImages] = useState<string | null>(null);
 
   // Product editing state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -1029,6 +1034,84 @@ export default function AdminPanel() {
     setCurrentAccount(null);
     setMoyskladProducts([]);
     setSelectedProducts(new Set());
+    setExpandedProductImages(null);
+    setProductImagesCache({});
+  };
+
+  // Toggle expanded images for a product and fetch them if needed
+  const toggleProductImages = async (productId: string) => {
+    if (expandedProductImages === productId) {
+      setExpandedProductImages(null);
+      return;
+    }
+
+    setExpandedProductImages(productId);
+
+    // If already cached, don't refetch
+    if (productImagesCache[productId]) {
+      return;
+    }
+
+    if (!currentAccount) return;
+
+    setLoadingProductImages(productId);
+    try {
+      const { data: imagesData } = await supabase.functions.invoke('moysklad', {
+        body: { 
+          action: 'get_product_images', 
+          productId: productId,
+          login: currentAccount.login,
+          password: currentAccount.password
+        }
+      });
+
+      if (imagesData?.images && imagesData.images.length > 0) {
+        // Fetch all images content
+        const imagePromises = imagesData.images.map(async (img: { miniature?: string; fullSize?: string; downloadHref?: string }) => {
+          let miniatureData = '';
+          let fullSizeData = '';
+
+          if (img.miniature) {
+            const { data: miniContent } = await supabase.functions.invoke('moysklad', {
+              body: { 
+                action: 'get_image_content', 
+                imageUrl: img.miniature,
+                login: currentAccount.login,
+                password: currentAccount.password
+              }
+            });
+            miniatureData = miniContent?.imageData || '';
+          }
+
+          if (img.fullSize || img.downloadHref) {
+            const { data: fullContent } = await supabase.functions.invoke('moysklad', {
+              body: { 
+                action: 'get_image_content', 
+                imageUrl: img.fullSize || img.downloadHref,
+                login: currentAccount.login,
+                password: currentAccount.password
+              }
+            });
+            fullSizeData = fullContent?.imageData || '';
+          }
+
+          return { miniature: miniatureData, fullSize: fullSizeData };
+        });
+
+        const loadedImages = await Promise.all(imagePromises);
+        setProductImagesCache(prev => ({
+          ...prev,
+          [productId]: loadedImages.filter(img => img.miniature || img.fullSize)
+        }));
+      } else {
+        setProductImagesCache(prev => ({ ...prev, [productId]: [] }));
+      }
+    } catch (err) {
+      console.error("Error fetching product images:", err);
+      setProductImagesCache(prev => ({ ...prev, [productId]: [] }));
+    } finally {
+      setLoadingProductImages(null);
+    }
   };
 
   const toggleProductSelection = (productId: string) => {
@@ -2056,90 +2139,140 @@ export default function AdminPanel() {
                             {filteredMoyskladProducts.map((product) => {
                               const linkedProduct = getLinkedProduct(product.id);
                               const isLinked = !!linkedProduct;
+                              const isExpanded = expandedProductImages === product.id;
+                              const cachedImages = productImagesCache[product.id];
+                              const isLoadingImages = loadingProductImages === product.id;
                               
                               return (
-                                <TableRow 
-                                  key={product.id}
-                                  className={selectedProducts.has(product.id) ? "bg-primary/5" : ""}
-                                >
-                                  <TableCell>
-                                    <Checkbox
-                                      checked={selectedProducts.has(product.id)}
-                                      onCheckedChange={() => toggleProductSelection(product.id)}
-                                      disabled={isLinked}
-                                    />
-                                  </TableCell>
-                                  <TableCell className="font-medium">
-                                    <div className="flex items-center gap-2">
-                                      {product.name}
-                                      {isLinked && (
-                                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
-                                          Импортирован
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-muted-foreground text-sm">
-                                    {product.article || "-"}
-                                  </TableCell>
-                                  <TableCell className="text-muted-foreground text-sm">
-                                    {product.code || "-"}
-                                  </TableCell>
-                                  <TableCell className="font-medium">
-                                    {product.price > 0 ? formatPrice(product.price) : "-"}
-                                  </TableCell>
-                                  <TableCell className="text-muted-foreground">
-                                    {product.buyPrice > 0 ? formatPrice(product.buyPrice) : "-"}
-                                  </TableCell>
-                                  <TableCell>
-                                    <Badge
-                                      variant={product.quantity > 0 || product.stock > 0 ? "default" : "secondary"}
-                                      className={`text-xs ${
-                                        product.quantity > 0 || product.stock > 0
-                                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                                          : "bg-muted text-muted-foreground"
-                                      }`}
-                                    >
-                                      {product.quantity || product.stock || 0}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell className="text-sm text-muted-foreground">
-                                    {product.uom || "-"}
-                                  </TableCell>
-                                  <TableCell>
-                                    {product.imagesCount > 0 ? (
-                                      <Badge variant="outline" className="text-xs">
-                                        <ImageIcon className="h-3 w-3 mr-1" />
-                                        {product.imagesCount}
+                                <React.Fragment key={product.id}>
+                                  <TableRow 
+                                    className={selectedProducts.has(product.id) ? "bg-primary/5" : ""}
+                                  >
+                                    <TableCell>
+                                      <Checkbox
+                                        checked={selectedProducts.has(product.id)}
+                                        onCheckedChange={() => toggleProductSelection(product.id)}
+                                        disabled={isLinked}
+                                      />
+                                    </TableCell>
+                                    <TableCell className="font-medium">
+                                      <div className="flex items-center gap-2">
+                                        {product.name}
+                                        {isLinked && (
+                                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+                                            Импортирован
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">
+                                      {product.article || "-"}
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">
+                                      {product.code || "-"}
+                                    </TableCell>
+                                    <TableCell className="font-medium">
+                                      {product.price > 0 ? formatPrice(product.price) : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground">
+                                      {product.buyPrice > 0 ? formatPrice(product.buyPrice) : "-"}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge
+                                        variant={product.quantity > 0 || product.stock > 0 ? "default" : "secondary"}
+                                        className={`text-xs ${
+                                          product.quantity > 0 || product.stock > 0
+                                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                                            : "bg-muted text-muted-foreground"
+                                        }`}
+                                      >
+                                        {product.quantity || product.stock || 0}
                                       </Badge>
-                                    ) : (
-                                      <span className="text-muted-foreground text-xs">-</span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className={`h-8 w-8 ${
-                                        isLinked && linkedProduct?.autoSync 
-                                          ? "text-primary" 
-                                          : "text-muted-foreground hover:text-primary"
-                                      }`}
-                                      onClick={() => toggleImportAutoSync(product.id)}
-                                      title={
-                                        isLinked 
-                                          ? (linkedProduct?.autoSync ? "Авто-синхронизация включена" : "Включить авто-синхронизацию")
-                                          : "Связать и включить авто-синхронизацию"
-                                      }
-                                    >
-                                      {isLinked && linkedProduct?.autoSync ? (
-                                        <Lock className="h-4 w-4" />
+                                    </TableCell>
+                                    <TableCell className="text-sm text-muted-foreground">
+                                      {product.uom || "-"}
+                                    </TableCell>
+                                    <TableCell>
+                                      {product.imagesCount > 0 ? (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 px-2 gap-1 text-xs"
+                                          onClick={() => toggleProductImages(product.id)}
+                                        >
+                                          <ImageIcon className="h-3 w-3" />
+                                          {product.imagesCount}
+                                          {isExpanded ? (
+                                            <ChevronUp className="h-3 w-3" />
+                                          ) : (
+                                            <ChevronDown className="h-3 w-3" />
+                                          )}
+                                        </Button>
                                       ) : (
-                                        <Unlock className="h-4 w-4" />
+                                        <span className="text-muted-foreground text-xs">-</span>
                                       )}
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={`h-8 w-8 ${
+                                          isLinked && linkedProduct?.autoSync 
+                                            ? "text-primary" 
+                                            : "text-muted-foreground hover:text-primary"
+                                        }`}
+                                        onClick={() => toggleImportAutoSync(product.id)}
+                                        title={
+                                          isLinked 
+                                            ? (linkedProduct?.autoSync ? "Авто-синхронизация включена" : "Включить авто-синхронизацию")
+                                            : "Связать и включить авто-синхронизацию"
+                                        }
+                                      >
+                                        {isLinked && linkedProduct?.autoSync ? (
+                                          <Lock className="h-4 w-4" />
+                                        ) : (
+                                          <Unlock className="h-4 w-4" />
+                                        )}
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                  
+                                  {/* Expanded row with images */}
+                                  {isExpanded && (
+                                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                                      <TableCell colSpan={10} className="p-4">
+                                        {isLoadingImages ? (
+                                          <div className="flex items-center justify-center py-4">
+                                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                            <span className="ml-2 text-sm text-muted-foreground">Загрузка фотографий...</span>
+                                          </div>
+                                        ) : cachedImages && cachedImages.length > 0 ? (
+                                          <div className="flex gap-3 overflow-x-auto pb-2">
+                                            {cachedImages.map((img, idx) => (
+                                              <a
+                                                key={idx}
+                                                href={img.fullSize || img.miniature}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex-shrink-0 block"
+                                              >
+                                                <img
+                                                  src={img.miniature || img.fullSize}
+                                                  alt={`${product.name} - фото ${idx + 1}`}
+                                                  className="h-24 w-24 object-cover rounded-lg border border-border hover:border-primary transition-colors cursor-pointer"
+                                                />
+                                              </a>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <div className="text-center py-4 text-sm text-muted-foreground">
+                                            Не удалось загрузить фотографии
+                                          </div>
+                                        )}
+                                      </TableCell>
+                                    </TableRow>
+                                  )}
+                                </React.Fragment>
                               );
                             })}
                           </TableBody>
