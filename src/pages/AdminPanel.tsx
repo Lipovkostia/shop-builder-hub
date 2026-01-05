@@ -61,6 +61,7 @@ import { InlinePriceCell } from "@/components/admin/InlinePriceCell";
 import { InlineMarkupCell } from "@/components/admin/InlineMarkupCell";
 import { MobileTabNav } from "@/components/admin/MobileTabNav";
 import { BulkEditPanel } from "@/components/admin/BulkEditPanel";
+import { uploadProductImages } from "@/hooks/useProductImages";
 
 const MOYSKLAD_ACCOUNTS_KEY = "moysklad_accounts";
 const IMPORTED_PRODUCTS_KEY = "moysklad_imported_products";
@@ -586,12 +587,20 @@ export default function AdminPanel() {
     }));
   };
 
-  // Save all products to localStorage for TestStore (without images to avoid quota issues)
+  // Save all products to localStorage for TestStore
+  // Images from Storage (URLs) are saved, but base64 images are excluded to avoid quota issues
   useEffect(() => {
     const allProductsData = [...localTestProducts, ...importedProducts].map(p => {
-      // Remove images from localStorage to avoid QuotaExceededError
-      const { images, ...productWithoutImages } = p;
-      return productWithoutImages;
+      // Keep images if they are URLs (from Storage), exclude if they are base64
+      const filteredImages = p.images?.filter(img => !img.startsWith('data:'));
+      const filteredImage = p.image?.startsWith('data:') ? undefined : p.image;
+      const filteredImageFull = p.imageFull?.startsWith('data:') ? undefined : p.imageFull;
+      return { 
+        ...p, 
+        images: filteredImages?.length ? filteredImages : undefined,
+        image: filteredImage,
+        imageFull: filteredImageFull,
+      };
     });
     try {
       localStorage.setItem("admin_all_products", JSON.stringify(allProductsData));
@@ -1184,13 +1193,15 @@ export default function AdminPanel() {
           });
           
           if (imagesData?.images && imagesData.images.length > 0) {
-            // Fetch all images (full size)
+            // Fetch all images (full size) for best quality
             const imagePromises = imagesData.images.map(async (imageInfo: { miniature?: string; fullSize?: string; downloadHref?: string }) => {
-              if (imageInfo.fullSize || imageInfo.downloadHref) {
+              // Prefer fullSize, then downloadHref for best quality
+              const imageUrl = imageInfo.fullSize || imageInfo.downloadHref;
+              if (imageUrl) {
                 const { data: fullContent } = await supabase.functions.invoke('moysklad', {
                   body: { 
                     action: 'get_image_content', 
-                    imageUrl: imageInfo.fullSize || imageInfo.downloadHref,
+                    imageUrl: imageUrl,
                     login: currentAccount.login,
                     password: currentAccount.password
                   }
@@ -1200,13 +1211,19 @@ export default function AdminPanel() {
               return '';
             });
             
-            const loadedImages = await Promise.all(imagePromises);
-            allImages = loadedImages.filter(img => img);
+            const loadedBase64Images = await Promise.all(imagePromises);
+            const validBase64Images = loadedBase64Images.filter(img => img);
             
-            // Use first image as main thumbnail
-            if (allImages.length > 0) {
-              imageFullUrl = allImages[0];
-              imageUrl = allImages[0];
+            // Upload images to Storage and get public URLs
+            if (validBase64Images.length > 0) {
+              const productStorageId = `ms_${msProduct.id}`;
+              allImages = await uploadProductImages(validBase64Images, productStorageId);
+              
+              // Use first image as main thumbnail
+              if (allImages.length > 0) {
+                imageFullUrl = allImages[0];
+                imageUrl = allImages[0];
+              }
             }
           }
         } catch (err) {
