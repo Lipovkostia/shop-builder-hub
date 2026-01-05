@@ -3375,7 +3375,7 @@ export default function AdminPanel() {
                   />
 
                   <p className="text-xs text-muted-foreground mb-2">
-                    * Себестоимость берётся из ассортимента. Наценка, цены порций и статус — индивидуальны для каждого прайс-листа.
+                    * Фото, название, описание, ед. изм., объём и вид синхронизируются из ассортимента. Категории, наценка, цены порций и статус — индивидуальны для каждого прайс-листа.
                   </p>
                   <div className="bg-card rounded-lg border border-border overflow-x-auto">
                     <ResizableTable
@@ -3443,23 +3443,26 @@ export default function AdminPanel() {
                             // Get catalog-specific pricing/data
                             const catalogPricing = currentCatalog ? getCatalogProductPricing(currentCatalog.id, product.id) : undefined;
                             
-                            // Use catalog values or fall back to product values
-                            const effectiveName = catalogPricing?.name ?? product.name;
-                            const effectiveDescription = catalogPricing?.description ?? product.description;
-                            const effectiveUnit = catalogPricing?.unit ?? product.unit;
-                            const effectiveUnitWeight = catalogPricing?.unitWeight ?? product.unitWeight;
-                            const effectivePackagingType = catalogPricing?.packagingType ?? product.packagingType;
+                            // Base product info (synced from assortment - read only in catalogs)
+                            // These fields are always from the base product and cannot be edited per catalog
+                            const baseName = product.name;
+                            const baseDescription = product.description;
+                            const baseUnit = product.unit;
+                            const baseUnitWeight = product.unitWeight;
+                            const basePackagingType = product.packagingType;
+                            
+                            // Catalog-specific values (editable per catalog)
                             const effectiveCategories = catalogPricing?.categories ?? product.categories;
                             const effectiveMarkup = catalogPricing?.markup ?? product.markup;
                             const effectivePortionPrices = catalogPricing?.portionPrices ?? product.portionPrices;
                             const effectiveStatus = getCatalogProductStatus(product, catalogPricing);
                             
-                            // Calculate prices using catalog-specific markup and unitWeight
+                            // Calculate prices using catalog-specific markup but base product unitWeight
                             const salePrice = getCatalogSalePrice(product, catalogPricing);
                             const packagingPrices = calculatePackagingPrices(
                               salePrice,
-                              effectiveUnitWeight,
-                              effectivePackagingType,
+                              baseUnitWeight,
+                              basePackagingType,
                               product.customVariantPrices,
                               effectivePortionPrices
                             );
@@ -3485,24 +3488,17 @@ export default function AdminPanel() {
                                     }}
                                   />
                                 </ResizableTableCell>
+                                {/* Фото - из ассортимента (только чтение) */}
                                 <ResizableTableCell columnId="photo">
                                   <img
                                     src={product.image}
-                                    alt={effectiveName}
+                                    alt={baseName}
                                     className="w-10 h-10 rounded object-cover"
                                   />
                                 </ResizableTableCell>
-                                {/* Название - редактируемое для каталога */}
+                                {/* Название - из ассортимента (только чтение) */}
                                 <ResizableTableCell columnId="name" className="font-medium">
-                                  <InlineEditableCell
-                                    value={effectiveName}
-                                    onSave={(newName) => {
-                                      if (currentCatalog) {
-                                        updateCatalogProductPricing(currentCatalog.id, product.id, { name: newName });
-                                      }
-                                    }}
-                                    placeholder="Название"
-                                  />
+                                  <span className="text-sm" title="Синхронизировано из ассортимента">{baseName}</span>
                                 </ResizableTableCell>
                                 {/* Категории - редактируемые для каталога */}
                                 <ResizableTableCell columnId="category">
@@ -3517,64 +3513,27 @@ export default function AdminPanel() {
                                     placeholder="Категории"
                                   />
                                 </ResizableTableCell>
-                                {/* Описание - редактируемое для каталога */}
+                                {/* Описание - из ассортимента (только чтение) */}
                                 <ResizableTableCell columnId="description">
-                                  <InlineEditableCell
-                                    value={effectiveDescription || ""}
-                                    onSave={(desc) => {
-                                      if (currentCatalog) {
-                                        updateCatalogProductPricing(currentCatalog.id, product.id, { description: desc });
-                                      }
-                                    }}
-                                    placeholder="Описание"
-                                    className="max-w-[150px]"
-                                  />
+                                  <span className="text-xs text-muted-foreground truncate max-w-[150px] block" title={baseDescription || "Нет описания"}>
+                                    {baseDescription || "-"}
+                                  </span>
                                 </ResizableTableCell>
-                                {/* Единица измерения - редактируемая для каталога */}
+                                {/* Единица измерения - из ассортимента (только чтение) */}
                                 <ResizableTableCell columnId="unit">
-                                  <InlineSelectCell
-                                    value={effectiveUnit}
-                                    options={[
-                                      { value: "кг", label: "кг" },
-                                      { value: "шт", label: "шт" },
-                                      { value: "л", label: "л" },
-                                      { value: "уп", label: "уп" },
-                                      { value: "г", label: "г" },
-                                      { value: "мл", label: "мл" },
-                                    ]}
-                                    onSave={(unit) => {
-                                      if (currentCatalog) {
-                                        updateCatalogProductPricing(currentCatalog.id, product.id, { unit });
-                                      }
-                                    }}
-                                    allowAddNew={true}
-                                  />
+                                  <span className="text-xs" title="Синхронизировано из ассортимента">{baseUnit}</span>
                                 </ResizableTableCell>
-                                {/* Объём - редактируемый для каталога */}
+                                {/* Объём - из ассортимента (только чтение) */}
                                 <ResizableTableCell columnId="volume">
-                                  <InlinePriceCell
-                                    value={effectiveUnitWeight}
-                                    onSave={(weight) => {
-                                      if (currentCatalog) {
-                                        updateCatalogProductPricing(currentCatalog.id, product.id, { unitWeight: weight });
-                                      }
-                                    }}
-                                    placeholder="-"
-                                    suffix=""
-                                  />
+                                  <span className="text-xs text-muted-foreground" title="Синхронизировано из ассортимента">
+                                    {baseUnitWeight ?? "-"}
+                                  </span>
                                 </ResizableTableCell>
-                                {/* Тип упаковки - редактируемый для каталога */}
+                                {/* Вид упаковки - из ассортимента (только чтение) */}
                                 <ResizableTableCell columnId="type">
-                                  <InlineSelectCell
-                                    value={effectivePackagingType || ""}
-                                    options={Object.entries(packagingTypeLabels).map(([value, label]) => ({ value, label }))}
-                                    onSave={(type) => {
-                                      if (currentCatalog) {
-                                        updateCatalogProductPricing(currentCatalog.id, product.id, { packagingType: type as PackagingType });
-                                      }
-                                    }}
-                                    allowAddNew={false}
-                                  />
+                                  <span className="text-xs" title="Синхронизировано из ассортимента">
+                                    {basePackagingType ? packagingTypeLabels[basePackagingType as PackagingType] || basePackagingType : "-"}
+                                  </span>
                                 </ResizableTableCell>
                                 {/* Себестоимость - read-only, берётся из ассортимента */}
                                 <ResizableTableCell columnId="buyPrice">
@@ -3594,7 +3553,7 @@ export default function AdminPanel() {
                                   />
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="price" className="font-medium">
-                                  <span className="text-xs">{formatPrice(salePrice)}/{effectiveUnit}</span>
+                                  <span className="text-xs">{formatPrice(salePrice)}/{baseUnit}</span>
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="priceFull">
                                   {packagingPrices ? (
@@ -3603,7 +3562,7 @@ export default function AdminPanel() {
                                 </ResizableTableCell>
                                 {/* Цена за ½ - независимая для каждого каталога */}
                                 <ResizableTableCell columnId="priceHalf">
-                                  {effectivePackagingType === "head" ? (
+                                  {basePackagingType === "head" ? (
                                     <div className="flex flex-col gap-0.5">
                                       <InlinePriceCell
                                         value={effectivePortionPrices?.halfPricePerKg}
@@ -3618,11 +3577,11 @@ export default function AdminPanel() {
                                           }
                                         }}
                                         placeholder="авто"
-                                        suffix={`/${effectiveUnit}`}
+                                        suffix={`/${baseUnit}`}
                                       />
-                                      {effectiveUnitWeight && effectivePortionPrices?.halfPricePerKg && (
+                                      {baseUnitWeight && effectivePortionPrices?.halfPricePerKg && (
                                         <span className="text-[10px] text-muted-foreground">
-                                          = {formatPrice(effectivePortionPrices.halfPricePerKg * (effectiveUnitWeight / 2))}
+                                          = {formatPrice(effectivePortionPrices.halfPricePerKg * (baseUnitWeight / 2))}
                                         </span>
                                       )}
                                     </div>
@@ -3630,7 +3589,7 @@ export default function AdminPanel() {
                                 </ResizableTableCell>
                                 {/* Цена за ¼ - независимая для каждого каталога */}
                                 <ResizableTableCell columnId="priceQuarter">
-                                  {effectivePackagingType === "head" ? (
+                                  {basePackagingType === "head" ? (
                                     <div className="flex flex-col gap-0.5">
                                       <InlinePriceCell
                                         value={effectivePortionPrices?.quarterPricePerKg}
@@ -3645,11 +3604,11 @@ export default function AdminPanel() {
                                           }
                                         }}
                                         placeholder="авто"
-                                        suffix={`/${effectiveUnit}`}
+                                        suffix={`/${baseUnit}`}
                                       />
-                                      {effectiveUnitWeight && effectivePortionPrices?.quarterPricePerKg && (
+                                      {baseUnitWeight && effectivePortionPrices?.quarterPricePerKg && (
                                         <span className="text-[10px] text-muted-foreground">
-                                          = {formatPrice(effectivePortionPrices.quarterPricePerKg * (effectiveUnitWeight / 4))}
+                                          = {formatPrice(effectivePortionPrices.quarterPricePerKg * (baseUnitWeight / 4))}
                                         </span>
                                       )}
                                     </div>
@@ -3657,7 +3616,7 @@ export default function AdminPanel() {
                                 </ResizableTableCell>
                                 {/* Цена за порцию - независимая для каждого каталога */}
                                 <ResizableTableCell columnId="pricePortion">
-                                  {effectivePackagingType === "head" ? (
+                                  {basePackagingType === "head" ? (
                                     <InlinePriceCell
                                       value={effectivePortionPrices?.portionPrice}
                                       onSave={(value) => {
