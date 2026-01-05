@@ -56,6 +56,7 @@ import { CustomerRolesManager } from "@/components/admin/CustomerRolesManager";
 import { InlineProductRow } from "@/components/admin/InlineProductRow";
 import { InlineEditableCell } from "@/components/admin/InlineEditableCell";
 import { InlineSelectCell } from "@/components/admin/InlineSelectCell";
+import { InlineMultiSelectCell } from "@/components/admin/InlineMultiSelectCell";
 import { InlinePriceCell } from "@/components/admin/InlinePriceCell";
 import { InlineMarkupCell } from "@/components/admin/InlineMarkupCell";
 import { MobileTabNav } from "@/components/admin/MobileTabNav";
@@ -2584,18 +2585,15 @@ export default function AdminPanel() {
                                   />
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="category">
-                                  <InlineSelectCell
-                                    value={product.category || "__none__"}
-                                    options={[
-                                      { value: "__none__", label: "Без категории" },
-                                      ...categories.map(c => ({ value: c.id, label: c.name }))
-                                    ]}
-                                    onSave={(value) => updateProduct({ ...product, category: value === "__none__" ? undefined : value })}
+                                  <InlineMultiSelectCell
+                                    values={product.categories || (product.category ? [product.category] : [])}
+                                    options={categories.map(c => ({ value: c.id, label: c.name }))}
+                                    onSave={(values) => updateProduct({ ...product, categories: values, category: undefined })}
                                     onAddOption={(newCategory) => {
                                       const newId = `cat_${Date.now()}`;
                                       setCategories(prev => [...prev, { id: newId, name: newCategory }]);
-                                      updateProduct({ ...product, category: newId });
                                     }}
+                                    placeholder="Без категории"
                                   />
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="description">
