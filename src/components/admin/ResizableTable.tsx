@@ -427,9 +427,10 @@ interface OrderedCellsContainerProps {
   cells: Record<string, React.ReactNode>;
   fixedStart?: string[];
   fixedEnd?: string[];
+  visibleColumns?: Record<string, boolean>;
 }
 
-export function OrderedCellsContainer({ cells, fixedStart = [], fixedEnd = [] }: OrderedCellsContainerProps) {
+export function OrderedCellsContainer({ cells, fixedStart = [], fixedEnd = [], visibleColumns }: OrderedCellsContainerProps) {
   const columnOrder = useColumnOrder();
   
   const reorderableColumns = columnOrder.filter(
@@ -438,9 +439,14 @@ export function OrderedCellsContainer({ cells, fixedStart = [], fixedEnd = [] }:
   
   const finalOrder = [...fixedStart, ...reorderableColumns, ...fixedEnd];
   
+  // Filter by visibility if provided
+  const visibleOrder = visibleColumns 
+    ? finalOrder.filter(id => visibleColumns[id] !== false)
+    : finalOrder;
+  
   return (
     <>
-      {finalOrder.map(columnId => cells[columnId])}
+      {visibleOrder.map(columnId => cells[columnId])}
     </>
   );
 }
