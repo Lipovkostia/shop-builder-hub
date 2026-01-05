@@ -380,6 +380,9 @@ export default function AdminPanel() {
   const [productImagesCache, setProductImagesCache] = useState<Record<string, { miniature: string; fullSize: string }[]>>({});
   const [loadingProductImages, setLoadingProductImages] = useState<string | null>(null);
 
+  // Expanded product images state for assortment section
+  const [expandedAssortmentImages, setExpandedAssortmentImages] = useState<string | null>(null);
+
   // Product editing state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -1159,6 +1162,7 @@ export default function AdminPanel() {
       // Fetch images for this product - both miniature and full size
       let imageUrl = "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop";
       let imageFullUrl = imageUrl;
+      let allImages: string[] = [];
       
       if (msProduct.imagesCount > 0) {
         try {
@@ -1171,37 +1175,30 @@ export default function AdminPanel() {
             }
           });
           
-          if (imagesData?.images?.[0]) {
-            const imageInfo = imagesData.images[0];
-            
-            // Get miniature for thumbnail
-            if (imageInfo.miniature) {
-              const { data: imageContent } = await supabase.functions.invoke('moysklad', {
-                body: { 
-                  action: 'get_image_content', 
-                  imageUrl: imageInfo.miniature,
-                  login: currentAccount.login,
-                  password: currentAccount.password
-                }
-              });
-              if (imageContent?.imageData) {
-                imageUrl = imageContent.imageData;
+          if (imagesData?.images && imagesData.images.length > 0) {
+            // Fetch all images (full size)
+            const imagePromises = imagesData.images.map(async (imageInfo: { miniature?: string; fullSize?: string; downloadHref?: string }) => {
+              if (imageInfo.fullSize || imageInfo.downloadHref) {
+                const { data: fullContent } = await supabase.functions.invoke('moysklad', {
+                  body: { 
+                    action: 'get_image_content', 
+                    imageUrl: imageInfo.fullSize || imageInfo.downloadHref,
+                    login: currentAccount.login,
+                    password: currentAccount.password
+                  }
+                });
+                return fullContent?.imageData || '';
               }
-            }
+              return '';
+            });
             
-            // Get full size image
-            if (imageInfo.fullSize || imageInfo.downloadHref) {
-              const { data: fullImageContent } = await supabase.functions.invoke('moysklad', {
-                body: { 
-                  action: 'get_image_content', 
-                  imageUrl: imageInfo.fullSize || imageInfo.downloadHref,
-                  login: currentAccount.login,
-                  password: currentAccount.password
-                }
-              });
-              if (fullImageContent?.imageData) {
-                imageFullUrl = fullImageContent.imageData;
-              }
+            const loadedImages = await Promise.all(imagePromises);
+            allImages = loadedImages.filter(img => img);
+            
+            // Use first image as main thumbnail
+            if (allImages.length > 0) {
+              imageFullUrl = allImages[0];
+              imageUrl = allImages[0];
             }
           }
         } catch (err) {
@@ -1219,6 +1216,7 @@ export default function AdminPanel() {
         unit: msProduct.uom || "кг",
         image: imageUrl,
         imageFull: imageFullUrl,
+        images: allImages.length > 0 ? allImages : undefined,
         productType: msProduct.weight > 0 ? "weight" : "piece",
         weightVariants: msProduct.weight > 0 ? [
           { type: "full", weight: msProduct.weight },
@@ -1714,17 +1712,42 @@ export default function AdminPanel() {
                         ),
                         photo: (
                           <ResizableTableCell key="photo" columnId="photo">
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              className="w-8 h-8 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
-                              onClick={() => {
-                                if (product.imageFull) {
-                                  window.open(product.imageFull, '_blank');
-                                }
-                              }}
-                              title={product.imageFull ? "Нажмите для просмотра" : ""}
-                            />
+                            {product.images && product.images.length > 0 ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-auto px-1 gap-1 flex items-center"
+                                onClick={() => setExpandedAssortmentImages(
+                                  expandedAssortmentImages === product.id ? null : product.id
+                                )}
+                              >
+                                <img
+                                  src={product.image}
+                                  alt={product.name}
+                                  className="w-6 h-6 rounded object-cover flex-shrink-0"
+                                />
+                                <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                                  {product.images.length}
+                                </Badge>
+                                {expandedAssortmentImages === product.id ? (
+                                  <ChevronUp className="h-3 w-3 text-muted-foreground" />
+                                ) : (
+                                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                )}
+                              </Button>
+                            ) : (
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="w-8 h-8 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
+                                onClick={() => {
+                                  if (product.imageFull) {
+                                    window.open(product.imageFull, '_blank');
+                                  }
+                                }}
+                                title={product.imageFull ? "Нажмите для просмотра" : ""}
+                              />
+                            )}
                           </ResizableTableCell>
                         ),
                         name: (
@@ -1849,13 +1872,43 @@ export default function AdminPanel() {
                       };
                       
                       return (
-                        <SortableTableRow key={product.id} id={product.id}>
-                          <OrderedCellsContainer 
-                            cells={cellsMap} 
-                            fixedStart={["checkbox", "drag"]} 
-                            fixedEnd={["actions"]}
-                          />
-                        </SortableTableRow>
+                        <React.Fragment key={product.id}>
+                          <SortableTableRow id={product.id}>
+                            <OrderedCellsContainer 
+                              cells={cellsMap} 
+                              fixedStart={["checkbox", "drag"]} 
+                              fixedEnd={["actions"]}
+                            />
+                          </SortableTableRow>
+                          {/* Expanded images row */}
+                          {expandedAssortmentImages === product.id && product.images && product.images.length > 0 && (
+                            <TableRow className="bg-muted/30 hover:bg-muted/50">
+                              <TableCell colSpan={13} className="py-3 px-4">
+                                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                                  {product.images.map((imgSrc, idx) => (
+                                    <div
+                                      key={idx}
+                                      className="flex-shrink-0 relative group"
+                                    >
+                                      <img
+                                        src={imgSrc}
+                                        alt={`${product.name} - фото ${idx + 1}`}
+                                        className="h-24 w-24 object-cover rounded-lg border border-border cursor-pointer hover:border-primary transition-colors"
+                                        onClick={() => window.open(imgSrc, '_blank')}
+                                      />
+                                      <Badge 
+                                        variant="secondary" 
+                                        className="absolute bottom-1 right-1 text-[10px] px-1 py-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      >
+                                        {idx + 1}
+                                      </Badge>
+                                    </div>
+                                  ))}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </SortableTableBody>
