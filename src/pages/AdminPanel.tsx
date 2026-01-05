@@ -1749,7 +1749,12 @@ export default function AdminPanel() {
       });
     }
 
-    setImportedProducts(prev => [...prev, ...newProducts]);
+    // Replace duplicates instead of adding - filter out any existing products with same moyskladId
+    setImportedProducts(prev => {
+      const newMoyskladIds = new Set(newProducts.map(p => p.moyskladId).filter(Boolean));
+      const filtered = prev.filter(p => !p.moyskladId || !newMoyskladIds.has(p.moyskladId));
+      return [...filtered, ...newProducts];
+    });
     setSelectedProducts(new Set());
     setIsLoading(false);
 
