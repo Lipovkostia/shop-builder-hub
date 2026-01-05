@@ -702,6 +702,16 @@ export default function AdminPanel() {
     const msProduct = moyskladProducts.find(p => p.id === msProductId);
     if (!msProduct) return;
 
+    // Check if already imported (and not deleted) - prevent duplicates
+    const existingProduct = importedProducts.find(p => p.moyskladId === msProduct.id);
+    if (existingProduct && !deletedMoyskladIds.has(msProduct.id)) {
+      // Already imported - just enable auto-sync
+      if (!existingProduct.autoSync) {
+        toggleAutoSync(existingProduct.id);
+      }
+      return;
+    }
+
     setIsLoading(true);
     try {
       // Fetch images
@@ -781,7 +791,11 @@ export default function AdminPanel() {
         accountId: currentAccount.id,
       };
 
-      setImportedProducts(prev => [...prev, newProduct]);
+      // Replace existing product with same moyskladId instead of adding duplicate
+      setImportedProducts(prev => {
+        const filtered = prev.filter(p => p.moyskladId !== msProduct.id);
+        return [...filtered, newProduct];
+      });
       
       // Remove from deleted IDs set since we're re-importing
       setDeletedMoyskladIds(prev => {
