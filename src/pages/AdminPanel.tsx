@@ -2347,10 +2347,10 @@ export default function AdminPanel() {
                   <ResizableTableHeader>
                     {/* Row 1: Column names */}
                     <ResizableTableRow className="h-6">
-                      <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>Синхр.</ResizableTableHead>
                       <ResizableTableHead columnId="drag" minWidth={32} resizable={false}>
                         <span className="text-muted-foreground/50 text-[10px]">⋮⋮</span>
                       </ResizableTableHead>
+                      <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>Синхр.</ResizableTableHead>
                       <ResizableTableHead columnId="checkbox" minWidth={40} resizable={false}>
                         <Checkbox
                           checked={selectedBulkProducts.size === filteredAllProducts.length && filteredAllProducts.length > 0}
@@ -2368,6 +2368,7 @@ export default function AdminPanel() {
                     </ResizableTableRow>
                     {/* Row 2: Filters */}
                     <ResizableTableRow className="h-6 border-b-0">
+                      <ResizableTableHead columnId="drag" minWidth={32} resizable={false}></ResizableTableHead>
                       <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
                         <SelectFilter
                           value={allProductsFilters.sync}
@@ -2379,7 +2380,6 @@ export default function AdminPanel() {
                           placeholder="Все"
                         />
                       </ResizableTableHead>
-                      <ResizableTableHead columnId="drag" minWidth={32} resizable={false}></ResizableTableHead>
                       <ResizableTableHead columnId="checkbox" minWidth={40} resizable={false}></ResizableTableHead>
                       <ResizableTableHead columnId="photo" minWidth={50} resizable={false}></ResizableTableHead>
                       <ResizableTableHead columnId="name" minWidth={120} resizable={false}>
@@ -2603,7 +2603,7 @@ export default function AdminPanel() {
                           <SortableTableRow id={product.id}>
                             <OrderedCellsContainer 
                               cells={cellsMap} 
-                              fixedStart={["sync", "drag", "checkbox"]}
+                              fixedStart={["drag", "sync", "checkbox"]}
                             />
                           </SortableTableRow>
                           {/* Expanded images row */}
