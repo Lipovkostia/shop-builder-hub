@@ -69,6 +69,7 @@ import { SyncSettingsPanel, SyncSettings, SyncFieldMapping, defaultSyncSettings 
 const MOYSKLAD_ACCOUNTS_KEY = "moysklad_accounts";
 const IMPORTED_PRODUCTS_KEY = "moysklad_imported_products";
 const SYNC_SETTINGS_KEY = "moysklad_sync_settings";
+const DELETED_MOYSKLAD_IDS_KEY = "moysklad_deleted_product_ids";
 
 // Local test products
 const testProducts: Product[] = [
@@ -396,6 +397,9 @@ export default function AdminPanel() {
   const [syncSettings, setSyncSettings] = useState<SyncSettings>(defaultSyncSettings);
   const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Track deleted MoySklad product IDs to allow re-import
+  const [deletedMoyskladIds, setDeletedMoyskladIds] = useState<Set<string>>(new Set());
+
   // Expanded product images state for assortment section
   const [expandedAssortmentImages, setExpandedAssortmentImages] = useState<string | null>(null);
   const [deletingImageProductId, setDeletingImageProductId] = useState<string | null>(null);
@@ -577,6 +581,25 @@ export default function AdminPanel() {
     localStorage.setItem(SYNC_SETTINGS_KEY, JSON.stringify(syncSettings));
   }, [syncSettings]);
 
+  // Load deleted MoySklad IDs from localStorage
+  useEffect(() => {
+    const savedDeletedIds = localStorage.getItem(DELETED_MOYSKLAD_IDS_KEY);
+    if (savedDeletedIds) {
+      try {
+        setDeletedMoyskladIds(new Set(JSON.parse(savedDeletedIds)));
+      } catch (e) {
+        console.error("Failed to parse saved deleted MoySklad IDs");
+      }
+    }
+  }, []);
+
+  // Save deleted MoySklad IDs to localStorage
+  useEffect(() => {
+    if (deletedMoyskladIds.size > 0) {
+      localStorage.setItem(DELETED_MOYSKLAD_IDS_KEY, JSON.stringify(Array.from(deletedMoyskladIds)));
+    }
+  }, [deletedMoyskladIds]);
+
   // Initialize visibility state from catalogs
   useEffect(() => {
     const visibility: Record<string, Set<string>> = {};
@@ -644,12 +667,16 @@ export default function AdminPanel() {
   }, [localTestProducts, importedProducts]);
 
   // Check if a MoySklad product is linked (imported) to all products
+  // Also checks if it was previously deleted - if so, it's not considered linked
   const isProductLinked = (msProductId: string) => {
+    if (deletedMoyskladIds.has(msProductId)) return false;
     return importedProducts.some(p => p.moyskladId === msProductId);
   };
 
   // Get linked product from importedProducts
+  // Returns undefined if the product was deleted
   const getLinkedProduct = (msProductId: string) => {
+    if (deletedMoyskladIds.has(msProductId)) return undefined;
     return importedProducts.find(p => p.moyskladId === msProductId);
   };
 
@@ -752,6 +779,20 @@ export default function AdminPanel() {
       };
 
       setImportedProducts(prev => [...prev, newProduct]);
+      
+      // Remove from deleted IDs set since we're re-importing
+      setDeletedMoyskladIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(msProduct.id);
+        return newSet;
+      });
+      
+      // Clear image cache for fresh start
+      setProductImagesCache(prev => {
+        const newCache = { ...prev };
+        delete newCache[msProduct.id];
+        return newCache;
+      });
       
       toast({
         title: "Товар связан",
@@ -1552,9 +1593,10 @@ export default function AdminPanel() {
       const msProduct = moyskladProducts.find(p => p.id === productId);
       if (!msProduct) continue;
 
-      // Check if already imported
-      if (importedProducts.some(p => p.moyskladId === msProduct.id)) {
-        continue; // Skip already imported
+      // Check if already imported (and not deleted)
+      const existingProduct = importedProducts.find(p => p.moyskladId === msProduct.id);
+      if (existingProduct && !deletedMoyskladIds.has(msProduct.id)) {
+        continue; // Skip already imported (unless it was deleted)
       }
 
       // Fetch images for this product - both miniature and full size
@@ -1646,6 +1688,23 @@ export default function AdminPanel() {
       newProducts.push(newProduct);
     }
 
+    // Remove re-imported products from deleted IDs set
+    const reimportedMoyskladIds = newProducts.map(p => p.moyskladId).filter(Boolean) as string[];
+    if (reimportedMoyskladIds.length > 0) {
+      setDeletedMoyskladIds(prev => {
+        const newSet = new Set(prev);
+        reimportedMoyskladIds.forEach(id => newSet.delete(id));
+        return newSet;
+      });
+      
+      // Clear image cache for fresh start
+      setProductImagesCache(prev => {
+        const newCache = { ...prev };
+        reimportedMoyskladIds.forEach(id => delete newCache[id]);
+        return newCache;
+      });
+    }
+
     setImportedProducts(prev => [...prev, ...newProducts]);
     setSelectedProducts(new Set());
     setIsLoading(false);
@@ -1711,6 +1770,32 @@ export default function AdminPanel() {
   // Bulk delete products
   const bulkDeleteProducts = () => {
     const selectedIds = Array.from(selectedBulkProducts);
+    
+    // Collect moyskladIds of products being deleted to allow re-import
+    const deletedMsIds: string[] = [];
+    const allCurrentProducts = [...importedProducts, ...localTestProducts];
+    
+    selectedIds.forEach(id => {
+      const product = allCurrentProducts.find(p => p.id === id);
+      if (product?.moyskladId) {
+        deletedMsIds.push(product.moyskladId);
+        // Clear image cache for this product
+        setProductImagesCache(prev => {
+          const newCache = { ...prev };
+          delete newCache[product.moyskladId!];
+          return newCache;
+        });
+      }
+    });
+    
+    // Add to deleted MoySklad IDs set
+    if (deletedMsIds.length > 0) {
+      setDeletedMoyskladIds(prev => {
+        const newSet = new Set(prev);
+        deletedMsIds.forEach(id => newSet.add(id));
+        return newSet;
+      });
+    }
     
     setImportedProducts(prev => prev.filter(p => !selectedIds.includes(p.id)));
     setLocalTestProducts(prev => prev.filter(p => !selectedIds.includes(p.id)));
