@@ -2721,6 +2721,7 @@ export default function AdminPanel() {
                           <TableHeader>
                             <TableRow>
                               <TableHead className="w-[50px]"></TableHead>
+                              <TableHead>Связь</TableHead>
                               <TableHead>
                                 Название
                                 <ColumnFilter 
@@ -2761,7 +2762,6 @@ export default function AdminPanel() {
                               </TableHead>
                               <TableHead>Ед. изм.</TableHead>
                               <TableHead>Фото</TableHead>
-                              <TableHead>Связь</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -2783,6 +2783,29 @@ export default function AdminPanel() {
                                         onCheckedChange={() => toggleProductSelection(product.id)}
                                         disabled={isLinked}
                                       />
+                                    </TableCell>
+                                    <TableCell>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={`h-8 w-8 ${
+                                          isLinked && linkedProduct?.autoSync 
+                                            ? "text-primary" 
+                                            : "text-muted-foreground hover:text-primary"
+                                        }`}
+                                        onClick={() => toggleImportAutoSync(product.id)}
+                                        title={
+                                          isLinked 
+                                            ? (linkedProduct?.autoSync ? "Авто-синхронизация включена" : "Включить авто-синхронизацию")
+                                            : "Связать и включить авто-синхронизацию"
+                                        }
+                                      >
+                                        {isLinked && linkedProduct?.autoSync ? (
+                                          <Lock className="h-4 w-4" />
+                                        ) : (
+                                          <Unlock className="h-4 w-4" />
+                                        )}
+                                      </Button>
                                     </TableCell>
                                     <TableCell className="font-medium">
                                       <div className="flex items-center gap-2">
@@ -2845,29 +2868,6 @@ export default function AdminPanel() {
                                       ) : (
                                         <span className="text-muted-foreground text-xs">-</span>
                                       )}
-                                    </TableCell>
-                                    <TableCell>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className={`h-8 w-8 ${
-                                          isLinked && linkedProduct?.autoSync 
-                                            ? "text-primary" 
-                                            : "text-muted-foreground hover:text-primary"
-                                        }`}
-                                        onClick={() => toggleImportAutoSync(product.id)}
-                                        title={
-                                          isLinked 
-                                            ? (linkedProduct?.autoSync ? "Авто-синхронизация включена" : "Включить авто-синхронизацию")
-                                            : "Связать и включить авто-синхронизацию"
-                                        }
-                                      >
-                                        {isLinked && linkedProduct?.autoSync ? (
-                                          <Lock className="h-4 w-4" />
-                                        ) : (
-                                          <Unlock className="h-4 w-4" />
-                                        )}
-                                      </Button>
                                     </TableCell>
                                   </TableRow>
                                   
