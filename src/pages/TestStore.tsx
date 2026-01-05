@@ -297,30 +297,23 @@ function StoreHeader({
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
-      <div className="h-12 flex items-center justify-between px-3">
-        <div>
-          <h1 className="font-bold text-sm text-foreground leading-tight">Сыры & Хамон</h1>
-          <p className="text-[10px] text-muted-foreground leading-tight">Оптовый прайс-лист</p>
-        </div>
+      <div className="h-12 flex items-center justify-between px-3 relative">
+        <button className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3">
+          <ShoppingCart className="w-4 h-4 text-primary" />
+          <span className="text-xs font-semibold text-foreground">{formatPrice(totalPrice)}</span>
+          {totalItems > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+              {totalItems}
+            </span>
+          )}
+        </button>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate("/admin")}
-            className="absolute right-3 top-3 p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
-          >
-            <Settings className="w-4 h-4 text-muted-foreground" />
-          </button>
-
-          <button className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3">
-            <ShoppingCart className="w-4 h-4 text-primary" />
-            <span className="text-xs font-semibold text-foreground">{formatPrice(totalPrice)}</span>
-            {totalItems > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-                {totalItems}
-              </span>
-            )}
-          </button>
-        </div>
+        <button
+          onClick={() => navigate("/admin")}
+          className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
+        >
+          <Settings className="w-4 h-4 text-muted-foreground" />
+        </button>
       </div>
 
       {/* Селектор прайс-листа */}
