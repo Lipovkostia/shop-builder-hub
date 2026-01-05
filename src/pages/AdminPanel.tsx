@@ -1714,6 +1714,140 @@ export default function AdminPanel() {
     }
   };
 
+  // Bulk sync selected products (only linked ones)
+  const bulkSyncSelectedProducts = async () => {
+    if (selectedProducts.size === 0 || !currentAccount) {
+      toast({ title: "Внимание", description: "Выберите товары для синхронизации", variant: "destructive" });
+      return;
+    }
+
+    const linkedProductsToSync = Array.from(selectedProducts)
+      .map(msId => getLinkedProduct(msId))
+      .filter((p): p is Product => !!p);
+
+    if (linkedProductsToSync.length === 0) {
+      toast({ title: "Внимание", description: "Среди выбранных нет импортированных товаров", variant: "destructive" });
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const { data } = await supabase.functions.invoke('moysklad', {
+        body: { action: 'get_assortment', limit: 100, offset: 0, login: currentAccount.login, password: currentAccount.password }
+      });
+
+      if (data?.products) {
+        const msProductsMap = new Map(data.products.map((p: MoySkladProduct) => [p.id, p]));
+        const mapping = syncSettings.fieldMapping;
+        
+        setImportedProducts(prev => prev.map(product => {
+          if (product.moyskladId && linkedProductsToSync.some(lp => lp.id === product.id)) {
+            const msProduct = msProductsMap.get(product.moyskladId) as MoySkladProduct | undefined;
+            if (msProduct) {
+              const updates: Partial<Product> = {};
+              if (mapping.buyPrice && msProduct.buyPrice !== undefined) updates.buyPrice = msProduct.buyPrice;
+              if (mapping.price && msProduct.price !== undefined) updates.pricePerUnit = msProduct.price;
+              if (mapping.quantity) updates.inStock = msProduct.quantity > 0 || msProduct.stock > 0;
+              if (mapping.name && msProduct.name) updates.name = msProduct.name;
+              if (mapping.description && msProduct.description) updates.description = msProduct.description;
+              if (mapping.unit && msProduct.uom) updates.unit = msProduct.uom;
+              return { ...product, ...updates };
+            }
+          }
+          return product;
+        }));
+
+        toast({ title: "Синхронизация завершена", description: `Обновлено ${linkedProductsToSync.length} товаров` });
+      }
+    } catch (err) {
+      console.error("Bulk sync error:", err);
+      toast({ title: "Ошибка синхронизации", description: "Не удалось обновить данные", variant: "destructive" });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Bulk download all photos for selected linked products
+  const bulkDownloadPhotosForSelected = async () => {
+    if (selectedProducts.size === 0 || !currentAccount) {
+      toast({ title: "Внимание", description: "Выберите товары для загрузки фото", variant: "destructive" });
+      return;
+    }
+
+    if (!user) {
+      const redirect = `${window.location.pathname}${window.location.search}`;
+      toast({ title: "Нужен вход", description: "Чтобы загружать фото, войдите в аккаунт", variant: "destructive" });
+      navigate(`/auth?redirect=${encodeURIComponent(redirect)}`);
+      return;
+    }
+
+    const linkedProductsWithImages = Array.from(selectedProducts)
+      .map(msId => {
+        const msProduct = moyskladProducts.find(p => p.id === msId);
+        const linkedProduct = getLinkedProduct(msId);
+        return { msProduct, linkedProduct, msId };
+      })
+      .filter((item): item is { msProduct: MoySkladProduct; linkedProduct: Product; msId: string } => 
+        !!item.msProduct && !!item.linkedProduct && (item.msProduct.imagesCount || 0) > 0
+      );
+
+    if (linkedProductsWithImages.length === 0) {
+      toast({ title: "Внимание", description: "Среди выбранных нет импортированных товаров с фотографиями", variant: "destructive" });
+      return;
+    }
+
+    setDownloadingImages(true);
+    let totalDownloaded = 0;
+
+    try {
+      for (const { linkedProduct, msId } of linkedProductsWithImages) {
+        const { data: imagesData } = await supabase.functions.invoke('moysklad', {
+          body: { action: 'get_product_images', productId: msId, login: currentAccount.login, password: currentAccount.password }
+        });
+
+        if (!imagesData?.images || imagesData.images.length === 0) continue;
+
+        const syncedImages = linkedProduct.syncedMoyskladImages || [];
+        const newImages: string[] = [];
+        const newSyncedUrls: string[] = [];
+
+        for (const img of imagesData.images) {
+          const imageUrl = img.fullSize || img.downloadHref;
+          if (!imageUrl || syncedImages.includes(imageUrl)) continue;
+
+          const { data: fullContent } = await supabase.functions.invoke('moysklad', {
+            body: { action: 'get_image_content', imageUrl, login: currentAccount.login, password: currentAccount.password }
+          });
+
+          if (fullContent?.imageData) {
+            const uploadedUrls = await uploadProductImages([fullContent.imageData], linkedProduct.id);
+            if (uploadedUrls.length > 0) {
+              newImages.push(uploadedUrls[0]);
+              newSyncedUrls.push(imageUrl);
+            }
+          }
+        }
+
+        if (newImages.length > 0) {
+          const updatedImages = [...(linkedProduct.images || []), ...newImages];
+          const updatedSyncedMoyskladImages = [...(linkedProduct.syncedMoyskladImages || []), ...newSyncedUrls];
+          
+          setImportedProducts(prev => prev.map(p => 
+            p.id === linkedProduct.id ? { ...p, images: updatedImages, syncedMoyskladImages: updatedSyncedMoyskladImages } : p
+          ));
+          totalDownloaded += newImages.length;
+        }
+      }
+
+      toast({ title: "Загрузка завершена", description: `Загружено ${totalDownloaded} новых фотографий для ${linkedProductsWithImages.length} товаров` });
+    } catch (err) {
+      console.error("Bulk photo download error:", err);
+      toast({ title: "Ошибка", description: "Не удалось загрузить фотографии", variant: "destructive" });
+    } finally {
+      setDownloadingImages(false);
+    }
+  };
+
   const importSelectedProducts = async () => {
     if (selectedProducts.size === 0 || !currentAccount) {
       toast({
@@ -2705,6 +2839,32 @@ export default function AdminPanel() {
                               <RefreshCw className="h-4 w-4 mr-2" />
                             )}
                             Обновить
+                          </Button>
+                          <Button
+                            onClick={bulkSyncSelectedProducts}
+                            disabled={isSyncing || selectedProducts.size === 0}
+                            variant="outline"
+                            size="sm"
+                          >
+                            {isSyncing ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                            )}
+                            Синхр. ({selectedProducts.size})
+                          </Button>
+                          <Button
+                            onClick={bulkDownloadPhotosForSelected}
+                            disabled={downloadingImages || selectedProducts.size === 0}
+                            variant="outline"
+                            size="sm"
+                          >
+                            {downloadingImages ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <ImageIcon className="h-4 w-4 mr-2" />
+                            )}
+                            Фото ({selectedProducts.size})
                           </Button>
                           <Button
                             onClick={importSelectedProducts}
