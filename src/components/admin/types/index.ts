@@ -40,6 +40,7 @@ export interface Product {
   unit: string;
   image: string;
   imageFull?: string;
+  images?: string[];  // Все изображения товара (полные URL или base64)
   productType: ProductType;
   packagingType?: PackagingType;
   unitWeight?: number;
