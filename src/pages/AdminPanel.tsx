@@ -438,6 +438,7 @@ export default function AdminPanel() {
     type: true,
     volume: true,
     cost: true,
+    catalogs: true,
   });
 
   const columnLabels: Record<string, string> = {
@@ -452,6 +453,7 @@ export default function AdminPanel() {
     type: "Вид",
     volume: "Объем",
     cost: "Себест.",
+    catalogs: "Прайс-листы",
   };
 
   const toggleColumnVisibility = (columnId: string) => {
@@ -2453,6 +2455,9 @@ export default function AdminPanel() {
                       {visibleColumns.cost && (
                         <ResizableTableHead columnId="cost" minWidth={70}>Себест.</ResizableTableHead>
                       )}
+                      {visibleColumns.catalogs && (
+                        <ResizableTableHead columnId="catalogs" minWidth={120}>Прайс-листы</ResizableTableHead>
+                      )}
                     </ResizableTableRow>
                     {/* Row 2: Filters */}
                     <ResizableTableRow className="h-6 border-b-0">
@@ -2554,6 +2559,9 @@ export default function AdminPanel() {
                             placeholder="Поиск..."
                           />
                         </ResizableTableHead>
+                      )}
+                      {visibleColumns.catalogs && (
+                        <ResizableTableHead columnId="catalogs" minWidth={120} resizable={false}></ResizableTableHead>
                       )}
                     </ResizableTableRow>
                   </ResizableTableHeader>
@@ -2684,6 +2692,35 @@ export default function AdminPanel() {
                               onSave={(newPrice) => updateProduct({ ...product, buyPrice: newPrice })}
                               placeholder="0"
                             />
+                          </ResizableTableCell>
+                        ),
+                        catalogs: (
+                          <ResizableTableCell key="catalogs" columnId="catalogs">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] gap-1">
+                                  {productCatalogVisibility[product.id]?.size || 0} прайс
+                                  <ChevronDown className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" className="min-w-[180px]">
+                                {catalogs.length === 0 ? (
+                                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                                    Нет прайс-листов
+                                  </div>
+                                ) : (
+                                  catalogs.map(catalog => (
+                                    <DropdownMenuCheckboxItem
+                                      key={catalog.id}
+                                      checked={productCatalogVisibility[product.id]?.has(catalog.id) || false}
+                                      onCheckedChange={() => toggleProductCatalogVisibility(product.id, catalog.id)}
+                                    >
+                                      {catalog.name}
+                                    </DropdownMenuCheckboxItem>
+                                  ))
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </ResizableTableCell>
                         ),
                         sync: (
