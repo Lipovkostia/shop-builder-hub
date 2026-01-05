@@ -837,37 +837,55 @@ export default function AdminPanel() {
         }
       }
 
-      const newProduct: Product = {
-        id: `ms_${msProduct.id}`,
-        name: msProduct.name,
-        description: msProduct.description || "",
-        pricePerUnit: msProduct.price || 0,
-        buyPrice: msProduct.buyPrice,
-        unit: msProduct.uom || "кг",
-        image: imageUrl,
-        imageFull: imageFullUrl,
-        productType: msProduct.weight > 0 ? "weight" : "piece",
-        weightVariants: msProduct.weight > 0 ? [
-          { type: "full", weight: msProduct.weight },
-          { type: "half", weight: msProduct.weight / 2 },
-        ] : undefined,
-        pieceVariants: msProduct.weight <= 0 ? [
-          { type: "box", quantity: 10 },
-          { type: "single", quantity: 1 },
-        ] : undefined,
-        inStock: msProduct.quantity > 0 || msProduct.stock > 0,
-        isHit: false,
-        source: "moysklad",
-        moyskladId: msProduct.id,
-        autoSync: true, // Enable auto-sync by default when linking
-        accountId: currentAccount.id,
-      };
-
-      // Replace existing product with same moyskladId instead of adding duplicate
-      setImportedProducts(prev => {
-        const filtered = prev.filter(p => p.moyskladId !== msProduct.id);
-        return [...filtered, newProduct];
-      });
+      // Check if product already exists in Supabase with same moysklad_id
+      const existingSupabaseProduct = supabaseProducts.find(p => p.moysklad_id === msProduct.id);
+      
+      if (existingSupabaseProduct) {
+        // Update existing product
+        await updateSupabaseProduct(existingSupabaseProduct.id, {
+          name: msProduct.name,
+          description: msProduct.description || null,
+          price: msProduct.price || 0,
+          buy_price: msProduct.buyPrice || null,
+          unit: msProduct.uom || "кг",
+          quantity: msProduct.quantity || msProduct.stock || 0,
+          auto_sync: true,
+          is_active: true,
+        });
+        
+        toast({
+          title: "Товар обновлён",
+          description: `${msProduct.name} синхронизирован`,
+        });
+      } else {
+        // Create new product in Supabase
+        const slug = msProduct.name.toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-а-яё]/gi, '') || `product-${Date.now()}`;
+        
+        await createSupabaseProduct({
+          name: msProduct.name,
+          slug,
+          description: msProduct.description || null,
+          price: msProduct.price || 0,
+          buy_price: msProduct.buyPrice || null,
+          unit: msProduct.uom || "кг",
+          unit_weight: msProduct.weight > 0 ? msProduct.weight : null,
+          quantity: msProduct.quantity || msProduct.stock || 0,
+          images: imageFullUrl ? [imageFullUrl] : (imageUrl ? [imageUrl] : null),
+          packaging_type: msProduct.weight > 0 ? "head" : "piece",
+          source: "moysklad",
+          moysklad_id: msProduct.id,
+          moysklad_account_id: currentAccount.id,
+          auto_sync: true,
+          is_active: true,
+        });
+        
+        toast({
+          title: "Товар импортирован",
+          description: `${msProduct.name} добавлен в ассортимент`,
+        });
+      }
       
       // Remove from deleted IDs set since we're re-importing
       setDeletedMoyskladIds(prev => {
@@ -883,10 +901,9 @@ export default function AdminPanel() {
         return newCache;
       });
       
-      toast({
-        title: "Товар связан",
-        description: `${msProduct.name} добавлен с авто-синхронизацией`,
-      });
+      // Refresh products from Supabase
+      refetchProducts();
+      
     } catch (err) {
       console.error("Error importing product:", err);
       toast({
@@ -901,20 +918,29 @@ export default function AdminPanel() {
 
   // Auto-sync products with MoySklad that have autoSync enabled
   const syncAutoSyncProducts = async (fieldMapping?: SyncFieldMapping) => {
-    const productsToSync = importedProducts.filter(p => p.autoSync && p.moyskladId);
-    if (productsToSync.length === 0) return;
+    // Use Supabase products that have auto_sync enabled
+    const productsToSync = supabaseProducts.filter(p => p.auto_sync && p.moysklad_id);
+    if (productsToSync.length === 0) {
+      toast({
+        title: "Нет товаров для синхронизации",
+        description: "Импортируйте товары с включенной авто-синхронизацией",
+      });
+      return;
+    }
 
     const mapping = fieldMapping || syncSettings.fieldMapping;
 
     // Group products by account
     const productsByAccount = productsToSync.reduce((acc, p) => {
-      const accountId = p.accountId || '';
+      const accountId = p.moysklad_account_id || '';
       if (!acc[accountId]) acc[accountId] = [];
       acc[accountId].push(p);
       return acc;
-    }, {} as Record<string, Product[]>);
+    }, {} as Record<string, typeof productsToSync>);
 
     setIsSyncing(true);
+    let updatedCount = 0;
+    
     try {
       for (const [accountId, products] of Object.entries(productsByAccount)) {
         const account = accounts.find(a => a.id === accountId);
@@ -933,52 +959,56 @@ export default function AdminPanel() {
         if (data?.products) {
           const msProductsMap = new Map(data.products.map((p: MoySkladProduct) => [p.id, p]));
           
-          setImportedProducts(prev => prev.map(product => {
-            if (product.autoSync && product.moyskladId && product.accountId === accountId) {
-              const msProduct = msProductsMap.get(product.moyskladId) as MoySkladProduct | undefined;
-              if (msProduct) {
-                const updates: Partial<Product> = {};
-                
-                // Apply field mapping
-                if (mapping.buyPrice && msProduct.buyPrice !== undefined) {
-                  updates.buyPrice = msProduct.buyPrice;
-                }
-                if (mapping.price && msProduct.price !== undefined) {
-                  updates.pricePerUnit = msProduct.price;
-                }
-                if (mapping.quantity) {
-                  updates.inStock = msProduct.quantity > 0 || msProduct.stock > 0;
-                }
-                if (mapping.name && msProduct.name) {
-                  updates.name = msProduct.name;
-                }
-                if (mapping.description && msProduct.description) {
-                  updates.description = msProduct.description;
-                }
-                if (mapping.unit && msProduct.uom) {
-                  updates.unit = msProduct.uom;
-                }
-                
-                return { ...product, ...updates };
+          // Update each product in Supabase
+          for (const product of products) {
+            const msProduct = msProductsMap.get(product.moysklad_id!) as MoySkladProduct | undefined;
+            if (msProduct) {
+              const updates: Partial<StoreProduct> = {};
+              
+              // Apply field mapping
+              if (mapping.buyPrice && msProduct.buyPrice !== undefined) {
+                updates.buy_price = msProduct.buyPrice;
+              }
+              if (mapping.price && msProduct.price !== undefined) {
+                updates.price = msProduct.price;
+              }
+              if (mapping.quantity) {
+                updates.quantity = msProduct.quantity || msProduct.stock || 0;
+              }
+              if (mapping.name && msProduct.name) {
+                updates.name = msProduct.name;
+              }
+              if (mapping.description && msProduct.description) {
+                updates.description = msProduct.description;
+              }
+              if (mapping.unit && msProduct.uom) {
+                updates.unit = msProduct.uom;
+              }
+              
+              // Only update if there are changes
+              if (Object.keys(updates).length > 0) {
+                await updateSupabaseProduct(product.id, updates);
+                updatedCount++;
               }
             }
-            return product;
-          }));
+          }
         }
       }
 
-      // Update last sync time
-      setSyncSettings(prev => ({
-        ...prev,
-        lastSyncTime: new Date().toISOString(),
-        nextSyncTime: prev.enabled 
-          ? new Date(Date.now() + prev.intervalMinutes * 60000).toISOString()
+      // Update last sync time in Supabase
+      await updateSyncSettings({
+        last_sync_time: new Date().toISOString(),
+        next_sync_time: syncSettings.enabled 
+          ? new Date(Date.now() + syncSettings.intervalMinutes * 60000).toISOString()
           : undefined,
-      }));
+      });
+
+      // Refresh products
+      refetchProducts();
 
       toast({
         title: "Синхронизация завершена",
-        description: `Обновлено ${productsToSync.length} товаров`,
+        description: `Обновлено ${updatedCount} товаров`,
       });
     } catch (err) {
       console.error("Sync error:", err);
@@ -1043,12 +1073,13 @@ export default function AdminPanel() {
   };
 
   // Toggle auto-sync for a product
-  const toggleAutoSync = (productId: string) => {
-    setImportedProducts(prev => prev.map(product => 
-      product.id === productId 
-        ? { ...product, autoSync: !product.autoSync }
-        : product
-    ));
+  const toggleAutoSync = async (productId: string) => {
+    const product = supabaseProducts.find(p => p.id === productId);
+    if (!product) return;
+    
+    await updateSupabaseProduct(productId, {
+      auto_sync: !product.auto_sync,
+    });
   };
 
   // Delete a single image from a product
