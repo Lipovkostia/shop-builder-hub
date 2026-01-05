@@ -1720,42 +1720,38 @@ export default function AdminPanel() {
                         ),
                         photo: (
                           <ResizableTableCell key="photo" columnId="photo">
-                            {product.images && product.images.length > 0 ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-auto px-1 gap-1 flex items-center"
-                                onClick={() => setExpandedAssortmentImages(
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-auto px-1 gap-1 flex items-center"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setExpandedAssortmentImages(
                                   expandedAssortmentImages === product.id ? null : product.id
-                                )}
-                              >
+                                );
+                              }}
+                            >
+                              {product.image ? (
                                 <img
                                   src={product.image}
                                   alt={product.name}
                                   className="w-6 h-6 rounded object-cover flex-shrink-0"
                                 />
+                              ) : (
+                                <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                              )}
+                              {product.images && product.images.length > 0 && (
                                 <Badge variant="secondary" className="text-[10px] px-1 py-0">
                                   {product.images.length}
                                 </Badge>
-                                {expandedAssortmentImages === product.id ? (
-                                  <ChevronUp className="h-3 w-3 text-muted-foreground" />
-                                ) : (
-                                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                                )}
-                              </Button>
-                            ) : (
-                              <img
-                                src={product.image}
-                                alt={product.name}
-                                className="w-8 h-8 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
-                                onClick={() => {
-                                  if (product.imageFull) {
-                                    window.open(product.imageFull, '_blank');
-                                  }
-                                }}
-                                title={product.imageFull ? "Нажмите для просмотра" : ""}
-                              />
-                            )}
+                              )}
+                              {expandedAssortmentImages === product.id ? (
+                                <ChevronUp className="h-3 w-3 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                              )}
+                            </Button>
                           </ResizableTableCell>
                         ),
                         name: (
@@ -1889,30 +1885,36 @@ export default function AdminPanel() {
                             />
                           </SortableTableRow>
                           {/* Expanded images row */}
-                          {expandedAssortmentImages === product.id && product.images && product.images.length > 0 && (
+                          {expandedAssortmentImages === product.id && (
                             <TableRow className="bg-muted/30 hover:bg-muted/50">
                               <TableCell colSpan={13} className="py-3 px-4">
-                                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
-                                  {product.images.map((imgSrc, idx) => (
-                                    <div
-                                      key={idx}
-                                      className="flex-shrink-0 relative group"
-                                    >
-                                      <img
-                                        src={imgSrc}
-                                        alt={`${product.name} - фото ${idx + 1}`}
-                                        className="h-24 w-24 object-cover rounded-lg border border-border cursor-pointer hover:border-primary transition-colors"
-                                        onClick={() => window.open(imgSrc, '_blank')}
-                                      />
-                                      <Badge 
-                                        variant="secondary" 
-                                        className="absolute bottom-1 right-1 text-[10px] px-1 py-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                {product.images && product.images.length > 0 ? (
+                                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                                    {product.images.map((imgSrc, idx) => (
+                                      <div
+                                        key={idx}
+                                        className="flex-shrink-0 relative group"
                                       >
-                                        {idx + 1}
-                                      </Badge>
-                                    </div>
-                                  ))}
-                                </div>
+                                        <img
+                                          src={imgSrc}
+                                          alt={`${product.name} - фото ${idx + 1}`}
+                                          className="h-24 w-24 object-cover rounded-lg border border-border cursor-pointer hover:border-primary transition-colors"
+                                          onClick={() => window.open(imgSrc, '_blank')}
+                                        />
+                                        <Badge 
+                                          variant="secondary" 
+                                          className="absolute bottom-1 right-1 text-[10px] px-1 py-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                          {idx + 1}
+                                        </Badge>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="text-muted-foreground text-sm py-2">
+                                    Нет изображений для этого товара
+                                  </div>
+                                )}
                               </TableCell>
                             </TableRow>
                           )}
