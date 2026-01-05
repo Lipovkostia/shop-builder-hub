@@ -29,6 +29,11 @@ export interface StoreProduct {
   is_active: boolean | null;
   created_at: string;
   updated_at: string;
+  // MoySklad integration fields
+  moysklad_id: string | null;
+  moysklad_account_id: string | null;
+  auto_sync: boolean | null;
+  source: string | null;
 }
 
 export function useStoreProducts(storeId: string | null) {
