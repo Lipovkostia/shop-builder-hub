@@ -175,64 +175,50 @@ export function SyncSettingsPanel({
   const enabledFieldsCount = Object.values(settings.fieldMapping).filter(Boolean).length;
 
   return (
-    <Card className="mb-6">
+    <Card className="mb-2">
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Clock className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    Автообновление из МойСклад
-                    {settings.enabled && (
-                      <Badge variant="default" className="text-xs bg-green-500">
-                        Активно
-                      </Badge>
-                    )}
-                  </CardTitle>
-                  <CardDescription className="text-sm">
-                    {settings.enabled ? (
-                      <>
-                        {countdown && `Следующее обновление: ${countdown}`}
-                        {!countdown && `Интервал: ${intervalOptions.find(o => o.value === settings.intervalMinutes)?.label}`}
-                      </>
-                    ) : (
-                      "Настройте автоматическую синхронизацию данных"
-                    )}
-                  </CardDescription>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {syncedProductsCount > 0 && (
-                  <Badge variant="outline" className="text-xs">
-                    {syncedProductsCount} товар(ов) с синхр.
-                  </Badge>
-                )}
-                {isExpanded ? (
-                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                )}
-              </div>
+          <div className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary flex-shrink-0" />
+              <span className="text-sm font-medium">Автосинхр.</span>
+              {settings.enabled && (
+                <Badge variant="default" className="text-[10px] px-1.5 py-0 h-4 bg-green-500">
+                  ВКЛ
+                </Badge>
+              )}
+              {syncedProductsCount > 0 && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                  {syncedProductsCount}
+                </Badge>
+              )}
             </div>
-          </CardHeader>
+            <div className="flex items-center gap-1">
+              {settings.enabled && countdown && (
+                <span className="text-[10px] text-muted-foreground">{countdown}</span>
+              )}
+              {isExpanded ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+          </div>
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <CardContent className="space-y-6 pt-0">
+          <div className="px-3 pb-3 space-y-3">
             {/* Enable/Disable and Interval */}
-            <div className="flex flex-wrap items-center gap-4 pb-4 border-b border-border">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-border">
+              <div className="flex items-center gap-1.5">
                 <Switch
                   id="sync-enabled"
                   checked={settings.enabled}
                   onCheckedChange={toggleEnabled}
+                  className="scale-90"
                 />
-                <Label htmlFor="sync-enabled" className="font-medium">
-                  Включить автообновление
+                <Label htmlFor="sync-enabled" className="text-xs">
+                  Вкл
                 </Label>
               </div>
 
@@ -241,12 +227,12 @@ export function SyncSettingsPanel({
                 onValueChange={(v) => handleIntervalChange(parseInt(v))}
                 disabled={!settings.enabled}
               >
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="h-7 w-32 text-xs">
                   <SelectValue placeholder="Интервал" />
                 </SelectTrigger>
                 <SelectContent>
                   {intervalOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value.toString()}>
+                    <SelectItem key={opt.value} value={opt.value.toString()} className="text-xs">
                       {opt.label}
                     </SelectItem>
                   ))}
@@ -258,71 +244,57 @@ export function SyncSettingsPanel({
                 size="sm"
                 onClick={onSyncNow}
                 disabled={isSyncing || syncedProductsCount === 0}
-                className="gap-2"
+                className="h-7 px-2 text-xs gap-1"
               >
                 {isSyncing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <RefreshCw className="h-4 w-4" />
+                  <RefreshCw className="h-3 w-3" />
                 )}
-                Синхронизировать сейчас
+                Синхр.
               </Button>
             </div>
 
             {/* Field Mapping */}
             <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Settings className="h-4 w-4 text-muted-foreground" />
-                <Label className="font-medium">
-                  Какие данные синхронизировать
+              <div className="flex items-center gap-1.5 mb-2">
+                <Settings className="h-3 w-3 text-muted-foreground" />
+                <Label className="text-xs font-medium">
+                  Поля
                 </Label>
-                <Badge variant="secondary" className="text-xs">
-                  {enabledFieldsCount} из {Object.keys(settings.fieldMapping).length}
+                <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
+                  {enabledFieldsCount}/{Object.keys(settings.fieldMapping).length}
                 </Badge>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 {(Object.keys(fieldLabels) as Array<keyof SyncFieldMapping>).map((field) => {
-                  const { label, description } = fieldLabels[field];
+                  const { label } = fieldLabels[field];
                   const isEnabled = settings.fieldMapping[field];
 
                   return (
                     <div
                       key={field}
-                      className={`p-3 rounded-lg border transition-colors cursor-pointer ${
+                      className={`px-2 py-1 rounded border transition-colors cursor-pointer flex items-center justify-between gap-1 ${
                         isEnabled
-                          ? "bg-primary/5 border-primary/30"
-                          : "bg-muted/30 border-border hover:border-muted-foreground/30"
+                          ? "bg-primary/10 border-primary/30"
+                          : "bg-muted/30 border-border"
                       }`}
                       onClick={() => toggleField(field)}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm flex items-center gap-2">
-                            {label}
-                            {field === "images" && (
-                              <Badge variant="outline" className="text-[10px] px-1 py-0">
-                                медленно
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {description}
-                          </div>
-                        </div>
-                        <div
-                          className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            isEnabled
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {isEnabled ? (
-                            <Check className="h-3 w-3" />
-                          ) : (
-                            <X className="h-3 w-3" />
-                          )}
-                        </div>
+                      <span className="text-[10px] truncate">{label}</span>
+                      <div
+                        className={`w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          isEnabled
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {isEnabled ? (
+                          <Check className="h-2 w-2" />
+                        ) : (
+                          <X className="h-2 w-2" />
+                        )}
                       </div>
                     </div>
                   );
@@ -331,11 +303,11 @@ export function SyncSettingsPanel({
             </div>
 
             {/* Quick presets */}
-            <div className="flex flex-wrap gap-2 pt-2">
+            <div className="flex flex-wrap gap-1 pt-1">
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs"
+                className="h-6 px-2 text-[10px]"
                 onClick={() => {
                   onSettingsChange({
                     ...settings,
@@ -352,12 +324,12 @@ export function SyncSettingsPanel({
                   });
                 }}
               >
-                Только цены и остатки
+                Цены+остатки
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs"
+                className="h-6 px-2 text-[10px]"
                 onClick={() => {
                   onSettingsChange({
                     ...settings,
@@ -374,12 +346,12 @@ export function SyncSettingsPanel({
                   });
                 }}
               >
-                Всё, кроме фото
+                Без фото
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs"
+                className="h-6 px-2 text-[10px]"
                 onClick={() => {
                   onSettingsChange({
                     ...settings,
@@ -402,12 +374,11 @@ export function SyncSettingsPanel({
 
             {/* Last sync info */}
             {settings.lastSyncTime && (
-              <div className="text-xs text-muted-foreground pt-2 border-t border-border">
-                Последняя синхронизация:{" "}
-                {new Date(settings.lastSyncTime).toLocaleString("ru-RU")}
+              <div className="text-[10px] text-muted-foreground pt-1.5 border-t border-border">
+                Синхр.: {new Date(settings.lastSyncTime).toLocaleString("ru-RU")}
               </div>
             )}
-          </CardContent>
+          </div>
         </CollapsibleContent>
       </Collapsible>
     </Card>
