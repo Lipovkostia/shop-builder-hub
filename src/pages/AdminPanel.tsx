@@ -1466,31 +1466,13 @@ export default function AdminPanel() {
         const updatedImages = [...(linkedProduct.images || []), ...newImages];
         const updatedSyncedMoyskladImages = [...(linkedProduct.syncedMoyskladImages || []), ...newSyncedUrls];
         
-        // Save to database
-        const { error: updateError } = await supabase
-          .from('products')
-          .update({
-            images: updatedImages,
-            synced_moysklad_images: updatedSyncedMoyskladImages,
-          })
-          .eq('id', linkedProduct.id);
-
-        if (updateError) {
-          console.error("Error saving images to database:", updateError);
-          toast({
-            title: "Ошибка",
-            description: "Изображения загружены, но не удалось сохранить в базу данных",
-            variant: "destructive",
-          });
-          return;
-        }
-
         const updatedProduct = {
           ...linkedProduct,
           images: updatedImages,
           syncedMoyskladImages: updatedSyncedMoyskladImages,
         };
         
+        // Update in local state (will be persisted to localStorage automatically)
         setImportedProducts(prev => prev.map(p => 
           p.id === linkedProduct.id ? updatedProduct : p
         ));
