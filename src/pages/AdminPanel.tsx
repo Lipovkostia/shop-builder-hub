@@ -3029,73 +3029,80 @@ export default function AdminPanel() {
                     </div>
                   ) : (
                     <>
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-green-600 border-green-600">
-                            <Check className="h-3 w-3 mr-1" />
-                            Подключено
-                          </Badge>
-                          <span className="text-sm text-muted-foreground">
-                            {filteredMoyskladProducts.length} товаров
+                      <div className="flex items-center justify-between mb-2 px-1">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                          <span className="text-xs text-muted-foreground font-medium">
+                            {filteredMoyskladProducts.length}
                           </span>
                         </div>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex items-center gap-0.5">
                           <Button
                             onClick={() => fetchMoySkladProducts()}
                             disabled={isLoading}
-                            variant="outline"
-                            size="sm"
-                            className="h-8 px-2 sm:px-3"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Обновить список"
                           >
                             {isLoading ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             ) : (
-                              <RefreshCw className="h-4 w-4" />
+                              <RefreshCw className="h-3.5 w-3.5" />
                             )}
-                            <span className="hidden sm:inline ml-1.5">Обновить</span>
                           </Button>
                           <Button
                             onClick={bulkSyncSelectedProducts}
                             disabled={isSyncing || selectedProducts.size === 0}
-                            variant="outline"
-                            size="sm"
-                            className="h-8 px-2 sm:px-3"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 relative"
+                            title={`Синхронизировать (${selectedProducts.size})`}
                           >
                             {isSyncing ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             ) : (
-                              <RefreshCw className="h-4 w-4" />
+                              <RefreshCw className="h-3.5 w-3.5" />
                             )}
-                            <span className="ml-1.5">
-                              <span className="hidden sm:inline">Синхр. </span>({selectedProducts.size})
-                            </span>
+                            {selectedProducts.size > 0 && (
+                              <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 text-[9px] bg-primary text-primary-foreground rounded-full flex items-center justify-center font-medium">
+                                {selectedProducts.size}
+                              </span>
+                            )}
                           </Button>
                           <Button
                             onClick={bulkDownloadPhotosForSelected}
                             disabled={downloadingImages || selectedProducts.size === 0}
-                            variant="outline"
-                            size="sm"
-                            className="h-8 px-2 sm:px-3"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 relative"
+                            title={`Скачать фото (${selectedProducts.size})`}
                           >
                             {downloadingImages ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             ) : (
-                              <ImageIcon className="h-4 w-4" />
+                              <ImageIcon className="h-3.5 w-3.5" />
                             )}
-                            <span className="ml-1.5">
-                              <span className="hidden sm:inline">Фото </span>({selectedProducts.size})
-                            </span>
+                            {selectedProducts.size > 0 && (
+                              <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 text-[9px] bg-primary text-primary-foreground rounded-full flex items-center justify-center font-medium">
+                                {selectedProducts.size}
+                              </span>
+                            )}
                           </Button>
                           <Button
                             onClick={importSelectedProducts}
                             disabled={isLoading || selectedProducts.size === 0}
-                            size="sm"
-                            className="h-8 px-2 sm:px-3"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 relative"
+                            title={`Импортировать (${selectedProducts.size})`}
                           >
-                            <Download className="h-4 w-4" />
-                            <span className="ml-1.5">
-                              <span className="hidden sm:inline">Импорт </span>({selectedProducts.size})
-                            </span>
+                            <Download className="h-3.5 w-3.5" />
+                            {selectedProducts.size > 0 && (
+                              <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 text-[9px] bg-primary text-primary-foreground rounded-full flex items-center justify-center font-medium">
+                                {selectedProducts.size}
+                              </span>
+                            )}
                           </Button>
                         </div>
                       </div>
