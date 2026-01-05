@@ -2218,7 +2218,6 @@ export default function AdminPanel() {
                       <ResizableTableHead columnId="cost" minWidth={70}>Себест.</ResizableTableHead>
                       <ResizableTableHead columnId="status" minWidth={70}>Статус</ResizableTableHead>
                       <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>Синхр.</ResizableTableHead>
-                      <ResizableTableHead columnId="actions" minWidth={40} resizable={false}></ResizableTableHead>
                     </ResizableTableRow>
                     {/* Row 2: Filters */}
                     <ResizableTableRow className="h-6 border-b-0">
@@ -2310,7 +2309,7 @@ export default function AdminPanel() {
                           placeholder="Все"
                         />
                       </ResizableTableHead>
-                      <ResizableTableHead columnId="actions" minWidth={40} resizable={false}></ResizableTableHead>
+                      
                     </ResizableTableRow>
                   </ResizableTableHeader>
                   <SortableTableBody>
@@ -2475,19 +2474,6 @@ export default function AdminPanel() {
                             )}
                           </ResizableTableCell>
                         ),
-                        actions: (
-                          <ResizableTableCell key="actions" columnId="actions">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-primary"
-                              onClick={() => openEditDialog(product)}
-                              title="Редактировать"
-                            >
-                              <Settings className="h-3 w-3" />
-                            </Button>
-                          </ResizableTableCell>
-                        ),
                       };
                       
                       return (
@@ -2496,7 +2482,6 @@ export default function AdminPanel() {
                             <OrderedCellsContainer 
                               cells={cellsMap} 
                               fixedStart={["checkbox", "drag"]} 
-                              fixedEnd={["actions"]}
                             />
                           </SortableTableRow>
                           {/* Expanded images row */}
