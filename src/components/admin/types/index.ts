@@ -58,7 +58,8 @@ export interface Product {
   customVariantPrices?: CustomVariantPrices;
   portionPrices?: PortionPrices;  // Цены для порций
   roleVisibility?: string[];      // ID ролей которые видят товар
-  category?: string;              // Категория товара
+  category?: string;              // Категория товара (legacy, для обратной совместимости)
+  categories?: string[];          // Категории товара (массив ID категорий)
 }
 
 // Категория товара
