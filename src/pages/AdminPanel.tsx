@@ -2205,6 +2205,7 @@ export default function AdminPanel() {
                           onCheckedChange={selectAllBulkProducts}
                         />
                       </ResizableTableHead>
+                      <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>Синхр.</ResizableTableHead>
                       <ResizableTableHead columnId="drag" minWidth={32} resizable={false}>
                         <span className="text-muted-foreground/50 text-[10px]">⋮⋮</span>
                       </ResizableTableHead>
@@ -2216,11 +2217,21 @@ export default function AdminPanel() {
                       <ResizableTableHead columnId="type" minWidth={70}>Вид</ResizableTableHead>
                       <ResizableTableHead columnId="volume" minWidth={70}>Объем</ResizableTableHead>
                       <ResizableTableHead columnId="cost" minWidth={70}>Себест.</ResizableTableHead>
-                      <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>Синхр.</ResizableTableHead>
                     </ResizableTableRow>
                     {/* Row 2: Filters */}
                     <ResizableTableRow className="h-6 border-b-0">
                       <ResizableTableHead columnId="checkbox" minWidth={40} resizable={false}></ResizableTableHead>
+                      <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
+                        <SelectFilter
+                          value={allProductsFilters.sync}
+                          onChange={(v) => setAllProductsFilters(f => ({...f, sync: v}))}
+                          options={[
+                            { value: "synced", label: "Да" },
+                            { value: "notSynced", label: "Нет" },
+                          ]}
+                          placeholder="Все"
+                        />
+                      </ResizableTableHead>
                       <ResizableTableHead columnId="drag" minWidth={32} resizable={false}></ResizableTableHead>
                       <ResizableTableHead columnId="photo" minWidth={50} resizable={false}></ResizableTableHead>
                       <ResizableTableHead columnId="name" minWidth={120} resizable={false}>
@@ -2284,17 +2295,6 @@ export default function AdminPanel() {
                           value={allProductsFilters.cost} 
                           onChange={(v) => setAllProductsFilters(f => ({...f, cost: v}))}
                           placeholder="Поиск..."
-                        />
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
-                        <SelectFilter
-                          value={allProductsFilters.sync}
-                          onChange={(v) => setAllProductsFilters(f => ({...f, sync: v}))}
-                          options={[
-                            { value: "synced", label: "Да" },
-                            { value: "notSynced", label: "Нет" },
-                          ]}
-                          placeholder="Все"
                         />
                       </ResizableTableHead>
                       
@@ -2455,7 +2455,7 @@ export default function AdminPanel() {
                           <SortableTableRow id={product.id}>
                             <OrderedCellsContainer 
                               cells={cellsMap} 
-                              fixedStart={["checkbox", "drag"]} 
+                              fixedStart={["checkbox", "sync", "drag"]}
                             />
                           </SortableTableRow>
                           {/* Expanded images row */}
