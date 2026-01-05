@@ -306,10 +306,9 @@ function StoreHeader({
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate("/admin")}
-            className="flex items-center gap-1 bg-muted hover:bg-muted/80 transition-colors rounded-full py-1.5 px-3"
+            className="absolute right-3 top-3 p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
           >
-            <Settings className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="text-xs font-medium text-foreground">Управление</span>
+            <Settings className="w-4 h-4 text-muted-foreground" />
           </button>
 
           <button className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3">
