@@ -281,11 +281,7 @@ function ProductCard({
                             {qty}
                           </span>
                         )}
-                        <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[8px] font-bold ${
-                          variant.type === "box" ? "bg-primary text-primary-foreground" : "border border-primary text-primary"
-                        }`}>
-                          {variant.quantity}
-                        </span>
+                        <PortionIndicator type={variant.type === "box" ? "full" : "portion"} />
                         <span className="text-[9px] font-medium text-foreground">
                           {formatPriceSpaced(price)}
                         </span>
