@@ -2826,53 +2826,63 @@ export default function AdminPanel() {
                             {filteredMoyskladProducts.length} товаров
                           </span>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-1.5">
                           <Button
                             onClick={() => fetchMoySkladProducts()}
                             disabled={isLoading}
                             variant="outline"
                             size="sm"
+                            className="h-8 px-2 sm:px-3"
                           >
                             {isLoading ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <RefreshCw className="h-4 w-4 mr-2" />
+                              <RefreshCw className="h-4 w-4" />
                             )}
-                            Обновить
+                            <span className="hidden sm:inline ml-1.5">Обновить</span>
                           </Button>
                           <Button
                             onClick={bulkSyncSelectedProducts}
                             disabled={isSyncing || selectedProducts.size === 0}
                             variant="outline"
                             size="sm"
+                            className="h-8 px-2 sm:px-3"
                           >
                             {isSyncing ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <RefreshCw className="h-4 w-4 mr-2" />
+                              <RefreshCw className="h-4 w-4" />
                             )}
-                            Синхр. ({selectedProducts.size})
+                            <span className="ml-1.5">
+                              <span className="hidden sm:inline">Синхр. </span>({selectedProducts.size})
+                            </span>
                           </Button>
                           <Button
                             onClick={bulkDownloadPhotosForSelected}
                             disabled={downloadingImages || selectedProducts.size === 0}
                             variant="outline"
                             size="sm"
+                            className="h-8 px-2 sm:px-3"
                           >
                             {downloadingImages ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <ImageIcon className="h-4 w-4 mr-2" />
+                              <ImageIcon className="h-4 w-4" />
                             )}
-                            Фото ({selectedProducts.size})
+                            <span className="ml-1.5">
+                              <span className="hidden sm:inline">Фото </span>({selectedProducts.size})
+                            </span>
                           </Button>
                           <Button
                             onClick={importSelectedProducts}
                             disabled={isLoading || selectedProducts.size === 0}
                             size="sm"
+                            className="h-8 px-2 sm:px-3"
                           >
-                            <Download className="h-4 w-4 mr-2" />
-                            Импортировать ({selectedProducts.size})
+                            <Download className="h-4 w-4" />
+                            <span className="ml-1.5">
+                              <span className="hidden sm:inline">Импорт </span>({selectedProducts.size})
+                            </span>
                           </Button>
                         </div>
                       </div>
