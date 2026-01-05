@@ -554,6 +554,9 @@ export default function AdminPanel() {
       setImportView("accounts");
     } else if (section === "catalogs") {
       setCatalogView("list");
+      // Reset currentCatalog to force re-read from catalogs array with fresh product data
+      setCurrentCatalog(null);
+      setSelectedCatalogProducts(new Set());
     }
   }, [searchParams, setSearchParams]);
 
@@ -1223,8 +1226,10 @@ export default function AdminPanel() {
   };
 
   const openCatalog = (catalog: Catalog) => {
-    setCurrentCatalog(catalog);
-    setSelectedCatalogProducts(new Set(catalog.productIds));
+    // Get fresh catalog data from catalogs array to ensure we have the latest product IDs
+    const freshCatalog = catalogs.find(c => c.id === catalog.id) || catalog;
+    setCurrentCatalog(freshCatalog);
+    setSelectedCatalogProducts(new Set(freshCatalog.productIds));
     setCatalogView("detail");
   };
 
