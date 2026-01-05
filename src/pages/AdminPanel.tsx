@@ -62,7 +62,8 @@ import { InlinePriceCell } from "@/components/admin/InlinePriceCell";
 import { InlineMarkupCell } from "@/components/admin/InlineMarkupCell";
 import { MobileTabNav } from "@/components/admin/MobileTabNav";
 import { BulkEditPanel } from "@/components/admin/BulkEditPanel";
-import { uploadProductImages } from "@/hooks/useProductImages";
+import { uploadProductImages, deleteSingleImage, uploadFilesToStorage } from "@/hooks/useProductImages";
+import { ImageGalleryViewer } from "@/components/admin/ImageGalleryViewer";
 import { SyncSettingsPanel, SyncSettings, SyncFieldMapping, defaultSyncSettings } from "@/components/admin/SyncSettingsPanel";
 
 const MOYSKLAD_ACCOUNTS_KEY = "moysklad_accounts";
@@ -397,6 +398,8 @@ export default function AdminPanel() {
 
   // Expanded product images state for assortment section
   const [expandedAssortmentImages, setExpandedAssortmentImages] = useState<string | null>(null);
+  const [deletingImageProductId, setDeletingImageProductId] = useState<string | null>(null);
+  const [uploadingImageProductId, setUploadingImageProductId] = useState<string | null>(null);
 
   // Product editing state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -916,6 +919,123 @@ export default function AdminPanel() {
         ? { ...product, autoSync: !product.autoSync }
         : product
     ));
+  };
+
+  // Delete a single image from a product
+  const handleDeleteProductImage = async (productId: string, imageIndex: number) => {
+    const product = allProducts.find(p => p.id === productId);
+    if (!product?.images || !product.images[imageIndex]) return;
+
+    const imageUrl = product.images[imageIndex];
+    setDeletingImageProductId(productId);
+
+    try {
+      // Delete from storage
+      const deleted = await deleteSingleImage(imageUrl);
+      
+      if (deleted) {
+        // Update product images array
+        const newImages = product.images.filter((_, idx) => idx !== imageIndex);
+        
+        // Update in state
+        if (product.source === "moysklad") {
+          setImportedProducts(prev => prev.map(p => 
+            p.id === productId ? { ...p, images: newImages } : p
+          ));
+        } else {
+          setLocalTestProducts(prev => prev.map(p => 
+            p.id === productId ? { ...p, images: newImages } : p
+          ));
+        }
+
+        // Note: Database sync happens through localStorage persistence
+
+        toast({
+          title: "Изображение удалено",
+        });
+      } else {
+        toast({
+          title: "Ошибка",
+          description: "Не удалось удалить изображение",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("Error deleting image:", err);
+      toast({
+        title: "Ошибка",
+        description: "Произошла ошибка при удалении",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingImageProductId(null);
+    }
+  };
+
+  // Add new images to a product
+  const handleAddProductImages = async (productId: string, files: FileList, source: 'file' | 'camera') => {
+    if (!user) {
+      toast({
+        title: "Требуется авторизация",
+        description: "Войдите в аккаунт для загрузки изображений",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const product = allProducts.find(p => p.id === productId);
+    if (!product) return;
+
+    setUploadingImageProductId(productId);
+
+    try {
+      const filesArray = Array.from(files);
+      const existingImages = product.images || [];
+      
+      // Use a storage-friendly ID
+      const storageId = productId;
+      
+      // Upload new files
+      const newImageUrls = await uploadFilesToStorage(filesArray, storageId, existingImages.length);
+      
+      if (newImageUrls.length === 0) {
+        toast({
+          title: "Ошибка",
+          description: "Не удалось загрузить изображения",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const updatedImages = [...existingImages, ...newImageUrls];
+      
+      // Update in state
+      if (product.source === "moysklad") {
+        setImportedProducts(prev => prev.map(p => 
+          p.id === productId ? { ...p, images: updatedImages } : p
+        ));
+      } else {
+        setLocalTestProducts(prev => prev.map(p => 
+          p.id === productId ? { ...p, images: updatedImages } : p
+        ));
+      }
+
+      // Note: Database sync happens through localStorage persistence
+
+      toast({
+        title: "Изображения добавлены",
+        description: `Загружено ${newImageUrls.length} фото`,
+      });
+    } catch (err) {
+      console.error("Error adding images:", err);
+      toast({
+        title: "Ошибка",
+        description: "Произошла ошибка при загрузке",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingImageProductId(null);
+    }
   };
 
   // Catalog management functions
@@ -2187,33 +2307,15 @@ export default function AdminPanel() {
                           {expandedAssortmentImages === product.id && (
                             <TableRow className="bg-muted/30 hover:bg-muted/50">
                               <TableCell colSpan={13} className="py-3 px-4">
-                                {product.images && product.images.length > 0 ? (
-                                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
-                                    {product.images.map((imgSrc, idx) => (
-                                      <div
-                                        key={idx}
-                                        className="flex-shrink-0 relative group"
-                                      >
-                                        <img
-                                          src={imgSrc}
-                                          alt={`${product.name} - фото ${idx + 1}`}
-                                          className="h-24 w-24 object-cover rounded-lg border border-border cursor-pointer hover:border-primary transition-colors"
-                                          onClick={() => window.open(imgSrc, '_blank')}
-                                        />
-                                        <Badge 
-                                          variant="secondary" 
-                                          className="absolute bottom-1 right-1 text-[10px] px-1 py-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                          {idx + 1}
-                                        </Badge>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <div className="text-muted-foreground text-sm py-2">
-                                    Нет изображений для этого товара
-                                  </div>
-                                )}
+                                <ImageGalleryViewer
+                                  images={product.images || []}
+                                  productName={product.name}
+                                  productId={product.id}
+                                  onDeleteImage={(index) => handleDeleteProductImage(product.id, index)}
+                                  onAddImages={(files, source) => handleAddProductImages(product.id, files, source)}
+                                  isDeleting={deletingImageProductId === product.id}
+                                  isUploading={uploadingImageProductId === product.id}
+                                />
                               </TableCell>
                             </TableRow>
                           )}
