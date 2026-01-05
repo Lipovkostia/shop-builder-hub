@@ -2294,19 +2294,33 @@ export default function AdminPanel() {
             variant="ghost"
             size="icon"
             onClick={() => navigate("/test-store")}
-            className="h-10 w-10"
+            className="h-14 w-14"
           >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {/* Красная крыша */}
-              <path d="M2 9L12 3L22 9H2Z" fill="#ef4444" stroke="#dc2626" strokeWidth="1" strokeLinejoin="round"/>
-              {/* Корпус магазина */}
-              <rect x="4" y="9" width="16" height="12" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="1.5"/>
-              {/* Дверь */}
-              <rect x="10" y="14" width="4" height="7" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1"/>
-              {/* Окно слева */}
-              <rect x="5.5" y="11" width="3" height="3" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="0.75"/>
-              {/* Окно справа */}
-              <rect x="15.5" y="11" width="3" height="3" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="0.75"/>
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              {/* Полосатый тент/навес */}
+              <path d="M4 18C4 18 8 8 24 8C40 8 44 18 44 18" stroke="#dc2626" strokeWidth="2" fill="none"/>
+              <path d="M4 18L8 20L12 18L16 20L20 18L24 20L28 18L32 20L36 18L40 20L44 18V22C44 22 40 24 24 24C8 24 4 22 4 22V18Z" fill="#ef4444"/>
+              <path d="M8 20L12 18L16 20" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M20 18L24 20L28 18" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M32 20L36 18L40 20" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+              {/* Витрина/прилавок */}
+              <rect x="8" y="24" width="32" height="18" rx="2" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeWidth="1.5"/>
+              {/* Стекло витрины */}
+              <rect x="10" y="26" width="28" height="10" rx="1" fill="currentColor" fillOpacity="0.05" stroke="currentColor" strokeWidth="0.75"/>
+              {/* Полки в витрине */}
+              <line x1="10" y1="31" x2="38" y2="31" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.4"/>
+              {/* Деликатесы на полках */}
+              <circle cx="15" cy="28.5" r="1.5" fill="#f59e0b"/>
+              <circle cx="20" cy="28.5" r="1.5" fill="#ef4444"/>
+              <circle cx="25" cy="28.5" r="1.5" fill="#eab308"/>
+              <circle cx="30" cy="28.5" r="1.5" fill="#f97316"/>
+              <circle cx="35" cy="28.5" r="1.5" fill="#dc2626"/>
+              <rect x="13" y="33" width="5" height="2" rx="0.5" fill="#92400e"/>
+              <rect x="21" y="33" width="6" height="2" rx="0.5" fill="#b45309"/>
+              <rect x="30" y="33" width="5" height="2" rx="0.5" fill="#a16207"/>
+              {/* Ножки прилавка */}
+              <rect x="10" y="40" width="3" height="4" fill="currentColor" fillOpacity="0.3"/>
+              <rect x="35" y="40" width="3" height="4" fill="currentColor" fillOpacity="0.3"/>
             </svg>
           </Button>
           
