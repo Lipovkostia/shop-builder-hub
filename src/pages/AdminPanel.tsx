@@ -309,15 +309,9 @@ export default function AdminPanel() {
   const { user, profile, isSuperAdmin, loading: authLoading } = useAuth();
   const isMobile = useIsMobile();
 
-  // Require auth for admin actions (uploads need an authenticated session)
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      const redirect = `${window.location.pathname}${window.location.search}`;
-      navigate(`/auth?redirect=${encodeURIComponent(redirect)}`);
-    }
-  }, [authLoading, user, navigate]);
-  
+  // Note: We don't force auth redirect here - admin panel can be viewed without login
+  // Auth is only required for specific actions like uploading images
+
   // Store context - for super admin switching
   const storeIdFromUrl = searchParams.get('storeId');
   const sectionFromUrl = searchParams.get('section');
