@@ -33,7 +33,7 @@ const ITEMS_PER_PAGE = 10;
 export default function SuperAdmin() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, isSuperAdmin, loading } = useAuth();
+  const { isSuperAdmin, loading } = useAuth();
   
   const [stores, setStores] = useState<StoreWithCounts[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,17 +41,21 @@ export default function SuperAdmin() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  useEffect(() => {
-    if (!loading && !isSuperAdmin) {
-      navigate('/');
-    }
-  }, [loading, isSuperAdmin, navigate]);
+  // Check for temp super admin or real super admin
+  const isTempSuperAdmin = localStorage.getItem('temp_super_admin') === 'true';
+  const hasAccess = isSuperAdmin || isTempSuperAdmin;
 
   useEffect(() => {
-    if (isSuperAdmin) {
+    if (!loading && !hasAccess) {
+      navigate('/');
+    }
+  }, [loading, hasAccess, navigate]);
+
+  useEffect(() => {
+    if (hasAccess) {
       fetchStores();
     }
-  }, [isSuperAdmin, currentPage, searchQuery]);
+  }, [hasAccess, currentPage, searchQuery]);
 
   const fetchStores = async () => {
     setIsLoading(true);
@@ -121,10 +125,8 @@ export default function SuperAdmin() {
     });
   };
 
-  const openStoreAdmin = (storeId: string, section?: 'products' | 'customers') => {
-    // Open in new tab with store context
-    const url = `/admin?storeId=${storeId}${section ? `&section=${section}` : ''}`;
-    window.open(url, '_blank');
+  const openStoreAdmin = (subdomain: string) => {
+    navigate(`/store/${subdomain}/admin`);
   };
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
@@ -150,9 +152,14 @@ export default function SuperAdmin() {
     );
   }
 
-  if (!isSuperAdmin) {
+  if (!hasAccess) {
     return null;
   }
+
+  const handleLogout = () => {
+    localStorage.removeItem('temp_super_admin');
+    navigate('/');
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -167,8 +174,8 @@ export default function SuperAdmin() {
                 <p className="text-sm text-muted-foreground">Управление всеми магазинами платформы</p>
               </div>
             </div>
-            <Button variant="outline" onClick={() => navigate('/')}>
-              На главную
+            <Button variant="outline" onClick={handleLogout}>
+              Выйти
             </Button>
           </div>
         </div>
@@ -230,7 +237,7 @@ export default function SuperAdmin() {
                   <TableRow key={store.id}>
                     <TableCell>
                       <button
-                        onClick={() => openStoreAdmin(store.id)}
+                        onClick={() => openStoreAdmin(store.subdomain)}
                         className="font-medium text-primary hover:underline flex items-center gap-1"
                       >
                         {store.name}
@@ -260,27 +267,17 @@ export default function SuperAdmin() {
                       )}
                     </TableCell>
                     <TableCell className="text-center">
-                      <button
-                        onClick={() => openStoreAdmin(store.id, 'products')}
-                        className="text-primary hover:underline font-medium"
-                      >
-                        {store.products_count}
-                      </button>
+                      <span className="font-medium">{store.products_count}</span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <button
-                        onClick={() => openStoreAdmin(store.id, 'customers')}
-                        className="text-primary hover:underline font-medium"
-                      >
-                        {store.customers_count}
-                      </button>
+                      <span className="font-medium">{store.customers_count}</span>
                     </TableCell>
                     <TableCell>{getStatusBadge(store.status)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => openStoreAdmin(store.id)}
+                        onClick={() => openStoreAdmin(store.subdomain)}
                       >
                         <ExternalLink className="h-4 w-4 mr-1" />
                         Открыть
