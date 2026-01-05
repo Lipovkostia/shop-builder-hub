@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, X, Trash2, Plus, Upload, Image as ImageIcon, Camera } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Trash2, Plus, Upload, Image as ImageIcon, Camera, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ImageGalleryViewerProps {
@@ -26,6 +26,7 @@ interface ImageGalleryViewerProps {
   productId: string;
   onDeleteImage: (index: number) => void;
   onAddImages: (files: FileList, source: 'file' | 'camera') => void;
+  onSetMainImage?: (index: number) => void;
   isDeleting?: boolean;
   isUploading?: boolean;
 }
@@ -36,6 +37,7 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
   productId,
   onDeleteImage,
   onAddImages,
+  onSetMainImage,
   isDeleting = false,
   isUploading = false,
 }) => {
@@ -156,9 +158,31 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
             <img
               src={imgSrc}
               alt={`${productName} - фото ${idx + 1}`}
-              className="h-24 w-24 object-cover rounded-lg border border-border cursor-pointer hover:border-primary transition-colors"
+              className={cn(
+                "h-24 w-24 object-cover rounded-lg border-2 cursor-pointer hover:border-primary transition-colors",
+                idx === 0 ? "border-primary" : "border-border"
+              )}
               onClick={() => openViewer(idx)}
             />
+            {/* Main photo indicator */}
+            {idx === 0 && (
+              <div className="absolute top-1 left-1 p-1 bg-primary text-primary-foreground rounded-full">
+                <Star className="h-3 w-3 fill-current" />
+              </div>
+            )}
+            {/* Set as main button on hover (only for non-main photos) */}
+            {idx !== 0 && onSetMainImage && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSetMainImage(idx);
+                }}
+                className="absolute top-1 left-1 p-1 bg-primary/90 text-primary-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary"
+                title="Сделать главной"
+              >
+                <Star className="h-3 w-3" />
+              </button>
+            )}
             {/* Delete button on hover */}
             <button
               onClick={(e) => {
@@ -246,6 +270,29 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
             >
               <Trash2 className="h-6 w-6" />
             </Button>
+
+            {/* Set as main button */}
+            {currentIndex !== 0 && onSetMainImage && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-4 left-16 z-50 text-white hover:bg-primary/80"
+                onClick={() => {
+                  onSetMainImage(currentIndex);
+                  setCurrentIndex(0);
+                }}
+                title="Сделать главной"
+              >
+                <Star className="h-6 w-6" />
+              </Button>
+            )}
+
+            {/* Main indicator */}
+            {currentIndex === 0 && (
+              <div className="absolute top-4 left-16 z-50 text-primary bg-white/90 rounded-full p-2">
+                <Star className="h-5 w-5 fill-current" />
+              </div>
+            )}
 
             {/* Image counter */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 text-white bg-black/50 px-3 py-1 rounded-full text-sm">
