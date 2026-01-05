@@ -2402,19 +2402,6 @@ export default function AdminPanel() {
           </div>
           
           <div className="flex items-center gap-2">
-            {/* Link to storefront */}
-            {currentStoreSubdomain && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(`/store/${currentStoreSubdomain}`)}
-                className="flex items-center gap-2"
-              >
-                <ExternalLink className="h-4 w-4" />
-                <span className="hidden sm:inline">Витрина</span>
-              </Button>
-            )}
-            
             {/* Super admin quick link */}
             {isSuperAdmin && !isSuperAdminContext && (
               <Button
