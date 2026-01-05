@@ -1079,6 +1079,50 @@ export default function AdminPanel() {
     }
   };
 
+  // Set an image as the main (first) image for a product
+  const handleSetMainImage = (productId: string, imageIndex: number) => {
+    const product = allProducts.find(p => p.id === productId);
+    if (!product?.images || imageIndex === 0 || imageIndex >= product.images.length) return;
+
+    // Move the selected image to the first position
+    const newImages = [...product.images];
+    const [selectedImage] = newImages.splice(imageIndex, 1);
+    newImages.unshift(selectedImage);
+
+    // Also reorder syncedMoyskladImages if they exist
+    let newSyncedImages = product.syncedMoyskladImages;
+    if (product.syncedMoyskladImages && product.syncedMoyskladImages.length === product.images.length) {
+      newSyncedImages = [...product.syncedMoyskladImages];
+      const [selectedSyncedImage] = newSyncedImages.splice(imageIndex, 1);
+      newSyncedImages.unshift(selectedSyncedImage);
+    }
+
+    // Update the main image and imageFull
+    const updatedProduct = {
+      ...product,
+      images: newImages,
+      image: newImages[0],
+      imageFull: newImages[0],
+      syncedMoyskladImages: newSyncedImages,
+    };
+
+    // Update in state
+    if (product.source === "moysklad") {
+      setImportedProducts(prev => prev.map(p => 
+        p.id === productId ? updatedProduct : p
+      ));
+    } else {
+      setLocalTestProducts(prev => prev.map(p => 
+        p.id === productId ? updatedProduct : p
+      ));
+    }
+
+    toast({
+      title: "Главное фото изменено",
+      description: "Выбранное фото теперь отображается первым",
+    });
+  };
+
   // Catalog management functions
   const createCatalog = () => {
     if (!newCatalogName.trim()) {
@@ -2380,6 +2424,7 @@ export default function AdminPanel() {
                                   productId={product.id}
                                   onDeleteImage={(index) => handleDeleteProductImage(product.id, index)}
                                   onAddImages={(files, source) => handleAddProductImages(product.id, files, source)}
+                                  onSetMainImage={(index) => handleSetMainImage(product.id, index)}
                                   isDeleting={deletingImageProductId === product.id}
                                   isUploading={uploadingImageProductId === product.id}
                                 />
