@@ -328,6 +328,7 @@ export default function AdminPanel() {
   const sectionFromUrl = searchParams.get('section');
   const [currentStoreId, setCurrentStoreId] = useState<string | null>(null);
   const [currentStoreName, setCurrentStoreName] = useState<string | null>(null);
+  const [currentStoreSubdomain, setCurrentStoreSubdomain] = useState<string | null>(null);
   const [userStoreId, setUserStoreId] = useState<string | null>(null);
   
   const [activeSection, setActiveSection] = useState<ActiveSection>(() => {
@@ -499,35 +500,39 @@ export default function AdminPanel() {
   const effectiveStoreId = storeIdFromUrl || userStoreId;
   const isSuperAdminContext = !!storeIdFromUrl && isSuperAdmin;
 
-  // Fetch user's own store or the store from URL (for super admin)
+  // Fetch user's own store or the store from URL
   useEffect(() => {
     const fetchStoreContext = async () => {
-      if (!user || !profile) return;
-      
-      // If super admin with storeId in URL
-      if (storeIdFromUrl && isSuperAdmin) {
+      // If storeId is in URL - fetch that store (for both sellers and super admins)
+      if (storeIdFromUrl) {
         const { data: store } = await supabase
           .from('stores')
-          .select('id, name')
+          .select('id, name, subdomain, owner_id')
           .eq('id', storeIdFromUrl)
           .single();
         
         if (store) {
           setCurrentStoreId(store.id);
           setCurrentStoreName(store.name);
+          setCurrentStoreSubdomain(store.subdomain);
           
           // Set section if provided
           if (sectionFromUrl === 'products') {
             setActiveSection('products');
           } else if (sectionFromUrl === 'customers') {
-            setActiveSection('roles'); // Customers section
+            setActiveSection('roles');
           }
         }
-      } else if (profile.role === 'seller') {
-        // Fetch seller's own store
+        return;
+      }
+      
+      // Otherwise fetch seller's own store if logged in
+      if (!user || !profile) return;
+      
+      if (profile.role === 'seller') {
         const { data: store } = await supabase
           .from('stores')
-          .select('id, name')
+          .select('id, name, subdomain')
           .eq('owner_id', profile.id)
           .single();
         
@@ -535,6 +540,7 @@ export default function AdminPanel() {
           setUserStoreId(store.id);
           setCurrentStoreId(store.id);
           setCurrentStoreName(store.name);
+          setCurrentStoreSubdomain(store.subdomain);
         }
       }
     };
@@ -2292,26 +2298,49 @@ export default function AdminPanel() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card border-b border-border">
         <div className="flex items-center justify-between px-4 h-14">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/test-store")}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          
-          {/* Super admin quick link */}
-          {isSuperAdmin && !isSuperAdminContext && (
+          <div className="flex items-center gap-3">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/super-admin')}
-              className="flex items-center gap-2"
+              variant="ghost"
+              size="icon"
+              onClick={() => currentStoreSubdomain ? navigate(`/store/${currentStoreSubdomain}`) : navigate("/")}
             >
-              <Shield className="h-4 w-4" />
-              Панель супер-админа
+              <ArrowLeft className="h-5 w-5" />
             </Button>
-          )}
+            {currentStoreName && (
+              <div className="flex items-center gap-2">
+                <Store className="h-5 w-5 text-primary" />
+                <span className="font-semibold">{currentStoreName}</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {/* Link to storefront */}
+            {currentStoreSubdomain && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/store/${currentStoreSubdomain}`)}
+                className="flex items-center gap-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                <span className="hidden sm:inline">Витрина</span>
+              </Button>
+            )}
+            
+            {/* Super admin quick link */}
+            {isSuperAdmin && !isSuperAdminContext && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/super-admin')}
+                className="flex items-center gap-2"
+              >
+                <Shield className="h-4 w-4" />
+                <span className="hidden sm:inline">Супер-админ</span>
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
