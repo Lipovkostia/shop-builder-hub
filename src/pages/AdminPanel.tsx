@@ -42,6 +42,7 @@ import {
   ProductStatus,
   MoySkladProduct,
   MoySkladAccount,
+  MoySkladImageInfo,
   Catalog,
   CustomerRole,
   RoleProductPricing,
@@ -378,8 +379,12 @@ export default function AdminPanel() {
 
   // Expanded product images state for import section
   const [expandedProductImages, setExpandedProductImages] = useState<string | null>(null);
-  const [productImagesCache, setProductImagesCache] = useState<Record<string, { miniature: string; fullSize: string }[]>>({});
+  const [productImagesCache, setProductImagesCache] = useState<Record<string, MoySkladImageInfo[]>>({});
   const [loadingProductImages, setLoadingProductImages] = useState<string | null>(null);
+  
+  // Selected images for selective download
+  const [selectedImagesForDownload, setSelectedImagesForDownload] = useState<Record<string, Set<number>>>({});
+  const [downloadingImages, setDownloadingImages] = useState<boolean>(false);
 
   // Expanded product images state for assortment section
   const [expandedAssortmentImages, setExpandedAssortmentImages] = useState<string | null>(null);
@@ -1074,6 +1079,11 @@ export default function AdminPanel() {
 
     if (!currentAccount) return;
 
+    // Get linked product to check synced images
+    const linkedProduct = getLinkedProduct(productId);
+    const syncedImages = linkedProduct?.syncedMoyskladImages || [];
+    const productImages = linkedProduct?.images || [];
+
     setLoadingProductImages(productId);
     try {
       const { data: imagesData } = await supabase.functions.invoke('moysklad', {
@@ -1086,10 +1096,16 @@ export default function AdminPanel() {
       });
 
       if (imagesData?.images && imagesData.images.length > 0) {
-        // Fetch all images content
-        const imagePromises = imagesData.images.map(async (img: { miniature?: string; fullSize?: string; downloadHref?: string }) => {
+        // Fetch all images content (only miniatures for preview)
+        const imagePromises = imagesData.images.map(async (img: { miniature?: string; fullSize?: string; downloadHref?: string }, idx: number) => {
           let miniatureData = '';
-          let fullSizeData = '';
+          
+          // Check if this image is already synced
+          const imageSourceUrl = img.fullSize || img.downloadHref || '';
+          const isSynced = syncedImages.includes(imageSourceUrl);
+          const syncedUrl = isSynced && productImages[syncedImages.indexOf(imageSourceUrl)] 
+            ? productImages[syncedImages.indexOf(imageSourceUrl)] 
+            : undefined;
 
           if (img.miniature) {
             const { data: miniContent } = await supabase.functions.invoke('moysklad', {
@@ -1103,19 +1119,13 @@ export default function AdminPanel() {
             miniatureData = miniContent?.imageData || '';
           }
 
-          if (img.fullSize || img.downloadHref) {
-            const { data: fullContent } = await supabase.functions.invoke('moysklad', {
-              body: { 
-                action: 'get_image_content', 
-                imageUrl: img.fullSize || img.downloadHref,
-                login: currentAccount.login,
-                password: currentAccount.password
-              }
-            });
-            fullSizeData = fullContent?.imageData || '';
-          }
-
-          return { miniature: miniatureData, fullSize: fullSizeData };
+          return { 
+            miniature: miniatureData, 
+            fullSize: img.fullSize || img.downloadHref || '',
+            downloadHref: img.downloadHref,
+            isSynced,
+            syncedUrl
+          } as MoySkladImageInfo;
         });
 
         const loadedImages = await Promise.all(imagePromises);
@@ -1132,6 +1142,133 @@ export default function AdminPanel() {
     } finally {
       setLoadingProductImages(null);
     }
+  };
+
+  // Toggle image selection for download
+  const toggleImageSelection = (productId: string, imageIndex: number) => {
+    setSelectedImagesForDownload(prev => {
+      const productSelected = prev[productId] || new Set<number>();
+      const newSet = new Set(productSelected);
+      if (newSet.has(imageIndex)) {
+        newSet.delete(imageIndex);
+      } else {
+        newSet.add(imageIndex);
+      }
+      return { ...prev, [productId]: newSet };
+    });
+  };
+
+  // Select all new (not synced) images for a product
+  const selectAllNewImages = (productId: string) => {
+    const images = productImagesCache[productId] || [];
+    const newImageIndexes = images
+      .map((img, idx) => ({ img, idx }))
+      .filter(({ img }) => !img.isSynced)
+      .map(({ idx }) => idx);
+    
+    setSelectedImagesForDownload(prev => ({
+      ...prev,
+      [productId]: new Set(newImageIndexes)
+    }));
+  };
+
+  // Download selected images for a product
+  const downloadSelectedImages = async (productId: string) => {
+    const selectedIndexes = selectedImagesForDownload[productId];
+    if (!selectedIndexes || selectedIndexes.size === 0 || !currentAccount) return;
+
+    const images = productImagesCache[productId] || [];
+    const linkedProduct = getLinkedProduct(productId);
+    
+    if (!linkedProduct) {
+      toast({
+        title: "Ошибка",
+        description: "Сначала импортируйте товар",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDownloadingImages(true);
+    try {
+      const newImages: string[] = [];
+      const newSyncedUrls: string[] = [];
+
+      for (const idx of Array.from(selectedIndexes)) {
+        const img = images[idx];
+        if (!img || img.isSynced) continue;
+
+        // Fetch full size image
+        const imageUrl = img.fullSize || img.downloadHref;
+        if (!imageUrl) continue;
+
+        const { data: fullContent } = await supabase.functions.invoke('moysklad', {
+          body: { 
+            action: 'get_image_content', 
+            imageUrl: imageUrl,
+            login: currentAccount.login,
+            password: currentAccount.password
+          }
+        });
+
+        if (fullContent?.imageData) {
+          // Upload to storage
+          const uploadedUrls = await uploadProductImages([fullContent.imageData], linkedProduct.id);
+          if (uploadedUrls.length > 0) {
+            newImages.push(uploadedUrls[0]);
+            newSyncedUrls.push(imageUrl);
+          }
+        }
+      }
+
+      if (newImages.length > 0) {
+        // Update product with new images
+        const updatedProduct = {
+          ...linkedProduct,
+          images: [...(linkedProduct.images || []), ...newImages],
+          syncedMoyskladImages: [...(linkedProduct.syncedMoyskladImages || []), ...newSyncedUrls],
+        };
+        
+        setImportedProducts(prev => prev.map(p => 
+          p.id === linkedProduct.id ? updatedProduct : p
+        ));
+
+        // Update cache to reflect synced status
+        setProductImagesCache(prev => ({
+          ...prev,
+          [productId]: images.map((img, idx) => {
+            if (selectedIndexes.has(idx)) {
+              return { ...img, isSynced: true, syncedUrl: newImages[Array.from(selectedIndexes).indexOf(idx)] };
+            }
+            return img;
+          })
+        }));
+
+        // Clear selection
+        setSelectedImagesForDownload(prev => ({ ...prev, [productId]: new Set() }));
+
+        toast({
+          title: "Изображения загружены",
+          description: `Загружено ${newImages.length} изображений`,
+        });
+      }
+    } catch (err) {
+      console.error("Error downloading images:", err);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось загрузить изображения",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingImages(false);
+    }
+  };
+
+  // Count new images for a product
+  const getNewImagesCount = (productId: string): number => {
+    const images = productImagesCache[productId];
+    if (!images) return 0;
+    return images.filter(img => !img.isSynced).length;
   };
 
   const toggleProductSelection = (productId: string) => {
@@ -1180,6 +1317,7 @@ export default function AdminPanel() {
       let imageUrl = "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop";
       let imageFullUrl = imageUrl;
       let allImages: string[] = [];
+      let syncedMoyskladImages: string[] = []; // Track original MoySklad URLs
       
       if (msProduct.imagesCount > 0) {
         try {
@@ -1196,28 +1334,29 @@ export default function AdminPanel() {
             // Fetch all images (full size) for best quality
             const imagePromises = imagesData.images.map(async (imageInfo: { miniature?: string; fullSize?: string; downloadHref?: string }) => {
               // Prefer fullSize, then downloadHref for best quality
-              const imageUrl = imageInfo.fullSize || imageInfo.downloadHref;
-              if (imageUrl) {
+              const sourceUrl = imageInfo.fullSize || imageInfo.downloadHref || '';
+              if (sourceUrl) {
                 const { data: fullContent } = await supabase.functions.invoke('moysklad', {
                   body: { 
                     action: 'get_image_content', 
-                    imageUrl: imageUrl,
+                    imageUrl: sourceUrl,
                     login: currentAccount.login,
                     password: currentAccount.password
                   }
                 });
-                return fullContent?.imageData || '';
+                return { base64: fullContent?.imageData || '', sourceUrl };
               }
-              return '';
+              return { base64: '', sourceUrl: '' };
             });
             
-            const loadedBase64Images = await Promise.all(imagePromises);
-            const validBase64Images = loadedBase64Images.filter(img => img);
+            const loadedImages = await Promise.all(imagePromises);
+            const validImages = loadedImages.filter(img => img.base64);
             
             // Upload images to Storage and get public URLs
-            if (validBase64Images.length > 0) {
+            if (validImages.length > 0) {
               const productStorageId = `ms_${msProduct.id}`;
-              allImages = await uploadProductImages(validBase64Images, productStorageId);
+              allImages = await uploadProductImages(validImages.map(img => img.base64), productStorageId);
+              syncedMoyskladImages = validImages.map(img => img.sourceUrl);
               
               // Use first image as main thumbnail
               if (allImages.length > 0) {
@@ -1242,6 +1381,7 @@ export default function AdminPanel() {
         image: imageUrl,
         imageFull: imageFullUrl,
         images: allImages.length > 0 ? allImages : undefined,
+        syncedMoyskladImages: syncedMoyskladImages.length > 0 ? syncedMoyskladImages : undefined,
         productType: msProduct.weight > 0 ? "weight" : "piece",
         weightVariants: msProduct.weight > 0 ? [
           { type: "full", weight: msProduct.weight },
@@ -2282,6 +2422,11 @@ export default function AdminPanel() {
                                         >
                                           <ImageIcon className="h-3 w-3" />
                                           {product.imagesCount}
+                                          {isLinked && getNewImagesCount(product.id) > 0 && (
+                                            <Badge variant="default" className="ml-1 h-4 px-1 text-[10px] bg-blue-500">
+                                              +{getNewImagesCount(product.id)}
+                                            </Badge>
+                                          )}
                                           {isExpanded ? (
                                             <ChevronUp className="h-3 w-3" />
                                           ) : (
@@ -2320,29 +2465,117 @@ export default function AdminPanel() {
                                   {/* Expanded row with images */}
                                   {isExpanded && (
                                     <TableRow className="bg-muted/30 hover:bg-muted/30">
-                                      <TableCell colSpan={10} className="p-4">
+                                    <TableCell colSpan={10} className="p-4">
                                         {isLoadingImages ? (
                                           <div className="flex items-center justify-center py-4">
                                             <Loader2 className="h-6 w-6 animate-spin text-primary" />
                                             <span className="ml-2 text-sm text-muted-foreground">Загрузка фотографий...</span>
                                           </div>
                                         ) : cachedImages && cachedImages.length > 0 ? (
-                                          <div className="flex gap-3 overflow-x-auto pb-2">
-                                            {cachedImages.map((img, idx) => (
-                                              <a
-                                                key={idx}
-                                                href={img.fullSize || img.miniature}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex-shrink-0 block"
-                                              >
-                                                <img
-                                                  src={img.miniature || img.fullSize}
-                                                  alt={`${product.name} - фото ${idx + 1}`}
-                                                  className="h-24 w-24 object-cover rounded-lg border border-border hover:border-primary transition-colors cursor-pointer"
-                                                />
-                                              </a>
-                                            ))}
+                                          <div className="space-y-3">
+                                            {/* Action buttons */}
+                                            {isLinked && cachedImages.some(img => !img.isSynced) && (
+                                              <div className="flex items-center gap-2 pb-2 border-b border-border">
+                                                <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  onClick={() => selectAllNewImages(product.id)}
+                                                  className="text-xs h-7"
+                                                >
+                                                  Выбрать все новые ({cachedImages.filter(img => !img.isSynced).length})
+                                                </Button>
+                                                {(selectedImagesForDownload[product.id]?.size || 0) > 0 && (
+                                                  <Button
+                                                    size="sm"
+                                                    onClick={() => downloadSelectedImages(product.id)}
+                                                    disabled={downloadingImages}
+                                                    className="text-xs h-7"
+                                                  >
+                                                    {downloadingImages ? (
+                                                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                                    ) : (
+                                                      <Download className="h-3 w-3 mr-1" />
+                                                    )}
+                                                    Загрузить выбранные ({selectedImagesForDownload[product.id]?.size || 0})
+                                                  </Button>
+                                                )}
+                                              </div>
+                                            )}
+                                            
+                                            {/* Images grid */}
+                                            <div className="flex gap-3 overflow-x-auto pb-2">
+                                              {cachedImages.map((img, idx) => {
+                                                const isSelected = selectedImagesForDownload[product.id]?.has(idx) || false;
+                                                const isSynced = img.isSynced;
+                                                
+                                                return (
+                                                  <div 
+                                                    key={idx} 
+                                                    className={`relative flex-shrink-0 group ${
+                                                      isLinked && !isSynced ? 'cursor-pointer' : ''
+                                                    }`}
+                                                    onClick={() => {
+                                                      if (isLinked && !isSynced) {
+                                                        toggleImageSelection(product.id, idx);
+                                                      }
+                                                    }}
+                                                  >
+                                                    <img
+                                                      src={img.syncedUrl || img.miniature || ''}
+                                                      alt={`${product.name} - фото ${idx + 1}`}
+                                                      className={`h-24 w-24 object-cover rounded-lg border-2 transition-all ${
+                                                        isSynced 
+                                                          ? 'border-green-500 opacity-100' 
+                                                          : isSelected 
+                                                            ? 'border-primary ring-2 ring-primary/30' 
+                                                            : 'border-border hover:border-primary/50'
+                                                      }`}
+                                                    />
+                                                    
+                                                    {/* Status indicator */}
+                                                    {isSynced ? (
+                                                      <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full p-0.5">
+                                                        <Check className="h-3 w-3" />
+                                                      </div>
+                                                    ) : isLinked ? (
+                                                      <div className={`absolute -top-1 -right-1 rounded-full p-0.5 ${
+                                                        isSelected ? 'bg-primary text-white' : 'bg-blue-500 text-white'
+                                                      }`}>
+                                                        {isSelected ? (
+                                                          <Check className="h-3 w-3" />
+                                                        ) : (
+                                                          <span className="text-[10px] px-1 font-medium">NEW</span>
+                                                        )}
+                                                      </div>
+                                                    ) : null}
+                                                    
+                                                    {/* Checkbox for selection */}
+                                                    {isLinked && !isSynced && (
+                                                      <div className="absolute bottom-1 left-1">
+                                                        <Checkbox
+                                                          checked={isSelected}
+                                                          onCheckedChange={() => toggleImageSelection(product.id, idx)}
+                                                          className="h-4 w-4 bg-white/90"
+                                                          onClick={(e) => e.stopPropagation()}
+                                                        />
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                            
+                                            {/* Legend */}
+                                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                              <div className="flex items-center gap-1">
+                                                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                                <span>Синхронизировано</span>
+                                              </div>
+                                              <div className="flex items-center gap-1">
+                                                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                                                <span>Новое (доступно для загрузки)</span>
+                                              </div>
+                                            </div>
                                           </div>
                                         ) : (
                                           <div className="text-center py-4 text-sm text-muted-foreground">
