@@ -586,10 +586,18 @@ export default function AdminPanel() {
     }));
   };
 
-  // Save all products to localStorage for TestStore
+  // Save all products to localStorage for TestStore (without images to avoid quota issues)
   useEffect(() => {
-    const allProductsData = [...localTestProducts, ...importedProducts];
-    localStorage.setItem("admin_all_products", JSON.stringify(allProductsData));
+    const allProductsData = [...localTestProducts, ...importedProducts].map(p => {
+      // Remove images from localStorage to avoid QuotaExceededError
+      const { images, ...productWithoutImages } = p;
+      return productWithoutImages;
+    });
+    try {
+      localStorage.setItem("admin_all_products", JSON.stringify(allProductsData));
+    } catch (e) {
+      console.warn("Failed to save products to localStorage:", e);
+    }
   }, [localTestProducts, importedProducts]);
 
   // Check if a MoySklad product is linked (imported) to all products
