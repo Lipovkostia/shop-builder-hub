@@ -2294,20 +2294,8 @@ export default function AdminPanel() {
             variant="ghost"
             size="icon"
             onClick={() => navigate("/test-store")}
-            className="h-16 w-16"
           >
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {/* Красная крыша */}
-              <path d="M2 9L12 3L22 9H2Z" fill="#ef4444" stroke="#dc2626" strokeWidth="1" strokeLinejoin="round"/>
-              {/* Корпус магазина */}
-              <rect x="4" y="9" width="16" height="12" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="1.5"/>
-              {/* Дверь */}
-              <rect x="10" y="14" width="4" height="7" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1"/>
-              {/* Окно слева */}
-              <rect x="5.5" y="11" width="3" height="3" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="0.75"/>
-              {/* Окно справа */}
-              <rect x="15.5" y="11" width="3" height="3" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="0.75"/>
-            </svg>
+            <ArrowLeft className="h-5 w-5" />
           </Button>
           
           {/* Super admin quick link */}
