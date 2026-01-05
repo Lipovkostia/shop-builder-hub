@@ -1,0 +1,276 @@
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+export interface Catalog {
+  id: string;
+  store_id: string;
+  name: string;
+  description: string | null;
+  is_default: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductCatalogVisibility {
+  id: string;
+  product_id: string;
+  catalog_id: string;
+  created_at: string;
+}
+
+export function useStoreCatalogs(storeId: string | null) {
+  const { toast } = useToast();
+  const [catalogs, setCatalogs] = useState<Catalog[]>([]);
+  const [productVisibility, setProductVisibility] = useState<Record<string, Set<string>>>({});
+  const [loading, setLoading] = useState(false);
+
+  // Fetch all catalogs for the store
+  const fetchCatalogs = useCallback(async () => {
+    if (!storeId) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("catalogs")
+        .select("*")
+        .eq("store_id", storeId)
+        .order("sort_order", { ascending: true });
+
+      if (error) throw error;
+      setCatalogs(data || []);
+    } catch (error: any) {
+      console.error("Error fetching catalogs:", error);
+      toast({
+        title: "Ошибка загрузки каталогов",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [storeId, toast]);
+
+  // Fetch product visibility for all catalogs
+  const fetchProductVisibility = useCallback(async () => {
+    if (!storeId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("product_catalog_visibility")
+        .select(`
+          id,
+          product_id,
+          catalog_id,
+          catalogs!inner(store_id)
+        `)
+        .eq("catalogs.store_id", storeId);
+
+      if (error) throw error;
+
+      const visibility: Record<string, Set<string>> = {};
+      (data || []).forEach((row: any) => {
+        if (!visibility[row.product_id]) {
+          visibility[row.product_id] = new Set();
+        }
+        visibility[row.product_id].add(row.catalog_id);
+      });
+      setProductVisibility(visibility);
+    } catch (error: any) {
+      console.error("Error fetching product visibility:", error);
+    }
+  }, [storeId]);
+
+  // Create a new catalog
+  const createCatalog = useCallback(async (name: string, description?: string) => {
+    if (!storeId) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from("catalogs")
+        .insert({
+          store_id: storeId,
+          name,
+          description: description || null,
+          sort_order: catalogs.length,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      setCatalogs(prev => [...prev, data]);
+      toast({
+        title: "Каталог создан",
+        description: `Прайс-лист "${name}" успешно создан`,
+      });
+      return data;
+    } catch (error: any) {
+      console.error("Error creating catalog:", error);
+      toast({
+        title: "Ошибка создания каталога",
+        description: error.message,
+        variant: "destructive",
+      });
+      return null;
+    }
+  }, [storeId, catalogs.length, toast]);
+
+  // Update a catalog
+  const updateCatalog = useCallback(async (catalogId: string, updates: Partial<Catalog>) => {
+    try {
+      const { data, error } = await supabase
+        .from("catalogs")
+        .update(updates)
+        .eq("id", catalogId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      setCatalogs(prev => prev.map(c => c.id === catalogId ? data : c));
+      return data;
+    } catch (error: any) {
+      console.error("Error updating catalog:", error);
+      toast({
+        title: "Ошибка обновления каталога",
+        description: error.message,
+        variant: "destructive",
+      });
+      return null;
+    }
+  }, [toast]);
+
+  // Delete a catalog
+  const deleteCatalog = useCallback(async (catalogId: string) => {
+    try {
+      const { error } = await supabase
+        .from("catalogs")
+        .delete()
+        .eq("id", catalogId);
+
+      if (error) throw error;
+      
+      setCatalogs(prev => prev.filter(c => c.id !== catalogId));
+      toast({
+        title: "Каталог удалён",
+      });
+      return true;
+    } catch (error: any) {
+      console.error("Error deleting catalog:", error);
+      toast({
+        title: "Ошибка удаления каталога",
+        description: error.message,
+        variant: "destructive",
+      });
+      return false;
+    }
+  }, [toast]);
+
+  // Toggle product visibility in a catalog
+  const toggleProductVisibility = useCallback(async (productId: string, catalogId: string) => {
+    const isVisible = productVisibility[productId]?.has(catalogId);
+
+    try {
+      if (isVisible) {
+        // Remove from catalog
+        const { error } = await supabase
+          .from("product_catalog_visibility")
+          .delete()
+          .eq("product_id", productId)
+          .eq("catalog_id", catalogId);
+
+        if (error) throw error;
+
+        setProductVisibility(prev => {
+          const newSet = new Set(prev[productId]);
+          newSet.delete(catalogId);
+          return { ...prev, [productId]: newSet };
+        });
+      } else {
+        // Add to catalog
+        const { error } = await supabase
+          .from("product_catalog_visibility")
+          .insert({ product_id: productId, catalog_id: catalogId });
+
+        if (error) throw error;
+
+        setProductVisibility(prev => {
+          const newSet = new Set(prev[productId] || []);
+          newSet.add(catalogId);
+          return { ...prev, [productId]: newSet };
+        });
+      }
+    } catch (error: any) {
+      console.error("Error toggling product visibility:", error);
+      toast({
+        title: "Ошибка изменения видимости",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  }, [productVisibility, toast]);
+
+  // Set product visibility for multiple catalogs at once
+  const setProductCatalogs = useCallback(async (productId: string, catalogIds: string[]) => {
+    const currentCatalogIds = Array.from(productVisibility[productId] || []);
+    const toAdd = catalogIds.filter(id => !currentCatalogIds.includes(id));
+    const toRemove = currentCatalogIds.filter(id => !catalogIds.includes(id));
+
+    try {
+      // Remove old visibility
+      if (toRemove.length > 0) {
+        const { error } = await supabase
+          .from("product_catalog_visibility")
+          .delete()
+          .eq("product_id", productId)
+          .in("catalog_id", toRemove);
+
+        if (error) throw error;
+      }
+
+      // Add new visibility
+      if (toAdd.length > 0) {
+        const { error } = await supabase
+          .from("product_catalog_visibility")
+          .insert(toAdd.map(catalog_id => ({ product_id: productId, catalog_id })));
+
+        if (error) throw error;
+      }
+
+      setProductVisibility(prev => ({
+        ...prev,
+        [productId]: new Set(catalogIds),
+      }));
+    } catch (error: any) {
+      console.error("Error setting product catalogs:", error);
+      toast({
+        title: "Ошибка изменения прайс-листов",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  }, [productVisibility, toast]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchCatalogs();
+    fetchProductVisibility();
+  }, [fetchCatalogs, fetchProductVisibility]);
+
+  return {
+    catalogs,
+    productVisibility,
+    loading,
+    createCatalog,
+    updateCatalog,
+    deleteCatalog,
+    toggleProductVisibility,
+    setProductCatalogs,
+    refetch: () => {
+      fetchCatalogs();
+      fetchProductVisibility();
+    },
+  };
+}
