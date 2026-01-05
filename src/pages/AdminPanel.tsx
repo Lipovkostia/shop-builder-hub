@@ -2407,6 +2407,7 @@ export default function AdminPanel() {
                     { id: "type", minWidth: 70, defaultWidth: 85 },
                     { id: "volume", minWidth: 70, defaultWidth: 80 },
                     { id: "cost", minWidth: 70, defaultWidth: 90 },
+                    { id: "catalogs", minWidth: 100, defaultWidth: 120 },
                     { id: "status", minWidth: 70, defaultWidth: 80 },
                     { id: "sync", minWidth: 50, defaultWidth: 50 },
                     { id: "actions", minWidth: 40, defaultWidth: 40 },
