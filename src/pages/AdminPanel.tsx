@@ -2216,7 +2216,6 @@ export default function AdminPanel() {
                       <ResizableTableHead columnId="type" minWidth={70}>Вид</ResizableTableHead>
                       <ResizableTableHead columnId="volume" minWidth={70}>Объем</ResizableTableHead>
                       <ResizableTableHead columnId="cost" minWidth={70}>Себест.</ResizableTableHead>
-                      <ResizableTableHead columnId="status" minWidth={70}>Статус</ResizableTableHead>
                       <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>Синхр.</ResizableTableHead>
                     </ResizableTableRow>
                     {/* Row 2: Filters */}
@@ -2285,17 +2284,6 @@ export default function AdminPanel() {
                           value={allProductsFilters.cost} 
                           onChange={(v) => setAllProductsFilters(f => ({...f, cost: v}))}
                           placeholder="Поиск..."
-                        />
-                      </ResizableTableHead>
-                      <ResizableTableHead columnId="status" minWidth={70} resizable={false}>
-                        <SelectFilter
-                          value={allProductsFilters.status}
-                          onChange={(v) => setAllProductsFilters(f => ({...f, status: v}))}
-                          options={[
-                            { value: "inStock", label: "Да" },
-                            { value: "outOfStock", label: "Нет" },
-                          ]}
-                          placeholder="Все"
                         />
                       </ResizableTableHead>
                       <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
@@ -2439,20 +2427,6 @@ export default function AdminPanel() {
                               onSave={(newPrice) => updateProduct({ ...product, buyPrice: newPrice })}
                               placeholder="0"
                             />
-                          </ResizableTableCell>
-                        ),
-                        status: (
-                          <ResizableTableCell key="status" columnId="status">
-                            <Badge
-                              variant={product.inStock ? "default" : "secondary"}
-                              className={`text-[10px] whitespace-nowrap ${
-                                product.inStock
-                                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                                  : "bg-muted text-muted-foreground"
-                              }`}
-                            >
-                              {product.inStock ? "Есть" : "Нет"}
-                            </Badge>
                           </ResizableTableCell>
                         ),
                         sync: (
