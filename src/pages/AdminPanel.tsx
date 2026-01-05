@@ -2057,18 +2057,65 @@ export default function AdminPanel() {
       });
     }
 
-    // Replace duplicates instead of adding - filter out any existing products with same moyskladId
-    setImportedProducts(prev => {
-      const newMoyskladIds = new Set(newProducts.map(p => p.moyskladId).filter(Boolean));
-      const filtered = prev.filter(p => !p.moyskladId || !newMoyskladIds.has(p.moyskladId));
-      return [...filtered, ...newProducts];
-    });
+    // Save products to Supabase
+    let savedCount = 0;
+    for (const product of newProducts) {
+      // Check if product already exists in Supabase by moysklad_id
+      const existingSupabaseProduct = supabaseProducts.find(sp => sp.moysklad_id === product.moyskladId);
+      
+      if (existingSupabaseProduct) {
+        // Update existing product
+        await updateSupabaseProduct(existingSupabaseProduct.id, {
+          name: product.name,
+          description: product.description || null,
+          price: product.pricePerUnit,
+          buy_price: product.buyPrice || null,
+          unit: product.unit || null,
+          images: product.images || null,
+          quantity: product.inStock ? 1 : 0,
+          is_active: true,
+          source: 'moysklad',
+          moysklad_id: product.moyskladId || null,
+          moysklad_account_id: currentAccount.id,
+          auto_sync: product.autoSync || false,
+          synced_moysklad_images: product.syncedMoyskladImages || null,
+        });
+        savedCount++;
+      } else {
+        // Create new product in Supabase
+        const slug = product.name
+          .toLowerCase()
+          .replace(/[^a-zа-яё0-9\s]/gi, '')
+          .replace(/\s+/g, '-')
+          .substring(0, 50) + '-' + Date.now();
+        
+        await createSupabaseProduct({
+          name: product.name,
+          description: product.description || null,
+          price: product.pricePerUnit,
+          buy_price: product.buyPrice || null,
+          unit: product.unit || null,
+          images: product.images || null,
+          quantity: product.inStock ? 1 : 0,
+          is_active: true,
+          source: 'moysklad',
+          moysklad_id: product.moyskladId || null,
+          moysklad_account_id: currentAccount.id,
+          auto_sync: product.autoSync || false,
+          synced_moysklad_images: product.syncedMoyskladImages || null,
+          slug,
+          store_id: effectiveStoreId!,
+        });
+        savedCount++;
+      }
+    }
+
     setSelectedProducts(new Set());
     setIsLoading(false);
 
     toast({
       title: "Импорт завершён",
-      description: `Импортировано ${newProducts.length} товаров`,
+      description: `Импортировано ${savedCount} товаров в ассортимент`,
     });
   };
 
