@@ -31,27 +31,40 @@ function formatPriceSpaced(price: number): string {
   return Math.round(price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 }
 
-// Индикатор порции
+// Индикатор порции (SVG для чёткости)
 function PortionIndicator({ type }: { type: "full" | "half" | "quarter" | "portion" }) {
+  const size = 14;
+  const r = 5;
+  const cx = size / 2;
+  const cy = size / 2;
+
   return (
-    <div className="w-3.5 h-3.5 rounded-full overflow-hidden border border-primary bg-background relative">
-      {type === "full" && <div className="absolute inset-0 bg-primary" />}
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="flex-shrink-0">
+      {/* Фоновый круг */}
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary" />
+      
+      {type === "full" && (
+        <circle cx={cx} cy={cy} r={r} className="fill-primary" />
+      )}
+      
       {type === "half" && (
-        <div 
-          className="absolute inset-0 bg-primary" 
-          style={{ clipPath: "polygon(0 0, 50% 0, 50% 100%, 0 100%)" }} 
+        <path 
+          d={`M ${cx} ${cy - r} A ${r} ${r} 0 0 0 ${cx} ${cy + r} Z`}
+          className="fill-primary"
         />
       )}
+      
       {type === "quarter" && (
-        <div 
-          className="absolute inset-0 bg-primary" 
-          style={{ clipPath: "polygon(50% 50%, 50% 0, 100% 0, 100% 50%)" }} 
+        <path 
+          d={`M ${cx} ${cy} L ${cx} ${cy - r} A ${r} ${r} 0 0 1 ${cx + r} ${cy} Z`}
+          className="fill-primary"
         />
       )}
+      
       {type === "portion" && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-primary" />
+        <circle cx={cx} cy={cy} r={2} className="fill-primary" />
       )}
-    </div>
+    </svg>
   );
 }
 
