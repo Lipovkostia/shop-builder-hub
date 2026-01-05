@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag } from "lucide-react";
@@ -63,9 +63,11 @@ import { InlineMarkupCell } from "@/components/admin/InlineMarkupCell";
 import { MobileTabNav } from "@/components/admin/MobileTabNav";
 import { BulkEditPanel } from "@/components/admin/BulkEditPanel";
 import { uploadProductImages } from "@/hooks/useProductImages";
+import { SyncSettingsPanel, SyncSettings, SyncFieldMapping, defaultSyncSettings } from "@/components/admin/SyncSettingsPanel";
 
 const MOYSKLAD_ACCOUNTS_KEY = "moysklad_accounts";
 const IMPORTED_PRODUCTS_KEY = "moysklad_imported_products";
+const SYNC_SETTINGS_KEY = "moysklad_sync_settings";
 
 // Local test products
 const testProducts: Product[] = [
@@ -386,6 +388,10 @@ export default function AdminPanel() {
   const [selectedImagesForDownload, setSelectedImagesForDownload] = useState<Record<string, Set<number>>>({});
   const [downloadingImages, setDownloadingImages] = useState<boolean>(false);
 
+  // Sync settings state
+  const [syncSettings, setSyncSettings] = useState<SyncSettings>(defaultSyncSettings);
+  const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Expanded product images state for assortment section
   const [expandedAssortmentImages, setExpandedAssortmentImages] = useState<string | null>(null);
 
@@ -547,6 +553,23 @@ export default function AdminPanel() {
   useEffect(() => {
     localStorage.setItem(CATALOGS_KEY, JSON.stringify(catalogs));
   }, [catalogs]);
+
+  // Load sync settings from localStorage
+  useEffect(() => {
+    const savedSyncSettings = localStorage.getItem(SYNC_SETTINGS_KEY);
+    if (savedSyncSettings) {
+      try {
+        setSyncSettings(JSON.parse(savedSyncSettings));
+      } catch (e) {
+        console.error("Failed to parse saved sync settings");
+      }
+    }
+  }, []);
+
+  // Save sync settings to localStorage
+  useEffect(() => {
+    localStorage.setItem(SYNC_SETTINGS_KEY, JSON.stringify(syncSettings));
+  }, [syncSettings]);
 
   // Initialize visibility state from catalogs
   useEffect(() => {
@@ -741,9 +764,11 @@ export default function AdminPanel() {
   };
 
   // Auto-sync products with MoySklad that have autoSync enabled
-  const syncAutoSyncProducts = async () => {
+  const syncAutoSyncProducts = async (fieldMapping?: SyncFieldMapping) => {
     const productsToSync = importedProducts.filter(p => p.autoSync && p.moyskladId);
     if (productsToSync.length === 0) return;
+
+    const mapping = fieldMapping || syncSettings.fieldMapping;
 
     // Group products by account
     const productsByAccount = productsToSync.reduce((acc, p) => {
@@ -776,12 +801,29 @@ export default function AdminPanel() {
             if (product.autoSync && product.moyskladId && product.accountId === accountId) {
               const msProduct = msProductsMap.get(product.moyskladId) as MoySkladProduct | undefined;
               if (msProduct) {
-                return {
-                  ...product,
-                  pricePerUnit: msProduct.price || product.pricePerUnit,
-                  buyPrice: msProduct.buyPrice,
-                  inStock: msProduct.quantity > 0 || msProduct.stock > 0,
-                };
+                const updates: Partial<Product> = {};
+                
+                // Apply field mapping
+                if (mapping.buyPrice && msProduct.buyPrice !== undefined) {
+                  updates.buyPrice = msProduct.buyPrice;
+                }
+                if (mapping.price && msProduct.price !== undefined) {
+                  updates.pricePerUnit = msProduct.price;
+                }
+                if (mapping.quantity) {
+                  updates.inStock = msProduct.quantity > 0 || msProduct.stock > 0;
+                }
+                if (mapping.name && msProduct.name) {
+                  updates.name = msProduct.name;
+                }
+                if (mapping.description && msProduct.description) {
+                  updates.description = msProduct.description;
+                }
+                if (mapping.unit && msProduct.uom) {
+                  updates.unit = msProduct.uom;
+                }
+                
+                return { ...product, ...updates };
               }
             }
             return product;
@@ -789,15 +831,79 @@ export default function AdminPanel() {
         }
       }
 
+      // Update last sync time
+      setSyncSettings(prev => ({
+        ...prev,
+        lastSyncTime: new Date().toISOString(),
+        nextSyncTime: prev.enabled 
+          ? new Date(Date.now() + prev.intervalMinutes * 60000).toISOString()
+          : undefined,
+      }));
+
       toast({
         title: "Синхронизация завершена",
         description: `Обновлено ${productsToSync.length} товаров`,
       });
     } catch (err) {
       console.error("Sync error:", err);
+      toast({
+        title: "Ошибка синхронизации",
+        description: "Не удалось обновить данные",
+        variant: "destructive",
+      });
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  // Auto-sync timer effect
+  useEffect(() => {
+    // Clear existing timer
+    if (syncTimerRef.current) {
+      clearInterval(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
+
+    if (!syncSettings.enabled) return;
+
+    const syncedProductsCount = importedProducts.filter(p => p.autoSync).length;
+    if (syncedProductsCount === 0) return;
+
+    // Set initial next sync time if not set
+    if (!syncSettings.nextSyncTime) {
+      setSyncSettings(prev => ({
+        ...prev,
+        nextSyncTime: new Date(Date.now() + prev.intervalMinutes * 60000).toISOString(),
+      }));
+    }
+
+    // Check every second if it's time to sync
+    syncTimerRef.current = setInterval(() => {
+      if (syncSettings.nextSyncTime) {
+        const now = Date.now();
+        const nextSync = new Date(syncSettings.nextSyncTime).getTime();
+        
+        if (now >= nextSync && !isSyncing) {
+          syncAutoSyncProducts(syncSettings.fieldMapping);
+        }
+      }
+    }, 10000); // Check every 10 seconds
+
+    return () => {
+      if (syncTimerRef.current) {
+        clearInterval(syncTimerRef.current);
+      }
+    };
+  }, [syncSettings.enabled, syncSettings.intervalMinutes, syncSettings.nextSyncTime, importedProducts.length]);
+
+  // Handle sync settings change
+  const handleSyncSettingsChange = (newSettings: SyncSettings) => {
+    setSyncSettings(newSettings);
+  };
+
+  // Manual sync now handler
+  const handleSyncNow = () => {
+    syncAutoSyncProducts(syncSettings.fieldMapping);
   };
 
   // Toggle auto-sync for a product
@@ -1693,7 +1799,7 @@ export default function AdminPanel() {
                 </div>
                 {importedProducts.some(p => p.autoSync) && (
                   <Button
-                    onClick={syncAutoSyncProducts}
+                    onClick={() => syncAutoSyncProducts()}
                     disabled={isSyncing}
                     variant="outline"
                     size="sm"
@@ -2251,6 +2357,15 @@ export default function AdminPanel() {
                       <p className="text-sm text-muted-foreground">{currentAccount.login}</p>
                     </div>
                   </div>
+
+                  {/* Sync Settings Panel */}
+                  <SyncSettingsPanel
+                    settings={syncSettings}
+                    onSettingsChange={handleSyncSettingsChange}
+                    onSyncNow={handleSyncNow}
+                    isSyncing={isSyncing}
+                    syncedProductsCount={importedProducts.filter(p => p.autoSync).length}
+                  />
 
                   {isLoading && moyskladProducts.length === 0 ? (
                     <div className="bg-card rounded-lg border border-border p-8 text-center">
