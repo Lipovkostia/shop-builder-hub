@@ -2697,31 +2697,27 @@ export default function AdminPanel() {
                         ),
                         catalogs: (
                           <ResizableTableCell key="catalogs" columnId="catalogs">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] gap-1">
-                                  {productCatalogVisibility[product.id]?.size || 0} прайс
-                                  <ChevronDown className="h-3 w-3" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="start" className="min-w-[180px]">
-                                {catalogs.length === 0 ? (
-                                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                                    Нет прайс-листов
-                                  </div>
-                                ) : (
-                                  catalogs.map(catalog => (
-                                    <DropdownMenuCheckboxItem
-                                      key={catalog.id}
-                                      checked={productCatalogVisibility[product.id]?.has(catalog.id) || false}
-                                      onCheckedChange={() => toggleProductCatalogVisibility(product.id, catalog.id)}
-                                    >
-                                      {catalog.name}
-                                    </DropdownMenuCheckboxItem>
-                                  ))
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            <InlineMultiSelectCell
+                              values={Array.from(productCatalogVisibility[product.id] || [])}
+                              options={catalogs.map(c => ({ value: c.id, label: c.name }))}
+                              onSave={(selectedIds) => {
+                                const currentSet = productCatalogVisibility[product.id] || new Set();
+                                const newSet = new Set(selectedIds);
+                                
+                                // Find added and removed
+                                selectedIds.forEach(id => {
+                                  if (!currentSet.has(id)) {
+                                    toggleProductCatalogVisibility(product.id, id);
+                                  }
+                                });
+                                currentSet.forEach(id => {
+                                  if (!newSet.has(id)) {
+                                    toggleProductCatalogVisibility(product.id, id);
+                                  }
+                                });
+                              }}
+                              placeholder="Выбрать..."
+                            />
                           </ResizableTableCell>
                         ),
                         sync: (
