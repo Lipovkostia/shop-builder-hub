@@ -34,14 +34,22 @@ function formatPriceSpaced(price: number): string {
 // Индикатор порции
 function PortionIndicator({ type }: { type: "full" | "half" | "quarter" | "portion" }) {
   return (
-    <div className="w-3.5 h-3.5 rounded-full overflow-hidden border border-primary bg-background flex items-center justify-center">
-      {type === "full" && <div className="w-full h-full bg-primary" />}
-      {type === "half" && <div className="w-1/2 h-full bg-primary" />}
+    <div className="w-3.5 h-3.5 rounded-full overflow-hidden border border-primary bg-background relative">
+      {type === "full" && <div className="absolute inset-0 bg-primary" />}
+      {type === "half" && (
+        <div 
+          className="absolute inset-0 bg-primary" 
+          style={{ clipPath: "polygon(0 0, 50% 0, 50% 100%, 0 100%)" }} 
+        />
+      )}
       {type === "quarter" && (
-        <div className="w-1/2 h-1/2 bg-primary" style={{ borderBottomRightRadius: "100%" }} />
+        <div 
+          className="absolute inset-0 bg-primary" 
+          style={{ clipPath: "polygon(50% 50%, 50% 0, 100% 0, 100% 50%)" }} 
+        />
       )}
       {type === "portion" && (
-        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-primary" />
       )}
     </div>
   );
