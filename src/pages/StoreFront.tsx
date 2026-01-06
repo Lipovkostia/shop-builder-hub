@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,11 +9,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { useStoreBySubdomain, useIsStoreOwner } from "@/hooks/useUserStore";
-import { useStoreProducts } from "@/hooks/useStoreProducts";
+import { useStoreProducts, StoreProduct } from "@/hooks/useStoreProducts";
 import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
 import { useCatalogProductSettings, CatalogProductSetting } from "@/hooks/useCatalogProductSettings";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ProductEditPanel } from "@/components/admin/ProductEditPanel";
 import {
   formatPrice,
   calculatePackagingPrices,
@@ -74,13 +76,27 @@ function ProductCard({
   cart, 
   onAddToCart,
   showImages = true,
-  catalogSettings
+  catalogSettings,
+  isOwner = false,
+  isExpanded = false,
+  onToggleExpand,
+  onSave,
+  catalogs = [],
+  productCatalogIds = [],
+  onCatalogsChange,
 }: { 
   product: any;
   cart: CartItem[];
   onAddToCart: (productId: string, variantIndex: number, price: number) => void;
   showImages?: boolean;
   catalogSettings?: CatalogProductSetting;
+  isOwner?: boolean;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
+  onSave?: (productId: string, updates: Partial<StoreProduct>) => Promise<void>;
+  catalogs?: { id: string; name: string; is_default: boolean }[];
+  productCatalogIds?: string[];
+  onCatalogsChange?: (productId: string, catalogIds: string[]) => void;
 }) {
   const getCartQuantity = (variantIndex: number) => {
     const item = cart.find(
@@ -122,6 +138,7 @@ function ProductCard({
   const fullPrice = getFullPrice();
 
   return (
+    <Collapsible open={isExpanded}>
     <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border ${showImages ? 'h-[calc((100vh-88px)/8)] min-h-[72px]' : 'h-9 min-h-[36px]'}`}>
       {/* Изображение */}
       {showImages && (
@@ -141,8 +158,14 @@ function ProductCard({
       <div className={`flex-1 min-w-0 flex ${showImages ? 'flex-col justify-center gap-0' : 'flex-row items-center gap-2'}`}>
         {/* Название */}
         <div className={`relative overflow-hidden ${showImages ? '' : 'flex-1 min-w-0'}`}>
-          <h3 className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px]'}`}>
+          <h3 
+            className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px]'} ${isOwner ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+            onClick={isOwner && onToggleExpand ? () => onToggleExpand() : undefined}
+          >
             {product.name}
+            {isOwner && (
+              <Pencil className="inline-block ml-1 w-3 h-3 text-muted-foreground" />
+            )}
           </h3>
           {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />}
         </div>
@@ -277,6 +300,21 @@ function ProductCard({
         </div>
       </div>
     </div>
+    
+    {/* Панель редактирования для владельца */}
+    {isOwner && onSave && onCatalogsChange && (
+      <CollapsibleContent>
+        <ProductEditPanel
+          product={product}
+          catalogs={catalogs}
+          productCatalogIds={productCatalogIds}
+          onSave={onSave}
+          onCatalogsChange={onCatalogsChange}
+          onClose={() => onToggleExpand?.()}
+        />
+      </CollapsibleContent>
+    )}
+    </Collapsible>
   );
 }
 
@@ -434,13 +472,30 @@ export default function StoreFront() {
   const { subdomain } = useParams<{ subdomain: string }>();
   const { store, loading: storeLoading, error: storeError } = useStoreBySubdomain(subdomain);
   const { isOwner } = useIsStoreOwner(store?.id || null);
-  const { products, loading: productsLoading } = useStoreProducts(store?.id || null);
-  const { catalogs, productVisibility } = useStoreCatalogs(store?.id || null);
+  const { products, loading: productsLoading, updateProduct } = useStoreProducts(store?.id || null);
+  const { catalogs, productVisibility, setProductCatalogs } = useStoreCatalogs(store?.id || null);
   const { settings: catalogProductSettings, getProductSettings } = useCatalogProductSettings(store?.id || null);
   
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCatalog, setSelectedCatalog] = useState<string | null>(null);
   const [showImages, setShowImages] = useState(true);
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+
+  // Get product catalog IDs for a specific product
+  const getProductCatalogIds = (productId: string): string[] => {
+    const visibility = productVisibility[productId];
+    return visibility ? Array.from(visibility) : [];
+  };
+
+  // Handle save product
+  const handleSaveProduct = async (productId: string, updates: Partial<StoreProduct>) => {
+    await updateProduct(productId, updates);
+  };
+
+  // Handle catalogs change
+  const handleCatalogsChange = (productId: string, catalogIds: string[]) => {
+    setProductCatalogs(productId, catalogIds);
+  };
 
   // Filter products based on selected catalog and catalog-specific status
   const filteredProducts = useMemo(() => {
@@ -530,6 +585,13 @@ export default function StoreFront() {
                 onAddToCart={handleAddToCart}
                 showImages={showImages}
                 catalogSettings={catalogSettings}
+                isOwner={isOwner}
+                isExpanded={expandedProductId === product.id}
+                onToggleExpand={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
+                onSave={handleSaveProduct}
+                catalogs={catalogs}
+                productCatalogIds={getProductCatalogIds(product.id)}
+                onCatalogsChange={handleCatalogsChange}
               />
             );
           })
