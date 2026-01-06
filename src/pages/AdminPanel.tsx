@@ -728,35 +728,10 @@ export default function AdminPanel() {
     setProductCatalogVisibility(visibility);
   }, [catalogs]);
 
-  // Toggle product visibility in a catalog
-  const toggleProductCatalogVisibility = (productId: string, catalogId: string) => {
-    // Update local visibility state
-    setProductCatalogVisibility(prev => {
-      const newVisibility = { ...prev };
-      if (!newVisibility[productId]) {
-        newVisibility[productId] = new Set();
-      }
-      const productCatalogs = new Set(newVisibility[productId]);
-      if (productCatalogs.has(catalogId)) {
-        productCatalogs.delete(catalogId);
-      } else {
-        productCatalogs.add(catalogId);
-      }
-      newVisibility[productId] = productCatalogs;
-      return newVisibility;
-    });
-
-    // Update catalogs state
-    setCatalogs(prev => prev.map(catalog => {
-      if (catalog.id !== catalogId) return catalog;
-      const hasProduct = catalog.productIds.includes(productId);
-      if (hasProduct) {
-        return { ...catalog, productIds: catalog.productIds.filter(id => id !== productId) };
-      } else {
-        return { ...catalog, productIds: [...catalog.productIds, productId] };
-      }
-    }));
-  };
+  // Toggle product visibility in a catalog - now uses Supabase hook
+  const toggleProductCatalogVisibility = useCallback((productId: string, catalogId: string) => {
+    toggleSupabaseProductVisibility(productId, catalogId);
+  }, [toggleSupabaseProductVisibility]);
 
   // NOTE: Products are now stored in Supabase and synced automatically
   // The localStorage for TestStore is no longer needed
