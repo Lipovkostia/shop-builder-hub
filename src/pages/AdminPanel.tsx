@@ -3881,13 +3881,21 @@ export default function AdminPanel() {
                                     className="w-10 h-10 rounded object-cover"
                                   />
                                 </ResizableTableCell>
-                                {/* Название - из ассортимента (только чтение) */}
+                                {/* Название - редактируемое, сохраняется в ассортимент */}
                                 <ResizableTableCell columnId="name" className="font-medium">
-                                  <span className="text-sm" title="Синхронизировано из ассортимента">{baseName}</span>
+                                  <InlineEditableCell
+                                    value={baseName}
+                                    onSave={(newName) => {
+                                      if (newName && newName !== baseName) {
+                                        updateProduct({ ...product, name: newName });
+                                      }
+                                    }}
+                                    placeholder="Название"
+                                  />
                                 </ResizableTableCell>
                                 {/* Категории - редактируемые для каталога */}
                                 <ResizableTableCell columnId="category">
-                                <InlineMultiSelectCell
+                                  <InlineMultiSelectCell
                                     values={effectiveCategories || []}
                                     options={categories.map(c => ({ value: c.id, label: c.name }))}
                                     onSave={(cats) => {
@@ -3901,27 +3909,61 @@ export default function AdminPanel() {
                                     placeholder="Категории"
                                   />
                                 </ResizableTableCell>
-                                {/* Описание - из ассортимента (только чтение) */}
+                                {/* Описание - редактируемое, сохраняется в ассортимент */}
                                 <ResizableTableCell columnId="description">
-                                  <span className="text-xs text-muted-foreground truncate max-w-[150px] block" title={baseDescription || "Нет описания"}>
-                                    {baseDescription || "-"}
-                                  </span>
+                                  <InlineEditableCell
+                                    value={baseDescription || ""}
+                                    onSave={(newDesc) => {
+                                      if (newDesc !== baseDescription) {
+                                        updateProduct({ ...product, description: newDesc });
+                                      }
+                                    }}
+                                    placeholder="Описание..."
+                                    className="text-muted-foreground text-xs"
+                                  />
                                 </ResizableTableCell>
-                                {/* Единица измерения - из ассортимента (только чтение) */}
+                                {/* Единица измерения - редактируемая, сохраняется в ассортимент */}
                                 <ResizableTableCell columnId="unit">
-                                  <span className="text-xs" title="Синхронизировано из ассортимента">{baseUnit}</span>
+                                  <InlineSelectCell
+                                    value={baseUnit}
+                                    options={allUnitOptions}
+                                    onSave={(newUnit) => {
+                                      if (newUnit !== baseUnit) {
+                                        updateProduct({ ...product, unit: newUnit });
+                                      }
+                                    }}
+                                    onAddOption={(newUnit) => setCustomUnits(prev => [...prev, newUnit])}
+                                    addNewPlaceholder="Ед..."
+                                    allowAddNew={true}
+                                  />
                                 </ResizableTableCell>
-                                {/* Объём - из ассортимента (только чтение) */}
+                                {/* Объём - редактируемый, сохраняется в ассортимент */}
                                 <ResizableTableCell columnId="volume">
-                                  <span className="text-xs text-muted-foreground" title="Синхронизировано из ассортимента">
-                                    {baseUnitWeight ?? "-"}
-                                  </span>
+                                  <InlinePriceCell
+                                    value={baseUnitWeight}
+                                    onSave={(newVolume) => {
+                                      if (newVolume !== baseUnitWeight) {
+                                        updateProduct({ ...product, unitWeight: newVolume });
+                                      }
+                                    }}
+                                    placeholder="0"
+                                    suffix={baseUnit}
+                                  />
                                 </ResizableTableCell>
-                                {/* Вид упаковки - из ассортимента (только чтение) */}
+                                {/* Вид упаковки - редактируемый, сохраняется в ассортимент */}
                                 <ResizableTableCell columnId="type">
-                                  <span className="text-xs" title="Синхронизировано из ассортимента">
-                                    {basePackagingType ? packagingTypeLabels[basePackagingType as PackagingType] || basePackagingType : "-"}
-                                  </span>
+                                  <InlineSelectCell
+                                    value={basePackagingType || "piece"}
+                                    options={allPackagingOptions}
+                                    onSave={(newType) => {
+                                      if (newType !== basePackagingType) {
+                                        updateProduct({ ...product, packagingType: newType as PackagingType });
+                                      }
+                                    }}
+                                    onAddOption={(newType) => setCustomPackagingTypes(prev => [...prev, newType])}
+                                    addNewPlaceholder="Вид..."
+                                    allowAddNew={true}
+                                  />
                                 </ResizableTableCell>
                                 {/* Себестоимость - read-only, берётся из ассортимента */}
                                 <ResizableTableCell columnId="buyPrice">
