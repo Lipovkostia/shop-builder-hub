@@ -128,8 +128,8 @@ function ProductCard({
   const firstImage = images[0] || "/placeholder.svg";
   const unit = product.unit || "кг";
   
-  // Determine stock status: use catalog settings if available, otherwise fall back to product data
-  const effectiveStatus = catalogSettings?.status || (product.is_active !== false && (product.quantity || 0) > 0 ? "in_stock" : "out_of_stock");
+  // Determine stock status: use catalog settings if available, otherwise fall back to product is_active
+  const effectiveStatus = catalogSettings?.status || (product.is_active !== false ? "in_stock" : "out_of_stock");
   const inStock = effectiveStatus === "in_stock";
   const isHidden = effectiveStatus === "hidden";
 
