@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, Phone, FolderOpen, Loader2 } from "lucide-react";
+import { Users, Phone, Loader2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -8,8 +8,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { InlineMultiSelectCell } from "@/components/admin/InlineMultiSelectCell";
+import { useToast } from "@/hooks/use-toast";
 
 interface CustomerWithAccess {
   id: string;
@@ -30,6 +31,63 @@ interface StoreCustomersTableProps {
 export function StoreCustomersTable({ storeId }: StoreCustomersTableProps) {
   const [customers, setCustomers] = useState<CustomerWithAccess[]>([]);
   const [loading, setLoading] = useState(true);
+  const [allCatalogs, setAllCatalogs] = useState<{id: string, name: string}[]>([]);
+  const { toast } = useToast();
+
+  // Update customer catalog access
+  const updateCustomerCatalogAccess = async (
+    storeCustomerId: string, 
+    newCatalogIds: string[]
+  ) => {
+    try {
+      const customer = customers.find(c => c.id === storeCustomerId);
+      const currentCatalogIds = customer?.catalogs.map(c => c.id) || [];
+      
+      const toAdd = newCatalogIds.filter(id => !currentCatalogIds.includes(id));
+      const toRemove = currentCatalogIds.filter(id => !newCatalogIds.includes(id));
+      
+      if (toRemove.length > 0) {
+        const { error } = await supabase
+          .from('customer_catalog_access')
+          .delete()
+          .eq('store_customer_id', storeCustomerId)
+          .in('catalog_id', toRemove);
+        if (error) throw error;
+      }
+      
+      if (toAdd.length > 0) {
+        const { error } = await supabase
+          .from('customer_catalog_access')
+          .insert(toAdd.map(catalogId => ({
+            store_customer_id: storeCustomerId,
+            catalog_id: catalogId
+          })));
+        if (error) throw error;
+      }
+      
+      setCustomers(prev => prev.map(c => {
+        if (c.id === storeCustomerId) {
+          return {
+            ...c,
+            catalogs: allCatalogs.filter(cat => newCatalogIds.includes(cat.id))
+          };
+        }
+        return c;
+      }));
+      
+      toast({
+        title: "Доступ обновлён",
+        description: "Изменения сохранены",
+      });
+    } catch (error) {
+      console.error('Error updating catalog access:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось обновить доступ",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -94,6 +152,7 @@ export function StoreCustomersTable({ storeId }: StoreCustomersTableProps) {
         });
 
         setCustomers(customersWithAccess);
+        setAllCatalogs(catalogs || []);
       } catch (error) {
         console.error('Error fetching customers:', error);
       } finally {
@@ -147,18 +206,13 @@ export function StoreCustomersTable({ storeId }: StoreCustomersTableProps) {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {customer.catalogs.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {customer.catalogs.map((catalog) => (
-                          <Badge key={catalog.id} variant="secondary" className="text-xs">
-                            <FolderOpen className="h-3 w-3 mr-1" />
-                            {catalog.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">Нет доступа</span>
-                    )}
+                    <InlineMultiSelectCell
+                      values={customer.catalogs.map(c => c.id)}
+                      options={allCatalogs.map(c => ({ value: c.id, label: c.name }))}
+                      onSave={(newCatalogIds) => updateCustomerCatalogAccess(customer.id, newCatalogIds)}
+                      allowAddNew={false}
+                      placeholder="Нет доступа"
+                    />
                   </TableCell>
                 </TableRow>
               ))}
