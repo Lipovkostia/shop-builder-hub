@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -86,6 +86,7 @@ import { useStoreCatalogs, Catalog as StoreCatalog } from "@/hooks/useStoreCatal
 import { useCustomerRoles } from "@/hooks/useCustomerRoles";
 import { useMoyskladAccounts, MoyskladAccount } from "@/hooks/useMoyskladAccounts";
 import { useStoreSyncSettings, SyncSettings as StoreSyncSettings, SyncFieldMapping as StoreSyncFieldMapping, defaultSyncSettings as defaultStoreSyncSettings } from "@/hooks/useStoreSyncSettings";
+import { useStoreOrders, Order } from "@/hooks/useOrders";
 
 // Removed localStorage keys - now using Supabase
 
@@ -269,7 +270,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "import" | "catalogs" | "roles" | "visibility";
+type ActiveSection = "products" | "import" | "catalogs" | "roles" | "visibility" | "orders";
 type ImportView = "accounts" | "catalog";
 type CatalogView = "list" | "detail";
 
@@ -394,11 +395,19 @@ export default function AdminPanel() {
     deleteRole: deleteSupabaseRole,
     refetch: refetchRoles
   } = useCustomerRoles(effectiveStoreId);
+  
+  // Orders from Supabase
+  const {
+    orders,
+    loading: ordersLoading,
+    updateOrderStatus,
+    refetch: refetchOrders
+  } = useStoreOrders(effectiveStoreId);
   // ================ END SUPABASE DATA HOOKS ================
   
   const [activeSection, setActiveSection] = useState<ActiveSection>(() => {
     const section = searchParams.get('section');
-    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'roles' || section === 'visibility') {
+    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'roles' || section === 'visibility' || section === 'orders') {
       return section;
     }
     return "products";
@@ -3547,6 +3556,29 @@ export default function AdminPanel() {
                                 </Badge>
                               </button>
                               
+                              {/* Copy link button */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 flex-shrink-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Get access_code from the Supabase catalog
+                                  const supabaseCatalog = supabaseCatalogs.find(c => c.id === catalog.id);
+                                  if (supabaseCatalog?.access_code) {
+                                    const url = `${window.location.origin}/catalog/${supabaseCatalog.access_code}`;
+                                    navigator.clipboard.writeText(url);
+                                    toast({
+                                      title: "Ссылка скопирована",
+                                      description: "Отправьте её покупателю для доступа к прайс-листу",
+                                    });
+                                  }
+                                }}
+                                title="Копировать ссылку"
+                              >
+                                <Link2 className="h-4 w-4" />
+                              </Button>
+                              
                               {/* Category multi-select dropdown */}
                               <div className="relative flex-shrink-0">
                                 <button
@@ -4232,6 +4264,131 @@ export default function AdminPanel() {
                 setRolePricing((prev) => prev.filter((rp) => rp.role_id !== roleId));
               }}
             />
+          )}
+
+          {activeSection === "orders" && (
+            <>
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold text-foreground">Заказы</h2>
+                <p className="text-sm text-muted-foreground">
+                  Управляйте заказами от ваших покупателей
+                </p>
+              </div>
+
+              {ordersLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : orders.length === 0 ? (
+                <div className="bg-card rounded-lg border border-border p-8 text-center">
+                  <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="font-medium text-foreground mb-2">Нет заказов</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Заказы появятся здесь, когда покупатели оформят их через прайс-листы
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {orders.map((order) => (
+                    <div key={order.id} className="bg-card rounded-lg border border-border p-4">
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold">{order.order_number}</span>
+                            <Badge 
+                              variant={
+                                order.status === 'delivered' ? 'default' :
+                                order.status === 'cancelled' ? 'destructive' :
+                                order.status === 'shipped' ? 'secondary' :
+                                'outline'
+                              }
+                            >
+                              {order.status === 'pending' && 'Новый'}
+                              {order.status === 'processing' && 'В обработке'}
+                              {order.status === 'shipped' && 'Отправлен'}
+                              {order.status === 'delivered' && 'Доставлен'}
+                              {order.status === 'cancelled' && 'Отменён'}
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-2">
+                            <Clock className="h-3 w-3" />
+                            {new Date(order.created_at).toLocaleString('ru-RU', { 
+                              day: 'numeric', 
+                              month: 'short', 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-lg">{order.total.toLocaleString()} ₽</div>
+                          {order.customer_name && (
+                            <div className="text-sm text-muted-foreground">{order.customer_name}</div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Order items */}
+                      {order.items && order.items.length > 0 && (
+                        <div className="border-t border-border pt-3 mb-3">
+                          <div className="space-y-1">
+                            {order.items.map((item) => (
+                              <div key={item.id} className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">
+                                  {item.product_name} × {item.quantity}
+                                </span>
+                                <span>{item.total.toLocaleString()} ₽</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Shipping address */}
+                      {order.shipping_address && (
+                        <div className="border-t border-border pt-3 mb-3 text-sm text-muted-foreground">
+                          <p><span className="font-medium text-foreground">Адрес:</span> {order.shipping_address.address}</p>
+                          {order.shipping_address.phone && (
+                            <p><span className="font-medium text-foreground">Телефон:</span> {order.shipping_address.phone}</p>
+                          )}
+                          {order.shipping_address.comment && (
+                            <p><span className="font-medium text-foreground">Комментарий:</span> {order.shipping_address.comment}</p>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Status change buttons */}
+                      <div className="flex flex-wrap gap-2">
+                        {order.status === 'pending' && (
+                          <>
+                            <Button size="sm" onClick={() => updateOrderStatus(order.id, 'processing')}>
+                              <Check className="h-3 w-3 mr-1" />
+                              Принять
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => updateOrderStatus(order.id, 'cancelled')}>
+                              <X className="h-3 w-3 mr-1" />
+                              Отменить
+                            </Button>
+                          </>
+                        )}
+                        {order.status === 'processing' && (
+                          <Button size="sm" onClick={() => updateOrderStatus(order.id, 'shipped')}>
+                            <Package className="h-3 w-3 mr-1" />
+                            Отправить
+                          </Button>
+                        )}
+                        {order.status === 'shipped' && (
+                          <Button size="sm" onClick={() => updateOrderStatus(order.id, 'delivered')}>
+                            <Check className="h-3 w-3 mr-1" />
+                            Доставлен
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </main>
 

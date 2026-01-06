@@ -12,6 +12,9 @@ import AdminPanel from "./pages/AdminPanel";
 import SuperAdmin from "./pages/SuperAdmin";
 import StoreFront from "./pages/StoreFront";
 import NotFound from "./pages/NotFound";
+import CatalogAccess from "./pages/CatalogAccess";
+import CustomerAuth from "./pages/CustomerAuth";
+import CustomerDashboard from "./pages/CustomerDashboard";
 import { useStoreBySubdomain } from "@/hooks/useUserStore";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -59,6 +62,10 @@ const App = () => (
             <Route path="/test-store" element={<TestStore />} />
             <Route path="/admin" element={<AdminPanel />} />
             <Route path="/super-admin" element={<SuperAdmin />} />
+            {/* Customer routes */}
+            <Route path="/catalog/:accessCode" element={<CatalogAccess />} />
+            <Route path="/customer-auth" element={<CustomerAuth />} />
+            <Route path="/customer-dashboard" element={<CustomerDashboard />} />
             {/* Store routes */}
             <Route path="/store/:subdomain" element={<StoreFront />} />
             <Route path="/store/:subdomain/admin" element={<StoreAdminWrapper />} />
