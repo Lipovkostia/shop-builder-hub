@@ -30,7 +30,7 @@ const Index = () => {
   const [adminLoading, setAdminLoading] = useState(false);
 
   // Customer form state
-  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [customerPassword, setCustomerPassword] = useState("");
   const [customerFullName, setCustomerFullName] = useState("");
   const [customerLoading, setCustomerLoading] = useState(false);
@@ -211,7 +211,7 @@ const Index = () => {
   const handleCustomerAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!customerEmail.trim() || !customerPassword.trim()) {
+    if (!customerPhone.trim() || !customerPassword.trim()) {
       toast({ title: "Заполните все поля", variant: "destructive" });
       return;
     }
@@ -221,12 +221,14 @@ const Index = () => {
       return;
     }
 
+    const email = phoneToEmail(customerPhone);
+
     setCustomerLoading(true);
     try {
       if (isCustomerLogin) {
         // Login
         const { error } = await supabase.auth.signInWithPassword({
-          email: customerEmail,
+          email,
           password: customerPassword
         });
 
@@ -237,7 +239,7 @@ const Index = () => {
       } else {
         // Registration
         const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: customerEmail,
+          email,
           password: customerPassword,
           options: {
             emailRedirectTo: `${window.location.origin}/customer-dashboard`,
@@ -250,6 +252,21 @@ const Index = () => {
 
         if (authError) throw authError;
         if (!authData.user) throw new Error("Ошибка регистрации");
+
+        // Update profile with phone
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', authData.user.id)
+          .single();
+
+        if (profile) {
+          await supabase
+            .from('profiles')
+            .update({ phone: customerPhone })
+            .eq('id', profile.id);
+        }
 
         toast({ 
           title: "Регистрация успешна!", 
@@ -399,13 +416,13 @@ const Index = () => {
                     </div>
                   )}
                   <div className="space-y-2">
-                    <Label htmlFor="customerEmail">Email</Label>
+                    <Label htmlFor="customerPhone">Номер телефона</Label>
                     <Input
-                      id="customerEmail"
-                      type="email"
-                      placeholder="email@example.com"
-                      value={customerEmail}
-                      onChange={(e) => setCustomerEmail(e.target.value)}
+                      id="customerPhone"
+                      type="tel"
+                      placeholder="+7 999 123 45 67"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
