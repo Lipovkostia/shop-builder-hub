@@ -348,6 +348,11 @@ function ProductCard({
           catalogId={selectedCatalog}
           currentStatus={catalogSettings?.status || "in_stock"}
           onStatusChange={onStatusChange}
+          catalogPricing={catalogSettings ? {
+            markup_type: catalogSettings.markup_type,
+            markup_value: catalogSettings.markup_value,
+            portion_prices: catalogSettings.portion_prices,
+          } : null}
         />
       </CollapsibleContent>
     )}
