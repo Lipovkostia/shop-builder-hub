@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Save, X } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -69,6 +69,8 @@ export function ProductEditPanel({
   const [pricePortion, setPricePortion] = useState(product.price_portion?.toString() || "");
   const [selectedCatalogs, setSelectedCatalogs] = useState<string[]>(productCatalogIds);
   const [saving, setSaving] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialMount = useRef(true);
 
   // Update local state when product changes
   useEffect(() => {
@@ -100,11 +102,9 @@ export function ProductEditPanel({
     return buy + markup;
   };
 
-  const handleSave = async () => {
-    if (!name.trim()) {
-      toast.error("Введите название товара");
-      return;
-    }
+  // Auto-save function
+  const performSave = useCallback(async () => {
+    if (!name.trim()) return;
 
     setSaving(true);
     try {
@@ -139,14 +139,34 @@ export function ProductEditPanel({
       if (catalogId && onStatusChange && status !== currentStatus) {
         onStatusChange(catalogId, product.id, status);
       }
-
-      toast.success("Изменения сохранены");
     } catch (error) {
       toast.error("Ошибка сохранения");
     } finally {
       setSaving(false);
     }
-  };
+  }, [name, description, buyPrice, markupType, markupValue, unit, packagingType, unitWeight, status, priceHalf, priceQuarter, pricePortion, selectedCatalogs, product.id, productCatalogIds, onSave, onCatalogsChange, catalogId, currentStatus, onStatusChange, calculateSalePrice]);
+
+  // Debounced auto-save effect
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      performSave();
+    }, 500);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [name, buyPrice, markupType, markupValue, unit, packagingType, unitWeight, status, priceHalf, priceQuarter, pricePortion, selectedCatalogs]);
 
   const toggleCatalog = (catalogId: string) => {
     setSelectedCatalogs(prev => 
@@ -326,15 +346,14 @@ export function ProductEditPanel({
         )}
       </div>
 
-      {/* Кнопки действий - компактные */}
-      <div className="px-2 py-1.5 border-t border-border/50 flex gap-1.5 justify-end bg-background/30">
-        <Button variant="ghost" size="sm" onClick={onClose} disabled={saving} className="h-7 text-xs px-2">
+      {/* Кнопка закрыть */}
+      <div className="px-2 py-1.5 border-t border-border/50 flex gap-1.5 justify-between items-center bg-background/30">
+        <span className="text-[10px] text-muted-foreground">
+          {saving ? "Сохранение..." : "Автосохранение"}
+        </span>
+        <Button variant="ghost" size="sm" onClick={onClose} className="h-7 text-xs px-2">
           <X className="h-3 w-3 mr-1" />
           Закрыть
-        </Button>
-        <Button size="sm" onClick={handleSave} disabled={saving} className="h-7 text-xs px-3">
-          <Save className="h-3 w-3 mr-1" />
-          {saving ? "..." : "Сохранить"}
         </Button>
       </div>
     </div>
