@@ -471,7 +471,7 @@ function StoreSkeleton() {
 export default function StoreFront() {
   const { subdomain } = useParams<{ subdomain: string }>();
   const { store, loading: storeLoading, error: storeError } = useStoreBySubdomain(subdomain);
-  const { isOwner } = useIsStoreOwner(store?.id || null);
+  const { isOwner, loading: ownerLoading } = useIsStoreOwner(store?.id || null);
   const { products, loading: productsLoading, updateProduct } = useStoreProducts(store?.id || null);
   const { catalogs, productVisibility, setProductCatalogs } = useStoreCatalogs(store?.id || null);
   const { settings: catalogProductSettings, getProductSettings } = useCatalogProductSettings(store?.id || null);
@@ -538,8 +538,8 @@ export default function StoreFront() {
     });
   };
 
-  // Loading state
-  if (storeLoading || productsLoading) {
+  // Loading state - wait for owner check to complete too
+  if (storeLoading || productsLoading || ownerLoading) {
     return <StoreSkeleton />;
   }
 
