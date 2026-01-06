@@ -16,6 +16,7 @@ interface Catalog {
 interface CatalogPricing {
   markup_type: string;
   markup_value: number;
+  categories: string[];
   portion_prices: {
     halfPricePerKg?: number;
     quarterPricePerKg?: number;
@@ -256,14 +257,43 @@ export function ProductEditPanel({
         {/* Цена в прайс-листе */}
         {catalogId && catalogPricing && (
           <div className="col-span-2 sm:col-span-3 pt-1.5 border-t border-border/50">
-            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Цена в прайс-листе</label>
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Данные прайс-листа</label>
             <div className="flex flex-wrap gap-2 mt-1">
+              {/* Категории */}
+              {catalogPricing.categories && catalogPricing.categories.length > 0 && (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-purple-500/10 border border-purple-500/30">
+                  <span className="text-[10px] text-muted-foreground">Категория:</span>
+                  <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                    {catalogPricing.categories.join(', ')}
+                  </span>
+                </div>
+              )}
+              {/* Описание товара */}
+              {product.description && (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-500/10 border border-slate-500/30 max-w-full">
+                  <span className="text-[10px] text-muted-foreground shrink-0">Описание:</span>
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate">
+                    {product.description.substring(0, 50)}{product.description.length > 50 ? '...' : ''}
+                  </span>
+                </div>
+              )}
+              {/* Объём/вес единицы */}
+              {product.unit_weight && (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/30">
+                  <span className="text-[10px] text-muted-foreground">Объём:</span>
+                  <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                    {product.unit_weight} {product.unit || 'кг'}
+                  </span>
+                </div>
+              )}
+              {/* Наценка */}
               <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500/10 border border-blue-500/30">
                 <span className="text-[10px] text-muted-foreground">Наценка:</span>
                 <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
                   {catalogPricing.markup_value}{catalogPricing.markup_type === 'percent' ? '%' : '₽'}
                 </span>
               </div>
+              {/* Цена */}
               {(() => {
                 const buy = parseFloat(buyPrice) || 0;
                 const catalogMarkup = catalogPricing.markup_value || 0;
