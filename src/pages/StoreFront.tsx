@@ -12,6 +12,7 @@ import {
 import { useStoreBySubdomain, useIsStoreOwner } from "@/hooks/useUserStore";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
+import { useCatalogProductSettings, CatalogProductSetting } from "@/hooks/useCatalogProductSettings";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   formatPrice,
@@ -72,12 +73,14 @@ function ProductCard({
   product, 
   cart, 
   onAddToCart,
-  showImages = true
+  showImages = true,
+  catalogSettings
 }: { 
   product: any;
   cart: CartItem[];
   onAddToCart: (productId: string, variantIndex: number, price: number) => void;
   showImages?: boolean;
+  catalogSettings?: CatalogProductSetting;
 }) {
   const getCartQuantity = (variantIndex: number) => {
     const item = cart.find(
@@ -104,7 +107,10 @@ function ProductCard({
   const images = product.images || [];
   const firstImage = images[0] || "/placeholder.svg";
   const unit = product.unit || "кг";
-  const inStock = product.is_active !== false && (product.quantity || 0) > 0;
+  
+  // Determine stock status: use catalog settings if available, otherwise fall back to product data
+  const effectiveStatus = catalogSettings?.status || (product.is_active !== false && (product.quantity || 0) > 0 ? "in_stock" : "out_of_stock");
+  const inStock = effectiveStatus === "in_stock";
 
   const getFullPrice = () => {
     if (packagingPrices) {
@@ -430,21 +436,35 @@ export default function StoreFront() {
   const { isOwner } = useIsStoreOwner(store?.id || null);
   const { products, loading: productsLoading } = useStoreProducts(store?.id || null);
   const { catalogs, productVisibility } = useStoreCatalogs(store?.id || null);
+  const { settings: catalogProductSettings, getProductSettings } = useCatalogProductSettings(store?.id || null);
   
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCatalog, setSelectedCatalog] = useState<string | null>(null);
   const [showImages, setShowImages] = useState(true);
 
-  // Filter products based on selected catalog
+  // Filter products based on selected catalog and catalog-specific status
   const filteredProducts = useMemo(() => {
     let filtered = products.filter((p) => p.is_active !== false);
 
     if (selectedCatalog) {
-      filtered = filtered.filter((p) => productVisibility[p.id]?.has(selectedCatalog));
+      filtered = filtered.filter((p) => {
+        // Check if product is in this catalog
+        if (!productVisibility[p.id]?.has(selectedCatalog)) {
+          return false;
+        }
+        
+        // Check catalog-specific status - hide products with "hidden" status
+        const catalogSettings = getProductSettings(selectedCatalog, p.id);
+        if (catalogSettings?.status === "hidden") {
+          return false;
+        }
+        
+        return true;
+      });
     }
 
     return filtered;
-  }, [products, selectedCatalog, productVisibility]);
+  }, [products, selectedCatalog, productVisibility, getProductSettings]);
 
   // Handle add to cart
   const handleAddToCart = (productId: string, variantIndex: number, price: number) => {
@@ -500,15 +520,19 @@ export default function StoreFront() {
 
       <main className="flex-1 overflow-auto">
         {filteredProducts.length > 0 ? (
-          filteredProducts.map((product) => (
-            <ProductCard 
-              key={product.id} 
-              product={product} 
-              cart={cart}
-              onAddToCart={handleAddToCart}
-              showImages={showImages}
-            />
-          ))
+          filteredProducts.map((product) => {
+            const catalogSettings = selectedCatalog ? getProductSettings(selectedCatalog, product.id) : undefined;
+            return (
+              <ProductCard 
+                key={product.id} 
+                product={product} 
+                cart={cart}
+                onAddToCart={handleAddToCart}
+                showImages={showImages}
+                catalogSettings={catalogSettings}
+              />
+            );
+          })
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
             <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
