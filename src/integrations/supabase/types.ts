@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       catalogs: {
         Row: {
+          access_code: string
           created_at: string
           description: string | null
           id: string
@@ -26,6 +27,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_code?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -36,6 +38,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_code?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -102,6 +105,42 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_catalog_access: {
+        Row: {
+          catalog_id: string
+          granted_at: string | null
+          id: string
+          store_customer_id: string
+        }
+        Insert: {
+          catalog_id: string
+          granted_at?: string | null
+          id?: string
+          store_customer_id: string
+        }
+        Update: {
+          catalog_id?: string
+          granted_at?: string | null
+          id?: string
+          store_customer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_catalog_access_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_catalog_access_store_customer_id_fkey"
+            columns: ["store_customer_id"]
+            isOneToOne: false
+            referencedRelation: "store_customers"
             referencedColumns: ["id"]
           },
         ]

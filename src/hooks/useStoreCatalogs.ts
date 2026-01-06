@@ -9,6 +9,7 @@ export interface Catalog {
   description: string | null;
   is_default: boolean;
   sort_order: number;
+  access_code: string;
   created_at: string;
   updated_at: string;
 }
