@@ -32,6 +32,7 @@ export interface CatalogProduct {
   price_quarter: number | null;
   price_portion: number | null;
   portion_weight: number | null;
+  quantity: number;
 }
 
 export interface CartItem {
@@ -205,6 +206,7 @@ export function useCustomerCatalogs() {
         price_quarter: p.price_quarter,
         price_portion: p.price_portion,
         portion_weight: p.portion_weight,
+        quantity: p.quantity ?? 0,
       }));
 
       setProducts(mappedProducts);
