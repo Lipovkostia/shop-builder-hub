@@ -76,9 +76,32 @@ export function useCatalogProductSettings(storeId: string | null) {
     productId: string,
     updates: Partial<Omit<CatalogProductSetting, 'id' | 'catalog_id' | 'product_id'>>
   ) => {
-    try {
-      const existing = settings.find(s => s.catalog_id === catalogId && s.product_id === productId);
+    const existing = settings.find(s => s.catalog_id === catalogId && s.product_id === productId);
 
+    // Optimistic update - apply immediately
+    if (existing) {
+      setSettings(prev => prev.map(s => 
+        s.id === existing.id 
+          ? { ...s, ...updates }
+          : s
+      ));
+    } else {
+      // For new settings, add optimistically with temp id
+      const tempId = `temp_${catalogId}_${productId}`;
+      const newSetting: CatalogProductSetting = {
+        id: tempId,
+        catalog_id: catalogId,
+        product_id: productId,
+        categories: updates.categories || [],
+        markup_type: updates.markup_type || 'percent',
+        markup_value: updates.markup_value || 0,
+        status: updates.status || 'in_stock',
+        portion_prices: updates.portion_prices || null,
+      };
+      setSettings(prev => [...prev, newSetting]);
+    }
+
+    try {
       if (existing) {
         // Update existing
         const { error } = await supabase
@@ -93,13 +116,6 @@ export function useCatalogProductSettings(storeId: string | null) {
           .eq('id', existing.id);
 
         if (error) throw error;
-
-        // Update local state
-        setSettings(prev => prev.map(s => 
-          s.id === existing.id 
-            ? { ...s, ...updates }
-            : s
-        ));
       } else {
         // Insert new
         const { data, error } = await supabase
@@ -118,23 +134,31 @@ export function useCatalogProductSettings(storeId: string | null) {
 
         if (error) throw error;
 
+        // Replace temp entry with real one
         if (data) {
-          setSettings(prev => [...prev, {
-            id: data.id,
-            catalog_id: data.catalog_id,
-            product_id: data.product_id,
-            categories: data.categories || [],
-            markup_type: data.markup_type || 'percent',
-            markup_value: data.markup_value || 0,
-            status: data.status || 'in_stock',
-            portion_prices: data.portion_prices as CatalogProductSetting['portion_prices'],
-          }]);
+          const tempId = `temp_${catalogId}_${productId}`;
+          setSettings(prev => prev.map(s => 
+            s.id === tempId 
+              ? {
+                  id: data.id,
+                  catalog_id: data.catalog_id,
+                  product_id: data.product_id,
+                  categories: data.categories || [],
+                  markup_type: data.markup_type || 'percent',
+                  markup_value: data.markup_value || 0,
+                  status: data.status || 'in_stock',
+                  portion_prices: data.portion_prices as CatalogProductSetting['portion_prices'],
+                }
+              : s
+          ));
         }
       }
     } catch (error) {
       console.error('Error updating catalog product settings:', error);
+      // Revert on error
+      await fetchSettings();
     }
-  }, [settings]);
+  }, [settings, fetchSettings]);
 
   return {
     settings,

@@ -72,7 +72,7 @@ export function ProductEditPanel({
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialMount = useRef(true);
 
-  // Update local state when product changes
+  // Update local state when product changes (but NOT status - it's controlled separately)
   useEffect(() => {
     setName(product.name);
     setDescription(product.description || "");
@@ -82,11 +82,15 @@ export function ProductEditPanel({
     setUnit(product.unit || "кг");
     setPackagingType(product.packaging_type || "piece");
     setUnitWeight(product.unit_weight?.toString() || "");
-    setStatus(currentStatus || "in_stock");
     setPriceHalf(product.price_half?.toString() || "");
     setPriceQuarter(product.price_quarter?.toString() || "");
     setPricePortion(product.price_portion?.toString() || "");
   }, [product]);
+
+  // Sync status with currentStatus prop only on initial mount or when catalogId changes
+  useEffect(() => {
+    setStatus(currentStatus || "in_stock");
+  }, [catalogId]);
 
   useEffect(() => {
     setSelectedCatalogs(productCatalogIds);
@@ -304,19 +308,44 @@ export function ProductEditPanel({
           </Select>
         </div>
 
-        {/* Статус */}
-        <div>
+        {/* Статус - кнопки вместо Select */}
+        <div className="col-span-2 sm:col-span-3">
           <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Статус</label>
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="h-7 text-xs mt-0.5">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="in_stock">В наличии</SelectItem>
-              <SelectItem value="out_of_stock">Нет в наличии</SelectItem>
-              <SelectItem value="hidden">Скрыт</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex gap-1 mt-0.5">
+            <button
+              type="button"
+              onClick={() => setStatus("in_stock")}
+              className={`flex-1 h-7 text-xs rounded-md border transition-colors ${
+                status === "in_stock"
+                  ? "bg-green-500/20 border-green-500/50 text-green-700 dark:text-green-400 font-medium"
+                  : "bg-muted/50 border-border text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              В наличии
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatus("out_of_stock")}
+              className={`flex-1 h-7 text-xs rounded-md border transition-colors ${
+                status === "out_of_stock"
+                  ? "bg-orange-500/20 border-orange-500/50 text-orange-700 dark:text-orange-400 font-medium"
+                  : "bg-muted/50 border-border text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              Нет в наличии
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatus("hidden")}
+              className={`flex-1 h-7 text-xs rounded-md border transition-colors ${
+                status === "hidden"
+                  ? "bg-gray-500/20 border-gray-500/50 text-gray-700 dark:text-gray-400 font-medium"
+                  : "bg-muted/50 border-border text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              Скрыт
+            </button>
+          </div>
         </div>
 
         {/* Прайс-листы - на всю ширину */}
