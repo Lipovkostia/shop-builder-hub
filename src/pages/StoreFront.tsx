@@ -640,11 +640,9 @@ export default function StoreFront() {
           return false;
         }
         
-        // Apply status filter for owners
-        if (isOwner && statusFilter !== "all") {
-          if (effectiveStatus !== statusFilter) {
-            return false;
-          }
+        // Apply status filter for owners (only when filter is active)
+        if (isOwner && statusFilter !== "all" && effectiveStatus !== statusFilter) {
+          return false;
         }
         
         return true;
