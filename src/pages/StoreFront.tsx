@@ -351,7 +351,6 @@ function ProductCard({
           catalogPricing={catalogSettings ? {
             markup_type: catalogSettings.markup_type,
             markup_value: catalogSettings.markup_value,
-            categories: catalogSettings.categories,
             portion_prices: catalogSettings.portion_prices,
           } : null}
         />
