@@ -84,6 +84,8 @@ function ProductCard({
   catalogs = [],
   productCatalogIds = [],
   onCatalogsChange,
+  selectedCatalog,
+  onStatusChange,
 }: { 
   product: any;
   cart: CartItem[];
@@ -97,6 +99,8 @@ function ProductCard({
   catalogs?: { id: string; name: string; is_default: boolean }[];
   productCatalogIds?: string[];
   onCatalogsChange?: (productId: string, catalogIds: string[]) => void;
+  selectedCatalog?: string | null;
+  onStatusChange?: (catalogId: string, productId: string, status: string) => void;
 }) {
   const getCartQuantity = (variantIndex: number) => {
     const item = cart.find(
@@ -127,6 +131,7 @@ function ProductCard({
   // Determine stock status: use catalog settings if available, otherwise fall back to product data
   const effectiveStatus = catalogSettings?.status || (product.is_active !== false && (product.quantity || 0) > 0 ? "in_stock" : "out_of_stock");
   const inStock = effectiveStatus === "in_stock";
+  const isHidden = effectiveStatus === "hidden";
 
   const getFullPrice = () => {
     if (packagingPrices) {
@@ -139,7 +144,7 @@ function ProductCard({
 
   return (
     <Collapsible open={isExpanded}>
-    <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border ${showImages ? 'h-[calc((100vh-88px)/8)] min-h-[72px]' : 'h-9 min-h-[36px]'}`}>
+    <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border ${showImages ? 'h-[calc((100vh-88px)/8)] min-h-[72px]' : 'h-9 min-h-[36px]'} ${isHidden ? 'opacity-60' : ''}`}>
       {/* Изображение */}
       {showImages && (
         <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-center">
@@ -163,6 +168,11 @@ function ProductCard({
             onClick={isOwner && onToggleExpand ? () => onToggleExpand() : undefined}
           >
             {product.name}
+            {isOwner && isHidden && (
+              <Badge variant="outline" className="ml-1 text-[8px] py-0 px-1 bg-muted/50 text-muted-foreground border-dashed">
+                Скрыт
+              </Badge>
+            )}
             {isOwner && (
               <Pencil className="inline-block ml-1 w-3 h-3 text-muted-foreground" />
             )}
@@ -311,6 +321,9 @@ function ProductCard({
           onSave={onSave}
           onCatalogsChange={onCatalogsChange}
           onClose={() => onToggleExpand?.()}
+          catalogId={selectedCatalog}
+          currentStatus={catalogSettings?.status || "in_stock"}
+          onStatusChange={onStatusChange}
         />
       </CollapsibleContent>
     )}
@@ -474,7 +487,7 @@ export default function StoreFront() {
   const { isOwner, loading: ownerLoading } = useIsStoreOwner(store?.id || null);
   const { products, loading: productsLoading, updateProduct } = useStoreProducts(store?.id || null);
   const { catalogs, productVisibility, setProductCatalogs } = useStoreCatalogs(store?.id || null);
-  const { settings: catalogProductSettings, getProductSettings } = useCatalogProductSettings(store?.id || null);
+  const { settings: catalogProductSettings, getProductSettings, updateProductSettings } = useCatalogProductSettings(store?.id || null);
   
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCatalog, setSelectedCatalog] = useState<string | null>(null);
@@ -497,6 +510,11 @@ export default function StoreFront() {
     setProductCatalogs(productId, catalogIds);
   };
 
+  // Handle status change for catalog-specific settings
+  const handleStatusChange = async (catalogId: string, productId: string, status: string) => {
+    await updateProductSettings(catalogId, productId, { status });
+  };
+
   // Filter products based on selected catalog and catalog-specific status
   const filteredProducts = useMemo(() => {
     let filtered = products.filter((p) => p.is_active !== false);
@@ -508,9 +526,9 @@ export default function StoreFront() {
           return false;
         }
         
-        // Check catalog-specific status - hide products with "hidden" status
+        // Check catalog-specific status - hide products with "hidden" status for non-owners
         const catalogSettings = getProductSettings(selectedCatalog, p.id);
-        if (catalogSettings?.status === "hidden") {
+        if (catalogSettings?.status === "hidden" && !isOwner) {
           return false;
         }
         
@@ -519,7 +537,7 @@ export default function StoreFront() {
     }
 
     return filtered;
-  }, [products, selectedCatalog, productVisibility, getProductSettings]);
+  }, [products, selectedCatalog, productVisibility, getProductSettings, isOwner]);
 
   // Handle add to cart
   const handleAddToCart = (productId: string, variantIndex: number, price: number) => {
@@ -592,6 +610,8 @@ export default function StoreFront() {
                 catalogs={catalogs}
                 productCatalogIds={getProductCatalogIds(product.id)}
                 onCatalogsChange={handleCatalogsChange}
+                selectedCatalog={selectedCatalog}
+                onStatusChange={handleStatusChange}
               />
             );
           })

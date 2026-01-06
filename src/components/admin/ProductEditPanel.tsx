@@ -2,10 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import type { StoreProduct } from "@/hooks/useStoreProducts";
@@ -23,6 +20,9 @@ interface ProductEditPanelProps {
   onSave: (productId: string, updates: Partial<StoreProduct>) => Promise<void>;
   onCatalogsChange: (productId: string, catalogIds: string[]) => void;
   onClose: () => void;
+  catalogId?: string | null;
+  currentStatus?: string;
+  onStatusChange?: (catalogId: string, productId: string, status: string) => void;
 }
 
 const unitOptions = [
@@ -48,6 +48,9 @@ export function ProductEditPanel({
   onSave,
   onCatalogsChange,
   onClose,
+  catalogId,
+  currentStatus,
+  onStatusChange,
 }: ProductEditPanelProps) {
   // Local state for form fields
   const [name, setName] = useState(product.name);
@@ -60,7 +63,7 @@ export function ProductEditPanel({
   const [unit, setUnit] = useState(product.unit || "кг");
   const [packagingType, setPackagingType] = useState(product.packaging_type || "piece");
   const [unitWeight, setUnitWeight] = useState(product.unit_weight?.toString() || "");
-  const [isActive, setIsActive] = useState(product.is_active !== false);
+  const [status, setStatus] = useState(currentStatus || "in_stock");
   const [priceHalf, setPriceHalf] = useState(product.price_half?.toString() || "");
   const [priceQuarter, setPriceQuarter] = useState(product.price_quarter?.toString() || "");
   const [pricePortion, setPricePortion] = useState(product.price_portion?.toString() || "");
@@ -77,7 +80,7 @@ export function ProductEditPanel({
     setUnit(product.unit || "кг");
     setPackagingType(product.packaging_type || "piece");
     setUnitWeight(product.unit_weight?.toString() || "");
-    setIsActive(product.is_active !== false);
+    setStatus(currentStatus || "in_stock");
     setPriceHalf(product.price_half?.toString() || "");
     setPriceQuarter(product.price_quarter?.toString() || "");
     setPricePortion(product.price_portion?.toString() || "");
@@ -115,7 +118,7 @@ export function ProductEditPanel({
         unit,
         packaging_type: packagingType,
         unit_weight: parseFloat(unitWeight) || null,
-        is_active: isActive,
+        is_active: status !== "hidden",
         price_half: parseFloat(priceHalf) || null,
         price_quarter: parseFloat(priceQuarter) || null,
         price_portion: parseFloat(pricePortion) || null,
@@ -130,6 +133,11 @@ export function ProductEditPanel({
       
       if (catalogsChanged) {
         onCatalogsChange(product.id, selectedCatalogs);
+      }
+
+      // Update catalog-specific status if changed
+      if (catalogId && onStatusChange && status !== currentStatus) {
+        onStatusChange(catalogId, product.id, status);
       }
 
       toast.success("Изменения сохранены");
@@ -276,15 +284,19 @@ export function ProductEditPanel({
           </Select>
         </div>
 
-        {/* Активен */}
+        {/* Статус */}
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Статус</label>
-          <div className="h-7 mt-0.5 flex items-center gap-1.5">
-            <Switch checked={isActive} onCheckedChange={setIsActive} className="scale-75" />
-            <span className="text-[10px] text-muted-foreground">
-              {isActive ? "Активен" : "Скрыт"}
-            </span>
-          </div>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="h-7 text-xs mt-0.5">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="in_stock">В наличии</SelectItem>
+              <SelectItem value="out_of_stock">Нет в наличии</SelectItem>
+              <SelectItem value="hidden">Скрыт</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Прайс-листы - на всю ширину */}
