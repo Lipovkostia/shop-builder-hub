@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -365,6 +365,12 @@ function StoreHeader({
   showImages,
   onToggleImages,
   isOwner,
+  filtersOpen,
+  onToggleFilters,
+  statusFilter,
+  onStatusFilterChange,
+  searchQuery,
+  onSearchChange,
 }: {
   store: any;
   cart: CartItem[];
@@ -374,6 +380,12 @@ function StoreHeader({
   showImages: boolean;
   onToggleImages: () => void;
   isOwner: boolean;
+  filtersOpen: boolean;
+  onToggleFilters: () => void;
+  statusFilter: string;
+  onStatusFilterChange: (status: string) => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }) {
   const navigate = useNavigate();
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -446,8 +458,11 @@ function StoreHeader({
           </DropdownMenu>
 
           {/* Фильтр */}
-          <button className="p-2 rounded hover:bg-muted transition-colors">
-            <Filter className="w-4 h-4 text-muted-foreground" />
+          <button 
+            onClick={onToggleFilters}
+            className={`p-2 rounded transition-colors ${filtersOpen ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+          >
+            <Filter className="w-4 h-4" />
           </button>
 
           {/* Переключатель изображений */}
@@ -464,6 +479,60 @@ function StoreHeader({
           {selectedCatalogName}
         </span>
       </div>
+
+      {/* Выезжающий блок фильтров */}
+      <Collapsible open={filtersOpen}>
+        <CollapsibleContent>
+          <div className="px-3 py-2 border-t border-border bg-muted/20 space-y-2">
+            {/* Поиск */}
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Поиск товаров..."
+                className="w-full h-8 pl-7 pr-3 text-xs rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => onSearchChange("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2"
+                >
+                  <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                </button>
+              )}
+            </div>
+
+            {/* Фильтр по статусу (только для владельца) */}
+            {isOwner && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-muted-foreground uppercase">Статус:</span>
+                <div className="flex gap-1">
+                  {[
+                    { value: "all", label: "Все" },
+                    { value: "in_stock", label: "В наличии" },
+                    { value: "out_of_stock", label: "Нет в наличии" },
+                    { value: "hidden", label: "Скрытые" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => onStatusFilterChange(opt.value)}
+                      className={`px-2 py-0.5 text-[10px] rounded-full transition-colors ${
+                        statusFilter === opt.value
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </header>
   );
 }
@@ -517,6 +586,9 @@ export default function StoreFront() {
   const [selectedCatalog, setSelectedCatalog] = useState<string | null>(null);
   const [showImages, setShowImages] = useState(true);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Get product catalog IDs for a specific product
   const getProductCatalogIds = (productId: string): string[] => {
@@ -539,9 +611,18 @@ export default function StoreFront() {
     await updateProductSettings(catalogId, productId, { status });
   };
 
-  // Filter products based on selected catalog and catalog-specific status
+  // Filter products based on selected catalog, status filter, and search
   const filteredProducts = useMemo(() => {
     let filtered = products.filter((p) => p.is_active !== false);
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((p) => 
+        p.name.toLowerCase().includes(query) ||
+        p.description?.toLowerCase().includes(query)
+      );
+    }
 
     if (selectedCatalog) {
       filtered = filtered.filter((p) => {
@@ -550,18 +631,35 @@ export default function StoreFront() {
           return false;
         }
         
-        // Check catalog-specific status - hide products with "hidden" status for non-owners
+        // Check catalog-specific status
         const catalogSettings = getProductSettings(selectedCatalog, p.id);
-        if (catalogSettings?.status === "hidden" && !isOwner) {
+        const effectiveStatus = catalogSettings?.status || "in_stock";
+        
+        // Hide products with "hidden" status for non-owners
+        if (effectiveStatus === "hidden" && !isOwner) {
           return false;
         }
         
+        // Apply status filter for owners
+        if (isOwner && statusFilter !== "all") {
+          if (effectiveStatus !== statusFilter) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
+    } else if (isOwner && statusFilter !== "all") {
+      // Apply status filter even without catalog selected (based on is_active)
+      filtered = filtered.filter((p) => {
+        if (statusFilter === "hidden") return p.is_active === false;
+        if (statusFilter === "in_stock") return p.is_active !== false;
         return true;
       });
     }
 
     return filtered;
-  }, [products, selectedCatalog, productVisibility, getProductSettings, isOwner]);
+  }, [products, selectedCatalog, productVisibility, getProductSettings, isOwner, statusFilter, searchQuery]);
 
   // Handle add to cart
   const handleAddToCart = (productId: string, variantIndex: number, price: number) => {
@@ -613,6 +711,12 @@ export default function StoreFront() {
         showImages={showImages}
         onToggleImages={() => setShowImages(!showImages)}
         isOwner={isOwner}
+        filtersOpen={filtersOpen}
+        onToggleFilters={() => setFiltersOpen(!filtersOpen)}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
       />
 
       <main className="flex-1 overflow-auto">
