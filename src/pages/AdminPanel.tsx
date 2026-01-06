@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Product,
   ProductStatus,
@@ -543,6 +550,10 @@ export default function AdminPanel() {
   // Product editing state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  
+  // Quick add product dialog state
+  const [quickAddDialogOpen, setQuickAddDialogOpen] = useState(false);
+  const [quickAddProductName, setQuickAddProductName] = useState("");
   
   // Product order state for drag and drop
   const [productOrder, setProductOrder] = useState<string[]>([]);
@@ -1208,6 +1219,55 @@ export default function AdminPanel() {
       title: "Главное фото изменено",
       description: "Выбранное фото теперь отображается первым",
     });
+  };
+
+  // Quick add product function
+  const handleQuickAddProduct = async () => {
+    if (!quickAddProductName.trim()) {
+      toast({
+        title: "Ошибка",
+        description: "Введите название товара",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!effectiveStoreId) {
+      toast({
+        title: "Ошибка",
+        description: "Магазин не выбран",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const newProduct = await createSupabaseProduct({
+      name: quickAddProductName.trim(),
+      price: 0,
+      quantity: 0,
+      source: 'manual',
+      is_active: true,
+    });
+    
+    if (newProduct) {
+      setQuickAddProductName("");
+      setQuickAddDialogOpen(false);
+    }
+  };
+
+  const handlePasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        setQuickAddProductName(text.trim());
+      }
+    } catch (error) {
+      toast({
+        title: "Не удалось вставить",
+        description: "Разрешите доступ к буферу обмена",
+        variant: "destructive",
+      });
+    }
   };
 
   // Catalog management functions - now using Supabase
@@ -2444,6 +2504,15 @@ export default function AdminPanel() {
                       МС: {importedProducts.length}
                     </Badge>
                   )}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setQuickAddDialogOpen(true)}
+                    title="Добавить товар"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
                 <div className="flex items-center gap-1.5">
                   {importedProducts.some(p => p.autoSync) && (
@@ -4165,6 +4234,46 @@ export default function AdminPanel() {
             />
           )}
         </main>
+
+      {/* Quick Add Product Dialog */}
+      <Dialog open={quickAddDialogOpen} onOpenChange={setQuickAddDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Добавить товар</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Название товара"
+              value={quickAddProductName}
+              onChange={(e) => setQuickAddProductName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleQuickAddProduct();
+                }
+              }}
+              autoFocus
+              className="flex-1"
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handlePasteFromClipboard}
+              title="Вставить из буфера"
+            >
+              <Clipboard className="h-4 w-4" />
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuickAddDialogOpen(false)}>
+              Отмена
+            </Button>
+            <Button onClick={handleQuickAddProduct}>
+              <Check className="h-4 w-4 mr-2" />
+              ОК
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
