@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      catalog_product_settings: {
+        Row: {
+          catalog_id: string
+          categories: string[] | null
+          created_at: string
+          id: string
+          markup_type: string | null
+          markup_value: number | null
+          portion_prices: Json | null
+          product_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          catalog_id: string
+          categories?: string[] | null
+          created_at?: string
+          id?: string
+          markup_type?: string | null
+          markup_value?: number | null
+          portion_prices?: Json | null
+          product_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          catalog_id?: string
+          categories?: string[] | null
+          created_at?: string
+          id?: string
+          markup_type?: string | null
+          markup_value?: number | null
+          portion_prices?: Json | null
+          product_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_product_settings_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_product_settings_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalogs: {
         Row: {
           access_code: string
