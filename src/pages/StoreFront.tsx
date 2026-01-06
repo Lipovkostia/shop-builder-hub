@@ -143,8 +143,10 @@ function ProductCard({
   const fullPrice = getFullPrice();
 
   return (
-    <Collapsible open={isExpanded}>
-    <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border ${showImages ? 'h-[calc((100vh-88px)/8)] min-h-[72px]' : 'h-9 min-h-[36px]'} ${isHidden ? 'opacity-60' : ''}`}>
+    <div className="border-b border-border">
+    <div 
+      className={`flex gap-1.5 px-1.5 py-0.5 bg-background ${showImages ? 'h-[calc((100vh-88px)/8)] min-h-[72px]' : 'h-9 min-h-[36px]'} ${isHidden ? 'opacity-60' : ''}`}
+    >
       {/* Изображение */}
       {showImages && (
         <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-center">
@@ -337,21 +339,23 @@ function ProductCard({
     
     {/* Панель редактирования для владельца */}
     {isOwner && onSave && onCatalogsChange && (
-      <CollapsibleContent>
-        <ProductEditPanel
-          product={product}
-          catalogs={catalogs}
-          productCatalogIds={productCatalogIds}
-          onSave={onSave}
-          onCatalogsChange={onCatalogsChange}
-          onClose={() => onToggleExpand?.()}
-          catalogId={selectedCatalog}
-          currentStatus={catalogSettings?.status || "in_stock"}
-          onStatusChange={onStatusChange}
-        />
-      </CollapsibleContent>
+      <Collapsible open={isExpanded}>
+        <CollapsibleContent>
+          <ProductEditPanel
+            product={product}
+            catalogs={catalogs}
+            productCatalogIds={productCatalogIds}
+            onSave={onSave}
+            onCatalogsChange={onCatalogsChange}
+            onClose={() => onToggleExpand?.()}
+            catalogId={selectedCatalog}
+            currentStatus={catalogSettings?.status || "in_stock"}
+            onStatusChange={onStatusChange}
+          />
+        </CollapsibleContent>
+      </Collapsible>
     )}
-    </Collapsible>
+    </div>
   );
 }
 
