@@ -61,6 +61,9 @@ export function ProductEditPanel({
   const [packagingType, setPackagingType] = useState(product.packaging_type || "piece");
   const [unitWeight, setUnitWeight] = useState(product.unit_weight?.toString() || "");
   const [isActive, setIsActive] = useState(product.is_active !== false);
+  const [priceHalf, setPriceHalf] = useState(product.price_half?.toString() || "");
+  const [priceQuarter, setPriceQuarter] = useState(product.price_quarter?.toString() || "");
+  const [pricePortion, setPricePortion] = useState(product.price_portion?.toString() || "");
   const [selectedCatalogs, setSelectedCatalogs] = useState<string[]>(productCatalogIds);
   const [saving, setSaving] = useState(false);
 
@@ -75,6 +78,9 @@ export function ProductEditPanel({
     setPackagingType(product.packaging_type || "piece");
     setUnitWeight(product.unit_weight?.toString() || "");
     setIsActive(product.is_active !== false);
+    setPriceHalf(product.price_half?.toString() || "");
+    setPriceQuarter(product.price_quarter?.toString() || "");
+    setPricePortion(product.price_portion?.toString() || "");
   }, [product]);
 
   useEffect(() => {
@@ -110,6 +116,9 @@ export function ProductEditPanel({
         packaging_type: packagingType,
         unit_weight: parseFloat(unitWeight) || null,
         is_active: isActive,
+        price_half: parseFloat(priceHalf) || null,
+        price_quarter: parseFloat(priceQuarter) || null,
+        price_portion: parseFloat(pricePortion) || null,
       };
 
       await onSave(product.id, updates);
@@ -214,6 +223,57 @@ export function ProductEditPanel({
             <span className="text-sm text-muted-foreground">
               = {calculateSalePrice().toFixed(0)} ₽
             </span>
+          </div>
+        </div>
+
+        {/* Цена 1/2 */}
+        <div className="flex items-center">
+          <div className="w-28 sm:w-36 flex-shrink-0 px-3 py-2.5 bg-muted/50 text-sm font-medium text-muted-foreground">
+            Цена 1/2
+          </div>
+          <div className="flex-1 px-3 py-2 flex items-center gap-2">
+            <Input
+              type="number"
+              value={priceHalf}
+              onChange={(e) => setPriceHalf(e.target.value)}
+              placeholder="0"
+              className="w-24"
+            />
+            <span className="text-sm text-muted-foreground">₽</span>
+          </div>
+        </div>
+
+        {/* Цена 1/4 */}
+        <div className="flex items-center">
+          <div className="w-28 sm:w-36 flex-shrink-0 px-3 py-2.5 bg-muted/50 text-sm font-medium text-muted-foreground">
+            Цена 1/4
+          </div>
+          <div className="flex-1 px-3 py-2 flex items-center gap-2">
+            <Input
+              type="number"
+              value={priceQuarter}
+              onChange={(e) => setPriceQuarter(e.target.value)}
+              placeholder="0"
+              className="w-24"
+            />
+            <span className="text-sm text-muted-foreground">₽</span>
+          </div>
+        </div>
+
+        {/* Цена порция */}
+        <div className="flex items-center">
+          <div className="w-28 sm:w-36 flex-shrink-0 px-3 py-2.5 bg-muted/50 text-sm font-medium text-muted-foreground">
+            Порция
+          </div>
+          <div className="flex-1 px-3 py-2 flex items-center gap-2">
+            <Input
+              type="number"
+              value={pricePortion}
+              onChange={(e) => setPricePortion(e.target.value)}
+              placeholder="0"
+              className="w-24"
+            />
+            <span className="text-sm text-muted-foreground">₽</span>
           </div>
         </div>
 
