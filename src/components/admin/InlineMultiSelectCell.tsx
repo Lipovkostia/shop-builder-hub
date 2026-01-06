@@ -39,7 +39,13 @@ export function InlineMultiSelectCell({
   const [isOpen, setIsOpen] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newOptionValue, setNewOptionValue] = useState("");
+  const [draftValues, setDraftValues] = useState<string[]>(values);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Keep internal draft in sync with внешним значением
+  useEffect(() => {
+    if (!isOpen) setDraftValues(values);
+  }, [values, isOpen]);
 
   useEffect(() => {
     if (isAddingNew && inputRef.current) {
@@ -48,16 +54,19 @@ export function InlineMultiSelectCell({
   }, [isAddingNew]);
 
   const handleToggle = (optionValue: string) => {
-    const newValues = values.includes(optionValue)
-      ? values.filter(v => v !== optionValue)
-      : [...values, optionValue];
-    onSave(newValues);
+    setDraftValues((prev) => {
+      const next = prev.includes(optionValue)
+        ? prev.filter((v) => v !== optionValue)
+        : [...prev, optionValue];
+      onSave(next);
+      return next;
+    });
   };
 
   const handleAddNew = () => {
     const trimmed = newOptionValue.trim();
-    if (trimmed) {
-      onAddOption?.(trimmed);
+    if (trimmed && onAddOption) {
+      onAddOption(trimmed);
       setNewOptionValue("");
       setIsAddingNew(false);
     }
@@ -107,7 +116,7 @@ export function InlineMultiSelectCell({
         <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto">
           {options.length > 0 ? (
             options.map((option) => {
-              const isSelected = values.includes(option.value);
+              const isSelected = draftValues.includes(option.value);
               return (
                 <div
                   key={option.value}
@@ -131,7 +140,7 @@ export function InlineMultiSelectCell({
           )}
         </div>
         
-        {allowAddNew && (
+        {allowAddNew && !!onAddOption && (
           <div className="border-t mt-2 pt-2">
             {isAddingNew ? (
               <div className="flex items-center gap-1">
