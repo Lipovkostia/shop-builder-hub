@@ -120,7 +120,7 @@ export function InlineMultiSelectCell({
                 >
                   <Checkbox
                     checked={isSelected}
-                    onCheckedChange={() => handleToggle(option.value)}
+                    className="pointer-events-none"
                   />
                   <span className="truncate">{option.label}</span>
                 </div>
