@@ -13,16 +13,6 @@ interface Catalog {
   is_default: boolean;
 }
 
-interface CatalogPricing {
-  markup_type: string;
-  markup_value: number;
-  portion_prices: {
-    halfPricePerKg?: number;
-    quarterPricePerKg?: number;
-    portionPrice?: number;
-  } | null;
-}
-
 interface ProductEditPanelProps {
   product: StoreProduct;
   catalogs: Catalog[];
@@ -33,7 +23,6 @@ interface ProductEditPanelProps {
   catalogId?: string | null;
   currentStatus?: string;
   onStatusChange?: (catalogId: string, productId: string, status: string) => void;
-  catalogPricing?: CatalogPricing | null;
 }
 
 const unitOptions = [
@@ -62,7 +51,6 @@ export function ProductEditPanel({
   catalogId,
   currentStatus,
   onStatusChange,
-  catalogPricing,
 }: ProductEditPanelProps) {
   // Local state for form fields
   const [name, setName] = useState(product.name);
@@ -252,54 +240,6 @@ export function ProductEditPanel({
             <span className="text-xs font-semibold text-primary">{calculateSalePrice().toFixed(0)} ₽</span>
           </div>
         </div>
-
-        {/* Цена в прайс-листе */}
-        {catalogId && catalogPricing && (
-          <div className="col-span-2 sm:col-span-3 pt-1.5 border-t border-border/50">
-            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Цена в прайс-листе</label>
-            <div className="flex flex-wrap gap-2 mt-1">
-              <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500/10 border border-blue-500/30">
-                <span className="text-[10px] text-muted-foreground">Наценка:</span>
-                <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                  {catalogPricing.markup_value}{catalogPricing.markup_type === 'percent' ? '%' : '₽'}
-                </span>
-              </div>
-              {(() => {
-                const buy = parseFloat(buyPrice) || 0;
-                const catalogMarkup = catalogPricing.markup_value || 0;
-                const catalogPrice = catalogPricing.markup_type === 'percent' 
-                  ? buy * (1 + catalogMarkup / 100)
-                  : buy + catalogMarkup;
-                return (
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-green-500/10 border border-green-500/30">
-                    <span className="text-[10px] text-muted-foreground">Цена:</span>
-                    <span className="text-xs font-semibold text-green-600 dark:text-green-400">
-                      {catalogPrice.toFixed(0)} ₽
-                    </span>
-                  </div>
-                );
-              })()}
-              {catalogPricing.portion_prices?.halfPricePerKg && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 border border-border">
-                  <span className="text-[10px] text-muted-foreground">1/2:</span>
-                  <span className="text-xs font-medium">{catalogPricing.portion_prices.halfPricePerKg}₽</span>
-                </div>
-              )}
-              {catalogPricing.portion_prices?.quarterPricePerKg && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 border border-border">
-                  <span className="text-[10px] text-muted-foreground">1/4:</span>
-                  <span className="text-xs font-medium">{catalogPricing.portion_prices.quarterPricePerKg}₽</span>
-                </div>
-              )}
-              {catalogPricing.portion_prices?.portionPrice && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 border border-border">
-                  <span className="text-[10px] text-muted-foreground">Порция:</span>
-                  <span className="text-xs font-medium">{catalogPricing.portion_prices.portionPrice}₽</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Цены фасовки в одной строке */}
         <div>
