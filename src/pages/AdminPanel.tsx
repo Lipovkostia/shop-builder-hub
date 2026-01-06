@@ -629,6 +629,16 @@ export default function AdminPanel() {
     { id: "dairy", name: "Молочные продукты" },
   ]);
   const [newCategoryName, setNewCategoryName] = useState("");
+  
+  // Add new category handler
+  const handleAddCategory = useCallback((categoryName: string) => {
+    const newId = `cat_${Date.now()}`;
+    setCategories(prev => [...prev, { id: newId, name: categoryName }]);
+    toast({
+      title: "Категория создана",
+      description: `Категория "${categoryName}" успешно добавлена`,
+    });
+  }, [toast]);
 
   // Build combined options lists
   const allUnitOptions = [
@@ -3877,7 +3887,7 @@ export default function AdminPanel() {
                                 </ResizableTableCell>
                                 {/* Категории - редактируемые для каталога */}
                                 <ResizableTableCell columnId="category">
-                                  <InlineMultiSelectCell
+                                <InlineMultiSelectCell
                                     values={effectiveCategories || []}
                                     options={categories.map(c => ({ value: c.id, label: c.name }))}
                                     onSave={(cats) => {
@@ -3885,6 +3895,9 @@ export default function AdminPanel() {
                                         updateCatalogProductPricing(currentCatalog.id, product.id, { categories: cats });
                                       }
                                     }}
+                                    onAddOption={handleAddCategory}
+                                    allowAddNew={true}
+                                    addNewPlaceholder="Название категории..."
                                     placeholder="Категории"
                                   />
                                 </ResizableTableCell>
