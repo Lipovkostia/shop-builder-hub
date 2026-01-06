@@ -103,7 +103,7 @@ export function InlineMultiSelectCell({
           <ChevronDown className="h-2.5 w-2.5 ml-auto flex-shrink-0" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-2" align="start">
+      <PopoverContent className="w-56 p-2 pointer-events-auto" align="start">
         <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto">
           {options.length > 0 ? (
             options.map((option) => {
