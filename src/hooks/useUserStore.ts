@@ -107,11 +107,18 @@ export function useStoreBySubdomain(subdomain: string | undefined) {
 }
 
 export function useIsStoreOwner(storeId: string | null) {
-  const { profile } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
   const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Ждём пока загрузится auth
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    // Если нет storeId или пользователь не залогинен
     if (!storeId || !profile?.id) {
       setIsOwner(false);
       setLoading(false);
@@ -119,6 +126,7 @@ export function useIsStoreOwner(storeId: string | null) {
     }
 
     const checkOwnership = async () => {
+      setLoading(true);
       try {
         const { data, error } = await supabase
           .from("stores")
@@ -138,7 +146,7 @@ export function useIsStoreOwner(storeId: string | null) {
     };
 
     checkOwnership();
-  }, [storeId, profile?.id]);
+  }, [storeId, profile?.id, authLoading]);
 
   return { isOwner, loading };
 }
