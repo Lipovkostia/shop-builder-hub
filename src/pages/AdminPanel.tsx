@@ -2874,6 +2874,7 @@ export default function AdminPanel() {
                                 });
                               }}
                               placeholder="Выбрать..."
+                              allowAddNew={false}
                             />
                           </ResizableTableCell>
                         ),
