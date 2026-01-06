@@ -612,8 +612,35 @@ export default function StoreFront() {
   };
 
   // Filter products based on selected catalog, status filter, and search
+  // Products are ONLY shown when a catalog is selected
   const filteredProducts = useMemo(() => {
-    let filtered = products.filter((p) => p.is_active !== false);
+    // No catalog selected = no products shown
+    if (!selectedCatalog) {
+      return [];
+    }
+
+    let filtered = products.filter((p) => {
+      // Check if product is in this catalog
+      if (!productVisibility[p.id]?.has(selectedCatalog)) {
+        return false;
+      }
+      
+      // Check catalog-specific status
+      const catalogSettings = getProductSettings(selectedCatalog, p.id);
+      const effectiveStatus = catalogSettings?.status || "in_stock";
+      
+      // Hide products with "hidden" status for non-owners
+      if (effectiveStatus === "hidden" && !isOwner) {
+        return false;
+      }
+      
+      // Apply status filter for owners (only when filter is active)
+      if (isOwner && statusFilter !== "all" && effectiveStatus !== statusFilter) {
+        return false;
+      }
+      
+      return true;
+    });
 
     // Filter by search query
     if (searchQuery.trim()) {
@@ -622,38 +649,6 @@ export default function StoreFront() {
         p.name.toLowerCase().includes(query) ||
         p.description?.toLowerCase().includes(query)
       );
-    }
-
-    if (selectedCatalog) {
-      filtered = filtered.filter((p) => {
-        // Check if product is in this catalog
-        if (!productVisibility[p.id]?.has(selectedCatalog)) {
-          return false;
-        }
-        
-        // Check catalog-specific status
-        const catalogSettings = getProductSettings(selectedCatalog, p.id);
-        const effectiveStatus = catalogSettings?.status || "in_stock";
-        
-        // Hide products with "hidden" status for non-owners
-        if (effectiveStatus === "hidden" && !isOwner) {
-          return false;
-        }
-        
-        // Apply status filter for owners (only when filter is active)
-        if (isOwner && statusFilter !== "all" && effectiveStatus !== statusFilter) {
-          return false;
-        }
-        
-        return true;
-      });
-    } else if (isOwner && statusFilter !== "all") {
-      // Apply status filter even without catalog selected (based on is_active)
-      filtered = filtered.filter((p) => {
-        if (statusFilter === "hidden") return p.is_active === false;
-        if (statusFilter === "in_stock") return p.is_active !== false;
-        return true;
-      });
     }
 
     return filtered;
