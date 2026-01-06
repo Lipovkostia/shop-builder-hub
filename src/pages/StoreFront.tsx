@@ -16,6 +16,7 @@ import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
 import { useCatalogProductSettings, CatalogProductSetting } from "@/hooks/useCatalogProductSettings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProductEditPanel } from "@/components/admin/ProductEditPanel";
+import { useAuth } from "@/hooks/useAuth";
 import {
   formatPrice,
   calculatePackagingPrices,
@@ -580,11 +581,15 @@ function StoreSkeleton() {
 // Main StoreFront Component
 export default function StoreFront() {
   const { subdomain } = useParams<{ subdomain: string }>();
+  const { isSuperAdmin } = useAuth();
   const { store, loading: storeLoading, error: storeError } = useStoreBySubdomain(subdomain);
-  const { isOwner, loading: ownerLoading } = useIsStoreOwner(store?.id || null);
+  const { isOwner: isStoreOwner, loading: ownerLoading } = useIsStoreOwner(store?.id || null);
   const { products, loading: productsLoading, updateProduct } = useStoreProducts(store?.id || null);
   const { catalogs, productVisibility, setProductCatalogs } = useStoreCatalogs(store?.id || null);
   const { settings: catalogProductSettings, getProductSettings, updateProductSettings } = useCatalogProductSettings(store?.id || null);
+  
+  // Super admin or store owner can manage the store
+  const isOwner = isStoreOwner || isSuperAdmin;
   
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCatalog, setSelectedCatalog] = useState<string | null>(null);
