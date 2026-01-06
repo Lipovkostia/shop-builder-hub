@@ -149,70 +149,48 @@ export function ProductEditPanel({
   };
 
   return (
-    <div className="bg-muted/30 border-t animate-fade-in">
-      {/* Таблица полей */}
-      <div className="divide-y divide-border">
-        {/* Название */}
-        <div className="flex items-center">
-          <div className="w-28 sm:w-36 flex-shrink-0 px-3 py-2.5 bg-muted/50 text-sm font-medium text-muted-foreground">
-            Название
-          </div>
-          <div className="flex-1 px-3 py-2">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Название товара"
-            />
-          </div>
+    <div className="bg-gradient-to-b from-muted/40 to-muted/20 border-t border-primary/20 animate-fade-in shadow-inner">
+      {/* Компактная сетка полей */}
+      <div className="p-2 grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+        {/* Название - на всю ширину */}
+        <div className="col-span-2 sm:col-span-3">
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Название</label>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Название товара"
+            className="h-7 text-xs mt-0.5"
+          />
         </div>
 
-        {/* Описание */}
-        <div className="flex items-start">
-          <div className="w-28 sm:w-36 flex-shrink-0 px-3 py-2.5 bg-muted/50 text-sm font-medium text-muted-foreground">
-            Описание
-          </div>
-          <div className="flex-1 px-3 py-2">
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Описание товара"
-              className="min-h-[60px] resize-none"
-            />
-          </div>
-        </div>
-
-        {/* Цена закупки */}
-        <div className="flex items-center">
-          <div className="w-28 sm:w-36 flex-shrink-0 px-3 py-2.5 bg-muted/50 text-sm font-medium text-muted-foreground">
-            Закупка
-          </div>
-          <div className="flex-1 px-3 py-2 flex items-center gap-2">
+        {/* Закупка */}
+        <div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Закупка</label>
+          <div className="flex items-center gap-1 mt-0.5">
             <Input
               type="number"
               value={buyPrice}
               onChange={(e) => setBuyPrice(e.target.value)}
               placeholder="0"
-              className="w-24"
+              className="h-7 text-xs w-full"
             />
-            <span className="text-sm text-muted-foreground">₽/{unit}</span>
+            <span className="text-[10px] text-muted-foreground shrink-0">₽</span>
           </div>
         </div>
 
         {/* Наценка */}
-        <div className="flex items-center">
-          <div className="w-28 sm:w-36 flex-shrink-0 px-3 py-2.5 bg-muted/50 text-sm font-medium text-muted-foreground">
-            Наценка
-          </div>
-          <div className="flex-1 px-3 py-2 flex items-center gap-2 flex-wrap">
+        <div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Наценка</label>
+          <div className="flex items-center gap-1 mt-0.5">
             <Input
               type="number"
               value={markupValue}
               onChange={(e) => setMarkupValue(e.target.value)}
               placeholder="0"
-              className="w-20"
+              className="h-7 text-xs flex-1"
             />
             <Select value={markupType} onValueChange={(v) => setMarkupType(v as "percent" | "rubles")}>
-              <SelectTrigger className="w-16">
+              <SelectTrigger className="h-7 w-12 text-xs px-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -220,154 +198,115 @@ export function ProductEditPanel({
                 <SelectItem value="rubles">₽</SelectItem>
               </SelectContent>
             </Select>
-            <span className="text-sm text-muted-foreground">
-              = {calculateSalePrice().toFixed(0)} ₽
+          </div>
+        </div>
+
+        {/* Итого */}
+        <div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Итого</label>
+          <div className="h-7 mt-0.5 flex items-center px-2 rounded-md bg-primary/10 border border-primary/20">
+            <span className="text-xs font-semibold text-primary">{calculateSalePrice().toFixed(0)} ₽</span>
+          </div>
+        </div>
+
+        {/* Цены фасовки в одной строке */}
+        <div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">1/2</label>
+          <Input
+            type="number"
+            value={priceHalf}
+            onChange={(e) => setPriceHalf(e.target.value)}
+            placeholder="0"
+            className="h-7 text-xs mt-0.5"
+          />
+        </div>
+
+        <div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">1/4</label>
+          <Input
+            type="number"
+            value={priceQuarter}
+            onChange={(e) => setPriceQuarter(e.target.value)}
+            placeholder="0"
+            className="h-7 text-xs mt-0.5"
+          />
+        </div>
+
+        <div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Порция</label>
+          <Input
+            type="number"
+            value={pricePortion}
+            onChange={(e) => setPricePortion(e.target.value)}
+            placeholder="0"
+            className="h-7 text-xs mt-0.5"
+          />
+        </div>
+
+        {/* Единица и упаковка */}
+        <div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Ед. изм.</label>
+          <Select value={unit} onValueChange={setUnit}>
+            <SelectTrigger className="h-7 text-xs mt-0.5">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {unitOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Упаковка</label>
+          <Select value={packagingType} onValueChange={setPackagingType}>
+            <SelectTrigger className="h-7 text-xs mt-0.5">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {packagingOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Активен */}
+        <div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Статус</label>
+          <div className="h-7 mt-0.5 flex items-center gap-1.5">
+            <Switch checked={isActive} onCheckedChange={setIsActive} className="scale-75" />
+            <span className="text-[10px] text-muted-foreground">
+              {isActive ? "Активен" : "Скрыт"}
             </span>
           </div>
         </div>
 
-        {/* Цена 1/2 */}
-        <div className="flex items-center">
-          <div className="w-28 sm:w-36 flex-shrink-0 px-3 py-2.5 bg-muted/50 text-sm font-medium text-muted-foreground">
-            Цена 1/2
-          </div>
-          <div className="flex-1 px-3 py-2 flex items-center gap-2">
-            <Input
-              type="number"
-              value={priceHalf}
-              onChange={(e) => setPriceHalf(e.target.value)}
-              placeholder="0"
-              className="w-24"
-            />
-            <span className="text-sm text-muted-foreground">₽</span>
-          </div>
-        </div>
-
-        {/* Цена 1/4 */}
-        <div className="flex items-center">
-          <div className="w-28 sm:w-36 flex-shrink-0 px-3 py-2.5 bg-muted/50 text-sm font-medium text-muted-foreground">
-            Цена 1/4
-          </div>
-          <div className="flex-1 px-3 py-2 flex items-center gap-2">
-            <Input
-              type="number"
-              value={priceQuarter}
-              onChange={(e) => setPriceQuarter(e.target.value)}
-              placeholder="0"
-              className="w-24"
-            />
-            <span className="text-sm text-muted-foreground">₽</span>
-          </div>
-        </div>
-
-        {/* Цена порция */}
-        <div className="flex items-center">
-          <div className="w-28 sm:w-36 flex-shrink-0 px-3 py-2.5 bg-muted/50 text-sm font-medium text-muted-foreground">
-            Порция
-          </div>
-          <div className="flex-1 px-3 py-2 flex items-center gap-2">
-            <Input
-              type="number"
-              value={pricePortion}
-              onChange={(e) => setPricePortion(e.target.value)}
-              placeholder="0"
-              className="w-24"
-            />
-            <span className="text-sm text-muted-foreground">₽</span>
-          </div>
-        </div>
-
-        {/* Единица измерения */}
-        <div className="flex items-center">
-          <div className="w-28 sm:w-36 flex-shrink-0 px-3 py-2.5 bg-muted/50 text-sm font-medium text-muted-foreground">
-            Ед. измерения
-          </div>
-          <div className="flex-1 px-3 py-2">
-            <Select value={unit} onValueChange={setUnit}>
-              <SelectTrigger className="w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {unitOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Тип упаковки */}
-        <div className="flex items-center">
-          <div className="w-28 sm:w-36 flex-shrink-0 px-3 py-2.5 bg-muted/50 text-sm font-medium text-muted-foreground">
-            Тип упаковки
-          </div>
-          <div className="flex-1 px-3 py-2">
-            <Select value={packagingType} onValueChange={setPackagingType}>
-              <SelectTrigger className="w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {packagingOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Вес единицы */}
-        {unit === "кг" && packagingType !== "piece" && (
-          <div className="flex items-center">
-            <div className="w-28 sm:w-36 flex-shrink-0 px-3 py-2.5 bg-muted/50 text-sm font-medium text-muted-foreground">
-              Вес единицы
-            </div>
-            <div className="flex-1 px-3 py-2 flex items-center gap-2">
-              <Input
-                type="number"
-                value={unitWeight}
-                onChange={(e) => setUnitWeight(e.target.value)}
-                placeholder="0"
-                className="w-24"
-              />
-              <span className="text-sm text-muted-foreground">кг</span>
-            </div>
-          </div>
-        )}
-
-        {/* Статус */}
-        <div className="flex items-center">
-          <div className="w-28 sm:w-36 flex-shrink-0 px-3 py-2.5 bg-muted/50 text-sm font-medium text-muted-foreground">
-            Активен
-          </div>
-          <div className="flex-1 px-3 py-2 flex items-center gap-2">
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
-            <span className="text-sm text-muted-foreground">
-              {isActive ? "Виден покупателям" : "Скрыт"}
-            </span>
-          </div>
-        </div>
-
-        {/* Прайс-листы */}
+        {/* Прайс-листы - на всю ширину */}
         {catalogs.length > 0 && (
-          <div className="flex items-start">
-            <div className="w-28 sm:w-36 flex-shrink-0 px-3 py-2.5 bg-muted/50 text-sm font-medium text-muted-foreground">
-              Прайс-листы
-            </div>
-            <div className="flex-1 px-3 py-2 flex flex-wrap gap-3">
+          <div className="col-span-2 sm:col-span-3 pt-1 border-t border-border/50">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Прайс-листы</label>
+            <div className="flex flex-wrap gap-2 mt-1">
               {catalogs.map((catalog) => (
                 <label
                   key={catalog.id}
-                  className="flex items-center gap-2 cursor-pointer"
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] cursor-pointer transition-colors ${
+                    selectedCatalogs.includes(catalog.id) 
+                      ? 'bg-primary/20 text-primary border border-primary/30' 
+                      : 'bg-muted/50 text-muted-foreground border border-transparent hover:bg-muted'
+                  }`}
                 >
                   <Checkbox
                     checked={selectedCatalogs.includes(catalog.id)}
                     onCheckedChange={() => toggleCatalog(catalog.id)}
+                    className="h-3 w-3"
                   />
-                  <span className="text-sm">{catalog.name}</span>
+                  {catalog.name}
                 </label>
               ))}
             </div>
@@ -375,15 +314,15 @@ export function ProductEditPanel({
         )}
       </div>
 
-      {/* Кнопки действий */}
-      <div className="p-3 border-t flex gap-2 justify-end bg-background/50">
-        <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>
-          <X className="h-4 w-4 mr-1" />
+      {/* Кнопки действий - компактные */}
+      <div className="px-2 py-1.5 border-t border-border/50 flex gap-1.5 justify-end bg-background/30">
+        <Button variant="ghost" size="sm" onClick={onClose} disabled={saving} className="h-7 text-xs px-2">
+          <X className="h-3 w-3 mr-1" />
           Закрыть
         </Button>
-        <Button size="sm" onClick={handleSave} disabled={saving}>
-          <Save className="h-4 w-4 mr-1" />
-          {saving ? "Сохранение..." : "Сохранить"}
+        <Button size="sm" onClick={handleSave} disabled={saving} className="h-7 text-xs px-3">
+          <Save className="h-3 w-3 mr-1" />
+          {saving ? "..." : "Сохранить"}
         </Button>
       </div>
     </div>
