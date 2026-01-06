@@ -109,8 +109,13 @@ export function InlineMultiSelectCell({
             options.map((option) => {
               const isSelected = values.includes(option.value);
               return (
-                <label
+                <div
                   key={option.value}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleToggle(option.value);
+                  }}
                   className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm"
                 >
                   <Checkbox
@@ -118,7 +123,7 @@ export function InlineMultiSelectCell({
                     onCheckedChange={() => handleToggle(option.value)}
                   />
                   <span className="truncate">{option.label}</span>
-                </label>
+                </div>
               );
             })
           ) : (
