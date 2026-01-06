@@ -88,6 +88,7 @@ import { useMoyskladAccounts, MoyskladAccount } from "@/hooks/useMoyskladAccount
 import { useStoreSyncSettings, SyncSettings as StoreSyncSettings, SyncFieldMapping as StoreSyncFieldMapping, defaultSyncSettings as defaultStoreSyncSettings } from "@/hooks/useStoreSyncSettings";
 import { useStoreOrders, Order } from "@/hooks/useOrders";
 import { StoreCustomersTable } from "@/components/admin/StoreCustomersTable";
+import { useCatalogProductSettings } from "@/hooks/useCatalogProductSettings";
 
 // Removed localStorage keys - now using Supabase
 
@@ -404,6 +405,14 @@ export default function AdminPanel() {
     updateOrderStatus,
     refetch: refetchOrders
   } = useStoreOrders(effectiveStoreId);
+  
+  // Catalog product settings from Supabase (categories, markup, status per catalog)
+  const {
+    settings: catalogProductSettings,
+    getProductSettings: getCatalogProductSettingsFromDB,
+    updateProductSettings: updateCatalogProductSettingsInDB,
+    refetch: refetchCatalogProductSettings
+  } = useCatalogProductSettings(effectiveStoreId);
   // ================ END SUPABASE DATA HOOKS ================
   
   const [activeSection, setActiveSection] = useState<ActiveSection>(() => {
@@ -1360,70 +1369,47 @@ export default function AdminPanel() {
     return allProducts.filter(p => catalog.productIds.includes(p.id));
   };
 
-  // Get catalog-specific pricing for a product
-  const getCatalogProductPricing = (catalogId: string, productId: string): CatalogProductPricing | undefined => {
-    const catalog = catalogs.find(c => c.id === catalogId);
-    return catalog?.productPricing?.find(p => p.productId === productId);
-  };
+  // Get catalog-specific pricing for a product (from Supabase)
+  const getCatalogProductPricing = useCallback((catalogId: string, productId: string): CatalogProductPricing | undefined => {
+    const dbSettings = getCatalogProductSettingsFromDB(catalogId, productId);
+    if (!dbSettings) return undefined;
+    
+    return {
+      productId: dbSettings.product_id,
+      markup: dbSettings.markup_value > 0 ? {
+        type: dbSettings.markup_type === 'fixed' ? 'rubles' : 'percent',
+        value: dbSettings.markup_value
+      } : undefined,
+      status: dbSettings.status as ProductStatus,
+      categories: dbSettings.categories,
+      portionPrices: dbSettings.portion_prices || undefined,
+    };
+  }, [getCatalogProductSettingsFromDB]);
 
-  // Update catalog-specific pricing for a product
-  const updateCatalogProductPricing = (
+  // Update catalog-specific pricing for a product (save to Supabase)
+  const updateCatalogProductPricing = useCallback((
     catalogId: string, 
     productId: string, 
     updates: Partial<CatalogProductPricing>
   ) => {
-    setCatalogs(prev => prev.map(catalog => {
-      if (catalog.id !== catalogId) return catalog;
-      
-      const existingPricing = catalog.productPricing || [];
-      const existingIndex = existingPricing.findIndex(p => p.productId === productId);
-      
-      if (existingIndex >= 0) {
-        // Update existing pricing
-        const updatedPricing = [...existingPricing];
-        updatedPricing[existingIndex] = { 
-          ...updatedPricing[existingIndex], 
-          ...updates 
-        };
-        return { ...catalog, productPricing: updatedPricing };
-      } else {
-        // Add new pricing entry
-        return { 
-          ...catalog, 
-          productPricing: [
-            ...existingPricing, 
-            { productId, ...updates }
-          ] 
-        };
-      }
-    }));
-
-    // Also update currentCatalog if it's the same
-    if (currentCatalog?.id === catalogId) {
-      setCurrentCatalog(prev => {
-        if (!prev) return null;
-        const existingPricing = prev.productPricing || [];
-        const existingIndex = existingPricing.findIndex(p => p.productId === productId);
-        
-        if (existingIndex >= 0) {
-          const updatedPricing = [...existingPricing];
-          updatedPricing[existingIndex] = { 
-            ...updatedPricing[existingIndex], 
-            ...updates 
-          };
-          return { ...prev, productPricing: updatedPricing };
-        } else {
-          return { 
-            ...prev, 
-            productPricing: [
-              ...existingPricing, 
-              { productId, ...updates }
-            ] 
-          };
-        }
-      });
+    const dbUpdates: Parameters<typeof updateCatalogProductSettingsInDB>[2] = {};
+    
+    if (updates.categories !== undefined) {
+      dbUpdates.categories = updates.categories;
     }
-  };
+    if (updates.markup !== undefined) {
+      dbUpdates.markup_type = updates.markup?.type === 'rubles' ? 'fixed' : 'percent';
+      dbUpdates.markup_value = updates.markup?.value || 0;
+    }
+    if (updates.status !== undefined) {
+      dbUpdates.status = updates.status;
+    }
+    if (updates.portionPrices !== undefined) {
+      dbUpdates.portion_prices = updates.portionPrices;
+    }
+    
+    updateCatalogProductSettingsInDB(catalogId, productId, dbUpdates);
+  }, [updateCatalogProductSettingsInDB]);
 
   // Get effective sale price for catalog (using catalog markup or falling back to base product)
   const getCatalogSalePrice = (product: Product, catalogPricing?: CatalogProductPricing): number => {
