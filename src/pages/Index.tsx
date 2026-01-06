@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Store, LogIn, Shield } from "lucide-react";
+import { Store, LogIn, Shield, User } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -28,6 +28,13 @@ const Index = () => {
   const [adminLogin, setAdminLogin] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminLoading, setAdminLoading] = useState(false);
+
+  // Customer form state
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerPassword, setCustomerPassword] = useState("");
+  const [customerFullName, setCustomerFullName] = useState("");
+  const [customerLoading, setCustomerLoading] = useState(false);
+  const [isCustomerLogin, setIsCustomerLogin] = useState(true);
 
   // Format phone to email for Supabase auth
   const phoneToEmail = (phone: string) => {
@@ -201,6 +208,67 @@ const Index = () => {
     }
   };
 
+  const handleCustomerAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!customerEmail.trim() || !customerPassword.trim()) {
+      toast({ title: "Заполните все поля", variant: "destructive" });
+      return;
+    }
+
+    if (!isCustomerLogin && !customerFullName.trim()) {
+      toast({ title: "Введите ваше имя", variant: "destructive" });
+      return;
+    }
+
+    setCustomerLoading(true);
+    try {
+      if (isCustomerLogin) {
+        // Login
+        const { error } = await supabase.auth.signInWithPassword({
+          email: customerEmail,
+          password: customerPassword
+        });
+
+        if (error) throw error;
+
+        toast({ title: "Вход выполнен" });
+        navigate('/customer-dashboard');
+      } else {
+        // Registration
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: customerEmail,
+          password: customerPassword,
+          options: {
+            emailRedirectTo: `${window.location.origin}/customer-dashboard`,
+            data: {
+              full_name: customerFullName,
+              role: 'customer'
+            }
+          }
+        });
+
+        if (authError) throw authError;
+        if (!authData.user) throw new Error("Ошибка регистрации");
+
+        toast({ 
+          title: "Регистрация успешна!", 
+          description: "Теперь вы можете войти в личный кабинет" 
+        });
+        navigate('/customer-dashboard');
+      }
+    } catch (error: any) {
+      console.error('Customer auth error:', error);
+      toast({ 
+        title: isCustomerLogin ? "Ошибка входа" : "Ошибка регистрации", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    } finally {
+      setCustomerLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -210,7 +278,7 @@ const Index = () => {
         </div>
 
         <Tabs defaultValue="register" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="register" className="text-xs sm:text-sm">
               <Store className="h-4 w-4 mr-1 hidden sm:inline" />
               Создать
@@ -218,6 +286,10 @@ const Index = () => {
             <TabsTrigger value="login" className="text-xs sm:text-sm">
               <LogIn className="h-4 w-4 mr-1 hidden sm:inline" />
               Войти
+            </TabsTrigger>
+            <TabsTrigger value="customer" className="text-xs sm:text-sm">
+              <User className="h-4 w-4 mr-1 hidden sm:inline" />
+              Покупатель
             </TabsTrigger>
             <TabsTrigger value="admin" className="text-xs sm:text-sm">
               <Shield className="h-4 w-4 mr-1 hidden sm:inline" />
@@ -300,6 +372,66 @@ const Index = () => {
                   <Button type="submit" className="w-full" disabled={loginLoading}>
                     {loginLoading ? "Вход..." : "Войти"}
                   </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="customer">
+            <Card>
+              <CardHeader>
+                <CardTitle>{isCustomerLogin ? "Вход для покупателя" : "Регистрация покупателя"}</CardTitle>
+                <CardDescription>
+                  {isCustomerLogin ? "Войдите в личный кабинет" : "Создайте аккаунт покупателя"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCustomerAuth} className="space-y-4">
+                  {!isCustomerLogin && (
+                    <div className="space-y-2">
+                      <Label htmlFor="customerFullName">Ваше имя</Label>
+                      <Input
+                        id="customerFullName"
+                        placeholder="Иван Иванов"
+                        value={customerFullName}
+                        onChange={(e) => setCustomerFullName(e.target.value)}
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="customerEmail">Email</Label>
+                    <Input
+                      id="customerEmail"
+                      type="email"
+                      placeholder="email@example.com"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="customerPassword">Пароль</Label>
+                    <Input
+                      id="customerPassword"
+                      type="password"
+                      placeholder={isCustomerLogin ? "" : "Минимум 6 символов"}
+                      value={customerPassword}
+                      onChange={(e) => setCustomerPassword(e.target.value)}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={customerLoading}>
+                    {customerLoading 
+                      ? (isCustomerLogin ? "Вход..." : "Регистрация...") 
+                      : (isCustomerLogin ? "Войти" : "Зарегистрироваться")}
+                  </Button>
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      className="text-sm text-muted-foreground hover:text-primary underline"
+                      onClick={() => setIsCustomerLogin(!isCustomerLogin)}
+                    >
+                      {isCustomerLogin ? "Нет аккаунта? Зарегистрироваться" : "Уже есть аккаунт? Войти"}
+                    </button>
+                  </div>
                 </form>
               </CardContent>
             </Card>
