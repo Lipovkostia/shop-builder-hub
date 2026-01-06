@@ -87,6 +87,7 @@ import { useCustomerRoles } from "@/hooks/useCustomerRoles";
 import { useMoyskladAccounts, MoyskladAccount } from "@/hooks/useMoyskladAccounts";
 import { useStoreSyncSettings, SyncSettings as StoreSyncSettings, SyncFieldMapping as StoreSyncFieldMapping, defaultSyncSettings as defaultStoreSyncSettings } from "@/hooks/useStoreSyncSettings";
 import { useStoreOrders, Order } from "@/hooks/useOrders";
+import { StoreCustomersTable } from "@/components/admin/StoreCustomersTable";
 
 // Removed localStorage keys - now using Supabase
 
@@ -270,7 +271,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "import" | "catalogs" | "roles" | "visibility" | "orders";
+type ActiveSection = "products" | "import" | "catalogs" | "roles" | "visibility" | "orders" | "clients";
 type ImportView = "accounts" | "catalog";
 type CatalogView = "list" | "detail";
 
@@ -407,7 +408,7 @@ export default function AdminPanel() {
   
   const [activeSection, setActiveSection] = useState<ActiveSection>(() => {
     const section = searchParams.get('section');
-    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'roles' || section === 'visibility' || section === 'orders') {
+    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'roles' || section === 'visibility' || section === 'orders' || section === 'clients') {
       return section;
     }
     return "products";
@@ -4239,6 +4240,10 @@ export default function AdminPanel() {
                 setRolePricing((prev) => prev.filter((rp) => rp.role_id !== roleId));
               }}
             />
+          )}
+
+          {activeSection === "clients" && effectiveStoreId && (
+            <StoreCustomersTable storeId={effectiveStoreId} />
           )}
 
           {activeSection === "orders" && (
