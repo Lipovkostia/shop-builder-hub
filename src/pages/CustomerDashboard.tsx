@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -167,126 +168,67 @@ function ProductCard({
   const image = product.images?.[0] || "";
 
   return (
-    <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border ${showImages ? 'h-[calc((100vh-44px)/8)] min-h-[72px]' : 'h-9 min-h-[36px]'}`}>
-      {/* Изображение */}
-      {showImages && (
-        <button 
-          onClick={onImageClick}
-          className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-center cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-        >
-          {image ? (
-            <img
-              src={image}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Package className="w-6 h-6 text-muted-foreground" />
-            </div>
-          )}
-          {/* Индикатор количества фото */}
-          {(product.images?.length || 0) > 1 && (
-            <div className="absolute bottom-0.5 right-0.5 bg-black/60 text-white text-[8px] px-1 rounded">
-              {product.images?.length}
-            </div>
-          )}
-        </button>
-      )}
+    <>
+      {/* Основная карточка с фиксированной высотой */}
+      <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border ${showImages ? 'h-[calc((100vh-44px)/8)] min-h-[72px]' : 'h-9 min-h-[36px]'}`}>
+        {/* Изображение */}
+        {showImages && (
+          <button 
+            onClick={onImageClick}
+            className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-center cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+          >
+            {image ? (
+              <img
+                src={image}
+                alt={product.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Package className="w-6 h-6 text-muted-foreground" />
+              </div>
+            )}
+            {/* Индикатор количества фото */}
+            {(product.images?.length || 0) > 1 && (
+              <div className="absolute bottom-0.5 right-0.5 bg-black/60 text-white text-[8px] px-1 rounded">
+                {product.images?.length}
+              </div>
+            )}
+          </button>
+        )}
 
-      {/* Контент справа */}
-      <div className={`flex-1 min-w-0 flex ${showImages ? 'flex-col justify-center gap-0' : 'flex-row items-center gap-2'}`}>
-        {/* Название */}
-        <div className={`relative overflow-hidden ${showImages ? '' : 'flex-1 min-w-0'}`}>
-          <h3 className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px]'}`}>
-            {product.name}
-          </h3>
-          {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />}
-        </div>
+        {/* Контент справа */}
+        <div className={`flex-1 min-w-0 flex ${showImages ? 'flex-col justify-center gap-0' : 'flex-row items-center gap-2'}`}>
+          {/* Название */}
+          <div className={`relative overflow-hidden ${showImages ? '' : 'flex-1 min-w-0'}`}>
+            <h3 className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px]'}`}>
+              {product.name}
+            </h3>
+            {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />}
+          </div>
 
-        {/* Цена за кг */}
-        <p className={`text-muted-foreground leading-tight ${showImages ? 'text-[10px]' : 'text-[9px] whitespace-nowrap'}`}>
-          {formatPrice(basePrice)}/{product.unit}
-          {showImages && isHead && (
-            <span className="ml-1">
-              · головка ~{formatPrice(fullPrice)}
-            </span>
-          )}
-        </p>
+          {/* Цена за кг */}
+          <p className={`text-muted-foreground leading-tight ${showImages ? 'text-[10px]' : 'text-[9px] whitespace-nowrap'}`}>
+            {formatPrice(basePrice)}/{product.unit}
+            {showImages && isHead && (
+              <span className="ml-1">
+                · головка ~{formatPrice(fullPrice)}
+              </span>
+            )}
+          </p>
 
-        {/* Кнопки */}
-        <div className={`flex items-center gap-0.5 flex-wrap ${showImages ? 'mt-0.5' : ''}`}>
-          {inStock ? (
-            <>
-              {isHead ? (
-                <>
-                  {/* Целая */}
-                  {(() => {
-                    const qty = getCartQuantity(0);
-                    return (
-                      <button
-                        onClick={() => onAddToCart(product.id, 0, fullPrice)}
-                        className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                      >
-                        {qty > 0 && (
-                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                            {qty}
-                          </span>
-                        )}
-                        <PortionIndicator type="full" />
-                        <span className="text-[9px] font-medium text-foreground">
-                          {formatPriceSpaced(fullPrice)}
-                        </span>
-                      </button>
-                    );
-                  })()}
-                  {/* Половина */}
-                  {(() => {
-                    const qty = getCartQuantity(1);
-                    return (
-                      <button
-                        onClick={() => onAddToCart(product.id, 1, halfPrice)}
-                        className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                      >
-                        {qty > 0 && (
-                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                            {qty}
-                          </span>
-                        )}
-                        <PortionIndicator type="half" />
-                        <span className="text-[9px] font-medium text-foreground">
-                          {formatPriceSpaced(halfPrice)}
-                        </span>
-                      </button>
-                    );
-                  })()}
-                  {/* Четверть */}
-                  {(() => {
-                    const qty = getCartQuantity(2);
-                    return (
-                      <button
-                        onClick={() => onAddToCart(product.id, 2, quarterPrice)}
-                        className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                      >
-                        {qty > 0 && (
-                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                            {qty}
-                          </span>
-                        )}
-                        <PortionIndicator type="quarter" />
-                        <span className="text-[9px] font-medium text-foreground">
-                          {formatPriceSpaced(quarterPrice)}
-                        </span>
-                      </button>
-                    );
-                  })()}
-                  {/* Порция */}
-                  {portionPrice && (
-                    (() => {
-                      const qty = getCartQuantity(3);
+          {/* Кнопки */}
+          <div className={`flex items-center gap-0.5 flex-wrap ${showImages ? 'mt-0.5' : ''}`}>
+            {inStock ? (
+              <>
+                {isHead ? (
+                  <>
+                    {/* Целая */}
+                    {(() => {
+                      const qty = getCartQuantity(0);
                       return (
                         <button
-                          onClick={() => onAddToCart(product.id, 3, portionPrice)}
+                          onClick={() => onAddToCart(product.id, 0, fullPrice)}
                           className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
                         >
                           {qty > 0 && (
@@ -294,64 +236,130 @@ function ProductCard({
                               {qty}
                             </span>
                           )}
-                          <PortionIndicator type="portion" />
+                          <PortionIndicator type="full" />
                           <span className="text-[9px] font-medium text-foreground">
-                            {formatPriceSpaced(portionPrice)}
+                            {formatPriceSpaced(fullPrice)}
                           </span>
                         </button>
                       );
-                    })()
-                  )}
-                </>
-              ) : (
-                // Простой товар (штучный)
-                (() => {
-                  const qty = getCartQuantity(0);
-                  return (
-                    <button
-                      onClick={() => onAddToCart(product.id, 0, basePrice)}
-                      className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                    >
-                      {qty > 0 && (
-                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                          {qty}
+                    })()}
+                    {/* Половина */}
+                    {(() => {
+                      const qty = getCartQuantity(1);
+                      return (
+                        <button
+                          onClick={() => onAddToCart(product.id, 1, halfPrice)}
+                          className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                        >
+                          {qty > 0 && (
+                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                              {qty}
+                            </span>
+                          )}
+                          <PortionIndicator type="half" />
+                          <span className="text-[9px] font-medium text-foreground">
+                            {formatPriceSpaced(halfPrice)}
+                          </span>
+                        </button>
+                      );
+                    })()}
+                    {/* Четверть */}
+                    {(() => {
+                      const qty = getCartQuantity(2);
+                      return (
+                        <button
+                          onClick={() => onAddToCart(product.id, 2, quarterPrice)}
+                          className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                        >
+                          {qty > 0 && (
+                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                              {qty}
+                            </span>
+                          )}
+                          <PortionIndicator type="quarter" />
+                          <span className="text-[9px] font-medium text-foreground">
+                            {formatPriceSpaced(quarterPrice)}
+                          </span>
+                        </button>
+                      );
+                    })()}
+                    {/* Порция */}
+                    {portionPrice && (
+                      (() => {
+                        const qty = getCartQuantity(3);
+                        return (
+                          <button
+                            onClick={() => onAddToCart(product.id, 3, portionPrice)}
+                            className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                          >
+                            {qty > 0 && (
+                              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                                {qty}
+                              </span>
+                            )}
+                            <PortionIndicator type="portion" />
+                            <span className="text-[9px] font-medium text-foreground">
+                              {formatPriceSpaced(portionPrice)}
+                            </span>
+                          </button>
+                        );
+                      })()
+                    )}
+                  </>
+                ) : (
+                  // Простой товар (штучный)
+                  (() => {
+                    const qty = getCartQuantity(0);
+                    return (
+                      <button
+                        onClick={() => onAddToCart(product.id, 0, basePrice)}
+                        className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                      >
+                        {qty > 0 && (
+                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                            {qty}
+                          </span>
+                        )}
+                        <Plus className="w-3 h-3 text-primary" />
+                        <span className="text-[9px] font-medium text-foreground">
+                          {formatPriceSpaced(basePrice)}
                         </span>
-                      )}
-                      <Plus className="w-3 h-3 text-primary" />
-                      <span className="text-[9px] font-medium text-foreground">
-                        {formatPriceSpaced(basePrice)}
-                      </span>
-                    </button>
-                  );
-                })()
-              )}
-            </>
-          ) : (
-            <span className="text-[10px] text-muted-foreground">Нет в наличии</span>
-          )}
+                      </button>
+                    );
+                  })()
+                )}
+              </>
+            ) : (
+              <span className="text-[10px] text-muted-foreground">Нет в наличии</span>
+            )}
+          </div>
         </div>
       </div>
       
-      {/* Галерея изображений */}
-      {isExpanded && (product.images?.length || 0) > 0 && (
-        <div className="w-full overflow-x-auto bg-muted/30 border-t border-border">
-          <div className="flex gap-2 p-2">
-            {product.images?.map((img, idx) => (
-              <div 
-                key={idx}
-                className="w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-muted"
-              >
-                <img
-                  src={img}
-                  alt={`${product.name} ${idx + 1}`}
-                  className="w-full h-full object-cover"
-                />
+      {/* Галерея ВНЕ карточки — сдвигает нижние элементы */}
+      <Collapsible open={isExpanded}>
+        <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+          {(product.images?.length || 0) > 0 && (
+            <div className="overflow-x-auto bg-muted/30 border-b border-border">
+              <div className="flex gap-2 p-2">
+                {product.images?.map((img, idx) => (
+                  <div 
+                    key={idx}
+                    className="w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-muted"
+                  >
+                    <img
+                      src={img}
+                      alt={`${product.name} ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+            </div>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
+    </>
   );
 }
 
