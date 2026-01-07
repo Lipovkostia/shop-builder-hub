@@ -23,9 +23,10 @@ const navItems: NavItem[] = [
 interface MobileTabNavProps {
   activeSection: ActiveSection;
   onSectionChange: (section: ActiveSection) => void;
+  workspaceMode?: boolean;
 }
 
-export function MobileTabNav({ activeSection, onSectionChange }: MobileTabNavProps) {
+export function MobileTabNav({ activeSection, onSectionChange, workspaceMode }: MobileTabNavProps) {
   const navRef = useRef<HTMLDivElement>(null);
   const activeTabRef = useRef<HTMLButtonElement>(null);
 
@@ -75,7 +76,10 @@ export function MobileTabNav({ activeSection, onSectionChange }: MobileTabNavPro
       ref={navRef}
       role="tablist"
       aria-label="Навигация панели управления"
-      className="sticky top-14 z-40 bg-card border-b border-border overflow-x-auto scrollbar-hide"
+      className={cn(
+        "sticky z-40 bg-card border-b border-border overflow-x-auto scrollbar-hide",
+        workspaceMode ? "top-0" : "top-14"
+      )}
       style={{ 
         scrollbarWidth: "none", 
         msOverflowStyle: "none",
