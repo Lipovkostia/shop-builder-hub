@@ -28,6 +28,7 @@ import {
   calculatePackagingPrices,
   calculateSalePrice,
 } from "@/components/admin/types";
+import AdminPanel from "@/pages/AdminPanel";
 
 interface CartItem {
   productId: string;
@@ -522,6 +523,8 @@ function StoreHeader({
   onSearchChange,
   onAdminClick,
   ordersCount,
+  viewMode,
+  onStoreClick,
 }: {
   store: any;
   cart: CartItem[];
@@ -540,6 +543,8 @@ function StoreHeader({
   onSearchChange: (query: string) => void;
   onAdminClick?: (section?: string) => void;
   ordersCount?: number;
+  viewMode?: 'storefront' | 'admin';
+  onStoreClick?: () => void;
 }) {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
@@ -558,24 +563,29 @@ function StoreHeader({
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
       <div className="h-12 flex items-center justify-between px-3 relative">
-        <div className="flex items-center gap-1">
+        {/* Иконка витрины - кликабельная для возврата к витрине */}
+        <button 
+          onClick={onStoreClick}
+          className={`flex items-center gap-1 p-1.5 rounded-full transition-colors ${viewMode === 'storefront' ? 'bg-primary/10' : 'hover:bg-muted'}`}
+          title="Витрина"
+        >
           {store.logo_url ? (
             <img src={store.logo_url} alt={store.name} className="w-6 h-6 rounded object-cover" />
           ) : (
-            <Store className="w-5 h-5 text-muted-foreground" />
+            <Store className={`w-5 h-5 ${viewMode === 'storefront' ? 'text-primary' : 'text-muted-foreground'}`} />
           )}
-        </div>
+        </button>
 
         {/* Заказы по центру */}
         {canShowAdminButton && (
           <div className="absolute left-1/2 -translate-x-1/2">
             <button
               onClick={() => onAdminClick?.('orders')}
-              className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
+              className={`p-1.5 transition-colors rounded-full ${viewMode === 'admin' ? 'bg-primary/10' : 'bg-muted hover:bg-muted/80'}`}
               title={`Заказы${ordersCount ? ` (${ordersCount})` : ''}`}
               aria-label="Заказы"
             >
-              <Package className="w-5 h-5 text-muted-foreground" />
+              <Package className={`w-5 h-5 ${viewMode === 'admin' ? 'text-primary' : 'text-muted-foreground'}`} />
             </button>
           </div>
         )}
@@ -584,11 +594,11 @@ function StoreHeader({
           <div className="flex items-center gap-1">
             <button
               onClick={() => onAdminClick?.('products')}
-              className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
+              className={`p-1.5 transition-colors rounded-full ${viewMode === 'admin' ? 'bg-primary/10' : 'bg-muted hover:bg-muted/80'}`}
               title="Панель управления"
               aria-label="Панель управления"
             >
-              <Settings className="w-4 h-4 text-muted-foreground" />
+              <Settings className={`w-4 h-4 ${viewMode === 'admin' ? 'text-primary' : 'text-muted-foreground'}`} />
             </button>
           </div>
         )}
@@ -786,6 +796,8 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<'storefront' | 'admin'>('storefront');
+  const [adminSection, setAdminSection] = useState<string | undefined>(undefined);
 
   // Use products directly from hook - realtime handles sync
   const displayProducts = products;
@@ -885,15 +897,19 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
     });
   };
 
-  // Обработчик клика на кнопку админки
+  // Обработчик клика на кнопку админки — теперь переключает режим внутри страницы
   const handleAdminClick = (section?: string) => {
     if (workspaceMode && onSwitchToAdmin) {
       onSwitchToAdmin(section);
     } else {
-      const baseUrl = store?.id ? `/admin?storeId=${store.id}` : `/admin`;
-      const url = section ? `${baseUrl}&section=${section}` : baseUrl;
-      navigate(url);
+      setViewMode('admin');
+      setAdminSection(section);
     }
+  };
+
+  // Обработчик клика на иконку витрины — возврат к витрине
+  const handleStoreClick = () => {
+    setViewMode('storefront');
   };
 
   // Loading state - в workspaceMode данные магазина уже есть, показываем скелетон только при загрузке товаров
@@ -946,6 +962,8 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
           onSearchChange={setSearchQuery}
           onAdminClick={handleAdminClick}
           ordersCount={orders.length}
+          viewMode={viewMode}
+          onStoreClick={handleStoreClick}
         />
       )}
 
@@ -1108,7 +1126,20 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
         </div>
       )}
 
-      <main className="flex-1 overflow-auto">
+      {/* Админ-панель встроенная */}
+      {viewMode === 'admin' && !workspaceMode && store?.id && (
+        <div className="flex-1 overflow-auto">
+          <AdminPanel 
+            workspaceMode={true} 
+            storeIdOverride={store.id}
+            onSwitchToStorefront={handleStoreClick}
+          />
+        </div>
+      )}
+
+      {/* Витрина */}
+      {viewMode === 'storefront' && (
+        <main className="flex-1 overflow-auto">
         {filteredProducts.length > 0 ? (
           filteredProducts.map((product) => {
             const catalogSettings = selectedCatalog ? getProductSettings(selectedCatalog, product.id) : undefined;
@@ -1164,6 +1195,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
           </div>
         )}
       </main>
+      )}
     </div>
   );
 }
