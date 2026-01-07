@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store, Package, LayoutGrid } from "lucide-react";
 import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
@@ -800,6 +800,24 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchInputValue, setSearchInputValue] = useState("");
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced search - update searchQuery 400ms after user stops typing
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      setSearchQuery(searchInputValue);
+    }, 400);
+    
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchInputValue]);
   const [viewMode, setViewMode] = useState<'storefront' | 'admin'>('storefront');
   const [adminSection, setAdminSection] = useState<string | undefined>(undefined);
 
@@ -1038,14 +1056,17 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                   <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                   <input
                     type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    value={searchInputValue}
+                    onChange={(e) => setSearchInputValue(e.target.value)}
                     placeholder="Поиск товаров..."
                     className="w-full h-8 pl-7 pr-3 text-xs rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
                   />
-                  {searchQuery && (
+                  {searchInputValue && (
                     <button 
-                      onClick={() => setSearchQuery("")}
+                      onClick={() => {
+                        setSearchInputValue("");
+                        setSearchQuery("");
+                      }}
                       className="absolute right-2 top-1/2 -translate-y-1/2"
                     >
                       <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
