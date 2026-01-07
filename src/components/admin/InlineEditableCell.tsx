@@ -18,10 +18,12 @@ export function InlineEditableCell({
 }: InlineEditableCellProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedValue, setEditedValue] = useState(value);
+  const [displayValue, setDisplayValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setEditedValue(value);
+    setDisplayValue(value);
   }, [value]);
 
   useEffect(() => {
@@ -32,8 +34,10 @@ export function InlineEditableCell({
   }, [isEditing]);
 
   const handleSave = () => {
-    if (editedValue.trim() !== value) {
-      onSave(editedValue.trim());
+    const trimmedValue = editedValue.trim();
+    if (trimmedValue !== value) {
+      setDisplayValue(trimmedValue); // Optimistic update
+      onSave(trimmedValue);
     }
     setIsEditing(false);
   };
@@ -89,10 +93,10 @@ export function InlineEditableCell({
     <div 
       className={`group flex items-center gap-1 cursor-pointer hover:text-primary transition-colors truncate ${className}`}
       onClick={() => setIsEditing(true)}
-      title={value || placeholder}
+      title={displayValue || placeholder}
     >
-      <span className={`truncate text-xs ${value ? "" : "text-muted-foreground italic"}`}>
-        {value || placeholder}
+      <span className={`truncate text-xs ${displayValue ? "" : "text-muted-foreground italic"}`}>
+        {displayValue || placeholder}
       </span>
       <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" />
     </div>
