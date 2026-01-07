@@ -407,8 +407,8 @@ export function ProductEditPanel({
           />
         </div>
 
-        {/* Категории - выпадающий список */}
-        <div className="col-span-2 sm:col-span-3">
+        {/* Категории - компактный выпадающий список */}
+        <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Категории</label>
           <Popover>
             <PopoverTrigger asChild>
