@@ -22,6 +22,7 @@ export function InlineEditableCell({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    console.log('[InlineEditableCell] value changed from props:', value);
     setEditedValue(value);
     setDisplayValue(value);
   }, [value]);
