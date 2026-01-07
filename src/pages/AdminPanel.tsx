@@ -437,8 +437,16 @@ export default function AdminPanel({
     return "products";
   });
   
-  // Sync activeSection with URL parameter changes
+  // Sync activeSection with URL parameter changes (только при внешних изменениях URL)
+  // Используем ref чтобы избежать двойного рендера при setSearchParams
+  const isInternalUrlChange = useRef(false);
+  
   useEffect(() => {
+    if (isInternalUrlChange.current) {
+      isInternalUrlChange.current = false;
+      return;
+    }
+    
     const section = searchParams.get('section');
     if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'roles' || section === 'visibility' || section === 'orders' || section === 'clients') {
       setActiveSection(section);
@@ -746,6 +754,8 @@ export default function AdminPanel({
 
   // Handle section change with URL update
   const handleSectionChange = useCallback((section: ActiveSection) => {
+    // Предотвращаем повторный setActiveSection из useEffect
+    isInternalUrlChange.current = true;
     setActiveSection(section);
     
     // Update URL with section for SPA navigation
@@ -2487,6 +2497,7 @@ export default function AdminPanel({
       <MobileTabNav
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
+        workspaceMode={workspaceMode}
       />
 
       {/* Main content */}
@@ -2494,7 +2505,7 @@ export default function AdminPanel({
         id={`panel-${activeSection}`}
         role="tabpanel"
         aria-labelledby={`tab-${activeSection}`}
-        className="flex-1 p-4 min-h-[calc(100vh-112px)] overflow-y-auto"
+        className={`flex-1 p-4 overflow-y-auto ${workspaceMode ? 'min-h-0' : 'min-h-[calc(100vh-112px)]'}`}
       >
           {/* Show loading or no store message if effectiveStoreId is not available */}
           {!effectiveStoreId && !storeContextLoading && (
