@@ -627,8 +627,11 @@ export default function StoreFront() {
   const { catalogs, productVisibility, setProductCatalogs } = useStoreCatalogs(store?.id || null);
   const { settings: catalogProductSettings, getProductSettings, updateProductSettings } = useCatalogProductSettings(store?.id || null);
   
+  // Check for temp super admin from localStorage (used when super admin navigates from super admin panel)
+  const isTempSuperAdmin = typeof window !== 'undefined' && localStorage.getItem('temp_super_admin') === 'true';
+  
   // Super admin or store owner can manage the store
-  const isOwner = isStoreOwner || isSuperAdmin;
+  const isOwner = isStoreOwner || isSuperAdmin || isTempSuperAdmin;
   
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCatalog, setSelectedCatalog] = useState<string | null>(null);
