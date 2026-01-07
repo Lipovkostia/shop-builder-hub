@@ -41,8 +41,12 @@ import {
   Loader2,
   FolderOpen,
   Filter,
-  Image
+  Image,
+  User,
+  Key,
+  Store
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 // Форматирование цены с пробелом
 function formatPriceSpaced(price: number): string {
@@ -299,7 +303,7 @@ function CustomerHeader({
   showImages,
   onToggleImages,
   onOpenCart,
-  onSignOut
+  onOpenProfile
 }: { 
   cart: LocalCartItem[];
   catalogs: CustomerCatalog[];
@@ -308,7 +312,7 @@ function CustomerHeader({
   showImages: boolean;
   onToggleImages: () => void;
   onOpenCart: () => void;
-  onSignOut: () => void;
+  onOpenProfile: () => void;
 }) {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -330,10 +334,10 @@ function CustomerHeader({
         </button>
 
         <button
-          onClick={onSignOut}
+          onClick={onOpenProfile}
           className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
         >
-          <LogOut className="w-4 h-4 text-muted-foreground" />
+          <User className="w-4 h-4 text-muted-foreground" />
         </button>
       </div>
 
@@ -408,13 +412,59 @@ const CustomerDashboard = () => {
   const [cart, setCart] = useState<LocalCartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showImages, setShowImages] = useState(true);
+  
+  // Profile data
+  const [profileData, setProfileData] = useState<{ full_name: string | null; phone: string | null } | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
   
   // Checkout form
   const [checkoutName, setCheckoutName] = useState("");
   const [checkoutPhone, setCheckoutPhone] = useState("");
   const [checkoutAddress, setCheckoutAddress] = useState("");
   const [checkoutComment, setCheckoutComment] = useState("");
+
+  // Fetch profile data
+  const fetchProfileData = async () => {
+    if (!user) return;
+    setProfileLoading(true);
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name, phone')
+        .eq('user_id', user.id)
+        .single();
+      setProfileData(data);
+    } catch (e) {
+      console.error('Error fetching profile:', e);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleOpenProfile = () => {
+    setIsProfileOpen(true);
+    fetchProfileData();
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast({ title: "Ошибка", description: "Пароль должен быть минимум 6 символов", variant: "destructive" });
+      return;
+    }
+    setPasswordLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setPasswordLoading(false);
+    if (error) {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Успешно", description: "Пароль изменён" });
+      setNewPassword("");
+    }
+  };
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -563,7 +613,7 @@ const CustomerDashboard = () => {
         showImages={showImages}
         onToggleImages={() => setShowImages(!showImages)}
         onOpenCart={() => setIsCartOpen(true)}
-        onSignOut={handleSignOut}
+        onOpenProfile={handleOpenProfile}
       />
       
       <main className="flex-1 overflow-auto">
@@ -755,6 +805,94 @@ const CustomerDashboard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Profile Sheet */}
+      <Sheet open={isProfileOpen} onOpenChange={setIsProfileOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Профиль
+            </SheetTitle>
+          </SheetHeader>
+          
+          <div className="mt-6 space-y-6">
+            {profileLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <>
+                {/* Личные данные */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">Личные данные</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                      <User className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm">{profileData?.full_name || "Имя не указано"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                      <span className="text-muted-foreground text-sm">📞</span>
+                      <span className="text-sm">{profileData?.phone || "Телефон не указан"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Смена пароля */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <Key className="w-4 h-4" />
+                    Смена пароля
+                  </h3>
+                  <div className="flex gap-2">
+                    <Input
+                      type="password"
+                      placeholder="Новый пароль"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button 
+                      onClick={handleChangePassword} 
+                      disabled={passwordLoading || !newPassword}
+                      size="sm"
+                    >
+                      {passwordLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Сменить"}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Доступные прайс-листы */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <Store className="w-4 h-4" />
+                    Доступные прайс-листы
+                  </h3>
+                  <div className="space-y-2 max-h-[200px] overflow-auto">
+                    {catalogs.length > 0 ? (
+                      catalogs.map((catalog) => (
+                        <div key={catalog.id} className="p-3 bg-muted/50 rounded-lg">
+                          <div className="font-medium text-sm">{catalog.store_name}</div>
+                          <div className="text-xs text-muted-foreground">{catalog.catalog_name}</div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Нет доступных прайс-листов</p>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <SheetFooter className="mt-6">
+            <Button variant="outline" onClick={handleSignOut} className="w-full gap-2">
+              <LogOut className="w-4 h-4" />
+              Выйти из аккаунта
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
