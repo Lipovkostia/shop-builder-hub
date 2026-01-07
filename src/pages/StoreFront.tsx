@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images } from "lucide-react";
 import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,9 @@ import { useStoreOrders } from "@/hooks/useOrders";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProductEditPanel } from "@/components/admin/ProductEditPanel";
 import { useAuth } from "@/hooks/useAuth";
+import { ImageGalleryViewer } from "@/components/admin/ImageGalleryViewer";
+import { uploadFilesToStorage, deleteSingleImage } from "@/hooks/useProductImages";
+import { useToast } from "@/hooks/use-toast";
 import {
   formatPrice,
   calculatePackagingPrices,
@@ -90,6 +93,9 @@ function ProductCard({
   selectedCatalog,
   onStatusChange,
   onCatalogSettingsChange,
+  isGalleryOpen = false,
+  onToggleGallery,
+  onImagesUpdate,
 }: { 
   product: any;
   cart: CartItem[];
@@ -106,7 +112,13 @@ function ProductCard({
   selectedCatalog?: string | null;
   onStatusChange?: (catalogId: string, productId: string, status: string) => void;
   onCatalogSettingsChange?: (catalogId: string, productId: string, settings: any) => void;
+  isGalleryOpen?: boolean;
+  onToggleGallery?: () => void;
+  onImagesUpdate?: (productId: string, images: string[]) => void;
 }) {
+  const { toast } = useToast();
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [isDeletingImage, setIsDeletingImage] = useState(false);
   const getCartQuantity = (variantIndex: number) => {
     const item = cart.find(
       (c) => c.productId === product.id && c.variantIndex === variantIndex
@@ -156,6 +168,77 @@ function ProductCard({
 
   const fullPrice = getFullPrice();
 
+  // Обработчики для галереи изображений
+  const handleAddImages = async (files: FileList, source: 'file' | 'camera') => {
+    if (!isOwner || !onImagesUpdate) return;
+    
+    setIsUploadingImages(true);
+    try {
+      const filesArray = Array.from(files);
+      const startIndex = images.length;
+      const newUrls = await uploadFilesToStorage(filesArray, product.id, startIndex);
+      
+      if (newUrls.length > 0) {
+        const updatedImages = [...images, ...newUrls];
+        await onSave?.(product.id, { images: updatedImages });
+        onImagesUpdate(product.id, updatedImages);
+        toast({
+          title: "Изображения загружены",
+          description: `Добавлено ${newUrls.length} фото`,
+        });
+      }
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      toast({
+        title: "Ошибка загрузки",
+        description: "Не удалось загрузить изображения",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
+
+  const handleDeleteImage = async (index: number) => {
+    if (!isOwner || !onImagesUpdate) return;
+    
+    setIsDeletingImage(true);
+    try {
+      const imageUrl = images[index];
+      await deleteSingleImage(imageUrl);
+      
+      const updatedImages = images.filter((_: string, i: number) => i !== index);
+      await onSave?.(product.id, { images: updatedImages });
+      onImagesUpdate(product.id, updatedImages);
+      toast({
+        title: "Изображение удалено",
+      });
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      toast({
+        title: "Ошибка удаления",
+        description: "Не удалось удалить изображение",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingImage(false);
+    }
+  };
+
+  const handleSetMainImage = async (index: number) => {
+    if (!isOwner || !onImagesUpdate || index === 0) return;
+    
+    const updatedImages = [...images];
+    const [movedImage] = updatedImages.splice(index, 1);
+    updatedImages.unshift(movedImage);
+    
+    await onSave?.(product.id, { images: updatedImages });
+    onImagesUpdate(product.id, updatedImages);
+    toast({
+      title: "Главное фото изменено",
+    });
+  };
+
   return (
     <div className="border-b border-border">
     <div 
@@ -163,7 +246,10 @@ function ProductCard({
     >
       {/* Изображение */}
       {showImages && (
-        <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-center">
+        <div 
+          className={`relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-center ${isOwner ? 'cursor-pointer' : ''}`}
+          onClick={isOwner && onToggleGallery ? onToggleGallery : undefined}
+        >
           <img
             src={firstImage}
             alt={product.name}
@@ -172,6 +258,13 @@ function ProductCard({
               (e.target as HTMLImageElement).src = "/placeholder.svg";
             }}
           />
+          {/* Индикатор количества фото */}
+          {isOwner && images.length > 0 && (
+            <div className="absolute bottom-0 right-0 bg-black/70 text-white text-[8px] px-1 rounded-tl flex items-center gap-0.5">
+              <Images className="w-2.5 h-2.5" />
+              {images.length}
+            </div>
+          )}
         </div>
       )}
 
@@ -359,6 +452,26 @@ function ProductCard({
       </div>
     </div>
     
+    {/* Галерея изображений для владельца */}
+    {isOwner && onImagesUpdate && (
+      <Collapsible open={isGalleryOpen}>
+        <CollapsibleContent>
+          <div className="px-2 py-3 bg-muted/30 border-t border-border">
+            <ImageGalleryViewer
+              images={images}
+              productName={product.name}
+              productId={product.id}
+              onDeleteImage={handleDeleteImage}
+              onAddImages={handleAddImages}
+              onSetMainImage={handleSetMainImage}
+              isDeleting={isDeletingImage}
+              isUploading={isUploadingImages}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    )}
+
     {/* Панель редактирования для владельца */}
     {isOwner && onSave && onCatalogsChange && (
       <Collapsible open={isExpanded}>
@@ -668,9 +781,21 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const [selectedCatalog, setSelectedCatalog] = useState<string | null>(null);
   const [showImages, setShowImages] = useState(true);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [galleryOpenProductId, setGalleryOpenProductId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [localProducts, setLocalProducts] = useState<StoreProduct[]>([]);
+
+  // Sync local products with fetched products
+  useMemo(() => {
+    if (products.length > 0) {
+      setLocalProducts(products);
+    }
+  }, [products]);
+
+  // Merged products for display (use local state for immediate updates)
+  const displayProducts = localProducts.length > 0 ? localProducts : products;
 
   // Get product catalog IDs for a specific product
   const getProductCatalogIds = (productId: string): string[] => {
@@ -693,6 +818,13 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
     await updateProductSettings(catalogId, productId, { status });
   };
 
+  // Handle images update for immediate UI feedback
+  const handleImagesUpdate = (productId: string, images: string[]) => {
+    setLocalProducts(prev => prev.map(p => 
+      p.id === productId ? { ...p, images } : p
+    ));
+  };
+
   // Filter products based on selected catalog, status filter, and search
   // Products are ONLY shown when a catalog is selected
   const filteredProducts = useMemo(() => {
@@ -701,7 +833,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
       return [];
     }
 
-    let filtered = products.filter((p) => {
+    let filtered = displayProducts.filter((p) => {
       // Check if product is in this catalog
       if (!productVisibility[p.id]?.has(selectedCatalog)) {
         return false;
@@ -734,7 +866,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
     }
 
     return filtered;
-  }, [products, selectedCatalog, productVisibility, getProductSettings, isOwner, statusFilter, searchQuery]);
+  }, [displayProducts, selectedCatalog, productVisibility, getProductSettings, isOwner, statusFilter, searchQuery]);
 
   // Handle add to cart
   const handleAddToCart = (productId: string, variantIndex: number, price: number) => {
@@ -955,7 +1087,13 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                 catalogSettings={catalogSettings}
                 isOwner={isOwner}
                 isExpanded={expandedProductId === product.id}
-                onToggleExpand={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
+                onToggleExpand={() => {
+                  setExpandedProductId(expandedProductId === product.id ? null : product.id);
+                  // Close gallery when opening edit panel
+                  if (expandedProductId !== product.id) {
+                    setGalleryOpenProductId(null);
+                  }
+                }}
                 onSave={handleSaveProduct}
                 catalogs={catalogs}
                 productCatalogIds={getProductCatalogIds(product.id)}
@@ -963,6 +1101,15 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                 selectedCatalog={selectedCatalog}
                 onStatusChange={handleStatusChange}
                 onCatalogSettingsChange={updateProductSettings}
+                isGalleryOpen={galleryOpenProductId === product.id}
+                onToggleGallery={() => {
+                  setGalleryOpenProductId(galleryOpenProductId === product.id ? null : product.id);
+                  // Close edit panel when opening gallery
+                  if (galleryOpenProductId !== product.id) {
+                    setExpandedProductId(null);
+                  }
+                }}
+                onImagesUpdate={handleImagesUpdate}
               />
             );
           })
