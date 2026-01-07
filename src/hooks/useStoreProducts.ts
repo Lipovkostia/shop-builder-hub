@@ -69,7 +69,25 @@ export function useStoreProducts(storeId: string | null) {
 
   // Create a new product
   const createProduct = useCallback(async (product: Partial<StoreProduct>) => {
-    if (!storeId) return null;
+    if (!storeId) {
+      toast({
+        title: "Ошибка",
+        description: "Магазин не выбран",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({
+        title: "Требуется авторизация",
+        description: "Войдите в систему для добавления товаров",
+        variant: "destructive",
+      });
+      return null;
+    }
 
     try {
       const slug = product.name 
@@ -89,7 +107,12 @@ export function useStoreProducts(storeId: string | null) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42501') {
+          throw new Error("Нет прав для добавления товаров. Убедитесь, что вы владелец магазина.");
+        }
+        throw error;
+      }
       
       setProducts(prev => [data, ...prev]);
       toast({
@@ -110,6 +133,17 @@ export function useStoreProducts(storeId: string | null) {
 
   // Update a product
   const updateProduct = useCallback(async (productId: string, updates: Partial<StoreProduct>) => {
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({
+        title: "Требуется авторизация",
+        description: "Войдите в систему для редактирования товаров",
+        variant: "destructive",
+      });
+      return null;
+    }
+
     try {
       const { data, error } = await supabase
         .from("products")
@@ -118,7 +152,12 @@ export function useStoreProducts(storeId: string | null) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42501') {
+          throw new Error("Нет прав для редактирования. Убедитесь, что вы владелец магазина.");
+        }
+        throw error;
+      }
       
       setProducts(prev => prev.map(p => p.id === productId ? data : p));
       return data;
