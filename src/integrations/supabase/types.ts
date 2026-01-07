@@ -645,6 +645,7 @@ export type Database = {
           id: string
           phone: string | null
           role: Database["public"]["Enums"]["user_role"]
+          toast_notifications_enabled: boolean | null
           updated_at: string
           user_id: string
         }
@@ -656,6 +657,7 @@ export type Database = {
           id?: string
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          toast_notifications_enabled?: boolean | null
           updated_at?: string
           user_id: string
         }
@@ -667,6 +669,7 @@ export type Database = {
           id?: string
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          toast_notifications_enabled?: boolean | null
           updated_at?: string
           user_id?: string
         }

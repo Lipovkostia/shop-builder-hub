@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useCustomerCatalogs, CartItem, CatalogProduct, CustomerCatalog } from "@/hooks/useCustomerCatalogs";
 import { useCustomerOrders } from "@/hooks/useOrders";
+import { useProfileSettings } from "@/hooks/useProfileSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,7 +48,8 @@ import {
   Key,
   Store,
   ArrowLeft,
-  Shield
+  Shield,
+  Bell
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -424,6 +427,7 @@ const CustomerDashboard = () => {
     refetch: refetchCatalogs
   } = useCustomerCatalogs(targetUserId);
   const { createOrder, loading: orderLoading } = useCustomerOrders();
+  const { toastEnabled, updateSettings, isUpdating: updatingSettings } = useProfileSettings();
 
   const [cart, setCart] = useState<LocalCartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -727,7 +731,30 @@ const CustomerDashboard = () => {
             </div>
           </div>
 
-          {/* Смена пароля */}
+          {/* Настройки уведомлений */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Bell className="w-4 h-4" />
+              Уведомления
+            </h3>
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="toast-toggle" className="text-sm font-medium">
+                  Всплывающие уведомления
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Показывать уведомления о действиях в приложении
+                </p>
+              </div>
+              <Switch
+                id="toast-toggle"
+                checked={toastEnabled}
+                onCheckedChange={(checked) => updateSettings({ toast_notifications_enabled: checked })}
+                disabled={updatingSettings}
+              />
+            </div>
+          </div>
+
           {!isImpersonating && (
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
