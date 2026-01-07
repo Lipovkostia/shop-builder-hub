@@ -1,5 +1,4 @@
 import { Store as StoreIcon, Settings, ShoppingCart } from "lucide-react";
-import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 
 type ActiveView = "storefront" | "admin";
 
@@ -8,6 +7,7 @@ interface WorkspaceHeaderProps {
   storeLogo?: string | null;
   activeView: ActiveView;
   onViewChange: (view: ActiveView) => void;
+  onOrdersClick?: () => void;
   ordersCount?: number;
 }
 
@@ -16,8 +16,17 @@ export function WorkspaceHeader({
   storeLogo,
   activeView,
   onViewChange,
+  onOrdersClick,
   ordersCount = 0,
 }: WorkspaceHeaderProps) {
+  const handleOrdersClick = () => {
+    if (onOrdersClick) {
+      onOrdersClick();
+    } else {
+      onViewChange("admin");
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
       <div className="h-12 flex items-center justify-between px-3">
@@ -40,7 +49,7 @@ export function WorkspaceHeader({
         {/* Мои заказы - по центру */}
         <button
           className="relative flex items-center justify-center p-2 rounded-full hover:bg-muted transition-colors"
-          onClick={() => onViewChange("admin")}
+          onClick={handleOrdersClick}
           title="Мои заказы"
         >
           <ShoppingCart className="w-5 h-5 text-muted-foreground" />
