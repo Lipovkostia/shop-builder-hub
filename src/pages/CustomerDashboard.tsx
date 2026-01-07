@@ -131,12 +131,16 @@ function ProductCard({
   product, 
   cart, 
   onAddToCart,
-  showImages = true
+  showImages = true,
+  isExpanded = false,
+  onImageClick
 }: { 
   product: CatalogProduct;
   cart: LocalCartItem[];
   onAddToCart: (productId: string, variantIndex: number, price: number) => void;
   showImages?: boolean;
+  isExpanded?: boolean;
+  onImageClick?: () => void;
 }) {
   const getCartQuantity = (variantIndex: number) => {
     const item = cart.find(
@@ -166,7 +170,10 @@ function ProductCard({
     <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border ${showImages ? 'h-[calc((100vh-44px)/8)] min-h-[72px]' : 'h-9 min-h-[36px]'}`}>
       {/* Изображение */}
       {showImages && (
-        <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-center">
+        <button 
+          onClick={onImageClick}
+          className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-center cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+        >
           {image ? (
             <img
               src={image}
@@ -178,7 +185,13 @@ function ProductCard({
               <Package className="w-6 h-6 text-muted-foreground" />
             </div>
           )}
-        </div>
+          {/* Индикатор количества фото */}
+          {(product.images?.length || 0) > 1 && (
+            <div className="absolute bottom-0.5 right-0.5 bg-black/60 text-white text-[8px] px-1 rounded">
+              {product.images?.length}
+            </div>
+          )}
+        </button>
       )}
 
       {/* Контент справа */}
@@ -318,6 +331,26 @@ function ProductCard({
           )}
         </div>
       </div>
+      
+      {/* Галерея изображений */}
+      {isExpanded && (product.images?.length || 0) > 0 && (
+        <div className="w-full overflow-x-auto bg-muted/30 border-t border-border">
+          <div className="flex gap-2 p-2">
+            {product.images?.map((img, idx) => (
+              <div 
+                key={idx}
+                className="w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-muted"
+              >
+                <img
+                  src={img}
+                  alt={`${product.name} ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -469,6 +502,7 @@ const CustomerDashboard = () => {
   const [showProfileView, setShowProfileView] = useState(false);
   const [profileSection, setProfileSection] = useState<'personal' | 'catalogs' | 'settings'>('personal');
   const [showImages, setShowImages] = useState(true);
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   
   // Profile data
   const [profileData, setProfileData] = useState<{ full_name: string | null; phone: string | null } | null>(null);
@@ -1196,6 +1230,8 @@ const CustomerDashboard = () => {
               cart={cart}
               onAddToCart={handleAddToCart}
               showImages={showImages}
+              isExpanded={expandedProductId === product.id}
+              onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
             />
           ))
         ) : (
