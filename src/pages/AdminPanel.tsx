@@ -69,7 +69,7 @@ import {
   PortionPrices,
 } from "@/components/admin/types";
 import { ProductPricingDialog } from "@/components/admin/ProductPricingDialog";
-import { CustomerRolesManager } from "@/components/admin/CustomerRolesManager";
+
 import { InlineProductRow } from "@/components/admin/InlineProductRow";
 import { InlineEditableCell } from "@/components/admin/InlineEditableCell";
 import { InlineSelectCell } from "@/components/admin/InlineSelectCell";
@@ -83,7 +83,7 @@ import { ImageGalleryViewer } from "@/components/admin/ImageGalleryViewer";
 import { SyncSettingsPanel, SyncSettings, SyncFieldMapping, defaultSyncSettings } from "@/components/admin/SyncSettingsPanel";
 import { useStoreProducts, StoreProduct } from "@/hooks/useStoreProducts";
 import { useStoreCatalogs, Catalog as StoreCatalog } from "@/hooks/useStoreCatalogs";
-import { useCustomerRoles } from "@/hooks/useCustomerRoles";
+
 import { useMoyskladAccounts, MoyskladAccount } from "@/hooks/useMoyskladAccounts";
 import { useStoreSyncSettings, SyncSettings as StoreSyncSettings, SyncFieldMapping as StoreSyncFieldMapping, defaultSyncSettings as defaultStoreSyncSettings } from "@/hooks/useStoreSyncSettings";
 import { useStoreOrders, Order } from "@/hooks/useOrders";
@@ -272,7 +272,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "import" | "catalogs" | "roles" | "visibility" | "orders" | "clients";
+type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "orders" | "clients";
 type ImportView = "accounts" | "catalog";
 type CatalogView = "list" | "detail";
 
@@ -403,15 +403,6 @@ export default function AdminPanel({
     updateSettings: updateSyncSettings,
   } = useStoreSyncSettings(effectiveStoreId);
   
-  // Customer roles from Supabase
-  const {
-    roles: supabaseCustomerRoles,
-    loading: rolesLoading,
-    createRole: createSupabaseRole,
-    updateRole: updateSupabaseRole,
-    deleteRole: deleteSupabaseRole,
-    refetch: refetchRoles
-  } = useCustomerRoles(effectiveStoreId);
   
   // Orders from Supabase
   const {
@@ -432,7 +423,7 @@ export default function AdminPanel({
   
   const [activeSection, setActiveSection] = useState<ActiveSection>(() => {
     const section = searchParams.get('section');
-    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'roles' || section === 'visibility' || section === 'orders' || section === 'clients') {
+    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients') {
       return section;
     }
     return "products";
@@ -449,7 +440,7 @@ export default function AdminPanel({
     }
     
     const section = searchParams.get('section');
-    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'roles' || section === 'visibility' || section === 'orders' || section === 'clients') {
+    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients') {
       setActiveSection(section);
     }
   }, [searchParams]);
@@ -646,9 +637,6 @@ export default function AdminPanel({
     setVisibleColumns(prev => ({ ...prev, [columnId]: !prev[columnId] }));
   };
 
-  // Customer roles state
-  const [customerRoles, setCustomerRoles] = useState<CustomerRole[]>([]);
-  const [rolePricing, setRolePricing] = useState<RoleProductPricing[]>([]);
 
   // Custom options state (for units and packaging types added by user)
   const [customUnits, setCustomUnits] = useState<string[]>([]);
@@ -2998,9 +2986,6 @@ export default function AdminPanel({
                 open={editDialogOpen}
                 onOpenChange={setEditDialogOpen}
                 onSave={updateProduct}
-                customerRoles={customerRoles}
-                rolePricing={rolePricing}
-                onSaveRolePricing={setRolePricing}
               />
             </>
           )}
@@ -4220,29 +4205,6 @@ export default function AdminPanel({
             </>
           )}
 
-          {effectiveStoreId && activeSection === "roles" && (
-            <CustomerRolesManager
-              roles={customerRoles}
-              storeId={effectiveStoreId}
-              onCreateRole={(role) => {
-                const newRole: CustomerRole = {
-                  ...role,
-                  id: `role_${Date.now()}`,
-                  created_at: new Date().toISOString(),
-                };
-                setCustomerRoles((prev) => [...prev, newRole]);
-              }}
-              onUpdateRole={(role) => {
-                setCustomerRoles((prev) =>
-                  prev.map((r) => (r.id === role.id ? role : r))
-                );
-              }}
-              onDeleteRole={(roleId) => {
-                setCustomerRoles((prev) => prev.filter((r) => r.id !== roleId));
-                setRolePricing((prev) => prev.filter((rp) => rp.role_id !== roleId));
-              }}
-            />
-          )}
 
           {effectiveStoreId && activeSection === "clients" && (
             <StoreCustomersTable storeId={effectiveStoreId} />

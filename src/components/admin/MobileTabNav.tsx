@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Package, Download, FolderOpen, Users, Eye, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type ActiveSection = "products" | "import" | "catalogs" | "roles" | "visibility" | "orders" | "clients";
+type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "orders" | "clients";
 
 interface NavItem {
   id: ActiveSection;
@@ -17,7 +17,6 @@ const navItems: NavItem[] = [
   { id: "orders", label: "Заказы", icon: ShoppingCart },
   { id: "clients", label: "Клиенты", icon: Users },
   { id: "visibility", label: "Видимость", icon: Eye },
-  { id: "roles", label: "Роли", icon: Users },
 ];
 
 interface MobileTabNavProps {
