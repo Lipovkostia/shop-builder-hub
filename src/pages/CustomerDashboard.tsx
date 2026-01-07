@@ -127,11 +127,12 @@ function ProductCard({
   const unitWeight = product.unit_weight || 1;
   const isHead = product.packaging_type === 'head' && unitWeight > 0;
 
-  // Расчёт цен
-  const fullPrice = product.price_full || basePrice * unitWeight;
-  const halfPrice = product.price_half || basePrice * (unitWeight / 2);
-  const quarterPrice = product.price_quarter || basePrice * (unitWeight / 4);
-  const portionPrice = product.price_portion || null;
+  // Расчёт цен - приоритет каталоговым ценам
+  const catalogPrices = product.catalog_portion_prices;
+  const fullPrice = catalogPrices?.full || product.price_full || basePrice * unitWeight;
+  const halfPrice = catalogPrices?.half || product.price_half || basePrice * (unitWeight / 2);
+  const quarterPrice = catalogPrices?.quarter || product.price_quarter || basePrice * (unitWeight / 4);
+  const portionPrice = catalogPrices?.portion || product.price_portion || null;
 
   // Use catalog_status if available, otherwise fall back to quantity check
   const inStock = product.catalog_status 
