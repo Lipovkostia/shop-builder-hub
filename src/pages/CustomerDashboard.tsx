@@ -342,10 +342,10 @@ function ProductCard({
           {(product.images?.length || 0) > 0 && (
             <div className="overflow-x-auto bg-muted/30 border-b border-border">
               <div className="flex gap-2 p-2">
-                {product.images?.map((img, idx) => (
+              {product.images?.map((img, idx) => (
                   <div 
                     key={idx}
-                    className="w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-muted"
+                    className="w-32 h-32 flex-shrink-0 rounded overflow-hidden bg-muted"
                   >
                     <img
                       src={img}
