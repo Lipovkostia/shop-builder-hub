@@ -175,10 +175,10 @@ function ProductCard({
 
       {/* Контент справа */}
       <div className={`flex-1 min-w-0 flex ${showImages ? 'flex-col justify-center gap-0' : 'flex-row items-center gap-2'}`}>
-        {/* Название и описание */}
-        <div className={`relative overflow-hidden ${showImages ? '' : 'flex-1 min-w-0'}`}>
+        {/* Название */}
+        <div className={`relative overflow-hidden ${showImages ? '' : 'flex-1 min-w-0 mr-2'}`}>
           <h3 
-            className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px]'} ${isOwner ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+            className={`font-medium text-foreground leading-tight ${showImages ? 'text-xs pr-6 whitespace-nowrap' : 'text-[11px] truncate'} ${isOwner ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
             onClick={isOwner && onToggleExpand ? () => onToggleExpand() : undefined}
           >
             {product.name}
@@ -194,23 +194,25 @@ function ProductCard({
           {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />}
         </div>
 
-        {/* Цена за кг и объём */}
-        <p className={`text-muted-foreground leading-tight ${showImages ? 'text-[10px]' : 'text-[9px] whitespace-nowrap'}`}>
-          {formatPrice(salePrice)}/{unit}
-          {product.unit_weight && (
-            <span className="ml-1">
-              · {product.unit_weight} {unit}
-            </span>
-          )}
-          {showImages && fullPrice && (
-            <span className="ml-1">
-              · ~{formatPrice(fullPrice)}
-            </span>
-          )}
-        </p>
+        {/* Цена за кг и объём - только при показе изображений */}
+        {showImages && (
+          <p className="text-muted-foreground leading-tight text-[10px]">
+            {formatPrice(salePrice)}/{unit}
+            {product.unit_weight && (
+              <span className="ml-1">
+                · {product.unit_weight} {unit}
+              </span>
+            )}
+            {fullPrice && (
+              <span className="ml-1">
+                · ~{formatPrice(fullPrice)}
+              </span>
+            )}
+          </p>
+        )}
 
-        {/* Кнопки */}
-        <div className={`flex items-center gap-0.5 flex-wrap ${showImages ? 'mt-0.5' : ''}`}>
+        {/* Кнопки - flex-shrink-0 чтобы не сжимались */}
+        <div className={`flex items-center gap-0.5 flex-shrink-0 ${showImages ? 'mt-0.5 flex-wrap' : ''}`}>
           {/* Статус бейдж для "нет в наличии" или "скрыт" */}
           {effectiveStatus === "out_of_stock" && (
             <Badge variant="secondary" className="text-[9px] h-6 mr-1">
