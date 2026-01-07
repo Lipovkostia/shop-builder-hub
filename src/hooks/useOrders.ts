@@ -192,6 +192,107 @@ export function useStoreOrders(storeId: string | null) {
   };
 }
 
+// Hook for fetching customer's orders history
+export function useCustomerOrdersHistory() {
+  const { toast } = useToast();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!profile) return;
+
+      // Get all store_customer records for this profile
+      const { data: storeCustomers } = await supabase
+        .from("store_customers")
+        .select("id")
+        .eq("profile_id", profile.id);
+
+      if (!storeCustomers || storeCustomers.length === 0) return;
+
+      const customerIds = storeCustomers.map(sc => sc.id);
+
+      // Get orders for all store_customer records
+      const { data: ordersData, error } = await supabase
+        .from("orders")
+        .select("*")
+        .in("customer_id", customerIds)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      // Get order items
+      const orderIds = ordersData?.map(o => o.id) || [];
+      let itemsData: any[] = [];
+      if (orderIds.length > 0) {
+        const { data: items } = await supabase
+          .from("order_items")
+          .select("*")
+          .in("order_id", orderIds);
+        itemsData = items || [];
+      }
+
+      const mappedOrders: Order[] = (ordersData || []).map(o => ({
+        id: o.id,
+        order_number: o.order_number,
+        store_id: o.store_id,
+        customer_id: o.customer_id,
+        status: o.status as Order["status"],
+        subtotal: Number(o.subtotal),
+        shipping_cost: o.shipping_cost ? Number(o.shipping_cost) : null,
+        discount: o.discount ? Number(o.discount) : null,
+        total: Number(o.total),
+        shipping_address: o.shipping_address as Order["shipping_address"],
+        notes: o.notes,
+        created_at: o.created_at,
+        updated_at: o.updated_at,
+        items: itemsData.filter(i => i.order_id === o.id).map(i => ({
+          id: i.id,
+          order_id: i.order_id,
+          product_id: i.product_id,
+          product_name: i.product_name,
+          quantity: i.quantity,
+          price: Number(i.price),
+          total: Number(i.total),
+        })),
+      }));
+
+      setOrders(mappedOrders);
+    } catch (error: any) {
+      console.error("Error fetching customer orders:", error);
+      toast({
+        title: "Ошибка загрузки заказов",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  return {
+    orders,
+    loading,
+    refetch: fetchOrders,
+  };
+}
+
 // Hook for customer's order placement
 export function useCustomerOrders() {
   const { toast } = useToast();
