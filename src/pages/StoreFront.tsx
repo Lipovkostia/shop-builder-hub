@@ -348,6 +348,7 @@ function ProductCard({
                       {qty}
                     </span>
                   )}
+                  <PortionIndicator type="full" />
                   <span className="text-[9px] font-medium text-foreground">
                     {formatPriceSpaced(salePrice)}
                   </span>
