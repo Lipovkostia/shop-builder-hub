@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useStoreBySubdomain } from "@/hooks/useUserStore";
 import StoreFront from "./StoreFront";
 import AdminPanel from "./AdminPanel";
@@ -8,6 +8,7 @@ type ActiveView = "storefront" | "admin";
 
 export default function SellerWorkspace() {
   const { subdomain } = useParams<{ subdomain: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { store, loading: storeLoading, error: storeError } = useStoreBySubdomain(subdomain);
 
   const [activeView, setActiveView] = useState<ActiveView>("storefront");
@@ -23,16 +24,16 @@ export default function SellerWorkspace() {
     storefrontScrollRef.current = window.scrollY;
     setActiveView("admin");
     
-    // Устанавливаем секцию через URL если нужно
+    // Устанавливаем секцию через React Router searchParams
     if (section) {
-      window.history.replaceState(null, '', `?section=${section}`);
+      setSearchParams({ section });
     }
     
     // Восстанавливаем позицию скролла админки после рендера
     requestAnimationFrame(() => {
       window.scrollTo(0, adminScrollRef.current);
     });
-  }, [activeView]);
+  }, [activeView, setSearchParams]);
 
   const handleSwitchToStorefront = useCallback(() => {
     if (activeView === "storefront") return;
