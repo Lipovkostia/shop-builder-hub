@@ -857,9 +857,10 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
         return false;
       }
       
-      // Apply category filter
+      // Apply category filter - use catalog-specific categories
       if (categoryFilter !== null) {
-        if (p.category_id !== categoryFilter) {
+        const productCategories = catalogSettings?.categories || [];
+        if (!productCategories.includes(categoryFilter)) {
           return false;
         }
       }
