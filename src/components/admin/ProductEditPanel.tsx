@@ -13,6 +13,17 @@ interface Catalog {
   is_default: boolean;
 }
 
+interface CatalogSettings {
+  markup_type?: string;
+  markup_value?: number;
+  portion_prices?: {
+    halfPricePerKg?: number;
+    quarterPricePerKg?: number;
+    portionPrice?: number;
+  } | null;
+  status?: string;
+}
+
 interface ProductEditPanelProps {
   product: StoreProduct;
   catalogs: Catalog[];
@@ -23,6 +34,8 @@ interface ProductEditPanelProps {
   catalogId?: string | null;
   currentStatus?: string;
   onStatusChange?: (catalogId: string, productId: string, status: string) => void;
+  catalogSettings?: CatalogSettings;
+  onCatalogSettingsChange?: (catalogId: string, productId: string, settings: Partial<CatalogSettings>) => void;
 }
 
 const unitOptions = [
@@ -51,41 +64,71 @@ export function ProductEditPanel({
   catalogId,
   currentStatus,
   onStatusChange,
+  catalogSettings,
+  onCatalogSettingsChange,
 }: ProductEditPanelProps) {
   // Local state for form fields
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description || "");
   const [buyPrice, setBuyPrice] = useState(product.buy_price?.toString() || "");
+  
+  // Catalog-specific fields: use catalogSettings if available, otherwise fall back to product
   const [markupType, setMarkupType] = useState<"percent" | "rubles">(
+    (catalogSettings?.markup_type as "percent" | "rubles") || 
     (product.markup_type as "percent" | "rubles") || "percent"
   );
-  const [markupValue, setMarkupValue] = useState(product.markup_value?.toString() || "");
+  const [markupValue, setMarkupValue] = useState(
+    catalogSettings?.markup_value?.toString() || product.markup_value?.toString() || ""
+  );
+  const [priceHalf, setPriceHalf] = useState(
+    catalogSettings?.portion_prices?.halfPricePerKg?.toString() || product.price_half?.toString() || ""
+  );
+  const [priceQuarter, setPriceQuarter] = useState(
+    catalogSettings?.portion_prices?.quarterPricePerKg?.toString() || product.price_quarter?.toString() || ""
+  );
+  const [pricePortion, setPricePortion] = useState(
+    catalogSettings?.portion_prices?.portionPrice?.toString() || product.price_portion?.toString() || ""
+  );
+  
+  // Product-level fields
   const [unit, setUnit] = useState(product.unit || "кг");
   const [packagingType, setPackagingType] = useState(product.packaging_type || "piece");
   const [unitWeight, setUnitWeight] = useState(product.unit_weight?.toString() || "");
   const [status, setStatus] = useState(currentStatus || "in_stock");
-  const [priceHalf, setPriceHalf] = useState(product.price_half?.toString() || "");
-  const [priceQuarter, setPriceQuarter] = useState(product.price_quarter?.toString() || "");
-  const [pricePortion, setPricePortion] = useState(product.price_portion?.toString() || "");
   const [selectedCatalogs, setSelectedCatalogs] = useState<string[]>(productCatalogIds);
   const [saving, setSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialMount = useRef(true);
 
-  // Update local state when product changes (but NOT status - it's controlled separately)
+  // Update local state when product or catalogSettings changes
   useEffect(() => {
     setName(product.name);
     setDescription(product.description || "");
     setBuyPrice(product.buy_price?.toString() || "");
-    setMarkupType((product.markup_type as "percent" | "rubles") || "percent");
-    setMarkupValue(product.markup_value?.toString() || "");
     setUnit(product.unit || "кг");
     setPackagingType(product.packaging_type || "piece");
     setUnitWeight(product.unit_weight?.toString() || "");
-    setPriceHalf(product.price_half?.toString() || "");
-    setPriceQuarter(product.price_quarter?.toString() || "");
-    setPricePortion(product.price_portion?.toString() || "");
   }, [product]);
+
+  // Update catalog-specific fields when catalogSettings or catalogId changes
+  useEffect(() => {
+    setMarkupType(
+      (catalogSettings?.markup_type as "percent" | "rubles") || 
+      (product.markup_type as "percent" | "rubles") || "percent"
+    );
+    setMarkupValue(
+      catalogSettings?.markup_value?.toString() || product.markup_value?.toString() || ""
+    );
+    setPriceHalf(
+      catalogSettings?.portion_prices?.halfPricePerKg?.toString() || product.price_half?.toString() || ""
+    );
+    setPriceQuarter(
+      catalogSettings?.portion_prices?.quarterPricePerKg?.toString() || product.price_quarter?.toString() || ""
+    );
+    setPricePortion(
+      catalogSettings?.portion_prices?.portionPrice?.toString() || product.price_portion?.toString() || ""
+    );
+  }, [catalogSettings, catalogId, product]);
 
   // Sync status with currentStatus prop only on initial mount or when catalogId changes
   useEffect(() => {
@@ -112,20 +155,16 @@ export function ProductEditPanel({
 
     setSaving(true);
     try {
+      // Product-level updates (shared across all catalogs)
       const updates: Partial<StoreProduct> = {
         name: name.trim(),
         description: description.trim() || null,
         buy_price: parseFloat(buyPrice) || null,
-        markup_type: markupType,
-        markup_value: parseFloat(markupValue) || null,
         price: calculateSalePrice(),
         unit,
         packaging_type: packagingType,
         unit_weight: parseFloat(unitWeight) || null,
         is_active: status !== "hidden",
-        price_half: parseFloat(priceHalf) || null,
-        price_quarter: parseFloat(priceQuarter) || null,
-        price_portion: parseFloat(pricePortion) || null,
       };
 
       await onSave(product.id, updates);
@@ -139,8 +178,20 @@ export function ProductEditPanel({
         onCatalogsChange(product.id, selectedCatalogs);
       }
 
-      // Update catalog-specific status if changed
-      if (catalogId && onStatusChange && status !== currentStatus) {
+      // Update catalog-specific settings (markup and portion prices)
+      if (catalogId && onCatalogSettingsChange) {
+        onCatalogSettingsChange(catalogId, product.id, {
+          markup_type: markupType,
+          markup_value: parseFloat(markupValue) || 0,
+          portion_prices: {
+            halfPricePerKg: parseFloat(priceHalf) || undefined,
+            quarterPricePerKg: parseFloat(priceQuarter) || undefined,
+            portionPrice: parseFloat(pricePortion) || undefined,
+          },
+          status,
+        });
+      } else if (catalogId && onStatusChange && status !== currentStatus) {
+        // Fallback: just update status if no onCatalogSettingsChange
         onStatusChange(catalogId, product.id, status);
       }
     } catch (error) {
@@ -148,7 +199,7 @@ export function ProductEditPanel({
     } finally {
       setSaving(false);
     }
-  }, [name, description, buyPrice, markupType, markupValue, unit, packagingType, unitWeight, status, priceHalf, priceQuarter, pricePortion, selectedCatalogs, product.id, productCatalogIds, onSave, onCatalogsChange, catalogId, currentStatus, onStatusChange, calculateSalePrice]);
+  }, [name, description, buyPrice, markupType, markupValue, unit, packagingType, unitWeight, status, priceHalf, priceQuarter, pricePortion, selectedCatalogs, product.id, productCatalogIds, onSave, onCatalogsChange, catalogId, currentStatus, onStatusChange, onCatalogSettingsChange, calculateSalePrice]);
 
   // Debounced auto-save effect
   useEffect(() => {

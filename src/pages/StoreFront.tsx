@@ -87,6 +87,7 @@ function ProductCard({
   onCatalogsChange,
   selectedCatalog,
   onStatusChange,
+  onCatalogSettingsChange,
 }: { 
   product: any;
   cart: CartItem[];
@@ -102,6 +103,7 @@ function ProductCard({
   onCatalogsChange?: (productId: string, catalogIds: string[]) => void;
   selectedCatalog?: string | null;
   onStatusChange?: (catalogId: string, productId: string, status: string) => void;
+  onCatalogSettingsChange?: (catalogId: string, productId: string, settings: any) => void;
 }) {
   const getCartQuantity = (variantIndex: number) => {
     const item = cart.find(
@@ -110,12 +112,21 @@ function ProductCard({
     return item?.quantity || 0;
   };
 
-  // Расчёт цен с учётом наценки
+  // Расчёт цен с учётом наценки (используем настройки каталога, если есть)
   const buyPrice = product.buy_price || product.price;
-  const markup = product.markup_type && product.markup_value 
+  const catalogMarkup = catalogSettings?.markup_value && catalogSettings.markup_value > 0
+    ? { type: (catalogSettings.markup_type === 'fixed' ? 'rubles' : catalogSettings.markup_type) as "percent" | "rubles", value: catalogSettings.markup_value }
+    : undefined;
+  const productMarkup = product.markup_type && product.markup_value 
     ? { type: product.markup_type as "percent" | "rubles", value: product.markup_value }
     : undefined;
+  const markup = catalogMarkup || productMarkup;
   const salePrice = calculateSalePrice(buyPrice, markup) || product.price;
+  
+  // Цены порций из настроек каталога или товара
+  const portionPriceHalf = catalogSettings?.portion_prices?.halfPricePerKg || product.price_half;
+  const portionPriceQuarter = catalogSettings?.portion_prices?.quarterPricePerKg || product.price_quarter;
+  const portionPricePortion = catalogSettings?.portion_prices?.portionPrice || product.price_portion;
   
   const packagingPrices = calculatePackagingPrices(
     salePrice,
@@ -290,14 +301,13 @@ function ProductCard({
                   </button>
                 );
               })()}
-              {/* Порция - показываем если есть price_portion */}
-              {product.price_portion && (
+              {/* Порция - показываем если есть price_portion (из каталога или товара) */}
+              {portionPricePortion && (
                 (() => {
                   const qty = getCartQuantity(3);
-                  const portionPrice = product.price_portion;
                   return (
                     <button
-                      onClick={() => inStock && onAddToCart(product.id, 3, portionPrice)}
+                      onClick={() => inStock && onAddToCart(product.id, 3, portionPricePortion)}
                       disabled={!inStock}
                       className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
                         inStock 
@@ -312,7 +322,7 @@ function ProductCard({
                       )}
                       <PortionIndicator type="portion" />
                       <span className="text-[9px] font-medium text-foreground">
-                        {formatPriceSpaced(portionPrice)}
+                        {formatPriceSpaced(portionPricePortion)}
                       </span>
                     </button>
                   );
@@ -363,6 +373,13 @@ function ProductCard({
             catalogId={selectedCatalog}
             currentStatus={catalogSettings?.status || "in_stock"}
             onStatusChange={onStatusChange}
+            catalogSettings={catalogSettings ? {
+              markup_type: catalogSettings.markup_type,
+              markup_value: catalogSettings.markup_value,
+              portion_prices: catalogSettings.portion_prices,
+              status: catalogSettings.status,
+            } : undefined}
+            onCatalogSettingsChange={onCatalogSettingsChange}
           />
         </CollapsibleContent>
       </Collapsible>
@@ -753,6 +770,7 @@ export default function StoreFront() {
                 onCatalogsChange={handleCatalogsChange}
                 selectedCatalog={selectedCatalog}
                 onStatusChange={handleStatusChange}
+                onCatalogSettingsChange={updateProductSettings}
               />
             );
           })
