@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
+import { unitOptions as baseUnitOptions, packagingOptions as basePackagingOptions } from "./types";
 import type { StoreProduct } from "@/hooks/useStoreProducts";
 
 interface Catalog {
@@ -39,22 +40,6 @@ interface ProductEditPanelProps {
   catalogSettings?: CatalogSettings;
   onCatalogSettingsChange?: (catalogId: string, productId: string, settings: Partial<CatalogSettings>) => void;
 }
-
-const unitOptions = [
-  { value: "кг", label: "Килограммы (кг)" },
-  { value: "шт", label: "Штуки (шт)" },
-  { value: "л", label: "Литры (л)" },
-  { value: "м", label: "Метры (м)" },
-  { value: "уп", label: "Упаковка (уп)" },
-];
-
-const packagingOptions = [
-  { value: "piece", label: "Штучный товар" },
-  { value: "head", label: "Голова" },
-  { value: "carcass", label: "Туша" },
-  { value: "half_carcass", label: "Полутуша" },
-  { value: "quarter_carcass", label: "Четверть туши" },
-];
 
 export function ProductEditPanel({
   product,
@@ -374,14 +359,14 @@ export function ProductEditPanel({
                 className="w-full h-7 text-xs mt-0.5 justify-between font-normal"
               >
                 <span className="truncate">
-                  {[...unitOptions, ...customUnits].find(o => o.value === unit)?.label || unit || "Выбрать..."}
+                  {[...baseUnitOptions, ...customUnits].find(o => o.value === unit)?.label || unit || "Выбрать..."}
                 </span>
                 <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-48 p-2 bg-background z-50" align="start">
               <div className="space-y-0.5 max-h-40 overflow-y-auto">
-                {[...unitOptions, ...customUnits].map((opt) => (
+                {[...baseUnitOptions, ...customUnits].map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
@@ -403,7 +388,7 @@ export function ProductEditPanel({
                     if (e.key === "Enter" && newUnit.trim()) {
                       e.preventDefault();
                       const val = newUnit.trim();
-                      if (![...unitOptions, ...customUnits].find(o => o.value === val)) {
+                      if (![...baseUnitOptions, ...customUnits].find(o => o.value === val)) {
                         setCustomUnits(prev => [...prev, { value: val, label: val }]);
                       }
                       setUnit(val);
@@ -421,7 +406,7 @@ export function ProductEditPanel({
                   onClick={() => {
                     if (newUnit.trim()) {
                       const val = newUnit.trim();
-                      if (![...unitOptions, ...customUnits].find(o => o.value === val)) {
+                      if (![...baseUnitOptions, ...customUnits].find(o => o.value === val)) {
                         setCustomUnits(prev => [...prev, { value: val, label: val }]);
                       }
                       setUnit(val);
@@ -446,14 +431,14 @@ export function ProductEditPanel({
                 className="w-full h-7 text-xs mt-0.5 justify-between font-normal"
               >
                 <span className="truncate">
-                  {[...packagingOptions, ...customPackaging].find(o => o.value === packagingType)?.label || packagingType || "Выбрать..."}
+                  {[...basePackagingOptions, ...customPackaging].find(o => o.value === packagingType)?.label || packagingType || "Выбрать..."}
                 </span>
                 <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-48 p-2 bg-background z-50" align="start">
               <div className="space-y-0.5 max-h-40 overflow-y-auto">
-                {[...packagingOptions, ...customPackaging].map((opt) => (
+                {[...basePackagingOptions, ...customPackaging].map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
@@ -475,7 +460,7 @@ export function ProductEditPanel({
                     if (e.key === "Enter" && newPackaging.trim()) {
                       e.preventDefault();
                       const val = newPackaging.trim();
-                      if (![...packagingOptions, ...customPackaging].find(o => o.value === val)) {
+                      if (![...basePackagingOptions, ...customPackaging].find(o => o.value === val)) {
                         setCustomPackaging(prev => [...prev, { value: val, label: val }]);
                       }
                       setPackagingType(val);
@@ -493,7 +478,7 @@ export function ProductEditPanel({
                   onClick={() => {
                     if (newPackaging.trim()) {
                       const val = newPackaging.trim();
-                      if (![...packagingOptions, ...customPackaging].find(o => o.value === val)) {
+                      if (![...basePackagingOptions, ...customPackaging].find(o => o.value === val)) {
                         setCustomPackaging(prev => [...prev, { value: val, label: val }]);
                       }
                       setPackagingType(val);
