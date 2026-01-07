@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -40,6 +40,7 @@ export function useStoreProducts(storeId: string | null) {
   const { toast } = useToast();
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [loading, setLoading] = useState(false);
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   // Fetch all products for the store
   const fetchProducts = useCallback(async () => {
@@ -72,7 +73,7 @@ export function useStoreProducts(storeId: string | null) {
     if (!storeId) return;
 
     const channel = supabase
-      .channel(`products-store-${storeId}`)
+      .channel(`products-store-${storeId}-${instanceIdRef.current}`)
       .on(
         "postgres_changes",
         {
