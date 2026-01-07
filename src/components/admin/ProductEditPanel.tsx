@@ -308,6 +308,20 @@ export function ProductEditPanel({
           </Select>
         </div>
 
+        {/* Объем */}
+        <div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Объем</label>
+          <Input
+            type="number"
+            value={unitWeight}
+            onChange={(e) => setUnitWeight(e.target.value)}
+            placeholder="0"
+            className="h-7 text-xs mt-0.5"
+            step="0.1"
+            min="0"
+          />
+        </div>
+
         {/* Статус - кнопки вместо Select */}
         <div className="col-span-2 sm:col-span-3">
           <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Статус</label>
