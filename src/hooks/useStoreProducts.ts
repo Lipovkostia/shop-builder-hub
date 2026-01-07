@@ -44,7 +44,7 @@ export function useStoreProducts(storeId: string | null) {
   // Fetch all products for the store
   const fetchProducts = useCallback(async () => {
     if (!storeId) return;
-    
+
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -67,187 +67,263 @@ export function useStoreProducts(storeId: string | null) {
     }
   }, [storeId, toast]);
 
-  // Create a new product
-  const createProduct = useCallback(async (product: Partial<StoreProduct>) => {
-    if (!storeId) {
-      toast({
-        title: "Ошибка",
-        description: "Магазин не выбран",
-        variant: "destructive",
-      });
-      return null;
-    }
+  // Realtime sync (when something changes elsewhere, reflect it here)
+  useEffect(() => {
+    if (!storeId) return;
 
-    // Check if user is authenticated
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      toast({
-        title: "Требуется авторизация",
-        description: "Войдите в систему для добавления товаров",
-        variant: "destructive",
-      });
-      return null;
-    }
+    const channel = supabase
+      .channel(`products-store-${storeId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "products",
+          filter: `store_id=eq.${storeId}`,
+        },
+        (payload) => {
+          const eventType = payload.eventType;
 
-    try {
-      const slug = product.name 
-        ? product.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-а-яё]/gi, '')
-        : `product-${Date.now()}`;
+          if (eventType === "INSERT") {
+            const row = payload.new as StoreProduct;
+            setProducts((prev) => {
+              if (prev.some((p) => p.id === row.id)) return prev;
+              return [row, ...prev];
+            });
+            return;
+          }
 
-      const { data, error } = await supabase
-        .from("products")
-        .insert({
-          store_id: storeId,
-          name: product.name || "Новый товар",
-          slug,
-          price: product.price || 0,
-          quantity: product.quantity || 0,
-          ...product,
-        })
-        .select()
-        .single();
+          if (eventType === "UPDATE") {
+            const row = payload.new as StoreProduct;
+            setProducts((prev) => prev.map((p) => (p.id === row.id ? row : p)));
+            return;
+          }
 
-      if (error) {
-        if (error.code === '42501') {
-          throw new Error("Нет прав для добавления товаров. Убедитесь, что вы владелец магазина.");
+          if (eventType === "DELETE") {
+            const row = payload.old as { id: string };
+            setProducts((prev) => prev.filter((p) => p.id !== row.id));
+          }
         }
-        throw error;
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [storeId]);
+
+  // Create a new product
+  const createProduct = useCallback(
+    async (product: Partial<StoreProduct>) => {
+      if (!storeId) {
+        toast({
+          title: "Ошибка",
+          description: "Магазин не выбран",
+          variant: "destructive",
+        });
+        return null;
       }
-      
-      setProducts(prev => [data, ...prev]);
-      toast({
-        title: "Товар создан",
-        description: `"${data.name}" добавлен в каталог`,
-      });
-      return data;
-    } catch (error: any) {
-      console.error("Error creating product:", error);
-      toast({
-        title: "Ошибка создания товара",
-        description: error.message,
-        variant: "destructive",
-      });
-      return null;
-    }
-  }, [storeId, toast]);
+
+      // Check if user is authenticated
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Требуется авторизация",
+          description: "Войдите в систему для добавления товаров",
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      try {
+        const slug = product.name
+          ? product.name
+              .toLowerCase()
+              .replace(/\s+/g, "-")
+              .replace(/[^a-z0-9-а-яё]/gi, "")
+          : `product-${Date.now()}`;
+
+        const { data, error } = await supabase
+          .from("products")
+          .insert({
+            store_id: storeId,
+            name: product.name || "Новый товар",
+            slug,
+            price: product.price || 0,
+            quantity: product.quantity || 0,
+            ...product,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          if (error.code === "42501") {
+            throw new Error(
+              "Нет прав для добавления товаров. Убедитесь, что вы владелец магазина."
+            );
+          }
+          throw error;
+        }
+
+        // NOTE: local state will be updated by realtime too, but we keep this for snappy UI
+        setProducts((prev) => [data, ...prev]);
+        toast({
+          title: "Товар создан",
+          description: `"${data.name}" добавлен в каталог`,
+        });
+        return data;
+      } catch (error: any) {
+        console.error("Error creating product:", error);
+        toast({
+          title: "Ошибка создания товара",
+          description: error.message,
+          variant: "destructive",
+        });
+        return null;
+      }
+    },
+    [storeId, toast]
+  );
 
   // Update a product
-  const updateProduct = useCallback(async (productId: string, updates: Partial<StoreProduct>) => {
-    // Check if user is authenticated
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      toast({
-        title: "Требуется авторизация",
-        description: "Войдите в систему для редактирования товаров",
-        variant: "destructive",
-      });
-      return null;
-    }
+  const updateProduct = useCallback(
+    async (productId: string, updates: Partial<StoreProduct>) => {
+      // Check if user is authenticated
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Требуется авторизация",
+          description: "Войдите в систему для редактирования товаров",
+          variant: "destructive",
+        });
+        return null;
+      }
 
-    try {
-      // First, do the update without select to avoid PGRST116 on RLS block
-      const { error: updateError } = await supabase
-        .from("products")
-        .update(updates)
-        .eq("id", productId);
+      try {
+        // First, do the update without select to avoid PGRST116 on RLS block
+        const { error: updateError } = await supabase
+          .from("products")
+          .update(updates)
+          .eq("id", productId);
 
-      if (updateError) {
-        if (updateError.code === '42501') {
-          throw new Error("Нет прав для редактирования. Убедитесь, что вы владелец магазина.");
+        if (updateError) {
+          if (updateError.code === "42501") {
+            throw new Error(
+              "Нет прав для редактирования. Убедитесь, что вы владелец магазина."
+            );
+          }
+          throw updateError;
         }
-        throw updateError;
-      }
-      
-      // Then fetch the updated product to verify it was actually updated
-      const { data: updatedProduct, error: selectError } = await supabase
-        .from("products")
-        .select("*")
-        .eq("id", productId)
-        .maybeSingle();
 
-      if (selectError) {
-        throw selectError;
+        // Then fetch the updated product to verify it was actually updated
+        const { data: updatedProduct, error: selectError } = await supabase
+          .from("products")
+          .select("*")
+          .eq("id", productId)
+          .maybeSingle();
+
+        if (selectError) {
+          throw selectError;
+        }
+
+        // If we can't see the product after update, RLS blocked it
+        if (!updatedProduct) {
+          throw new Error(
+            "Нет прав для редактирования. Убедитесь, что вы владелец магазина."
+          );
+        }
+
+        // Update local state with the returned data (and realtime will keep everything else in sync)
+        setProducts((prev) =>
+          prev.map((p) => (p.id === productId ? updatedProduct : p))
+        );
+        return updatedProduct;
+      } catch (error: any) {
+        console.error("Error updating product:", error);
+        toast({
+          title: "Ошибка обновления товара",
+          description: error.message,
+          variant: "destructive",
+        });
+        return null;
       }
-      
-      // If we can't see the product after update, RLS blocked it
-      if (!updatedProduct) {
-        throw new Error("Нет прав для редактирования. Убедитесь, что вы владелец магазина.");
-      }
-      
-      // Update local state with the returned data
-      setProducts(prev => prev.map(p => p.id === productId ? updatedProduct : p));
-      return updatedProduct;
-    } catch (error: any) {
-      console.error("Error updating product:", error);
-      toast({
-        title: "Ошибка обновления товара",
-        description: error.message,
-        variant: "destructive",
-      });
-      return null;
-    }
-  }, [toast]);
+    },
+    [toast]
+  );
 
   // Delete a product
-  const deleteProduct = useCallback(async (productId: string) => {
-    try {
-      const { error } = await supabase
-        .from("products")
-        .delete()
-        .eq("id", productId);
+  const deleteProduct = useCallback(
+    async (productId: string) => {
+      try {
+        const { error } = await supabase
+          .from("products")
+          .delete()
+          .eq("id", productId);
 
-      if (error) throw error;
-      
-      setProducts(prev => prev.filter(p => p.id !== productId));
-      toast({
-        title: "Товар удалён",
-      });
-      return true;
-    } catch (error: any) {
-      console.error("Error deleting product:", error);
-      toast({
-        title: "Ошибка удаления товара",
-        description: error.message,
-        variant: "destructive",
-      });
-      return false;
-    }
-  }, [toast]);
+        if (error) throw error;
+
+        setProducts((prev) => prev.filter((p) => p.id !== productId));
+        toast({
+          title: "Товар удалён",
+        });
+        return true;
+      } catch (error: any) {
+        console.error("Error deleting product:", error);
+        toast({
+          title: "Ошибка удаления товара",
+          description: error.message,
+          variant: "destructive",
+        });
+        return false;
+      }
+    },
+    [toast]
+  );
 
   // Delete multiple products
-  const deleteProducts = useCallback(async (productIds: string[]) => {
-    try {
-      const { error } = await supabase
-        .from("products")
-        .delete()
-        .in("id", productIds);
+  const deleteProducts = useCallback(
+    async (productIds: string[]) => {
+      try {
+        const { error } = await supabase
+          .from("products")
+          .delete()
+          .in("id", productIds);
 
-      if (error) throw error;
-      
-      setProducts(prev => prev.filter(p => !productIds.includes(p.id)));
-      toast({
-        title: "Товары удалены",
-        description: `Удалено ${productIds.length} товаров`,
-      });
-      return true;
-    } catch (error: any) {
-      console.error("Error deleting products:", error);
-      toast({
-        title: "Ошибка удаления товаров",
-        description: error.message,
-        variant: "destructive",
-      });
-      return false;
-    }
-  }, [toast]);
+        if (error) throw error;
+
+        setProducts((prev) => prev.filter((p) => !productIds.includes(p.id)));
+        toast({
+          title: "Товары удалены",
+          description: `Удалено ${productIds.length} товаров`,
+        });
+        return true;
+      } catch (error: any) {
+        console.error("Error deleting products:", error);
+        toast({
+          title: "Ошибка удаления товаров",
+          description: error.message,
+          variant: "destructive",
+        });
+        return false;
+      }
+    },
+    [toast]
+  );
 
   // Toggle product active status
-  const toggleProductActive = useCallback(async (productId: string) => {
-    const product = products.find(p => p.id === productId);
-    if (!product) return;
+  const toggleProductActive = useCallback(
+    async (productId: string) => {
+      const product = products.find((p) => p.id === productId);
+      if (!product) return;
 
-    return updateProduct(productId, { is_active: !product.is_active });
-  }, [products, updateProduct]);
+      return updateProduct(productId, { is_active: !product.is_active });
+    },
+    [products, updateProduct]
+  );
 
   // Initial fetch
   useEffect(() => {
