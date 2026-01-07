@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X } from "lucide-react";
+import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import { useStoreBySubdomain, useIsStoreOwner } from "@/hooks/useUserStore";
 import { useStoreProducts, StoreProduct } from "@/hooks/useStoreProducts";
 import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
 import { useCatalogProductSettings, CatalogProductSetting } from "@/hooks/useCatalogProductSettings";
+import { useStoreOrders } from "@/hooks/useOrders";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProductEditPanel } from "@/components/admin/ProductEditPanel";
 import { useAuth } from "@/hooks/useAuth";
@@ -404,6 +406,7 @@ function StoreHeader({
   searchQuery,
   onSearchChange,
   onAdminClick,
+  ordersCount,
 }: {
   store: any;
   cart: CartItem[];
@@ -421,6 +424,7 @@ function StoreHeader({
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onAdminClick?: (section?: string) => void;
+  ordersCount?: number;
 }) {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
@@ -461,10 +465,10 @@ function StoreHeader({
             <button
               onClick={() => onAdminClick?.('orders')}
               className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
-              title="Заказы"
+              title={`Заказы${ordersCount ? ` (${ordersCount})` : ''}`}
               aria-label="Заказы"
             >
-              <ShoppingCart className="w-4 h-4 text-muted-foreground" />
+              <ForkliftIcon boxCount={ordersCount || 0} className="w-5 h-5 text-muted-foreground" />
             </button>
             <button
               onClick={() => onAdminClick?.('products')}
@@ -657,6 +661,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   // Super admin or store owner can manage the store
   const isOwner = isStoreOwner || isSuperAdmin || isTempSuperAdmin;
   
+  // Fetch orders count for owner
+  const { orders } = useStoreOrders(isOwner ? store?.id : null);
+  
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCatalog, setSelectedCatalog] = useState<string | null>(null);
   const [showImages, setShowImages] = useState(true);
@@ -802,6 +809,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onAdminClick={handleAdminClick}
+        ordersCount={orders.length}
       />
 
       <main className="flex-1 overflow-auto">
