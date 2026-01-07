@@ -3692,6 +3692,25 @@ export default function AdminPanel() {
                           >
                             <Edit2 className="h-3 w-3" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            title="Скопировать ссылку для покупателя"
+                            onClick={() => {
+                              const supabaseCatalog = supabaseCatalogs.find(c => c.id === currentCatalog.id);
+                              if (supabaseCatalog?.access_code) {
+                                const url = `${window.location.origin}/catalog/${supabaseCatalog.access_code}`;
+                                navigator.clipboard.writeText(url);
+                                toast({
+                                  title: "Ссылка скопирована",
+                                  description: "Отправьте её покупателю для доступа к прайс-листу",
+                                });
+                              }
+                            }}
+                          >
+                            <Link2 className="h-3 w-3" />
+                          </Button>
                         </>
                       )}
                     </div>
