@@ -764,12 +764,14 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
     }
   };
 
-  // Loading state - don't wait for owner check, show page and let gear icon update
+  // Loading state - в workspaceMode данные магазина уже есть, показываем скелетон только при загрузке товаров
+  // при этом избегаем двойного мигания, показывая скелетон только если нет товаров
   if (!workspaceMode && (storeLoading || productsLoading)) {
     return <StoreSkeleton />;
   }
   
-  if (productsLoading) {
+  // В workspaceMode показываем скелетон только при первой загрузке товаров (когда products пуст)
+  if (workspaceMode && productsLoading && products.length === 0) {
     return <StoreSkeleton />;
   }
 
