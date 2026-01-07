@@ -355,7 +355,8 @@ export default function AdminPanel({
   const [currentStoreName, setCurrentStoreName] = useState<string | null>(null);
   const [currentStoreSubdomain, setCurrentStoreSubdomain] = useState<string | null>(null);
   const [userStoreId, setUserStoreId] = useState<string | null>(null);
-  const [storeContextLoading, setStoreContextLoading] = useState(true);
+  // В workspaceMode загрузка контекста не нужна - сразу false
+  const [storeContextLoading, setStoreContextLoading] = useState(!workspaceMode || !storeIdOverride);
   
   // Determine which store context to use - workspace mode takes priority
   const effectiveStoreId = workspaceMode && storeIdOverride ? storeIdOverride : (storeIdFromUrl || userStoreId || currentStoreId);
@@ -694,7 +695,14 @@ export default function AdminPanel({
   const isSuperAdminContext = !!storeIdFromUrl && isSuperAdmin;
 
   // Fetch user's own store or the store from URL
+  // В workspaceMode не нужно загружать контекст - он уже передан через пропсы
   useEffect(() => {
+    // В workspaceMode пропускаем загрузку контекста
+    if (workspaceMode && storeIdOverride) {
+      setStoreContextLoading(false);
+      return;
+    }
+    
     const fetchStoreContext = async () => {
       setStoreContextLoading(true);
       try {
@@ -750,7 +758,7 @@ export default function AdminPanel({
     };
     
     fetchStoreContext();
-  }, [user, profile, storeIdFromUrl, isSuperAdmin, sectionFromUrl]);
+  }, [user, profile, storeIdFromUrl, isSuperAdmin, sectionFromUrl, workspaceMode, storeIdOverride]);
 
   // Handle section change with URL update
   const handleSectionChange = useCallback((section: ActiveSection) => {
