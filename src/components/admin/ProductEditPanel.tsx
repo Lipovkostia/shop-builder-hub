@@ -105,6 +105,8 @@ export function ProductEditPanel({
   const [saving, setSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialMount = useRef(true);
+  const catalogSettingsInitialized = useRef(false);
+  const lastCatalogId = useRef<string | null | undefined>(catalogId);
 
   // Predefined categories that can be selected
   const predefinedCategories = [
@@ -130,25 +132,35 @@ export function ProductEditPanel({
     setUnitWeight(product.unit_weight?.toString() || "");
   }, [product]);
 
-  // Update catalog-specific fields when catalogSettings or catalogId changes
+  // Update catalog-specific fields only when catalogId changes (not on every catalogSettings update)
   useEffect(() => {
-    setMarkupType(
-      (catalogSettings?.markup_type as "percent" | "rubles") || 
-      (product.markup_type as "percent" | "rubles") || "percent"
-    );
-    setMarkupValue(
-      catalogSettings?.markup_value?.toString() || product.markup_value?.toString() || ""
-    );
-    setPriceHalf(
-      catalogSettings?.portion_prices?.halfPricePerKg?.toString() || product.price_half?.toString() || ""
-    );
-    setPriceQuarter(
-      catalogSettings?.portion_prices?.quarterPricePerKg?.toString() || product.price_quarter?.toString() || ""
-    );
-    setPricePortion(
-      catalogSettings?.portion_prices?.portionPrice?.toString() || product.price_portion?.toString() || ""
-    );
-    setSelectedCategories(catalogSettings?.categories || []);
+    // Only reset when catalog actually changes, not on every render
+    if (lastCatalogId.current !== catalogId) {
+      lastCatalogId.current = catalogId;
+      catalogSettingsInitialized.current = false;
+    }
+    
+    // Only initialize once per catalog
+    if (!catalogSettingsInitialized.current) {
+      catalogSettingsInitialized.current = true;
+      setMarkupType(
+        (catalogSettings?.markup_type as "percent" | "rubles") || 
+        (product.markup_type as "percent" | "rubles") || "percent"
+      );
+      setMarkupValue(
+        catalogSettings?.markup_value?.toString() || product.markup_value?.toString() || ""
+      );
+      setPriceHalf(
+        catalogSettings?.portion_prices?.halfPricePerKg?.toString() || product.price_half?.toString() || ""
+      );
+      setPriceQuarter(
+        catalogSettings?.portion_prices?.quarterPricePerKg?.toString() || product.price_quarter?.toString() || ""
+      );
+      setPricePortion(
+        catalogSettings?.portion_prices?.portionPrice?.toString() || product.price_portion?.toString() || ""
+      );
+      setSelectedCategories(catalogSettings?.categories || []);
+    }
   }, [catalogSettings, catalogId, product]);
 
   // Sync status with currentStatus prop only on initial mount or when catalogId changes
