@@ -1011,85 +1011,85 @@ const CustomerDashboard = () => {
 
       {/* Cart Drawer (slides from bottom on mobile) */}
       <Drawer open={isCartOpen} onOpenChange={setIsCartOpen}>
-        <DrawerContent className="max-h-[85vh]">
-          <DrawerHeader>
-            <DrawerTitle>Корзина</DrawerTitle>
-            <DrawerDescription>
-              {cart.length === 0 ? "Корзина пуста" : `${cart.length} позиций`}
-            </DrawerDescription>
-          </DrawerHeader>
+        <DrawerContent className="max-h-[70vh]">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-sm">Корзина</span>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                {cart.length}
+              </Badge>
+            </div>
+            <span className="text-sm font-bold text-primary">{formatPrice(cartTotal)}</span>
+          </div>
           
-          <div className="flex-1 overflow-y-auto px-4 pb-4">
-            {cart.map((item, index) => {
-              const product = getProductById(item.productId);
-              if (!product) return null;
-              
-              return (
-                <div key={`${item.productId}-${item.variantIndex}`} className="flex items-center gap-3 py-3 border-b border-border">
-                  <div className="w-12 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0">
-                    {product.images?.[0] ? (
-                      <img 
-                        src={product.images[0]} 
-                        alt={product.name}
-                        className="w-full h-full object-cover rounded"
-                      />
-                    ) : (
-                      <Package className="h-6 w-6 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{product.name}</p>
-                    {getVariantLabel(product, item.variantIndex) && (
-                      <p className="text-xs text-muted-foreground">{getVariantLabel(product, item.variantIndex)}</p>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm text-muted-foreground">{formatPrice(item.price)}</p>
-                      <span className="text-xs text-muted-foreground">×{item.quantity}</span>
-                      <p className="text-sm font-medium text-primary">{formatPrice(item.price * item.quantity)}</p>
+          <div className="flex-1 overflow-y-auto px-3 py-1.5 max-h-[40vh]">
+            {cart.length === 0 ? (
+              <p className="text-center text-xs text-muted-foreground py-4">Корзина пуста</p>
+            ) : (
+              <div className="space-y-1">
+                {cart.map((item, index) => {
+                  const product = getProductById(item.productId);
+                  if (!product) return null;
+                  
+                  return (
+                    <div key={`${item.productId}-${item.variantIndex}`} className="flex items-center gap-2 py-1.5 border-b border-border/50 last:border-0">
+                      <div className="w-8 h-8 rounded bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        {product.images?.[0] ? (
+                          <img 
+                            src={product.images[0]} 
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-[11px] truncate leading-tight">{product.name}</p>
+                        <div className="flex items-center gap-1.5 text-[10px]">
+                          {getVariantLabel(product, item.variantIndex) && (
+                            <span className="text-muted-foreground">{getVariantLabel(product, item.variantIndex)}</span>
+                          )}
+                          <span className="text-muted-foreground">•</span>
+                          <span className="text-muted-foreground">{formatPriceSpaced(item.price)}</span>
+                          <span className="text-muted-foreground">×{item.quantity}</span>
+                          <span className="font-semibold text-primary">{formatPriceSpaced(item.price * item.quantity)}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-0.5">
+                        <button 
+                          className="w-6 h-6 flex items-center justify-center rounded-full bg-muted hover:bg-muted/80 transition-colors"
+                          onClick={() => updateCartQuantity(index, -1)}
+                        >
+                          <Minus className="h-2.5 w-2.5" />
+                        </button>
+                        <span className="w-5 text-center text-[11px] font-medium">{item.quantity}</span>
+                        <button 
+                          className="w-6 h-6 flex items-center justify-center rounded-full bg-muted hover:bg-muted/80 transition-colors"
+                          onClick={() => updateCartQuantity(index, 1)}
+                        >
+                          <Plus className="h-2.5 w-2.5" />
+                        </button>
+                        <button 
+                          className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-destructive/10 transition-colors ml-1"
+                          onClick={() => removeFromCart(index)}
+                        >
+                          <Trash2 className="h-2.5 w-2.5 text-destructive" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-7 w-7"
-                      onClick={() => updateCartQuantity(index, -1)}
-                    >
-                      <Minus className="h-3 w-3" />
-                    </Button>
-                    <span className="w-6 text-center text-sm">{item.quantity}</span>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-7 w-7"
-                      onClick={() => updateCartQuantity(index, 1)}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-7 w-7 text-destructive"
-                      onClick={() => removeFromCart(index)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
           
           {cart.length > 0 && (
-            <DrawerFooter>
-              <div className="flex justify-between w-full text-lg font-semibold">
-                <span>Итого:</span>
-                <span>{formatPrice(cartTotal)}</span>
-              </div>
+            <div className="px-3 py-2 border-t border-border bg-muted/30">
               <Button 
-                className="w-full" 
+                className="w-full h-9 text-sm font-semibold" 
                 onClick={() => {
-                  // Pre-fill checkout form with profile data
                   if (profileData) {
                     setCheckoutName(profileData.full_name || "");
                     setCheckoutPhone(profileData.phone || "");
@@ -1098,9 +1098,9 @@ const CustomerDashboard = () => {
                   setIsCheckoutOpen(true);
                 }}
               >
-                Оформить заказ
+                Оформить · {formatPrice(cartTotal)}
               </Button>
-            </DrawerFooter>
+            </div>
           )}
         </DrawerContent>
       </Drawer>
