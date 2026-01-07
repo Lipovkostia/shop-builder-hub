@@ -67,6 +67,7 @@ export function InlineEditableCell({
           variant="ghost" 
           size="icon" 
           className="h-5 w-5 text-green-600 flex-shrink-0" 
+          onMouseDown={(e) => e.preventDefault()}
           onClick={handleSave}
         >
           <Check className="h-3 w-3" />
@@ -75,6 +76,7 @@ export function InlineEditableCell({
           variant="ghost" 
           size="icon" 
           className="h-5 w-5 text-destructive flex-shrink-0" 
+          onMouseDown={(e) => e.preventDefault()}
           onClick={handleCancel}
         >
           <X className="h-3 w-3" />
