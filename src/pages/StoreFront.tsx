@@ -1027,19 +1027,6 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
-
-            {/* Корзина */}
-            <button className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3">
-              <ShoppingCart className="w-4 h-4 text-primary" />
-              <span className="text-xs font-semibold text-foreground">
-                {formatPrice(cart.reduce((sum, item) => sum + item.price * item.quantity, 0))}
-              </span>
-              {cart.reduce((sum, item) => sum + item.quantity, 0) > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {cart.reduce((sum, item) => sum + item.quantity, 0)}
-                </span>
-              )}
-            </button>
           </div>
 
           {/* Выезжающий блок фильтров */}
