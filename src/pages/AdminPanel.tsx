@@ -3731,7 +3731,7 @@ export default function AdminPanel({
 
               {catalogView === "detail" && currentCatalog && (
                 <>
-                  <div className="mb-4 flex items-center gap-4">
+                  <div className="mb-4 flex items-center justify-between">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -3743,58 +3743,28 @@ export default function AdminPanel({
                       }}
                     >
                       <ArrowLeft className="h-4 w-4 mr-2" />
-                      Назад к прайс-листам
+                      Назад
                     </Button>
-                    <div className="flex items-center gap-2">
-                      {editingCatalogName ? (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            value={currentCatalog.name}
-                            onChange={(e) => setCurrentCatalog(prev => prev ? { ...prev, name: e.target.value } : null)}
-                            className="h-8 w-48"
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") updateCatalogName(currentCatalog.name);
-                              if (e.key === "Escape") setEditingCatalogName(false);
-                            }}
-                          />
-                          <Button size="sm" variant="ghost" onClick={() => updateCatalogName(currentCatalog.name)}>
-                            <Check className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <h2 className="text-xl font-semibold text-foreground">{currentCatalog.name}</h2>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => setEditingCatalogName(true)}
-                          >
-                            <Edit2 className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            title="Скопировать ссылку для покупателя"
-                            onClick={() => {
-                              const supabaseCatalog = supabaseCatalogs.find(c => c.id === currentCatalog.id);
-                              if (supabaseCatalog?.access_code) {
-                                const url = `${window.location.origin}/catalog/${supabaseCatalog.access_code}`;
-                                navigator.clipboard.writeText(url);
-                                toast({
-                                  title: "Ссылка скопирована",
-                                  description: "Отправьте её покупателю для доступа к прайс-листу",
-                                });
-                              }
-                            }}
-                          >
-                            <Link2 className="h-3 w-3" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                    <span className="text-sm font-medium text-muted-foreground">{currentCatalog.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      title="Скопировать ссылку для покупателя"
+                      onClick={() => {
+                        const supabaseCatalog = supabaseCatalogs.find(c => c.id === currentCatalog.id);
+                        if (supabaseCatalog?.access_code) {
+                          const url = `${window.location.origin}/catalog/${supabaseCatalog.access_code}`;
+                          navigator.clipboard.writeText(url);
+                          toast({
+                            title: "Ссылка скопирована",
+                            description: "Отправьте её покупателю для доступа к прайс-листу",
+                          });
+                        }
+                      }}
+                    >
+                      <Link2 className="h-4 w-4" />
+                    </Button>
                   </div>
 
                   <div className="flex items-center mb-4">
