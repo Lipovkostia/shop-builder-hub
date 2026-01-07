@@ -107,7 +107,7 @@ function ProductCard({
   isOwner?: boolean;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
-  onSave?: (productId: string, updates: Partial<StoreProduct>) => Promise<void>;
+  onSave?: (productId: string, updates: Partial<StoreProduct>) => Promise<StoreProduct | null>;
   catalogs?: { id: string; name: string; is_default: boolean }[];
   productCatalogIds?: string[];
   onCatalogsChange?: (productId: string, catalogIds: string[]) => void;
@@ -172,7 +172,7 @@ function ProductCard({
 
   // Обработчики для галереи изображений
   const handleAddImages = async (files: FileList, source: 'file' | 'camera') => {
-    if (!isOwner || !onImagesUpdate) return;
+    if (!isOwner || !onImagesUpdate || !onSave) return;
     
     setIsUploadingImages(true);
     try {
@@ -182,12 +182,16 @@ function ProductCard({
       
       if (newUrls.length > 0) {
         const updatedImages = [...images, ...newUrls];
-        await onSave?.(product.id, { images: updatedImages });
-        onImagesUpdate(product.id, updatedImages);
-        toast({
-          title: "Изображения загружены",
-          description: `Добавлено ${newUrls.length} фото`,
-        });
+        // onSave returns null on error, so we need to check
+        const result = await onSave(product.id, { images: updatedImages });
+        if (result !== undefined) {
+          onImagesUpdate(product.id, updatedImages);
+          toast({
+            title: "Изображения загружены",
+            description: `Добавлено ${newUrls.length} фото`,
+          });
+        }
+        // If result is undefined/null, updateProduct already showed an error toast
       }
     } catch (error) {
       console.error("Error uploading images:", error);
@@ -810,7 +814,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
 
   // Handle save product
   const handleSaveProduct = async (productId: string, updates: Partial<StoreProduct>) => {
-    await updateProduct(productId, updates);
+    return await updateProduct(productId, updates);
   };
 
   // Handle catalogs change
