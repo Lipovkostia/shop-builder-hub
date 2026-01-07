@@ -426,10 +426,13 @@ function StoreHeader({
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const selectedCatalogName = catalogs.find((c) => c.id === selectedCatalog)?.name || "Все товары";
 
+  // Шестерёнка ВСЕГДА видна для залогиненных пользователей с ролью seller
+  // или пока идёт загрузка (чтобы избежать мигания)
   const canShowAdminButton =
     isOwner ||
     isOwnerLoading ||
-    (!!user && (authLoading || profile?.role === "seller"));
+    authLoading ||
+    (!!user && profile?.role === "seller");
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
@@ -451,22 +454,17 @@ function StoreHeader({
           <span className="text-sm font-medium">{store.name}</span>
         </div>
 
-        {canShowAdminButton ? (
+        {canShowAdminButton && (
           <button
-            onClick={() => {
-              // Если store.id ещё не пришёл — всё равно даём перейти в управление,
-              // чтобы "шестерёнка" никогда не исчезала.
-              navigate(store?.id ? `/admin?storeId=${store.id}` : `/admin`);
-            }}
+            onClick={() => navigate(store?.id ? `/admin?storeId=${store.id}` : `/admin`)}
             className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
             title="Панель управления"
             aria-label="Панель управления"
           >
             <Settings className="w-4 h-4 text-muted-foreground" />
           </button>
-        ) : (
-          <div className="w-8" />
         )}
+        {!canShowAdminButton && <div className="w-8" />}
       </div>
 
       {/* Панель управления с иконками */}
