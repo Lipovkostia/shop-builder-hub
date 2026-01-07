@@ -41,7 +41,7 @@ export interface CartItem {
   variant?: 'full' | 'half' | 'quarter' | 'portion';
 }
 
-export function useCustomerCatalogs() {
+export function useCustomerCatalogs(impersonateUserId?: string) {
   const { toast } = useToast();
   const [catalogs, setCatalogs] = useState<CustomerCatalog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,14 +54,18 @@ export function useCustomerCatalogs() {
     try {
       setLoading(true);
       
-      // Get customer's profile
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      // Get user ID - either impersonated or current user
+      let userId = impersonateUserId;
+      if (!userId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        userId = user.id;
+      }
 
       const { data: profile } = await supabase
         .from("profiles")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .single();
 
       if (!profile) return;
