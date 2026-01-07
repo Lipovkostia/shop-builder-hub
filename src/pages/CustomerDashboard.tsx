@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCustomerCatalogs, CartItem, CatalogProduct, CustomerCatalog } from "@/hooks/useCustomerCatalogs";
 import { useCustomerOrders, useCustomerOrdersHistory, Order } from "@/hooks/useOrders";
 import { useProfileSettings } from "@/hooks/useProfileSettings";
+import { useCustomerAddresses } from "@/hooks/useCustomerAddresses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,7 +58,10 @@ import {
   Store,
   ArrowLeft,
   Shield,
-  Bell
+  Bell,
+  MapPin,
+  ChevronDown,
+  Check
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -449,7 +453,7 @@ const CustomerDashboard = () => {
   const { createOrder, loading: orderLoading } = useCustomerOrders();
   const { orders: myOrders, loading: myOrdersLoading, refetch: refetchMyOrders } = useCustomerOrdersHistory();
   const { toastEnabled, updateSettings, isUpdating: updatingSettings } = useProfileSettings();
-
+  const { addresses, addAddress, lastUsedAddress, deleteAddress } = useCustomerAddresses();
   const [cart, setCart] = useState<LocalCartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -475,6 +479,7 @@ const CustomerDashboard = () => {
   const [checkoutPhone, setCheckoutPhone] = useState("");
   const [checkoutAddress, setCheckoutAddress] = useState("");
   const [checkoutComment, setCheckoutComment] = useState("");
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
 
   // Fetch profile data
   const fetchProfileData = async () => {
@@ -682,6 +687,11 @@ const CustomerDashboard = () => {
     });
 
     if (orderId) {
+      // Save address for future use
+      if (checkoutAddress.trim()) {
+        await addAddress(checkoutAddress);
+      }
+      
       setCart([]);
       setIsCheckoutOpen(false);
       setIsCartOpen(false);
@@ -801,6 +811,37 @@ const CustomerDashboard = () => {
               </div>
             </div>
           )}
+
+          {/* Адреса доставки */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <MapPin className="w-4 h-4" />
+              Адреса доставки
+            </h3>
+            {addresses.length > 0 ? (
+              <div className="space-y-2">
+                {addresses.map((addr) => (
+                  <div key={addr.id} className="flex items-start gap-2 p-2.5 bg-muted/50 rounded-lg group">
+                    <MapPin className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm leading-tight">{addr.address}</p>
+                      {addr.label && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{addr.label}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => deleteAddress(addr.id)}
+                      className="p-1 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 rounded transition-all"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Адреса сохраняются автоматически при оформлении заказа</p>
+            )}
+          </div>
 
           {/* Добавить прайс-лист */}
           <div className="space-y-3">
@@ -1096,6 +1137,10 @@ const CustomerDashboard = () => {
                     setCheckoutName(profileData.full_name || "");
                     setCheckoutPhone(profileData.phone || "");
                   }
+                  // Pre-fill with last used address
+                  if (lastUsedAddress) {
+                    setCheckoutAddress(lastUsedAddress.address);
+                  }
                   setIsCartOpen(false);
                   setIsCheckoutOpen(true);
                 }}
@@ -1138,12 +1183,52 @@ const CustomerDashboard = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="address">Адрес доставки</Label>
-              <Input
-                id="address"
-                value={checkoutAddress}
-                onChange={(e) => setCheckoutAddress(e.target.value)}
-                placeholder="Город, улица, дом, квартира"
-              />
+              <div className="relative">
+                <Input
+                  id="address"
+                  value={checkoutAddress}
+                  onChange={(e) => setCheckoutAddress(e.target.value)}
+                  placeholder="Город, улица, дом, квартира"
+                  className="pr-8"
+                />
+                {addresses.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddressDropdown(!showAddressDropdown)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded transition-colors"
+                  >
+                    <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showAddressDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+                )}
+              </div>
+              
+              {/* Saved addresses dropdown */}
+              {showAddressDropdown && addresses.length > 0 && (
+                <div className="border rounded-lg bg-popover shadow-md overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground bg-muted/50 border-b">
+                    Сохранённые адреса
+                  </div>
+                  <div className="max-h-32 overflow-y-auto">
+                    {addresses.map((addr) => (
+                      <button
+                        key={addr.id}
+                        type="button"
+                        onClick={() => {
+                          setCheckoutAddress(addr.address);
+                          setShowAddressDropdown(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50 transition-colors"
+                      >
+                        <MapPin className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                        <span className="truncate flex-1">{addr.address}</span>
+                        {checkoutAddress === addr.address && (
+                          <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="comment">Комментарий (необязательно)</Label>
