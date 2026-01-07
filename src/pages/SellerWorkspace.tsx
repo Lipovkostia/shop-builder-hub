@@ -95,22 +95,23 @@ export default function SellerWorkspace() {
         />
       )}
       
-      {/* Контент - условный рендеринг активного вида */}
+      {/* Контент - оба компонента рендерятся, но скрываются через CSS для сохранения состояния */}
       <div className="flex-1 overflow-hidden">
-        {activeView === "storefront" ? (
+        <div className={activeView === "storefront" ? "block" : "hidden"}>
           <StoreFront 
             workspaceMode={hasFullAccess}
             storeData={store}
             onSwitchToAdmin={handleSwitchToAdmin}
           />
-        ) : (
+        </div>
+        <div className={activeView === "admin" ? "block" : "hidden"}>
           <AdminPanel 
             workspaceMode={hasFullAccess}
             storeIdOverride={store.id}
             storeSubdomainOverride={store.subdomain}
             onSwitchToStorefront={handleSwitchToStorefront}
           />
-        )}
+        </div>
       </div>
     </div>
   );
