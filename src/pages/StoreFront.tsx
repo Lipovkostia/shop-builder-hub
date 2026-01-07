@@ -403,6 +403,7 @@ function StoreHeader({
   onStatusFilterChange,
   searchQuery,
   onSearchChange,
+  onAdminClick,
 }: {
   store: any;
   cart: CartItem[];
@@ -419,6 +420,7 @@ function StoreHeader({
   onStatusFilterChange: (status: string) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  onAdminClick?: () => void;
 }) {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
@@ -456,7 +458,7 @@ function StoreHeader({
 
         {canShowAdminButton && (
           <button
-            onClick={() => navigate(store?.id ? `/admin?storeId=${store.id}` : `/admin`)}
+            onClick={onAdminClick}
             className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
             title="Панель управления"
             aria-label="Панель управления"
@@ -617,11 +619,23 @@ function StoreSkeleton() {
   );
 }
 
+// Props interface for workspace mode
+interface StoreFrontProps {
+  workspaceMode?: boolean;
+  storeData?: any;
+  onSwitchToAdmin?: () => void;
+}
+
 // Main StoreFront Component
-export default function StoreFront() {
+export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }: StoreFrontProps = {}) {
   const { subdomain } = useParams<{ subdomain: string }>();
+  const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
-  const { store, loading: storeLoading, error: storeError } = useStoreBySubdomain(subdomain);
+  
+  // В режиме workspace используем переданные данные магазина
+  const { store: fetchedStore, loading: storeLoading, error: storeError } = useStoreBySubdomain(workspaceMode ? undefined : subdomain);
+  const store = workspaceMode ? storeData : fetchedStore;
+  
   const { isOwner: isStoreOwner, loading: ownerLoading } = useIsStoreOwner(store?.id || null);
   const { products, loading: productsLoading, updateProduct } = useStoreProducts(store?.id || null);
   const { catalogs, productVisibility, setProductCatalogs } = useStoreCatalogs(store?.id || null);
@@ -722,8 +736,21 @@ export default function StoreFront() {
     });
   };
 
+  // Обработчик клика на кнопку админки
+  const handleAdminClick = () => {
+    if (workspaceMode && onSwitchToAdmin) {
+      onSwitchToAdmin();
+    } else {
+      navigate(store?.id ? `/admin?storeId=${store.id}` : `/admin`);
+    }
+  };
+
   // Loading state - don't wait for owner check, show page and let gear icon update
-  if (storeLoading || productsLoading) {
+  if (!workspaceMode && (storeLoading || productsLoading)) {
+    return <StoreSkeleton />;
+  }
+  
+  if (productsLoading) {
     return <StoreSkeleton />;
   }
 
@@ -762,6 +789,7 @@ export default function StoreFront() {
         onStatusFilterChange={setStatusFilter}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        onAdminClick={handleAdminClick}
       />
 
       <main className="flex-1 overflow-auto">

@@ -11,6 +11,7 @@ import TestStore from "./pages/TestStore";
 import AdminPanel from "./pages/AdminPanel";
 import SuperAdmin from "./pages/SuperAdmin";
 import StoreFront from "./pages/StoreFront";
+import SellerWorkspace from "./pages/SellerWorkspace";
 import NotFound from "./pages/NotFound";
 import CatalogAccess from "./pages/CatalogAccess";
 import CustomerAuth from "./pages/CustomerAuth";
@@ -66,8 +67,8 @@ const App = () => (
             <Route path="/catalog/:accessCode" element={<CatalogAccess />} />
             <Route path="/customer-auth" element={<CustomerAuth />} />
             <Route path="/customer-dashboard" element={<CustomerDashboard />} />
-            {/* Store routes */}
-            <Route path="/store/:subdomain" element={<StoreFront />} />
+            {/* Store routes - SellerWorkspace for seamless transitions */}
+            <Route path="/store/:subdomain" element={<SellerWorkspace />} />
             <Route path="/store/:subdomain/admin" element={<StoreAdminWrapper />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
