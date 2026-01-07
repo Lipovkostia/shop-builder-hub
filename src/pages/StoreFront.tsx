@@ -279,7 +279,7 @@ function ProductCard({
         {/* Название */}
         <div className={`relative overflow-hidden`}>
           <h3 
-            className={`font-medium text-foreground leading-tight ${showImages ? 'text-sm pr-6 whitespace-nowrap' : 'text-xs truncate pr-2'} ${isOwner ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+            className={`font-medium text-foreground leading-tight ${showImages ? 'text-lg pr-6 whitespace-nowrap' : 'text-base truncate pr-2'} ${isOwner ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
             onClick={isOwner && onToggleExpand ? () => onToggleExpand() : undefined}
           >
             {product.name}
@@ -343,7 +343,7 @@ function ProductCard({
                       </span>
                     )}
                     <PortionIndicator type="full" />
-                    <span className="text-[11px] font-medium text-foreground">
+                    <span className="text-sm font-medium text-foreground">
                       {formatPriceSpaced(packagingPrices.full)}
                     </span>
                   </button>
@@ -368,7 +368,7 @@ function ProductCard({
                       </span>
                     )}
                     <PortionIndicator type="half" />
-                    <span className="text-[11px] font-medium text-foreground">
+                    <span className="text-sm font-medium text-foreground">
                       {formatPriceSpaced(packagingPrices.half)}
                     </span>
                   </button>
@@ -393,7 +393,7 @@ function ProductCard({
                       </span>
                     )}
                     <PortionIndicator type="quarter" />
-                    <span className="text-[11px] font-medium text-foreground">
+                    <span className="text-sm font-medium text-foreground">
                       {formatPriceSpaced(packagingPrices.quarter)}
                     </span>
                   </button>
@@ -419,7 +419,7 @@ function ProductCard({
                         </span>
                       )}
                       <PortionIndicator type="portion" />
-                      <span className="text-[11px] font-medium text-foreground">
+                      <span className="text-sm font-medium text-foreground">
                         {formatPriceSpaced(portionPricePortion)}
                       </span>
                     </button>
@@ -447,7 +447,7 @@ function ProductCard({
                     </span>
                   )}
                   <PortionIndicator type="full" />
-                  <span className="text-[11px] font-medium text-foreground">
+                  <span className="text-sm font-medium text-foreground">
                     {formatPriceSpaced(salePrice)}
                   </span>
                 </button>
