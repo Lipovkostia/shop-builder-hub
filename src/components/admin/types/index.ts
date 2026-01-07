@@ -1,6 +1,6 @@
 // Типы для продуктов
 export type ProductType = "weight" | "piece";
-export type PackagingType = "head" | "package" | "piece" | "can" | "box";
+export type PackagingType = "head" | "package" | "piece" | "can" | "box" | "carcass" | "half_carcass" | "quarter_carcass";
 
 export interface WeightVariant {
   type: "full" | "half" | "quarter";
@@ -210,9 +210,12 @@ export const calculatePackagingPrices = (
 export const packagingTypeLabels: Record<PackagingType, string> = {
   head: "Голова",
   package: "Упаковка",
-  piece: "Штука",
+  piece: "Штучный товар",
   can: "Банка",
   box: "Ящик",
+  carcass: "Туша",
+  half_carcass: "Полутуша",
+  quarter_carcass: "Четверть туши",
 };
 
 export const unitOptions = [
@@ -222,4 +225,10 @@ export const unitOptions = [
   { value: "уп", label: "уп" },
   { value: "г", label: "г" },
   { value: "мл", label: "мл" },
+  { value: "м", label: "м" },
 ];
+
+export const packagingOptions = Object.entries(packagingTypeLabels).map(([value, label]) => ({
+  value,
+  label,
+}));
