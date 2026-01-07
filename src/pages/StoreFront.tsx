@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store, Package } from "lucide-react";
 import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -575,7 +575,7 @@ function StoreHeader({
               title={`Заказы${ordersCount ? ` (${ordersCount})` : ''}`}
               aria-label="Заказы"
             >
-              <ForkliftIcon boxCount={ordersCount || 0} className="w-5 h-5 text-muted-foreground" />
+              <Package className="w-5 h-5 text-muted-foreground" />
             </button>
           </div>
         )}
