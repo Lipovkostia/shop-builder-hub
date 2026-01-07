@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store } from "lucide-react";
 import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -561,8 +561,9 @@ function StoreHeader({
         <div className="flex items-center gap-1">
           {store.logo_url ? (
             <img src={store.logo_url} alt={store.name} className="w-6 h-6 rounded object-cover" />
-          ) : null}
-          <span className="text-sm font-medium">{store.name}</span>
+          ) : (
+            <Store className="w-5 h-5 text-muted-foreground" />
+          )}
         </div>
 
         {canShowAdminButton && (
