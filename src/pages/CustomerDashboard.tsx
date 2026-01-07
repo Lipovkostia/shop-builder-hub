@@ -21,9 +21,16 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
   SheetFooter,
 } from "@/components/ui/sheet";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerFooter,
+} from "@/components/ui/drawer";
 import {
   Dialog,
   DialogContent,
@@ -1002,17 +1009,17 @@ const CustomerDashboard = () => {
         )}
       </main>
 
-      {/* Cart Sheet */}
-      <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Корзина</SheetTitle>
-            <SheetDescription>
+      {/* Cart Drawer (slides from bottom on mobile) */}
+      <Drawer open={isCartOpen} onOpenChange={setIsCartOpen}>
+        <DrawerContent className="max-h-[85vh]">
+          <DrawerHeader>
+            <DrawerTitle>Корзина</DrawerTitle>
+            <DrawerDescription>
               {cart.length === 0 ? "Корзина пуста" : `${cart.length} позиций`}
-            </SheetDescription>
-          </SheetHeader>
+            </DrawerDescription>
+          </DrawerHeader>
           
-          <div className="flex-1 overflow-y-auto py-4">
+          <div className="flex-1 overflow-y-auto px-4 pb-4">
             {cart.map((item, index) => {
               const product = getProductById(item.productId);
               if (!product) return null;
@@ -1074,7 +1081,7 @@ const CustomerDashboard = () => {
           </div>
           
           {cart.length > 0 && (
-            <SheetFooter className="flex-col gap-3">
+            <DrawerFooter>
               <div className="flex justify-between w-full text-lg font-semibold">
                 <span>Итого:</span>
                 <span>{formatPrice(cartTotal)}</span>
@@ -1093,10 +1100,10 @@ const CustomerDashboard = () => {
               >
                 Оформить заказ
               </Button>
-            </SheetFooter>
+            </DrawerFooter>
           )}
-        </SheetContent>
-      </Sheet>
+        </DrawerContent>
+      </Drawer>
 
       {/* Checkout Dialog */}
       <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
