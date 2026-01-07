@@ -91,6 +91,7 @@ export default function SellerWorkspace() {
           storeLogo={store.logo_url}
           activeView={activeView}
           onViewChange={handleViewChange}
+          onOrdersClick={() => handleSwitchToAdmin("orders")}
           ordersCount={orders.length}
         />
       )}
