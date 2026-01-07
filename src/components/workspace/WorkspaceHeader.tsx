@@ -30,20 +30,19 @@ export function WorkspaceHeader({
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
       <div className="h-12 flex items-center justify-between px-3">
-        {/* Логотип и название */}
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          {storeLogo ? (
-            <img 
-              src={storeLogo} 
-              alt={storeName} 
-              className="w-7 h-7 rounded object-cover flex-shrink-0" 
-            />
-          ) : (
-            <div className="w-7 h-7 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <StoreIcon className="w-4 h-4 text-primary" />
-            </div>
-          )}
-          <span className="text-sm font-medium truncate">{storeName}</span>
+        {/* Витрина - слева */}
+        <div className="flex-1">
+          <button
+            onClick={() => onViewChange("storefront")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              activeView === "storefront"
+                ? "bg-muted text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            }`}
+          >
+            <StoreIcon className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Витрина</span>
+          </button>
         </div>
 
         {/* Мои заказы - по центру */}
@@ -60,28 +59,14 @@ export function WorkspaceHeader({
           )}
         </button>
 
-        {/* Табы */}
-        <div className="flex items-center gap-1 bg-muted rounded-lg p-1 flex-1 justify-end">
-          {/* Витрина */}
-          <button
-            onClick={() => onViewChange("storefront")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              activeView === "storefront"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <StoreIcon className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Витрина</span>
-          </button>
-
-          {/* Управление */}
+        {/* Управление - справа */}
+        <div className="flex-1 flex justify-end">
           <button
             onClick={() => onViewChange("admin")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               activeView === "admin"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-muted text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
             }`}
           >
             <Settings className="w-3.5 h-3.5" />
