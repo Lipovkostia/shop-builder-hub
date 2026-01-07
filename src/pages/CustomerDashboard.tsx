@@ -467,6 +467,7 @@ const CustomerDashboard = () => {
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [showProfileView, setShowProfileView] = useState(false);
+  const [profileSection, setProfileSection] = useState<'personal' | 'catalogs' | 'settings'>('personal');
   const [showImages, setShowImages] = useState(true);
   
   // Profile data
@@ -811,8 +812,6 @@ const CustomerDashboard = () => {
     );
   }
 
-  // Profile section state
-  const [profileSection, setProfileSection] = useState<'personal' | 'catalogs' | 'settings'>('personal');
 
   // Profile View component (inline)
   const ProfileView = () => (
