@@ -342,6 +342,7 @@ export default function AdminPanel() {
   const [currentStoreName, setCurrentStoreName] = useState<string | null>(null);
   const [currentStoreSubdomain, setCurrentStoreSubdomain] = useState<string | null>(null);
   const [userStoreId, setUserStoreId] = useState<string | null>(null);
+  const [storeContextLoading, setStoreContextLoading] = useState(true);
   
   // Determine which store context to use
   const effectiveStoreId = storeIdFromUrl || userStoreId || currentStoreId;
@@ -666,45 +667,56 @@ export default function AdminPanel() {
   // Fetch user's own store or the store from URL
   useEffect(() => {
     const fetchStoreContext = async () => {
-      // If storeId is in URL - fetch that store (for both sellers and super admins)
-      if (storeIdFromUrl) {
-        const { data: store } = await supabase
-          .from('stores')
-          .select('id, name, subdomain, owner_id')
-          .eq('id', storeIdFromUrl)
-          .single();
-        
-        if (store) {
-          setCurrentStoreId(store.id);
-          setCurrentStoreName(store.name);
-          setCurrentStoreSubdomain(store.subdomain);
+      setStoreContextLoading(true);
+      try {
+        // If storeId is in URL - fetch that store (for both sellers and super admins)
+        if (storeIdFromUrl) {
+          const { data: store } = await supabase
+            .from('stores')
+            .select('id, name, subdomain, owner_id')
+            .eq('id', storeIdFromUrl)
+            .single();
           
-          // Set section if provided
-          if (sectionFromUrl === 'products') {
-            setActiveSection('products');
-          } else if (sectionFromUrl === 'customers') {
-            setActiveSection('roles');
+          if (store) {
+            setCurrentStoreId(store.id);
+            setCurrentStoreName(store.name);
+            setCurrentStoreSubdomain(store.subdomain);
+            
+            // Set section if provided
+            if (sectionFromUrl === 'products') {
+              setActiveSection('products');
+            } else if (sectionFromUrl === 'customers') {
+              setActiveSection('roles');
+            }
+          }
+          setStoreContextLoading(false);
+          return;
+        }
+        
+        // Otherwise fetch seller's own store if logged in
+        if (!user || !profile) {
+          setStoreContextLoading(false);
+          return;
+        }
+        
+        if (profile.role === 'seller') {
+          const { data: store } = await supabase
+            .from('stores')
+            .select('id, name, subdomain')
+            .eq('owner_id', profile.id)
+            .single();
+          
+          if (store) {
+            setUserStoreId(store.id);
+            setCurrentStoreId(store.id);
+            setCurrentStoreName(store.name);
+            setCurrentStoreSubdomain(store.subdomain);
           }
         }
-        return;
-      }
-      
-      // Otherwise fetch seller's own store if logged in
-      if (!user || !profile) return;
-      
-      if (profile.role === 'seller') {
-        const { data: store } = await supabase
-          .from('stores')
-          .select('id, name, subdomain')
-          .eq('owner_id', profile.id)
-          .single();
-        
-        if (store) {
-          setUserStoreId(store.id);
-          setCurrentStoreId(store.id);
-          setCurrentStoreName(store.name);
-          setCurrentStoreSubdomain(store.subdomain);
-        }
+      } catch (error) {
+        console.error('Error fetching store context:', error);
+      } finally {
+        setStoreContextLoading(false);
       }
     };
     
@@ -2393,8 +2405,8 @@ export default function AdminPanel() {
     });
   }, [moyskladProducts, importFilters]);
 
-  // Loading state
-  if (authLoading) {
+  // Loading state - wait for auth and store context
+  if (authLoading || (storeIdFromUrl && storeContextLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -2454,7 +2466,21 @@ export default function AdminPanel() {
         aria-labelledby={`tab-${activeSection}`}
         className="flex-1 p-4 min-h-[calc(100vh-112px)] overflow-y-auto"
       >
-          {activeSection === "products" && (
+          {/* Show loading or no store message if effectiveStoreId is not available */}
+          {!effectiveStoreId && !storeContextLoading && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Store className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">Магазин не найден</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Не удалось загрузить данные магазина
+              </p>
+              <Button onClick={() => navigate('/dashboard')}>
+                Вернуться на главную
+              </Button>
+            </div>
+          )}
+          
+          {effectiveStoreId && activeSection === "products" && (
             <>
               <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
@@ -2924,7 +2950,7 @@ export default function AdminPanel() {
             </>
           )}
 
-          {activeSection === "import" && (
+          {effectiveStoreId && activeSection === "import" && (
             <>
               {importView === "accounts" && (
                 <>
@@ -3478,7 +3504,7 @@ export default function AdminPanel() {
             </>
           )}
 
-          {activeSection === "catalogs" && (
+          {effectiveStoreId && activeSection === "catalogs" && (
             <>
               {catalogView === "list" && (
                 <>
@@ -4103,7 +4129,7 @@ export default function AdminPanel() {
             </>
           )}
 
-          {activeSection === "visibility" && (
+          {effectiveStoreId && activeSection === "visibility" && (
             <>
               <div className="mb-4">
                 <h2 className="text-xl font-semibold text-foreground">Видимость товаров в прайс-листах</h2>
@@ -4175,7 +4201,7 @@ export default function AdminPanel() {
             </>
           )}
 
-          {activeSection === "roles" && effectiveStoreId && (
+          {effectiveStoreId && activeSection === "roles" && (
             <CustomerRolesManager
               roles={customerRoles}
               storeId={effectiveStoreId}
@@ -4199,11 +4225,11 @@ export default function AdminPanel() {
             />
           )}
 
-          {activeSection === "clients" && effectiveStoreId && (
+          {effectiveStoreId && activeSection === "clients" && (
             <StoreCustomersTable storeId={effectiveStoreId} />
           )}
 
-          {activeSection === "orders" && (
+          {effectiveStoreId && activeSection === "orders" && (
             <>
               <div className="mb-4">
                 <h2 className="text-xl font-semibold text-foreground">Заказы</h2>
