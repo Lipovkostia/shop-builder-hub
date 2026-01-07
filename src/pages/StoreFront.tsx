@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag } from "lucide-react";
 import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { useStoreProducts, StoreProduct } from "@/hooks/useStoreProducts";
 import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
 import { useCatalogProductSettings, CatalogProductSetting } from "@/hooks/useCatalogProductSettings";
 import { useStoreOrders } from "@/hooks/useOrders";
+import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProductEditPanel } from "@/components/admin/ProductEditPanel";
 import { useAuth } from "@/hooks/useAuth";
@@ -767,6 +768,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const { products, loading: productsLoading, updateProduct } = useStoreProducts(store?.id || null);
   const { catalogs, productVisibility, setProductCatalogs } = useStoreCatalogs(store?.id || null);
   const { settings: catalogProductSettings, getProductSettings, updateProductSettings } = useCatalogProductSettings(store?.id || null);
+  const { categories } = useStoreCategories(store?.id || null);
   
   // Check for temp super admin from localStorage (used when super admin navigates from super admin panel)
   const isTempSuperAdmin = typeof window !== 'undefined' && localStorage.getItem('temp_super_admin') === 'true';
@@ -784,6 +786,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const [galleryOpenProductId, setGalleryOpenProductId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [localProducts, setLocalProducts] = useState<StoreProduct[]>([]);
 
@@ -825,7 +828,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
     ));
   };
 
-  // Filter products based on selected catalog, status filter, and search
+  // Filter products based on selected catalog, status filter, category filter, and search
   // Products are ONLY shown when a catalog is selected
   const filteredProducts = useMemo(() => {
     // No catalog selected = no products shown
@@ -853,6 +856,13 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
         return false;
       }
       
+      // Apply category filter
+      if (categoryFilter !== null) {
+        if (p.category_id !== categoryFilter) {
+          return false;
+        }
+      }
+      
       return true;
     });
 
@@ -866,7 +876,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
     }
 
     return filtered;
-  }, [displayProducts, selectedCatalog, productVisibility, getProductSettings, isOwner, statusFilter, searchQuery]);
+  }, [displayProducts, selectedCatalog, productVisibility, getProductSettings, isOwner, statusFilter, categoryFilter, searchQuery]);
 
   // Handle add to cart
   const handleAddToCart = (productId: string, variantIndex: number, price: number) => {
@@ -1040,6 +1050,41 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                     </button>
                   )}
                 </div>
+
+                {/* Фильтр по категориям */}
+                {categories.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] text-muted-foreground uppercase flex items-center gap-1">
+                      <Tag className="w-3 h-3" />
+                      Категория:
+                    </span>
+                    <div className="flex gap-1 flex-wrap">
+                      <button
+                        onClick={() => setCategoryFilter(null)}
+                        className={`px-2 py-0.5 text-[10px] rounded-full transition-colors ${
+                          categoryFilter === null
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                        }`}
+                      >
+                        Все
+                      </button>
+                      {categories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => setCategoryFilter(cat.id)}
+                          className={`px-2 py-0.5 text-[10px] rounded-full transition-colors ${
+                            categoryFilter === cat.id
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                          }`}
+                        >
+                          {cat.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Фильтр по статусу (только для владельца) */}
                 {isOwner && (
