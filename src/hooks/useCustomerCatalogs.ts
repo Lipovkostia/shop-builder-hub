@@ -300,6 +300,99 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
     }
   }, [toast, fetchCatalogs]);
 
+  // Add catalog by access code (from link)
+  const addCatalogByCode = useCallback(async (accessCode: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Не авторизован");
+
+      // Find catalog by access code
+      const { data: catalog, error: catalogError } = await supabase
+        .from("catalogs")
+        .select("id, store_id, name")
+        .eq("access_code", accessCode)
+        .single();
+
+      if (catalogError || !catalog) {
+        throw new Error("Прайс-лист не найден. Проверьте ссылку.");
+      }
+
+      // Get profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!profile) throw new Error("Профиль не найден");
+
+      // Check if already a customer of this store
+      let { data: storeCustomer } = await supabase
+        .from("store_customers")
+        .select("id")
+        .eq("profile_id", profile.id)
+        .eq("store_id", catalog.store_id)
+        .single();
+
+      // If not a customer, create record
+      if (!storeCustomer) {
+        const { data: newCustomer, error: customerError } = await supabase
+          .from("store_customers")
+          .insert({
+            profile_id: profile.id,
+            store_id: catalog.store_id,
+          })
+          .select()
+          .single();
+
+        if (customerError) throw customerError;
+        storeCustomer = newCustomer;
+      }
+
+      // Check if already has access
+      const { data: existingAccess } = await supabase
+        .from("customer_catalog_access")
+        .select("id")
+        .eq("store_customer_id", storeCustomer.id)
+        .eq("catalog_id", catalog.id)
+        .single();
+
+      if (existingAccess) {
+        toast({
+          title: "Уже добавлено",
+          description: `Прайс-лист "${catalog.name}" уже есть в вашем списке`,
+        });
+        return { success: true, catalogName: catalog.name };
+      }
+
+      // Add catalog access
+      const { error: accessError } = await supabase
+        .from("customer_catalog_access")
+        .insert({
+          store_customer_id: storeCustomer.id,
+          catalog_id: catalog.id,
+        });
+
+      if (accessError) throw accessError;
+
+      toast({
+        title: "Прайс-лист добавлен",
+        description: `"${catalog.name}" добавлен в ваш список`,
+      });
+
+      await fetchCatalogs();
+      return { success: true, catalogName: catalog.name };
+    } catch (error: any) {
+      console.error("Error adding catalog by code:", error);
+      toast({
+        title: "Ошибка добавления",
+        description: error.message,
+        variant: "destructive",
+      });
+      return { success: false, error: error.message };
+    }
+  }, [toast, fetchCatalogs]);
+
   // Initial fetch
   useEffect(() => {
     fetchCatalogs();
@@ -320,6 +413,7 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
     products,
     productsLoading,
     addCatalogAccess,
+    addCatalogByCode,
     refetch: fetchCatalogs,
   };
 }
