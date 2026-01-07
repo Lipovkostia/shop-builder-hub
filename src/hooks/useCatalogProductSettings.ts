@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface CatalogProductSetting {
@@ -16,9 +16,22 @@ export interface CatalogProductSetting {
   } | null;
 }
 
+// Helper to format a raw DB record into our interface
+const formatSetting = (raw: any): CatalogProductSetting => ({
+  id: raw.id,
+  catalog_id: raw.catalog_id,
+  product_id: raw.product_id,
+  categories: raw.categories || [],
+  markup_type: raw.markup_type || 'percent',
+  markup_value: raw.markup_value || 0,
+  status: raw.status || 'in_stock',
+  portion_prices: raw.portion_prices as CatalogProductSetting['portion_prices'],
+});
+
 export function useCatalogProductSettings(storeId: string | null) {
   const [settings, setSettings] = useState<CatalogProductSetting[]>([]);
   const [loading, setLoading] = useState(false);
+  const catalogIdsRef = useRef<string[]>([]);
 
   const fetchSettings = useCallback(async () => {
     if (!storeId) return;
@@ -33,11 +46,13 @@ export function useCatalogProductSettings(storeId: string | null) {
 
       if (!catalogs || catalogs.length === 0) {
         setSettings([]);
+        catalogIdsRef.current = [];
         setLoading(false);
         return;
       }
 
       const catalogIds = catalogs.map(c => c.id);
+      catalogIdsRef.current = catalogIds;
 
       const { data, error } = await supabase
         .from('catalog_product_settings')
@@ -46,16 +61,7 @@ export function useCatalogProductSettings(storeId: string | null) {
 
       if (error) throw error;
       
-      setSettings((data || []).map(s => ({
-        id: s.id,
-        catalog_id: s.catalog_id,
-        product_id: s.product_id,
-        categories: s.categories || [],
-        markup_type: s.markup_type || 'percent',
-        markup_value: s.markup_value || 0,
-        status: s.status || 'in_stock',
-        portion_prices: s.portion_prices as CatalogProductSetting['portion_prices'],
-      })));
+      setSettings((data || []).map(formatSetting));
     } catch (error) {
       console.error('Error fetching catalog product settings:', error);
     } finally {
@@ -63,9 +69,54 @@ export function useCatalogProductSettings(storeId: string | null) {
     }
   }, [storeId]);
 
+  // Initial fetch
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
+
+  // Realtime subscription for catalog_product_settings
+  useEffect(() => {
+    if (!storeId) return;
+
+    const channel = supabase
+      .channel(`catalog-product-settings-${storeId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'catalog_product_settings',
+        },
+        (payload) => {
+          const record = (payload.new || payload.old) as any;
+          
+          // Only process if the catalog belongs to our store
+          if (!record || !catalogIdsRef.current.includes(record.catalog_id)) {
+            return;
+          }
+
+          if (payload.eventType === 'INSERT') {
+            const newSetting = formatSetting(payload.new);
+            setSettings(prev => {
+              // Avoid duplicates
+              if (prev.some(s => s.id === newSetting.id)) return prev;
+              return [...prev, newSetting];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = formatSetting(payload.new);
+            setSettings(prev => prev.map(s => s.id === updated.id ? updated : s));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as any).id;
+            setSettings(prev => prev.filter(s => s.id !== deletedId));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [storeId]);
 
   const getProductSettings = useCallback((catalogId: string, productId: string): CatalogProductSetting | undefined => {
     return settings.find(s => s.catalog_id === catalogId && s.product_id === productId);
