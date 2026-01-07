@@ -248,7 +248,7 @@ function ProductCard({
   return (
     <div className="border-b border-border">
     <div 
-      className={`flex gap-1.5 px-1.5 py-0.5 bg-background ${showImages ? 'h-[calc((100vh-88px)/8)] min-h-[72px]' : 'h-9 min-h-[36px]'} ${isHidden ? 'opacity-60' : ''}`}
+      className={`flex gap-1.5 px-1.5 py-0.5 bg-background ${showImages ? 'h-[calc((100vh-88px)/8)] min-h-[72px]' : 'min-h-[56px] py-1.5'} ${isHidden ? 'opacity-60' : ''}`}
     >
       {/* Изображение */}
       {showImages && (
