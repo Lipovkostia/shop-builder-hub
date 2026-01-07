@@ -279,7 +279,7 @@ function ProductCard({
         {/* Название */}
         <div className={`relative overflow-hidden ${showImages ? '' : 'flex-1 min-w-0 mr-2'}`}>
           <h3 
-            className={`font-medium text-foreground leading-tight ${showImages ? 'text-xs pr-6 whitespace-nowrap' : 'text-[11px] truncate'} ${isOwner ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+            className={`font-medium text-foreground leading-tight ${showImages ? 'text-sm pr-6 whitespace-nowrap' : 'text-xs truncate'} ${isOwner ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
             onClick={isOwner && onToggleExpand ? () => onToggleExpand() : undefined}
           >
             {product.name}
@@ -297,7 +297,7 @@ function ProductCard({
 
         {/* Цена за кг и объём - только при показе изображений */}
         {showImages && (
-          <p className="text-muted-foreground leading-tight text-[10px]">
+          <p className="text-muted-foreground leading-tight text-xs">
             {formatPrice(salePrice)}/{unit}
             {product.unit_weight && (
               <span className="ml-1">
@@ -316,7 +316,7 @@ function ProductCard({
         <div className={`flex items-center gap-0.5 flex-shrink-0 ${showImages ? 'mt-0.5 flex-wrap' : ''}`}>
           {/* Статус бейдж для "нет в наличии" или "скрыт" */}
           {effectiveStatus === "out_of_stock" && (
-            <Badge variant="secondary" className="text-[9px] h-6 mr-1">
+            <Badge variant="secondary" className="text-[11px] h-6 mr-1">
               Нет в наличии
             </Badge>
           )}
@@ -343,7 +343,7 @@ function ProductCard({
                       </span>
                     )}
                     <PortionIndicator type="full" />
-                    <span className="text-[9px] font-medium text-foreground">
+                    <span className="text-[11px] font-medium text-foreground">
                       {formatPriceSpaced(packagingPrices.full)}
                     </span>
                   </button>
@@ -368,7 +368,7 @@ function ProductCard({
                       </span>
                     )}
                     <PortionIndicator type="half" />
-                    <span className="text-[9px] font-medium text-foreground">
+                    <span className="text-[11px] font-medium text-foreground">
                       {formatPriceSpaced(packagingPrices.half)}
                     </span>
                   </button>
@@ -393,7 +393,7 @@ function ProductCard({
                       </span>
                     )}
                     <PortionIndicator type="quarter" />
-                    <span className="text-[9px] font-medium text-foreground">
+                    <span className="text-[11px] font-medium text-foreground">
                       {formatPriceSpaced(packagingPrices.quarter)}
                     </span>
                   </button>
@@ -419,7 +419,7 @@ function ProductCard({
                         </span>
                       )}
                       <PortionIndicator type="portion" />
-                      <span className="text-[9px] font-medium text-foreground">
+                      <span className="text-[11px] font-medium text-foreground">
                         {formatPriceSpaced(portionPricePortion)}
                       </span>
                     </button>
@@ -447,7 +447,7 @@ function ProductCard({
                     </span>
                   )}
                   <PortionIndicator type="full" />
-                  <span className="text-[9px] font-medium text-foreground">
+                  <span className="text-[11px] font-medium text-foreground">
                     {formatPriceSpaced(salePrice)}
                   </span>
                 </button>
