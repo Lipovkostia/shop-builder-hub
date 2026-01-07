@@ -1133,6 +1133,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
             workspaceMode={true} 
             storeIdOverride={store.id}
             onSwitchToStorefront={handleStoreClick}
+            initialSection={adminSection as any}
           />
         </div>
       )}
