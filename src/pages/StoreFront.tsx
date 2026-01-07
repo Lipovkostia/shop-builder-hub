@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { OrdersQuickAccess } from "@/components/storefront/OrdersQuickAccess";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -404,6 +405,7 @@ function StoreHeader({
   searchQuery,
   onSearchChange,
   onAdminClick,
+  onOrdersClick,
 }: {
   store: any;
   cart: CartItem[];
@@ -421,6 +423,7 @@ function StoreHeader({
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onAdminClick?: () => void;
+  onOrdersClick?: () => void;
 }) {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
@@ -439,15 +442,22 @@ function StoreHeader({
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
       <div className="h-12 flex items-center justify-between px-3 relative">
-        <button className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3">
-          <ShoppingCart className="w-4 h-4 text-primary" />
-          <span className="text-xs font-semibold text-foreground">{formatPrice(totalPrice)}</span>
-          {totalItems > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-              {totalItems}
-            </span>
+        <div className="flex items-center gap-2">
+          <button className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3">
+            <ShoppingCart className="w-4 h-4 text-primary" />
+            <span className="text-xs font-semibold text-foreground">{formatPrice(totalPrice)}</span>
+            {totalItems > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                {totalItems}
+              </span>
+            )}
+          </button>
+          
+          {/* Быстрый доступ к заказам */}
+          {store?.id && onOrdersClick && (
+            <OrdersQuickAccess storeId={store.id} onClick={onOrdersClick} />
           )}
-        </button>
+        </div>
 
         <div className="flex items-center gap-1">
           {store.logo_url ? (
@@ -745,6 +755,11 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
     }
   };
 
+  // Обработчик клика на заказы
+  const handleOrdersClick = () => {
+    navigate(`/customer?store=${store?.subdomain}`);
+  };
+
   // Loading state - don't wait for owner check, show page and let gear icon update
   if (!workspaceMode && (storeLoading || productsLoading)) {
     return <StoreSkeleton />;
@@ -790,6 +805,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onAdminClick={handleAdminClick}
+        onOrdersClick={handleOrdersClick}
       />
 
       <main className="flex-1 overflow-auto">
