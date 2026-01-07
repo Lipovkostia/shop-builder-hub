@@ -62,7 +62,7 @@ export function WorkspaceHeader({
               activeView === "admin"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
-            }`}
+            } ${ordersCount > 0 ? "mr-2" : ""}`}
           >
             {ordersCount > 0 ? (
               <ForkliftIcon boxCount={boxCount} className="w-4 h-4" />
@@ -71,7 +71,7 @@ export function WorkspaceHeader({
             )}
             <span className="hidden sm:inline">Управление</span>
             {ordersCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+              <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                 {ordersCount > 99 ? "99+" : ordersCount}
               </span>
             )}
