@@ -2437,51 +2437,51 @@ export default function AdminPanel({
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`bg-background ${workspaceMode ? 'h-full' : 'min-h-screen'}`}>
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-card border-b border-border">
-        <div className="flex items-center justify-between px-4 h-14">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                if (workspaceMode && onSwitchToStorefront) {
-                  onSwitchToStorefront();
-                } else if (currentStoreSubdomain || storeSubdomainOverride) {
-                  navigate(`/store/${storeSubdomainOverride || currentStoreSubdomain}`);
-                } else {
-                  navigate("/");
-                }
-              }}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            {currentStoreName && (
-              <div className="flex items-center gap-2">
-                <Store className="h-5 w-5 text-primary" />
-                <span className="font-semibold">{currentStoreName}</span>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {/* Super admin quick link */}
-            {isSuperAdmin && !isSuperAdminContext && (
+      {/* Header - скрывается в workspaceMode, там свой общий хедер */}
+      {!workspaceMode && (
+        <header className="sticky top-0 z-50 bg-card border-b border-border">
+          <div className="flex items-center justify-between px-4 h-14">
+            <div className="flex items-center gap-3">
               <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/super-admin')}
-                className="flex items-center gap-2"
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  if (currentStoreSubdomain || storeSubdomainOverride) {
+                    navigate(`/store/${storeSubdomainOverride || currentStoreSubdomain}`);
+                  } else {
+                    navigate("/");
+                  }
+                }}
               >
-                <Shield className="h-4 w-4" />
-                <span className="hidden sm:inline">Супер-админ</span>
+                <ArrowLeft className="h-5 w-5" />
               </Button>
-            )}
+              {currentStoreName && (
+                <div className="flex items-center gap-2">
+                  <Store className="h-5 w-5 text-primary" />
+                  <span className="font-semibold">{currentStoreName}</span>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {/* Super admin quick link */}
+              {isSuperAdmin && !isSuperAdminContext && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/super-admin')}
+                  className="flex items-center gap-2"
+                >
+                  <Shield className="h-4 w-4" />
+                  <span className="hidden sm:inline">Супер-админ</span>
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Tab Navigation - same for mobile and desktop */}
       <MobileTabNav

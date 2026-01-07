@@ -1,6 +1,9 @@
 import { useState, useCallback, useRef } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useStoreBySubdomain } from "@/hooks/useUserStore";
+import { useStoreOrders } from "@/hooks/useOrders";
+import { useIsStoreOwner } from "@/hooks/useUserStore";
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import StoreFront from "./StoreFront";
 import AdminPanel from "./AdminPanel";
 
@@ -10,6 +13,10 @@ export default function SellerWorkspace() {
   const { subdomain } = useParams<{ subdomain: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { store, loading: storeLoading, error: storeError } = useStoreBySubdomain(subdomain);
+  const { isOwner } = useIsStoreOwner(store?.id);
+  
+  // Получаем количество заказов только для владельца
+  const { orders } = useStoreOrders(isOwner && store?.id ? store.id : null);
 
   const [activeView, setActiveView] = useState<ActiveView>("storefront");
   
@@ -17,36 +24,38 @@ export default function SellerWorkspace() {
   const storefrontScrollRef = useRef(0);
   const adminScrollRef = useRef(0);
 
+  const handleViewChange = useCallback((view: ActiveView) => {
+    if (view === activeView) return;
+    
+    // Сохраняем текущую позицию скролла
+    if (activeView === "storefront") {
+      storefrontScrollRef.current = window.scrollY;
+    } else {
+      adminScrollRef.current = window.scrollY;
+    }
+    
+    setActiveView(view);
+    
+    // Восстанавливаем позицию скролла после рендера
+    requestAnimationFrame(() => {
+      if (view === "storefront") {
+        window.scrollTo(0, storefrontScrollRef.current);
+      } else {
+        window.scrollTo(0, adminScrollRef.current);
+      }
+    });
+  }, [activeView]);
+
   const handleSwitchToAdmin = useCallback((section?: string) => {
-    if (activeView === "admin") return;
-    
-    // Сохраняем позицию скролла витрины
-    storefrontScrollRef.current = window.scrollY;
-    setActiveView("admin");
-    
-    // Устанавливаем секцию через React Router searchParams
     if (section) {
       setSearchParams({ section });
     }
-    
-    // Восстанавливаем позицию скролла админки после рендера
-    requestAnimationFrame(() => {
-      window.scrollTo(0, adminScrollRef.current);
-    });
-  }, [activeView, setSearchParams]);
+    handleViewChange("admin");
+  }, [handleViewChange, setSearchParams]);
 
   const handleSwitchToStorefront = useCallback(() => {
-    if (activeView === "storefront") return;
-    
-    // Сохраняем позицию скролла админки
-    adminScrollRef.current = window.scrollY;
-    setActiveView("storefront");
-    
-    // Восстанавливаем позицию скролла витрины после рендера
-    requestAnimationFrame(() => {
-      window.scrollTo(0, storefrontScrollRef.current);
-    });
-  }, [activeView]);
+    handleViewChange("storefront");
+  }, [handleViewChange]);
 
   // Загрузка и ошибки
   if (storeLoading) {
@@ -69,36 +78,34 @@ export default function SellerWorkspace() {
   }
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
-      {/* Витрина */}
-      <div 
-        className="absolute inset-0 transition-transform duration-300 ease-out"
-        style={{ 
-          transform: activeView === "admin" ? "translateX(-100%)" : "translateX(0)",
-          willChange: "transform"
-        }}
-      >
-        <StoreFront 
-          workspaceMode
-          storeData={store}
-          onSwitchToAdmin={handleSwitchToAdmin}
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Общая шапка с вкладками */}
+      {isOwner && (
+        <WorkspaceHeader
+          storeName={store.name}
+          storeLogo={store.logo_url}
+          activeView={activeView}
+          onViewChange={handleViewChange}
+          ordersCount={orders.length}
         />
-      </div>
+      )}
       
-      {/* Панель управления */}
-      <div 
-        className="absolute inset-0 transition-transform duration-300 ease-out"
-        style={{ 
-          transform: activeView === "admin" ? "translateX(0)" : "translateX(100%)",
-          willChange: "transform"
-        }}
-      >
-        <AdminPanel 
-          workspaceMode
-          storeIdOverride={store.id}
-          storeSubdomainOverride={store.subdomain}
-          onSwitchToStorefront={handleSwitchToStorefront}
-        />
+      {/* Контент - условный рендеринг активного вида */}
+      <div className="flex-1 overflow-hidden">
+        {activeView === "storefront" ? (
+          <StoreFront 
+            workspaceMode={isOwner}
+            storeData={store}
+            onSwitchToAdmin={handleSwitchToAdmin}
+          />
+        ) : (
+          <AdminPanel 
+            workspaceMode
+            storeIdOverride={store.id}
+            storeSubdomainOverride={store.subdomain}
+            onSwitchToStorefront={handleSwitchToStorefront}
+          />
+        )}
       </div>
     </div>
   );
