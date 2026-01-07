@@ -101,6 +101,10 @@ export function ProductEditPanel({
     catalogSettings?.categories || []
   );
   const [newCategory, setNewCategory] = useState("");
+  const [newUnit, setNewUnit] = useState("");
+  const [newPackaging, setNewPackaging] = useState("");
+  const [customUnits, setCustomUnits] = useState<{ value: string; label: string }[]>([]);
+  const [customPackaging, setCustomPackaging] = useState<{ value: string; label: string }[]>([]);
   const [selectedCatalogs, setSelectedCatalogs] = useState<string[]>(productCatalogIds);
   const [saving, setSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -360,37 +364,148 @@ export function ProductEditPanel({
           />
         </div>
 
-        {/* Единица и упаковка */}
+        {/* Единица измерения с возможностью добавления */}
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Ед. изм.</label>
-          <Select value={unit} onValueChange={setUnit}>
-            <SelectTrigger className="h-7 text-xs mt-0.5">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {unitOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full h-7 text-xs mt-0.5 justify-between font-normal"
+              >
+                <span className="truncate">
+                  {[...unitOptions, ...customUnits].find(o => o.value === unit)?.label || unit || "Выбрать..."}
+                </span>
+                <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2 bg-background z-50" align="start">
+              <div className="space-y-0.5 max-h-40 overflow-y-auto">
+                {[...unitOptions, ...customUnits].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setUnit(opt.value)}
+                    className={`w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted/50 ${
+                      unit === opt.value ? 'bg-primary/10 text-primary' : ''
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-1 mt-2 pt-2 border-t">
+                <Input
+                  type="text"
+                  value={newUnit}
+                  onChange={(e) => setNewUnit(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newUnit.trim()) {
+                      e.preventDefault();
+                      const val = newUnit.trim();
+                      if (![...unitOptions, ...customUnits].find(o => o.value === val)) {
+                        setCustomUnits(prev => [...prev, { value: val, label: val }]);
+                      }
+                      setUnit(val);
+                      setNewUnit("");
+                    }
+                  }}
+                  placeholder="Своя..."
+                  className="h-7 text-xs flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => {
+                    if (newUnit.trim()) {
+                      const val = newUnit.trim();
+                      if (![...unitOptions, ...customUnits].find(o => o.value === val)) {
+                        setCustomUnits(prev => [...prev, { value: val, label: val }]);
+                      }
+                      setUnit(val);
+                      setNewUnit("");
+                    }
+                  }}
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
+        {/* Упаковка с возможностью добавления */}
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Упаковка</label>
-          <Select value={packagingType} onValueChange={setPackagingType}>
-            <SelectTrigger className="h-7 text-xs mt-0.5">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {packagingOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full h-7 text-xs mt-0.5 justify-between font-normal"
+              >
+                <span className="truncate">
+                  {[...packagingOptions, ...customPackaging].find(o => o.value === packagingType)?.label || packagingType || "Выбрать..."}
+                </span>
+                <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2 bg-background z-50" align="start">
+              <div className="space-y-0.5 max-h-40 overflow-y-auto">
+                {[...packagingOptions, ...customPackaging].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setPackagingType(opt.value)}
+                    className={`w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted/50 ${
+                      packagingType === opt.value ? 'bg-primary/10 text-primary' : ''
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-1 mt-2 pt-2 border-t">
+                <Input
+                  type="text"
+                  value={newPackaging}
+                  onChange={(e) => setNewPackaging(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newPackaging.trim()) {
+                      e.preventDefault();
+                      const val = newPackaging.trim();
+                      if (![...packagingOptions, ...customPackaging].find(o => o.value === val)) {
+                        setCustomPackaging(prev => [...prev, { value: val, label: val }]);
+                      }
+                      setPackagingType(val);
+                      setNewPackaging("");
+                    }
+                  }}
+                  placeholder="Своя..."
+                  className="h-7 text-xs flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => {
+                    if (newPackaging.trim()) {
+                      const val = newPackaging.trim();
+                      if (![...packagingOptions, ...customPackaging].find(o => o.value === val)) {
+                        setCustomPackaging(prev => [...prev, { value: val, label: val }]);
+                      }
+                      setPackagingType(val);
+                      setNewPackaging("");
+                    }
+                  }}
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Объем */}
