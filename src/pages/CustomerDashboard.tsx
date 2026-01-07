@@ -415,7 +415,9 @@ const CustomerDashboard = () => {
     currentCatalog, 
     setCurrentCatalog,
     products,
-    productsLoading 
+    productsLoading,
+    addCatalogByCode,
+    refetch: refetchCatalogs
   } = useCustomerCatalogs(targetUserId);
   const { createOrder, loading: orderLoading } = useCustomerOrders();
 
@@ -433,6 +435,10 @@ const CustomerDashboard = () => {
   const [newPassword, setNewPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  
+  // Add catalog by link
+  const [catalogLinkInput, setCatalogLinkInput] = useState("");
+  const [addingCatalog, setAddingCatalog] = useState(false);
   
   // Checkout form
   const [checkoutName, setCheckoutName] = useState("");
@@ -509,6 +515,36 @@ const CustomerDashboard = () => {
     } else {
       toast({ title: "Успешно", description: "Пароль изменён" });
       setNewPassword("");
+    }
+  };
+
+  const handleAddCatalogByLink = async () => {
+    if (!catalogLinkInput.trim()) {
+      toast({ title: "Ошибка", description: "Вставьте ссылку на прайс-лист", variant: "destructive" });
+      return;
+    }
+    
+    setAddingCatalog(true);
+    
+    // Extract access code from link - could be full URL or just code
+    let accessCode = catalogLinkInput.trim();
+    
+    // Try to extract code from URL like /catalog-access/CODE or ?code=CODE
+    const urlMatch = accessCode.match(/catalog-access\/([a-zA-Z0-9]+)/);
+    if (urlMatch) {
+      accessCode = urlMatch[1];
+    } else {
+      const codeMatch = accessCode.match(/[?&]code=([a-zA-Z0-9]+)/);
+      if (codeMatch) {
+        accessCode = codeMatch[1];
+      }
+    }
+    
+    const result = await addCatalogByCode(accessCode);
+    setAddingCatalog(false);
+    
+    if (result.success) {
+      setCatalogLinkInput("");
     }
   };
 
@@ -697,11 +733,34 @@ const CustomerDashboard = () => {
             </div>
           )}
 
+          {/* Добавить прайс-лист */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              Добавить прайс-лист
+            </h3>
+            <div className="space-y-2">
+              <Input
+                placeholder="Вставьте ссылку на прайс-лист"
+                value={catalogLinkInput}
+                onChange={(e) => setCatalogLinkInput(e.target.value)}
+              />
+              <Button 
+                onClick={handleAddCatalogByLink} 
+                disabled={addingCatalog || !catalogLinkInput.trim()}
+                className="w-full"
+              >
+                {addingCatalog ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                Добавить
+              </Button>
+            </div>
+          </div>
+
           {/* Доступные прайс-листы */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Store className="w-4 h-4" />
-              Доступные прайс-листы
+              Доступные прайс-листы ({catalogs.length})
             </h3>
             <div className="space-y-2">
               {catalogs.length > 0 ? (
