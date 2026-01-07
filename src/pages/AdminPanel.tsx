@@ -3680,42 +3680,6 @@ export default function AdminPanel({
                             onChange={(e) => setNewCatalogDescription(e.target.value)}
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label>Категории</Label>
-                          <p className="text-xs text-muted-foreground">
-                            Выберите категории, в которых будет отображаться прайс-лист
-                          </p>
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {categories.map((cat) => (
-                              <button
-                                key={cat.id}
-                                onClick={() => {
-                                  setNewCatalogCategories(prev => {
-                                    const next = new Set(prev);
-                                    if (next.has(cat.id)) {
-                                      next.delete(cat.id);
-                                    } else {
-                                      next.add(cat.id);
-                                    }
-                                    return next;
-                                  });
-                                }}
-                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                                  newCatalogCategories.has(cat.id)
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                                }`}
-                              >
-                                {cat.name}
-                              </button>
-                            ))}
-                          </div>
-                          {newCatalogCategories.size > 0 && (
-                            <p className="text-xs text-primary mt-1">
-                              Выбрано: {newCatalogCategories.size}
-                            </p>
-                          )}
-                        </div>
                         <div className="flex gap-2">
                           <Button
                             onClick={createCatalog}
