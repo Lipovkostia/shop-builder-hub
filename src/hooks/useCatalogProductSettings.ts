@@ -78,43 +78,50 @@ export function useCatalogProductSettings(storeId: string | null) {
   useEffect(() => {
     if (!storeId) return;
 
-    const channel = supabase
-      .channel(`catalog-product-settings-${storeId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'catalog_product_settings',
-        },
-        (payload) => {
-          const record = (payload.new || payload.old) as any;
-          
-          // Only process if the catalog belongs to our store
-          if (!record || !catalogIdsRef.current.includes(record.catalog_id)) {
-            return;
-          }
+    // Small delay to ensure catalogIdsRef is populated
+    const timeoutId = setTimeout(() => {
+      const channel = supabase
+        .channel(`catalog-product-settings-${storeId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'catalog_product_settings',
+          },
+          (payload) => {
+            const record = (payload.new || payload.old) as any;
+            
+            // Only process if the catalog belongs to our store
+            if (!record || (catalogIdsRef.current.length > 0 && !catalogIdsRef.current.includes(record.catalog_id))) {
+              return;
+            }
 
-          if (payload.eventType === 'INSERT') {
-            const newSetting = formatSetting(payload.new);
-            setSettings(prev => {
-              // Avoid duplicates
-              if (prev.some(s => s.id === newSetting.id)) return prev;
-              return [...prev, newSetting];
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            const updated = formatSetting(payload.new);
-            setSettings(prev => prev.map(s => s.id === updated.id ? updated : s));
-          } else if (payload.eventType === 'DELETE') {
-            const deletedId = (payload.old as any).id;
-            setSettings(prev => prev.filter(s => s.id !== deletedId));
+            if (payload.eventType === 'INSERT') {
+              const newSetting = formatSetting(payload.new);
+              setSettings(prev => {
+                // Avoid duplicates
+                if (prev.some(s => s.id === newSetting.id)) return prev;
+                return [...prev, newSetting];
+              });
+            } else if (payload.eventType === 'UPDATE') {
+              const updated = formatSetting(payload.new);
+              setSettings(prev => prev.map(s => s.id === updated.id ? updated : s));
+            } else if (payload.eventType === 'DELETE') {
+              const deletedId = (payload.old as any).id;
+              setSettings(prev => prev.filter(s => s.id !== deletedId));
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }, 100);
 
     return () => {
-      supabase.removeChannel(channel);
+      clearTimeout(timeoutId);
     };
   }, [storeId]);
 
