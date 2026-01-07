@@ -188,9 +188,14 @@ function ProductCard({
           {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />}
         </div>
 
-        {/* Цена за кг */}
+        {/* Цена за кг и объём */}
         <p className={`text-muted-foreground leading-tight ${showImages ? 'text-[10px]' : 'text-[9px] whitespace-nowrap'}`}>
           {formatPrice(salePrice)}/{unit}
+          {product.unit_weight && (
+            <span className="ml-1">
+              · {product.unit_weight} {unit}
+            </span>
+          )}
           {showImages && fullPrice && (
             <span className="ml-1">
               · ~{formatPrice(fullPrice)}
