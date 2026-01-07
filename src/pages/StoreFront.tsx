@@ -751,11 +751,13 @@ export default function StoreFront() {
             <p className="text-muted-foreground">
               {selectedCatalog 
                 ? "В этом прайс-листе нет товаров"
-                : "В магазине пока нет товаров"}
+                : "Выберите прайс-лист для просмотра товаров"}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Добавьте товары в панели управления
-            </p>
+            {!selectedCatalog && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Нажмите на иконку папки слева вверху
+              </p>
+            )}
           </div>
         )}
       </main>
