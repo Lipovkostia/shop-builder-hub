@@ -1035,7 +1035,11 @@ const CustomerDashboard = () => {
                     {getVariantLabel(product, item.variantIndex) && (
                       <p className="text-xs text-muted-foreground">{getVariantLabel(product, item.variantIndex)}</p>
                     )}
-                    <p className="text-sm text-primary">{formatPrice(item.price)}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-muted-foreground">{formatPrice(item.price)}</p>
+                      <span className="text-xs text-muted-foreground">×{item.quantity}</span>
+                      <p className="text-sm font-medium text-primary">{formatPrice(item.price * item.quantity)}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
                     <Button 
