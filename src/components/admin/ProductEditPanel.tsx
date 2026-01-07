@@ -233,9 +233,9 @@ export function ProductEditPanel({
           </div>
         </div>
 
-        {/* Итого */}
+        {/* Цена */}
         <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Итого</label>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Цена</label>
           <div className="h-7 mt-0.5 flex items-center px-2 rounded-md bg-primary/10 border border-primary/20">
             <span className="text-xs font-semibold text-primary">{calculateSalePrice().toFixed(0)} ₽</span>
           </div>
