@@ -145,10 +145,12 @@ export function useStoreProducts(storeId: string | null) {
     }
 
     try {
-      const { error } = await supabase
+      const { data, error, count } = await supabase
         .from("products")
         .update(updates)
-        .eq("id", productId);
+        .eq("id", productId)
+        .select()
+        .maybeSingle();
 
       if (error) {
         if (error.code === '42501') {
@@ -157,9 +159,14 @@ export function useStoreProducts(storeId: string | null) {
         throw error;
       }
       
-      // Update local state with the updates
-      setProducts(prev => prev.map(p => p.id === productId ? { ...p, ...updates, updated_at: new Date().toISOString() } : p));
-      return { id: productId, ...updates };
+      // If no data returned, RLS blocked the update
+      if (!data) {
+        throw new Error("Нет прав для редактирования. Убедитесь, что вы владелец магазина.");
+      }
+      
+      // Update local state with the returned data
+      setProducts(prev => prev.map(p => p.id === productId ? data : p));
+      return data;
     } catch (error: any) {
       console.error("Error updating product:", error);
       toast({
