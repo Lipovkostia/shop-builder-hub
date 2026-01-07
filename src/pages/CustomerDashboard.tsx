@@ -1027,56 +1027,58 @@ const CustomerDashboard = () => {
             {cart.length === 0 ? (
               <p className="text-center text-xs text-muted-foreground py-4">Корзина пуста</p>
             ) : (
-              <div className="space-y-1">
+              <div className="divide-y divide-border/50">
                 {cart.map((item, index) => {
                   const product = getProductById(item.productId);
                   if (!product) return null;
+                  const variantLabel = getVariantLabel(product, item.variantIndex);
                   
                   return (
-                    <div key={`${item.productId}-${item.variantIndex}`} className="flex items-center gap-2 py-1.5 border-b border-border/50 last:border-0">
-                      <div className="w-8 h-8 rounded bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <div key={`${item.productId}-${item.variantIndex}`} className="grid grid-cols-[32px_1fr_auto_auto] gap-2 py-2 items-center">
+                      {/* Изображение */}
+                      <div className="w-8 h-8 rounded bg-muted flex items-center justify-center overflow-hidden">
                         {product.images?.[0] ? (
-                          <img 
-                            src={product.images[0]} 
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                          />
+                          <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
                         ) : (
                           <Package className="h-3.5 w-3.5 text-muted-foreground" />
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
+                      
+                      {/* Название + вариант + цена за 1 */}
+                      <div className="min-w-0">
                         <p className="font-medium text-[11px] truncate leading-tight">{product.name}</p>
-                        <div className="flex items-center gap-1.5 text-[10px]">
-                          {getVariantLabel(product, item.variantIndex) && (
-                            <span className="text-muted-foreground">{getVariantLabel(product, item.variantIndex)}</span>
-                          )}
-                          <span className="text-muted-foreground">•</span>
-                          <span className="text-muted-foreground">{formatPriceSpaced(item.price)}</span>
-                          <span className="text-muted-foreground">×{item.quantity}</span>
-                          <span className="font-semibold text-primary">{formatPriceSpaced(item.price * item.quantity)}</span>
-                        </div>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {variantLabel && <span>{variantLabel} · </span>}
+                          {formatPrice(item.price)}/шт
+                        </p>
                       </div>
+                      
+                      {/* Кнопки +/- с количеством */}
                       <div className="flex items-center gap-0.5">
                         <button 
-                          className="w-6 h-6 flex items-center justify-center rounded-full bg-muted hover:bg-muted/80 transition-colors"
+                          className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-muted/80 transition-colors"
                           onClick={() => updateCartQuantity(index, -1)}
                         >
                           <Minus className="h-2.5 w-2.5" />
                         </button>
-                        <span className="w-5 text-center text-[11px] font-medium">{item.quantity}</span>
+                        <span className="w-5 text-center text-[11px] font-semibold tabular-nums">{item.quantity}</span>
                         <button 
-                          className="w-6 h-6 flex items-center justify-center rounded-full bg-muted hover:bg-muted/80 transition-colors"
+                          className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-muted/80 transition-colors"
                           onClick={() => updateCartQuantity(index, 1)}
                         >
                           <Plus className="h-2.5 w-2.5" />
                         </button>
                         <button 
-                          className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-destructive/10 transition-colors ml-1"
+                          className="w-5 h-5 flex items-center justify-center rounded hover:bg-destructive/10 transition-colors"
                           onClick={() => removeFromCart(index)}
                         >
-                          <Trash2 className="h-2.5 w-2.5 text-destructive" />
+                          <Trash2 className="h-2.5 w-2.5 text-destructive/70" />
                         </button>
+                      </div>
+                      
+                      {/* Сумма */}
+                      <div className="text-right w-14">
+                        <span className="text-[11px] font-bold text-primary tabular-nums">{formatPriceSpaced(item.price * item.quantity)}</span>
                       </div>
                     </div>
                   );
