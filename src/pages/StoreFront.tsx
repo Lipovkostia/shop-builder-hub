@@ -566,8 +566,9 @@ function StoreHeader({
           )}
         </div>
 
+        {/* Заказы по центру */}
         {canShowAdminButton && (
-          <div className="flex items-center gap-1">
+          <div className="absolute left-1/2 -translate-x-1/2">
             <button
               onClick={() => onAdminClick?.('orders')}
               className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
@@ -576,6 +577,11 @@ function StoreHeader({
             >
               <ForkliftIcon boxCount={ordersCount || 0} className="w-5 h-5 text-muted-foreground" />
             </button>
+          </div>
+        )}
+
+        {canShowAdminButton && (
+          <div className="flex items-center gap-1">
             <button
               onClick={() => onAdminClick?.('products')}
               className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
