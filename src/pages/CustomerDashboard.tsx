@@ -133,7 +133,10 @@ function ProductCard({
   const quarterPrice = product.price_quarter || basePrice * (unitWeight / 4);
   const portionPrice = product.price_portion || null;
 
-  const inStock = product.quantity > 0;
+  // Use catalog_status if available, otherwise fall back to quantity check
+  const inStock = product.catalog_status 
+    ? product.catalog_status === 'in_stock' 
+    : product.quantity > 0;
   const image = product.images?.[0] || "";
 
   return (

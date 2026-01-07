@@ -33,6 +33,10 @@ export interface CatalogProduct {
   price_portion: number | null;
   portion_weight: number | null;
   quantity: number;
+  // Catalog-specific settings
+  catalog_status?: string | null;
+  catalog_markup_type?: string | null;
+  catalog_markup_value?: number | null;
 }
 
 export interface CartItem {
@@ -182,6 +186,17 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
 
       const productIds = visibility.map(v => v.product_id);
 
+      // Get catalog product settings for this catalog
+      const { data: catalogSettings } = await supabase
+        .from("catalog_product_settings")
+        .select("product_id, status, markup_type, markup_value, portion_prices")
+        .eq("catalog_id", catalogId);
+
+      // Create a map for quick lookup
+      const settingsMap = new Map(
+        (catalogSettings || []).map(s => [s.product_id, s])
+      );
+
       // Get products
       const { data: productsData, error } = await supabase
         .from("products")
@@ -191,27 +206,35 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
 
       if (error) throw error;
 
-      const mappedProducts: CatalogProduct[] = (productsData || []).map(p => ({
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        price: p.price,
-        compare_price: p.compare_price,
-        unit: p.unit || "кг",
-        unit_weight: p.unit_weight,
-        packaging_type: p.packaging_type,
-        images: p.images || [],
-        is_active: p.is_active ?? true,
-        buy_price: p.buy_price,
-        markup_type: p.markup_type,
-        markup_value: p.markup_value,
-        price_full: p.price_full,
-        price_half: p.price_half,
-        price_quarter: p.price_quarter,
-        price_portion: p.price_portion,
-        portion_weight: p.portion_weight,
-        quantity: p.quantity ?? 0,
-      }));
+      const mappedProducts: CatalogProduct[] = (productsData || []).map(p => {
+        const settings = settingsMap.get(p.id);
+        
+        return {
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          price: p.price,
+          compare_price: p.compare_price,
+          unit: p.unit || "кг",
+          unit_weight: p.unit_weight,
+          packaging_type: p.packaging_type,
+          images: p.images || [],
+          is_active: p.is_active ?? true,
+          buy_price: p.buy_price,
+          markup_type: p.markup_type,
+          markup_value: p.markup_value,
+          price_full: p.price_full,
+          price_half: p.price_half,
+          price_quarter: p.price_quarter,
+          price_portion: p.price_portion,
+          portion_weight: p.portion_weight,
+          quantity: p.quantity ?? 0,
+          // Add catalog-specific settings
+          catalog_status: settings?.status || null,
+          catalog_markup_type: settings?.markup_type || null,
+          catalog_markup_value: settings?.markup_value || null,
+        };
+      });
 
       setProducts(mappedProducts);
     } catch (error: any) {
