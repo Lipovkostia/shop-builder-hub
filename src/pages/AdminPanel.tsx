@@ -3797,16 +3797,10 @@ export default function AdminPanel({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">
-                        Выбрано: {selectedCatalogProducts.size} из {allProducts.length}
-                      </Badge>
-                    </div>
-                    <Button onClick={saveCatalogProducts} size="sm">
-                      <Check className="h-4 w-4 mr-2" />
-                      Сохранить
-                    </Button>
+                  <div className="flex items-center mb-4">
+                    <Badge variant="outline">
+                      Выбрано: {selectedCatalogProducts.size} из {allProducts.length}
+                    </Badge>
                   </div>
 
                   <div className="mb-4">
