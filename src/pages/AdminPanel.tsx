@@ -719,12 +719,8 @@ export default function AdminPanel({
             setCurrentStoreName(store.name);
             setCurrentStoreSubdomain(store.subdomain);
             
-            // Set section if provided
-            if (sectionFromUrl === 'products') {
-              setActiveSection('products');
-            } else if (sectionFromUrl === 'customers') {
-              setActiveSection('roles');
-            }
+            // section берём из URL через отдельный useEffect (не трогаем здесь, чтобы не вызывать лишние перерисовки)
+
           }
           setStoreContextLoading(false);
           return;
@@ -758,7 +754,7 @@ export default function AdminPanel({
     };
     
     fetchStoreContext();
-  }, [user, profile, storeIdFromUrl, isSuperAdmin, sectionFromUrl, workspaceMode, storeIdOverride]);
+  }, [user, profile, storeIdFromUrl, isSuperAdmin, workspaceMode, storeIdOverride]);
 
   // Handle section change with URL update
   const handleSectionChange = useCallback((section: ActiveSection) => {
