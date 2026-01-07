@@ -331,13 +331,15 @@ interface AdminPanelProps {
   storeIdOverride?: string;
   storeSubdomainOverride?: string;
   onSwitchToStorefront?: () => void;
+  initialSection?: ActiveSection;
 }
 
 export default function AdminPanel({ 
   workspaceMode, 
   storeIdOverride, 
   storeSubdomainOverride,
-  onSwitchToStorefront 
+  onSwitchToStorefront,
+  initialSection 
 }: AdminPanelProps = {}) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -422,6 +424,10 @@ export default function AdminPanel({
   // ================ END SUPABASE DATA HOOKS ================
   
   const [activeSection, setActiveSection] = useState<ActiveSection>(() => {
+    // В workspace режиме используем initialSection если передан
+    if (workspaceMode && initialSection) {
+      return initialSection;
+    }
     const section = searchParams.get('section');
     if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients') {
       return section;
@@ -439,11 +445,17 @@ export default function AdminPanel({
       return;
     }
     
+    // В workspace режиме синхронизируемся с initialSection
+    if (workspaceMode && initialSection) {
+      setActiveSection(initialSection);
+      return;
+    }
+    
     const section = searchParams.get('section');
     if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients') {
       setActiveSection(section);
     }
-  }, [searchParams]);
+  }, [searchParams, workspaceMode, initialSection]);
   
   // Product visibility in catalogs state - now using Supabase data
   const productCatalogVisibility = supabaseProductVisibility;
