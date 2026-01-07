@@ -614,14 +614,12 @@ const CustomerDashboard = () => {
         <header className="sticky top-0 z-50 bg-background border-b border-border">
           <div className="h-12 flex items-center justify-between px-3">
             <span className="font-semibold">Мои прайс-листы</span>
-            {!isImpersonating && (
-              <button
-                onClick={handleSignOut}
-                className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
-              >
-                <LogOut className="w-4 h-4 text-muted-foreground" />
-              </button>
-            )}
+            <button
+              onClick={handleOpenProfile}
+              className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
+            >
+              <User className="w-4 h-4 text-muted-foreground" />
+            </button>
           </div>
         </header>
         <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
