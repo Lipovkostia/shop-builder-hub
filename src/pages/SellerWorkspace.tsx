@@ -16,12 +16,17 @@ export default function SellerWorkspace() {
   const storefrontScrollRef = useRef(0);
   const adminScrollRef = useRef(0);
 
-  const handleSwitchToAdmin = useCallback(() => {
+  const handleSwitchToAdmin = useCallback((section?: string) => {
     if (activeView === "admin") return;
     
     // Сохраняем позицию скролла витрины
     storefrontScrollRef.current = window.scrollY;
     setActiveView("admin");
+    
+    // Устанавливаем секцию через URL если нужно
+    if (section) {
+      window.history.replaceState(null, '', `?section=${section}`);
+    }
     
     // Восстанавливаем позицию скролла админки после рендера
     requestAnimationFrame(() => {
