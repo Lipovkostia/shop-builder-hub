@@ -290,13 +290,14 @@ function ProductCard({
                   </button>
                 );
               })()}
-              {/* Порция */}
-              {packagingPrices.portion && (
+              {/* Порция - показываем если есть price_portion */}
+              {product.price_portion && (
                 (() => {
                   const qty = getCartQuantity(3);
+                  const portionPrice = product.price_portion;
                   return (
                     <button
-                      onClick={() => inStock && onAddToCart(product.id, 3, packagingPrices.portion!)}
+                      onClick={() => inStock && onAddToCart(product.id, 3, portionPrice)}
                       disabled={!inStock}
                       className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
                         inStock 
@@ -311,7 +312,7 @@ function ProductCard({
                       )}
                       <PortionIndicator type="portion" />
                       <span className="text-[9px] font-medium text-foreground">
-                        {formatPriceSpaced(packagingPrices.portion!)}
+                        {formatPriceSpaced(portionPrice)}
                       </span>
                     </button>
                   );
