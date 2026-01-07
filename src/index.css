@@ -107,9 +107,16 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
+* {
+  @apply border-border;
+}
+
+/* Prevent zoom on input focus on mobile devices */
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
   }
+}
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
