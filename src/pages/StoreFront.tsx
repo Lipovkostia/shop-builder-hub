@@ -275,11 +275,11 @@ function ProductCard({
       )}
 
       {/* Контент справа */}
-      <div className={`flex-1 min-w-0 flex ${showImages ? 'flex-col justify-center gap-0' : 'flex-row items-center gap-2'}`}>
+      <div className={`flex-1 min-w-0 flex flex-col justify-center gap-0`}>
         {/* Название */}
-        <div className={`relative overflow-hidden ${showImages ? '' : 'flex-1 min-w-0 mr-2'}`}>
+        <div className={`relative overflow-hidden`}>
           <h3 
-            className={`font-medium text-foreground leading-tight ${showImages ? 'text-sm pr-6 whitespace-nowrap' : 'text-xs truncate'} ${isOwner ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+            className={`font-medium text-foreground leading-tight ${showImages ? 'text-sm pr-6 whitespace-nowrap' : 'text-xs truncate pr-2'} ${isOwner ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
             onClick={isOwner && onToggleExpand ? () => onToggleExpand() : undefined}
           >
             {product.name}
@@ -313,7 +313,7 @@ function ProductCard({
         )}
 
         {/* Кнопки - flex-shrink-0 чтобы не сжимались */}
-        <div className={`flex items-center gap-0.5 flex-shrink-0 ${showImages ? 'mt-0.5 flex-wrap' : ''}`}>
+        <div className={`flex items-center gap-0.5 flex-shrink-0 mt-0.5 flex-wrap`}>
           {/* Статус бейдж для "нет в наличии" или "скрыт" */}
           {effectiveStatus === "out_of_stock" && (
             <Badge variant="secondary" className="text-[11px] h-6 mr-1">
