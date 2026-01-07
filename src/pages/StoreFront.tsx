@@ -164,7 +164,7 @@ function ProductCard({
 
       {/* Контент справа */}
       <div className={`flex-1 min-w-0 flex ${showImages ? 'flex-col justify-center gap-0' : 'flex-row items-center gap-2'}`}>
-        {/* Название */}
+        {/* Название и описание */}
         <div className={`relative overflow-hidden ${showImages ? '' : 'flex-1 min-w-0'}`}>
           <h3 
             className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px]'} ${isOwner ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
@@ -180,6 +180,11 @@ function ProductCard({
               <Pencil className="inline-block ml-1 w-3 h-3 text-muted-foreground" />
             )}
           </h3>
+          {product.description && showImages && (
+            <p className="text-[9px] text-muted-foreground truncate pr-6 mt-0.5">
+              {product.description}
+            </p>
+          )}
           {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />}
         </div>
 
