@@ -37,6 +37,12 @@ export interface CatalogProduct {
   catalog_status?: string | null;
   catalog_markup_type?: string | null;
   catalog_markup_value?: number | null;
+  catalog_portion_prices?: {
+    full?: number | null;
+    half?: number | null;
+    quarter?: number | null;
+    portion?: number | null;
+  } | null;
 }
 
 export interface CartItem {
@@ -233,6 +239,12 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
           catalog_status: settings?.status || null,
           catalog_markup_type: settings?.markup_type || null,
           catalog_markup_value: settings?.markup_value || null,
+          catalog_portion_prices: settings?.portion_prices as {
+            full?: number | null;
+            half?: number | null;
+            quarter?: number | null;
+            portion?: number | null;
+          } | null,
         };
       });
 
