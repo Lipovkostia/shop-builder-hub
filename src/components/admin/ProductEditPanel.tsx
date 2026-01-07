@@ -96,13 +96,28 @@ export function ProductEditPanel({
   const [packagingType, setPackagingType] = useState(product.packaging_type || "piece");
   const [unitWeight, setUnitWeight] = useState(product.unit_weight?.toString() || "");
   const [status, setStatus] = useState(currentStatus || "in_stock");
-  const [categories, setCategories] = useState(
-    catalogSettings?.categories?.join(", ") || ""
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    catalogSettings?.categories || []
   );
+  const [newCategory, setNewCategory] = useState("");
   const [selectedCatalogs, setSelectedCatalogs] = useState<string[]>(productCatalogIds);
   const [saving, setSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialMount = useRef(true);
+
+  // Predefined categories that can be selected
+  const predefinedCategories = [
+    "Сыры",
+    "Молочные продукты",
+    "Мясо",
+    "Птица",
+    "Рыба",
+    "Морепродукты",
+    "Овощи",
+    "Фрукты",
+    "Напитки",
+    "Деликатесы",
+  ];
 
   // Update local state when product or catalogSettings changes
   useEffect(() => {
@@ -132,7 +147,7 @@ export function ProductEditPanel({
     setPricePortion(
       catalogSettings?.portion_prices?.portionPrice?.toString() || product.price_portion?.toString() || ""
     );
-    setCategories(catalogSettings?.categories?.join(", ") || "");
+    setSelectedCategories(catalogSettings?.categories || []);
   }, [catalogSettings, catalogId, product]);
 
   // Sync status with currentStatus prop only on initial mount or when catalogId changes
@@ -185,11 +200,6 @@ export function ProductEditPanel({
 
       // Update catalog-specific settings (markup, portion prices, categories)
       if (catalogId && onCatalogSettingsChange) {
-        const categoriesArray = categories
-          .split(",")
-          .map(c => c.trim())
-          .filter(c => c.length > 0);
-        
         onCatalogSettingsChange(catalogId, product.id, {
           markup_type: markupType,
           markup_value: parseFloat(markupValue) || 0,
@@ -199,7 +209,7 @@ export function ProductEditPanel({
             portionPrice: parseFloat(pricePortion) || undefined,
           },
           status,
-          categories: categoriesArray,
+          categories: selectedCategories,
         });
       } else if (catalogId && onStatusChange && status !== currentStatus) {
         // Fallback: just update status if no onCatalogSettingsChange
@@ -210,7 +220,7 @@ export function ProductEditPanel({
     } finally {
       setSaving(false);
     }
-  }, [name, description, buyPrice, markupType, markupValue, unit, packagingType, unitWeight, status, priceHalf, priceQuarter, pricePortion, categories, selectedCatalogs, product.id, productCatalogIds, onSave, onCatalogsChange, catalogId, currentStatus, onStatusChange, onCatalogSettingsChange, calculateSalePrice]);
+  }, [name, description, buyPrice, markupType, markupValue, unit, packagingType, unitWeight, status, priceHalf, priceQuarter, pricePortion, selectedCategories, selectedCatalogs, product.id, productCatalogIds, onSave, onCatalogsChange, catalogId, currentStatus, onStatusChange, onCatalogSettingsChange, calculateSalePrice]);
 
   // Debounced auto-save effect
   useEffect(() => {
@@ -232,7 +242,7 @@ export function ProductEditPanel({
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [name, buyPrice, markupType, markupValue, unit, packagingType, unitWeight, status, priceHalf, priceQuarter, pricePortion, selectedCatalogs]);
+  }, [name, buyPrice, markupType, markupValue, unit, packagingType, unitWeight, status, priceHalf, priceQuarter, pricePortion, selectedCategories, selectedCatalogs]);
 
   const toggleCatalog = (catalogId: string) => {
     setSelectedCatalogs(prev => 
@@ -387,14 +397,83 @@ export function ProductEditPanel({
         {/* Категории */}
         <div className="col-span-2 sm:col-span-3">
           <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Категории</label>
-          <Input
-            type="text"
-            value={categories}
-            onChange={(e) => setCategories(e.target.value)}
-            placeholder="Сыры, Молочные продукты"
-            className="h-7 text-xs mt-0.5"
-          />
-          <p className="text-[9px] text-muted-foreground mt-0.5">Через запятую</p>
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {/* Предустановленные категории */}
+            {predefinedCategories.map((category) => (
+              <label
+                key={category}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] cursor-pointer transition-colors ${
+                  selectedCategories.includes(category) 
+                    ? 'bg-primary/20 text-primary border border-primary/30' 
+                    : 'bg-muted/50 text-muted-foreground border border-transparent hover:bg-muted'
+                }`}
+              >
+                <Checkbox
+                  checked={selectedCategories.includes(category)}
+                  onCheckedChange={() => {
+                    setSelectedCategories(prev => 
+                      prev.includes(category)
+                        ? prev.filter(c => c !== category)
+                        : [...prev, category]
+                    );
+                  }}
+                  className="h-3 w-3"
+                />
+                {category}
+              </label>
+            ))}
+            {/* Кастомные категории (не из предустановленных) */}
+            {selectedCategories
+              .filter(c => !predefinedCategories.includes(c))
+              .map((category) => (
+                <label
+                  key={category}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] cursor-pointer transition-colors bg-primary/20 text-primary border border-primary/30"
+                >
+                  <Checkbox
+                    checked={true}
+                    onCheckedChange={() => {
+                      setSelectedCategories(prev => prev.filter(c => c !== category));
+                    }}
+                    className="h-3 w-3"
+                  />
+                  {category}
+                </label>
+              ))}
+          </div>
+          {/* Добавить новую категорию */}
+          <div className="flex gap-1 mt-1.5">
+            <Input
+              type="text"
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newCategory.trim()) {
+                  e.preventDefault();
+                  if (!selectedCategories.includes(newCategory.trim())) {
+                    setSelectedCategories(prev => [...prev, newCategory.trim()]);
+                  }
+                  setNewCategory("");
+                }
+              }}
+              placeholder="Новая категория..."
+              className="h-6 text-[10px] flex-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-6 px-2 text-[10px]"
+              onClick={() => {
+                if (newCategory.trim() && !selectedCategories.includes(newCategory.trim())) {
+                  setSelectedCategories(prev => [...prev, newCategory.trim()]);
+                  setNewCategory("");
+                }
+              }}
+            >
+              +
+            </Button>
+          </div>
         </div>
 
         {/* Статус - кнопки вместо Select */}
