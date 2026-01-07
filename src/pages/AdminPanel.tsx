@@ -1442,18 +1442,28 @@ export default function AdminPanel({
   }, [getCatalogProductSettingsFromDB]);
 
   // Update catalog-specific pricing for a product (save to Supabase)
-  const updateCatalogProductPricing = useCallback((
-    catalogId: string, 
-    productId: string, 
+  const updateCatalogProductPricing = useCallback(async (
+    catalogId: string,
+    productId: string,
     updates: Partial<CatalogProductPricing>
   ) => {
+    // Admin panel can be opened without login; editing requires auth.
+    if (!user) {
+      toast({
+        title: "Требуется вход",
+        description: "Войдите в аккаунт продавца, чтобы сохранять изменения в прайс-листе.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const dbUpdates: Parameters<typeof updateCatalogProductSettingsInDB>[2] = {};
-    
+
     if (updates.categories !== undefined) {
       dbUpdates.categories = updates.categories;
     }
     if (updates.markup !== undefined) {
-      dbUpdates.markup_type = updates.markup?.type === 'rubles' ? 'fixed' : 'percent';
+      dbUpdates.markup_type = updates.markup?.type === "rubles" ? "fixed" : "percent";
       dbUpdates.markup_value = updates.markup?.value || 0;
     }
     if (updates.status !== undefined) {
@@ -1462,9 +1472,9 @@ export default function AdminPanel({
     if (updates.portionPrices !== undefined) {
       dbUpdates.portion_prices = updates.portionPrices;
     }
-    
-    updateCatalogProductSettingsInDB(catalogId, productId, dbUpdates);
-  }, [updateCatalogProductSettingsInDB]);
+
+    await updateCatalogProductSettingsInDB(catalogId, productId, dbUpdates);
+  }, [updateCatalogProductSettingsInDB, user, toast]);
 
   // Get effective sale price for catalog (using catalog markup or falling back to base product)
   const getCatalogSalePrice = (product: Product, catalogPricing?: CatalogProductPricing): number => {
@@ -2237,6 +2247,16 @@ export default function AdminPanel({
 
   // Update product via Supabase
   const updateProduct = async (updatedProduct: Product) => {
+    // Admin panel can be opened without login; editing requires auth.
+    if (!user) {
+      toast({
+        title: "Требуется вход",
+        description: "Войдите в аккаунт продавца, чтобы сохранять изменения.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const result = await updateSupabaseProduct(updatedProduct.id, {
       name: updatedProduct.name,
       description: updatedProduct.description || null,
@@ -2252,11 +2272,17 @@ export default function AdminPanel({
       is_active: updatedProduct.status !== "hidden",
       auto_sync: updatedProduct.autoSync || false,
     });
-    
+
     if (result) {
       toast({
         title: "Товар сохранён",
         description: `${updatedProduct.name} обновлён`,
+      });
+    } else {
+      toast({
+        title: "Не удалось сохранить",
+        description: "Проверьте, что вы авторизованы и у вас есть доступ к магазину.",
+        variant: "destructive",
       });
     }
   };
