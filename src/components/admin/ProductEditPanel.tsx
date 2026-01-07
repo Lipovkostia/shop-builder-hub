@@ -310,7 +310,7 @@ export function ProductEditPanel({
 
         {/* Закупка */}
         <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Закупка</label>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Себестоимость</label>
           <div className="flex items-center gap-1 mt-0.5">
             <Input
               type="number"
