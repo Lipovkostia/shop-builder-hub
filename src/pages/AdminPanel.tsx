@@ -437,6 +437,14 @@ export default function AdminPanel({
     return "products";
   });
   
+  // Sync activeSection with URL parameter changes
+  useEffect(() => {
+    const section = searchParams.get('section');
+    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'roles' || section === 'visibility' || section === 'orders' || section === 'clients') {
+      setActiveSection(section);
+    }
+  }, [searchParams]);
+  
   // Product visibility in catalogs state - now using Supabase data
   const productCatalogVisibility = supabaseProductVisibility;
   // Create a setter wrapper for compatibility
