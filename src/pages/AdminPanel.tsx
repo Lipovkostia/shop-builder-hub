@@ -653,23 +653,33 @@ export default function AdminPanel({
   // Custom options state (for units and packaging types added by user)
   const [customUnits, setCustomUnits] = useState<string[]>([]);
   const [customPackagingTypes, setCustomPackagingTypes] = useState<string[]>([]);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([
-    { id: "cheese", name: "Сыры" },
-    { id: "meat", name: "Мясо" },
-    { id: "fish", name: "Рыба" },
-    { id: "dairy", name: "Молочные продукты" },
-  ]);
+  // Predefined categories - use names as both id and label for consistency with ProductEditPanel
+  const predefinedCategoryNames = [
+    "Сыры",
+    "Молочные продукты", 
+    "Мясо",
+    "Птица",
+    "Рыба",
+    "Морепродукты",
+    "Овощи",
+    "Фрукты",
+    "Напитки",
+    "Деликатесы",
+  ];
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const categories = [...predefinedCategoryNames, ...customCategories].map(name => ({ id: name, name }));
   const [newCategoryName, setNewCategoryName] = useState("");
   
   // Add new category handler
   const handleAddCategory = useCallback((categoryName: string) => {
-    const newId = `cat_${Date.now()}`;
-    setCategories(prev => [...prev, { id: newId, name: categoryName }]);
-    toast({
-      title: "Категория создана",
-      description: `Категория "${categoryName}" успешно добавлена`,
-    });
-  }, [toast]);
+    if (!predefinedCategoryNames.includes(categoryName) && !customCategories.includes(categoryName)) {
+      setCustomCategories(prev => [...prev, categoryName]);
+      toast({
+        title: "Категория создана",
+        description: `Категория "${categoryName}" успешно добавлена`,
+      });
+    }
+  }, [customCategories, toast]);
 
   // Build combined options lists
   const allUnitOptions = [
