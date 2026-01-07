@@ -32,7 +32,7 @@ interface ProductEditPanelProps {
   product: StoreProduct;
   catalogs: Catalog[];
   productCatalogIds: string[];
-  onSave: (productId: string, updates: Partial<StoreProduct>) => Promise<void>;
+  onSave: (productId: string, updates: Partial<StoreProduct>) => Promise<StoreProduct | null | void>;
   onCatalogsChange: (productId: string, catalogIds: string[]) => void;
   onClose: () => void;
   catalogId?: string | null;
