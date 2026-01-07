@@ -199,12 +199,12 @@ export function ProductEditPanel({
       };
 
       await onSave(product.id, updates);
-      
+
       // Update catalogs if changed
-      const catalogsChanged = 
+      const catalogsChanged =
         selectedCatalogs.length !== productCatalogIds.length ||
-        selectedCatalogs.some(id => !productCatalogIds.includes(id));
-      
+        selectedCatalogs.some((id) => !productCatalogIds.includes(id));
+
       if (catalogsChanged) {
         onCatalogsChange(product.id, selectedCatalogs);
       }
@@ -231,7 +231,32 @@ export function ProductEditPanel({
     } finally {
       setSaving(false);
     }
-  }, [name, description, buyPrice, markupType, markupValue, unit, packagingType, unitWeight, status, priceHalf, priceQuarter, pricePortion, selectedCategories, selectedCatalogs, product.id, productCatalogIds, onSave, onCatalogsChange, catalogId, currentStatus, onStatusChange, onCatalogSettingsChange, calculateSalePrice]);
+  }, [
+    name,
+    description,
+    buyPrice,
+    markupType,
+    markupValue,
+    unit,
+    packagingType,
+    unitWeight,
+    status,
+    categoryId,
+    priceHalf,
+    priceQuarter,
+    pricePortion,
+    selectedCategories,
+    selectedCatalogs,
+    product.id,
+    productCatalogIds,
+    onSave,
+    onCatalogsChange,
+    catalogId,
+    currentStatus,
+    onStatusChange,
+    onCatalogSettingsChange,
+    calculateSalePrice,
+  ]);
 
   // Debounced auto-save effect
   useEffect(() => {
