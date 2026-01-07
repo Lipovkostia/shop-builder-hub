@@ -2404,24 +2404,6 @@ export default function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Super Admin Context Banner */}
-      {isSuperAdminContext && (
-        <div className="bg-amber-500 text-amber-950 px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            <span className="font-medium">Режим супер-администратора:</span>
-            <span>Вы просматриваете магазин "{currentStoreName}"</span>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="bg-white/20 border-amber-950/30 hover:bg-white/30"
-            onClick={() => window.close()}
-          >
-            Закрыть вкладку
-          </Button>
-        </div>
-      )}
 
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card border-b border-border">
