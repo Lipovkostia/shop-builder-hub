@@ -421,9 +421,15 @@ function StoreHeader({
   onSearchChange: (query: string) => void;
 }) {
   const navigate = useNavigate();
+  const { user, profile, loading: authLoading } = useAuth();
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const selectedCatalogName = catalogs.find((c) => c.id === selectedCatalog)?.name || "Все товары";
+
+  const canShowAdminButton =
+    isOwner ||
+    isOwnerLoading ||
+    (!!user && (authLoading || profile?.role === "seller"));
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
@@ -445,11 +451,16 @@ function StoreHeader({
           <span className="text-sm font-medium">{store.name}</span>
         </div>
 
-        {(isOwner || isOwnerLoading) ? (
+        {canShowAdminButton ? (
           <button
-            onClick={() => navigate(`/admin?storeId=${store.id}`)}
-            className={`p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full ${isOwnerLoading ? 'opacity-50' : ''}`}
-            disabled={isOwnerLoading}
+            onClick={() => {
+              // Если store.id ещё не пришёл — всё равно даём перейти в управление,
+              // чтобы "шестерёнка" никогда не исчезала.
+              navigate(store?.id ? `/admin?storeId=${store.id}` : `/admin`);
+            }}
+            className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
+            title="Панель управления"
+            aria-label="Панель управления"
           >
             <Settings className="w-4 h-4 text-muted-foreground" />
           </button>
