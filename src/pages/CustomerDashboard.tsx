@@ -422,14 +422,17 @@ const CustomerDashboard = () => {
   const [cart, setCart] = useState<LocalCartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showProfileView, setShowProfileView] = useState(false);
   const [showImages, setShowImages] = useState(true);
   
   // Profile data
   const [profileData, setProfileData] = useState<{ full_name: string | null; phone: string | null } | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   
   // Checkout form
   const [checkoutName, setCheckoutName] = useState("");
@@ -449,6 +452,8 @@ const CustomerDashboard = () => {
         .eq('user_id', userId)
         .single();
       setProfileData(data);
+      setEditName(data?.full_name || "");
+      setEditPhone(data?.phone || "");
     } catch (e) {
       console.error('Error fetching profile:', e);
     } finally {
@@ -457,8 +462,37 @@ const CustomerDashboard = () => {
   };
 
   const handleOpenProfile = () => {
-    setIsProfileOpen(true);
+    setShowProfileView(true);
     fetchProfileData();
+  };
+
+  const handleCloseProfile = () => {
+    setShowProfileView(false);
+  };
+
+  const handleSaveProfile = async () => {
+    const userId = targetUserId || user?.id;
+    if (!userId) return;
+    
+    setSavingProfile(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          full_name: editName.trim() || null, 
+          phone: editPhone.trim() || null 
+        })
+        .eq('user_id', userId);
+      
+      if (error) throw error;
+      
+      setProfileData({ full_name: editName.trim() || null, phone: editPhone.trim() || null });
+      toast({ title: "Сохранено", description: "Данные профиля обновлены" });
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -595,6 +629,150 @@ const CustomerDashboard = () => {
     );
   }
 
+  // Profile View component (inline)
+  const ProfileView = () => (
+    <div className="flex-1 overflow-auto p-4 space-y-6">
+      {profileLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      ) : (
+        <>
+          {/* Личные данные */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-muted-foreground">Личные данные</h3>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-name" className="text-xs text-muted-foreground">Имя</Label>
+                <Input
+                  id="edit-name"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Ваше имя"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-phone" className="text-xs text-muted-foreground">Телефон</Label>
+                <Input
+                  id="edit-phone"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="+7 (999) 123-45-67"
+                />
+              </div>
+              <Button 
+                onClick={handleSaveProfile} 
+                disabled={savingProfile}
+                className="w-full"
+              >
+                {savingProfile ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Сохранить изменения
+              </Button>
+            </div>
+          </div>
+
+          {/* Смена пароля */}
+          {!isImpersonating && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Key className="w-4 h-4" />
+                Смена пароля
+              </h3>
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  placeholder="Новый пароль"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="flex-1"
+                />
+                <Button 
+                  onClick={handleChangePassword} 
+                  disabled={passwordLoading || !newPassword}
+                  size="sm"
+                >
+                  {passwordLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Сменить"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Доступные прайс-листы */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Store className="w-4 h-4" />
+              Доступные прайс-листы
+            </h3>
+            <div className="space-y-2">
+              {catalogs.length > 0 ? (
+                catalogs.map((catalog) => (
+                  <div key={catalog.id} className="p-3 bg-muted/50 rounded-lg">
+                    <div className="font-medium text-sm">{catalog.store_name}</div>
+                    <div className="text-xs text-muted-foreground">{catalog.catalog_name}</div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">Нет доступных прайс-листов</p>
+              )}
+            </div>
+          </div>
+
+          {/* Выход */}
+          <div className="pt-4 border-t border-border">
+            {isImpersonating ? (
+              <Button variant="outline" onClick={handleExitImpersonation} className="w-full gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                Вернуться в панель супер-админа
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={handleSignOut} className="w-full gap-2">
+                <LogOut className="w-4 h-4" />
+                Выйти из аккаунта
+              </Button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  // Profile header
+  const ProfileHeader = () => (
+    <header className="sticky top-0 z-50 bg-background border-b border-border">
+      <div className="h-12 flex items-center px-3 gap-3">
+        <button
+          onClick={handleCloseProfile}
+          className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
+        >
+          <ArrowLeft className="w-4 h-4 text-muted-foreground" />
+        </button>
+        <span className="font-semibold">Профиль</span>
+      </div>
+    </header>
+  );
+
+  // Show profile view if open
+  if (showProfileView) {
+    return (
+      <div className="h-screen bg-background flex flex-col">
+        {isImpersonating && (
+          <div className="bg-amber-500 text-amber-950 px-3 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <Shield className="w-4 h-4" />
+              <span>Режим просмотра от имени покупателя</span>
+            </div>
+            <Button size="sm" variant="secondary" onClick={handleExitImpersonation} className="h-7 gap-1">
+              <ArrowLeft className="w-3 h-3" />
+              Назад
+            </Button>
+          </div>
+        )}
+        <ProfileHeader />
+        <ProfileView />
+      </div>
+    );
+  }
+
   if (catalogs.length === 0) {
     return (
       <div className="h-screen bg-background flex flex-col">
@@ -629,92 +807,6 @@ const CustomerDashboard = () => {
             Попросите продавца поделиться ссылкой на прайс-лист
           </p>
         </main>
-
-        {/* Profile Sheet for empty catalogs state */}
-        <Sheet open={isProfileOpen} onOpenChange={setIsProfileOpen}>
-          <SheetContent>
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
-                Профиль
-              </SheetTitle>
-            </SheetHeader>
-            
-            <div className="mt-6 space-y-6">
-              {profileLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                </div>
-              ) : (
-                <>
-                  {/* Личные данные */}
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-medium text-muted-foreground">Личные данные</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
-                        <User className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm">{profileData?.full_name || "Имя не указано"}</span>
-                      </div>
-                      <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
-                        <span className="text-muted-foreground text-sm">📞</span>
-                        <span className="text-sm">{profileData?.phone || "Телефон не указан"}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Смена пароля */}
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                      <Key className="w-4 h-4" />
-                      Смена пароля
-                    </h3>
-                    <div className="flex gap-2">
-                      <Input
-                        type="password"
-                        placeholder="Новый пароль"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button 
-                        onClick={handleChangePassword} 
-                        disabled={passwordLoading || !newPassword}
-                        size="sm"
-                      >
-                        {passwordLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Сменить"}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Доступные прайс-листы */}
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                      <Store className="w-4 h-4" />
-                      Доступные прайс-листы
-                    </h3>
-                    <div className="space-y-2 max-h-[200px] overflow-auto">
-                      <p className="text-sm text-muted-foreground">Нет доступных прайс-листов</p>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <SheetFooter className="mt-6">
-              {isImpersonating ? (
-                <Button variant="outline" onClick={handleExitImpersonation} className="w-full gap-2">
-                  <ArrowLeft className="w-4 h-4" />
-                  Вернуться в панель супер-админа
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={handleSignOut} className="w-full gap-2">
-                  <LogOut className="w-4 h-4" />
-                  Выйти из аккаунта
-                </Button>
-              )}
-            </SheetFooter>
-          </SheetContent>
-        </Sheet>
       </div>
     );
   }
@@ -934,101 +1026,6 @@ const CustomerDashboard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Profile Sheet */}
-      <Sheet open={isProfileOpen} onOpenChange={setIsProfileOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <User className="w-5 h-5" />
-              Профиль
-            </SheetTitle>
-          </SheetHeader>
-          
-          <div className="mt-6 space-y-6">
-            {profileLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : (
-              <>
-                {/* Личные данные */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-medium text-muted-foreground">Личные данные</h3>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
-                      <User className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm">{profileData?.full_name || "Имя не указано"}</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
-                      <span className="text-muted-foreground text-sm">📞</span>
-                      <span className="text-sm">{profileData?.phone || "Телефон не указан"}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Смена пароля */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    <Key className="w-4 h-4" />
-                    Смена пароля
-                  </h3>
-                  <div className="flex gap-2">
-                    <Input
-                      type="password"
-                      placeholder="Новый пароль"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button 
-                      onClick={handleChangePassword} 
-                      disabled={passwordLoading || !newPassword}
-                      size="sm"
-                    >
-                      {passwordLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Сменить"}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Доступные прайс-листы */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    <Store className="w-4 h-4" />
-                    Доступные прайс-листы
-                  </h3>
-                  <div className="space-y-2 max-h-[200px] overflow-auto">
-                    {catalogs.length > 0 ? (
-                      catalogs.map((catalog) => (
-                        <div key={catalog.id} className="p-3 bg-muted/50 rounded-lg">
-                          <div className="font-medium text-sm">{catalog.store_name}</div>
-                          <div className="text-xs text-muted-foreground">{catalog.catalog_name}</div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Нет доступных прайс-листов</p>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          <SheetFooter className="mt-6">
-            {isImpersonating ? (
-              <Button variant="outline" onClick={handleExitImpersonation} className="w-full gap-2">
-                <ArrowLeft className="w-4 h-4" />
-                Вернуться в панель супер-админа
-              </Button>
-            ) : (
-              <Button variant="outline" onClick={handleSignOut} className="w-full gap-2">
-                <LogOut className="w-4 h-4" />
-                Выйти из аккаунта
-              </Button>
-            )}
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
     </div>
   );
 };
