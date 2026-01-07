@@ -145,12 +145,10 @@ export function useStoreProducts(storeId: string | null) {
     }
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("products")
         .update(updates)
-        .eq("id", productId)
-        .select()
-        .single();
+        .eq("id", productId);
 
       if (error) {
         if (error.code === '42501') {
@@ -159,8 +157,9 @@ export function useStoreProducts(storeId: string | null) {
         throw error;
       }
       
-      setProducts(prev => prev.map(p => p.id === productId ? data : p));
-      return data;
+      // Update local state with the updates
+      setProducts(prev => prev.map(p => p.id === productId ? { ...p, ...updates, updated_at: new Date().toISOString() } : p));
+      return { id: productId, ...updates };
     } catch (error: any) {
       console.error("Error updating product:", error);
       toast({
