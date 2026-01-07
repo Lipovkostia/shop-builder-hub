@@ -325,7 +325,20 @@ function SelectFilter({
   );
 }
 
-export default function AdminPanel() {
+// Props interface for workspace mode
+interface AdminPanelProps {
+  workspaceMode?: boolean;
+  storeIdOverride?: string;
+  storeSubdomainOverride?: string;
+  onSwitchToStorefront?: () => void;
+}
+
+export default function AdminPanel({ 
+  workspaceMode, 
+  storeIdOverride, 
+  storeSubdomainOverride,
+  onSwitchToStorefront 
+}: AdminPanelProps = {}) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -344,8 +357,8 @@ export default function AdminPanel() {
   const [userStoreId, setUserStoreId] = useState<string | null>(null);
   const [storeContextLoading, setStoreContextLoading] = useState(true);
   
-  // Determine which store context to use
-  const effectiveStoreId = storeIdFromUrl || userStoreId || currentStoreId;
+  // Determine which store context to use - workspace mode takes priority
+  const effectiveStoreId = workspaceMode && storeIdOverride ? storeIdOverride : (storeIdFromUrl || userStoreId || currentStoreId);
   
   // ================ SUPABASE DATA HOOKS ================
   // Products from Supabase
@@ -2424,7 +2437,15 @@ export default function AdminPanel() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => currentStoreSubdomain ? navigate(`/store/${currentStoreSubdomain}`) : navigate("/")}
+              onClick={() => {
+                if (workspaceMode && onSwitchToStorefront) {
+                  onSwitchToStorefront();
+                } else if (currentStoreSubdomain || storeSubdomainOverride) {
+                  navigate(`/store/${storeSubdomainOverride || currentStoreSubdomain}`);
+                } else {
+                  navigate("/");
+                }
+              }}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
