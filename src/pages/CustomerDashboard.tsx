@@ -66,7 +66,10 @@ import {
   MapPin,
   ChevronDown,
   Check,
-  Settings
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -134,7 +137,8 @@ function ProductCard({
   onAddToCart,
   showImages = true,
   isExpanded = false,
-  onImageClick
+  onImageClick,
+  onOpenFullscreen
 }: { 
   product: CatalogProduct;
   cart: LocalCartItem[];
@@ -142,6 +146,7 @@ function ProductCard({
   showImages?: boolean;
   isExpanded?: boolean;
   onImageClick?: () => void;
+  onOpenFullscreen?: (imageIndex: number) => void;
 }) {
   const getCartQuantity = (variantIndex: number) => {
     const item = cart.find(
@@ -343,16 +348,17 @@ function ProductCard({
             <div className="overflow-x-auto bg-muted/30 border-b border-border">
               <div className="flex gap-2 p-2">
               {product.images?.map((img, idx) => (
-                  <div 
+                  <button 
                     key={idx}
-                    className="w-32 h-32 flex-shrink-0 rounded overflow-hidden bg-muted"
+                    onClick={() => onOpenFullscreen?.(idx)}
+                    className="w-32 h-32 flex-shrink-0 rounded overflow-hidden bg-muted cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                   >
                     <img
                       src={img}
                       alt={`${product.name} ${idx + 1}`}
                       className="w-full h-full object-cover"
                     />
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -511,6 +517,7 @@ const CustomerDashboard = () => {
   const [profileSection, setProfileSection] = useState<'personal' | 'catalogs' | 'settings'>('personal');
   const [showImages, setShowImages] = useState(true);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [fullscreenImages, setFullscreenImages] = useState<{ images: string[]; index: number } | null>(null);
   
   // Profile data
   const [profileData, setProfileData] = useState<{ full_name: string | null; phone: string | null } | null>(null);
@@ -1240,6 +1247,7 @@ const CustomerDashboard = () => {
               showImages={showImages}
               isExpanded={expandedProductId === product.id}
               onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
+              onOpenFullscreen={(imageIndex) => product.images && setFullscreenImages({ images: product.images, index: imageIndex })}
             />
           ))
         ) : (
@@ -1657,6 +1665,66 @@ const CustomerDashboard = () => {
           </div>
         </DrawerContent>
       </Drawer>
+      {/* Fullscreen Image Viewer */}
+      {fullscreenImages && (
+        <div 
+          className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
+          onClick={() => setFullscreenImages(null)}
+        >
+          {/* Close button */}
+          <button 
+            onClick={() => setFullscreenImages(null)}
+            className="absolute top-4 right-4 p-2 text-white/70 hover:text-white transition-colors z-10"
+          >
+            <X className="w-6 h-6" />
+          </button>
+
+          {/* Image counter */}
+          <div className="absolute top-4 left-4 text-white/70 text-sm">
+            {fullscreenImages.index + 1} / {fullscreenImages.images.length}
+          </div>
+
+          {/* Previous button */}
+          {fullscreenImages.images.length > 1 && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setFullscreenImages(prev => prev ? {
+                  ...prev,
+                  index: prev.index > 0 ? prev.index - 1 : prev.images.length - 1
+                } : null);
+              }}
+              className="absolute left-2 p-2 text-white/70 hover:text-white transition-colors z-10"
+            >
+              <ChevronLeft className="w-8 h-8" />
+            </button>
+          )}
+
+          {/* Current image */}
+          <img
+            src={fullscreenImages.images[fullscreenImages.index]}
+            alt={`Image ${fullscreenImages.index + 1}`}
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {/* Next button */}
+          {fullscreenImages.images.length > 1 && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setFullscreenImages(prev => prev ? {
+                  ...prev,
+                  index: prev.index < prev.images.length - 1 ? prev.index + 1 : 0
+                } : null);
+              }}
+              className="absolute right-2 p-2 text-white/70 hover:text-white transition-colors z-10"
+            >
+              <ChevronRight className="w-8 h-8" />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
