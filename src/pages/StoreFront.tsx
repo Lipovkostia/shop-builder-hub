@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag } from "lucide-react";
 import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
@@ -792,7 +792,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const [localProducts, setLocalProducts] = useState<StoreProduct[]>([]);
 
   // Sync local products with fetched products
-  useMemo(() => {
+  useEffect(() => {
     if (products.length > 0) {
       setLocalProducts(products);
     }
