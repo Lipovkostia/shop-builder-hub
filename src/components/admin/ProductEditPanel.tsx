@@ -103,6 +103,7 @@ export function ProductEditPanel({
   const isInitialMount = useRef(true);
   const catalogSettingsInitialized = useRef(false);
   const lastCatalogId = useRef<string | null | undefined>(catalogId);
+  const buyPriceFocused = useRef(false);
 
   // Predefined categories that can be selected
   const predefinedCategories = [
@@ -118,11 +119,15 @@ export function ProductEditPanel({
     "Деликатесы",
   ];
 
-  // Update local state when product or catalogSettings changes
+  // Update local state when product changes (from realtime or prop updates)
+  // Only update buy_price if user is not currently editing it
   useEffect(() => {
     setName(product.name);
     setDescription(product.description || "");
-    setBuyPrice(product.buy_price?.toString() || "");
+    // Only update buyPrice if not focused to avoid overwriting user input
+    if (!buyPriceFocused.current) {
+      setBuyPrice(product.buy_price?.toString() || "");
+    }
     setUnit(product.unit || "кг");
     setPackagingType(product.packaging_type || "piece");
     setUnitWeight(product.unit_weight?.toString() || "");
@@ -311,6 +316,8 @@ export function ProductEditPanel({
               type="number"
               value={buyPrice}
               onChange={(e) => setBuyPrice(e.target.value)}
+              onFocus={() => { buyPriceFocused.current = true; }}
+              onBlur={() => { buyPriceFocused.current = false; }}
               placeholder="0"
               className="h-7 text-xs w-full"
             />
