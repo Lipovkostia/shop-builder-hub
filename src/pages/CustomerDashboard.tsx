@@ -1282,20 +1282,17 @@ const CustomerDashboard = () => {
         </div>
       )}
 
-      {/* Orders History Sheet */}
-      <Sheet open={isOrdersOpen} onOpenChange={setIsOrdersOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <PackageOpen className="w-5 h-5" />
-              Мои заказы
-            </SheetTitle>
-            <SheetDescription>
-              История ваших заказов
-            </SheetDescription>
-          </SheetHeader>
+      {/* Orders History Drawer (slides from bottom on mobile) */}
+      <Drawer open={isOrdersOpen} onOpenChange={setIsOrdersOpen}>
+        <DrawerContent className="max-h-[80vh]">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+            <div className="flex items-center gap-2">
+              <PackageOpen className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-sm">Мои заказы</span>
+            </div>
+          </div>
           
-          <div className="flex-1 overflow-y-auto py-4 space-y-3">
+          <div className="flex-1 overflow-y-auto px-3 py-2 max-h-[60vh]">
             {myOrdersLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -1306,54 +1303,56 @@ const CustomerDashboard = () => {
                 <p>У вас пока нет заказов</p>
               </div>
             ) : (
-              myOrders.map((order) => (
-                <div key={order.id} className="border rounded-lg p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-sm">{order.order_number}</span>
-                    <Badge variant={
-                      order.status === 'delivered' ? 'default' :
-                      order.status === 'cancelled' ? 'destructive' :
-                      order.status === 'shipped' ? 'secondary' :
-                      'outline'
-                    }>
-                      {order.status === 'pending' ? 'Ожидает' :
-                       order.status === 'processing' ? 'Обработка' :
-                       order.status === 'shipped' ? 'Отправлен' :
-                       order.status === 'delivered' ? 'Доставлен' :
-                       'Отменён'}
-                    </Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(order.created_at).toLocaleDateString('ru-RU', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </div>
-                  {order.items && order.items.length > 0 && (
-                    <div className="text-xs text-muted-foreground space-y-0.5">
-                      {order.items.slice(0, 3).map((item, idx) => (
-                        <div key={idx} className="truncate">
-                          {item.product_name} × {item.quantity}
-                        </div>
-                      ))}
-                      {order.items.length > 3 && (
-                        <div className="text-primary">+ ещё {order.items.length - 3} позиций</div>
-                      )}
+              <div className="space-y-3">
+                {myOrders.map((order) => (
+                  <div key={order.id} className="border rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm">{order.order_number}</span>
+                      <Badge variant={
+                        order.status === 'delivered' ? 'default' :
+                        order.status === 'cancelled' ? 'destructive' :
+                        order.status === 'shipped' ? 'secondary' :
+                        'outline'
+                      }>
+                        {order.status === 'pending' ? 'Ожидает' :
+                         order.status === 'processing' ? 'Обработка' :
+                         order.status === 'shipped' ? 'Отправлен' :
+                         order.status === 'delivered' ? 'Доставлен' :
+                         'Отменён'}
+                      </Badge>
                     </div>
-                  )}
-                  <div className="flex justify-between items-center pt-1 border-t">
-                    <span className="text-xs text-muted-foreground">Итого:</span>
-                    <span className="font-semibold">{formatPrice(order.total)}</span>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(order.created_at).toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                    {order.items && order.items.length > 0 && (
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        {order.items.slice(0, 3).map((item, idx) => (
+                          <div key={idx} className="truncate">
+                            {item.product_name} × {item.quantity}
+                          </div>
+                        ))}
+                        {order.items.length > 3 && (
+                          <div className="text-primary">+ ещё {order.items.length - 3} позиций</div>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center pt-1 border-t">
+                      <span className="text-xs text-muted-foreground">Итого:</span>
+                      <span className="font-semibold">{formatPrice(order.total)}</span>
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 };
