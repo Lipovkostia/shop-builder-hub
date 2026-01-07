@@ -193,7 +193,9 @@ function ProductCard({
           </h3>
           {product.description && showImages && (
             <p className="text-[9px] text-muted-foreground truncate pr-6 mt-0.5">
-              {product.description}
+              {product.description.length > 200 
+                ? `${product.description.slice(0, 200)}...` 
+                : product.description}
             </p>
           )}
           {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />}
