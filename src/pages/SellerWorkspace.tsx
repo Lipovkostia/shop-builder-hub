@@ -64,31 +64,35 @@ export default function SellerWorkspace() {
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
+      {/* Витрина */}
       <div 
-        className="flex transition-transform duration-300 ease-out"
+        className="absolute inset-0 transition-transform duration-300 ease-out"
         style={{ 
           transform: activeView === "admin" ? "translateX(-100%)" : "translateX(0)",
-          width: "200%"
+          willChange: "transform"
         }}
       >
-        {/* Витрина */}
-        <div className="w-1/2 min-h-screen flex-shrink-0">
-          <StoreFront 
-            workspaceMode
-            storeData={store}
-            onSwitchToAdmin={handleSwitchToAdmin}
-          />
-        </div>
-        
-        {/* Панель управления */}
-        <div className="w-1/2 min-h-screen flex-shrink-0">
-          <AdminPanel 
-            workspaceMode
-            storeIdOverride={store.id}
-            storeSubdomainOverride={store.subdomain}
-            onSwitchToStorefront={handleSwitchToStorefront}
-          />
-        </div>
+        <StoreFront 
+          workspaceMode
+          storeData={store}
+          onSwitchToAdmin={handleSwitchToAdmin}
+        />
+      </div>
+      
+      {/* Панель управления */}
+      <div 
+        className="absolute inset-0 transition-transform duration-300 ease-out"
+        style={{ 
+          transform: activeView === "admin" ? "translateX(0)" : "translateX(100%)",
+          willChange: "transform"
+        }}
+      >
+        <AdminPanel 
+          workspaceMode
+          storeIdOverride={store.id}
+          storeSubdomainOverride={store.subdomain}
+          onSwitchToStorefront={handleSwitchToStorefront}
+        />
       </div>
     </div>
   );
