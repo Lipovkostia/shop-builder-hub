@@ -874,6 +874,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_store_owner_of_customer: {
+        Args: { customer_profile_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       order_status:
