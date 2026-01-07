@@ -44,7 +44,9 @@ import {
   Image,
   User,
   Key,
-  Store
+  Store,
+  ArrowLeft,
+  Shield
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -398,7 +400,15 @@ function CustomerHeader({
 const CustomerDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, signOut, loading: authLoading } = useAuth();
+  const { user, signOut, loading: authLoading, isSuperAdmin } = useAuth();
+  
+  // Check for impersonation mode
+  const impersonateUserId = localStorage.getItem('impersonate_customer_id');
+  const isImpersonating = !!impersonateUserId && isSuperAdmin;
+  
+  // Use impersonated user ID if super admin is impersonating
+  const targetUserId = isImpersonating ? impersonateUserId : undefined;
+  
   const { 
     catalogs, 
     loading: catalogsLoading, 
@@ -406,7 +416,7 @@ const CustomerDashboard = () => {
     setCurrentCatalog,
     products,
     productsLoading 
-  } = useCustomerCatalogs();
+  } = useCustomerCatalogs(targetUserId);
   const { createOrder, loading: orderLoading } = useCustomerOrders();
 
   const [cart, setCart] = useState<LocalCartItem[]>([]);
@@ -429,13 +439,14 @@ const CustomerDashboard = () => {
 
   // Fetch profile data
   const fetchProfileData = async () => {
-    if (!user) return;
+    const userId = targetUserId || user?.id;
+    if (!userId) return;
     setProfileLoading(true);
     try {
       const { data } = await supabase
         .from('profiles')
         .select('full_name, phone')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .single();
       setProfileData(data);
     } catch (e) {
@@ -456,6 +467,7 @@ const CustomerDashboard = () => {
       return;
     }
     setPasswordLoading(true);
+    // Note: Password change only works for actual logged-in user, not impersonated
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setPasswordLoading(false);
     if (error) {
@@ -466,12 +478,17 @@ const CustomerDashboard = () => {
     }
   };
 
-  // Redirect if not authenticated
+  const handleExitImpersonation = () => {
+    localStorage.removeItem('impersonate_customer_id');
+    navigate('/super-admin');
+  };
+
+  // Redirect if not authenticated (unless impersonating)
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!authLoading && !user && !isImpersonating) {
       navigate("/customer-auth");
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, isImpersonating]);
 
   const getProductById = (productId: string) => products.find(p => p.id === productId);
 
@@ -581,15 +598,30 @@ const CustomerDashboard = () => {
   if (catalogs.length === 0) {
     return (
       <div className="h-screen bg-background flex flex-col">
+        {/* Impersonation banner */}
+        {isImpersonating && (
+          <div className="bg-amber-500 text-amber-950 px-3 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <Shield className="w-4 h-4" />
+              <span>Режим просмотра от имени покупателя</span>
+            </div>
+            <Button size="sm" variant="secondary" onClick={handleExitImpersonation} className="h-7 gap-1">
+              <ArrowLeft className="w-3 h-3" />
+              Назад
+            </Button>
+          </div>
+        )}
         <header className="sticky top-0 z-50 bg-background border-b border-border">
           <div className="h-12 flex items-center justify-between px-3">
             <span className="font-semibold">Мои прайс-листы</span>
-            <button
-              onClick={handleSignOut}
-              className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
-            >
-              <LogOut className="w-4 h-4 text-muted-foreground" />
-            </button>
+            {!isImpersonating && (
+              <button
+                onClick={handleSignOut}
+                className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
+              >
+                <LogOut className="w-4 h-4 text-muted-foreground" />
+              </button>
+            )}
           </div>
         </header>
         <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
@@ -605,6 +637,19 @@ const CustomerDashboard = () => {
 
   return (
     <div className="h-screen bg-background flex flex-col">
+      {/* Impersonation banner */}
+      {isImpersonating && (
+        <div className="bg-amber-500 text-amber-950 px-3 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm">
+            <Shield className="w-4 h-4" />
+            <span>Режим просмотра от имени покупателя</span>
+          </div>
+          <Button size="sm" variant="secondary" onClick={handleExitImpersonation} className="h-7 gap-1">
+            <ArrowLeft className="w-3 h-3" />
+            Назад
+          </Button>
+        </div>
+      )}
       <CustomerHeader 
         cart={cart} 
         catalogs={catalogs}
@@ -886,10 +931,17 @@ const CustomerDashboard = () => {
           </div>
 
           <SheetFooter className="mt-6">
-            <Button variant="outline" onClick={handleSignOut} className="w-full gap-2">
-              <LogOut className="w-4 h-4" />
-              Выйти из аккаунта
-            </Button>
+            {isImpersonating ? (
+              <Button variant="outline" onClick={handleExitImpersonation} className="w-full gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                Вернуться в панель супер-админа
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={handleSignOut} className="w-full gap-2">
+                <LogOut className="w-4 h-4" />
+                Выйти из аккаунта
+              </Button>
+            )}
           </SheetFooter>
         </SheetContent>
       </Sheet>
