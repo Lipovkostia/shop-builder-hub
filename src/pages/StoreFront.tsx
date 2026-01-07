@@ -558,16 +558,6 @@ function StoreHeader({
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
       <div className="h-12 flex items-center justify-between px-3 relative">
-        <button className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3">
-          <ShoppingCart className="w-4 h-4 text-primary" />
-          <span className="text-xs font-semibold text-foreground">{formatPrice(totalPrice)}</span>
-          {totalItems > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-              {totalItems}
-            </span>
-          )}
-        </button>
-
         <div className="flex items-center gap-1">
           {store.logo_url ? (
             <img src={store.logo_url} alt={store.name} className="w-6 h-6 rounded object-cover" />
