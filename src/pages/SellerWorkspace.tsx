@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { useStoreBySubdomain } from "@/hooks/useUserStore";
 import { useStoreOrders } from "@/hooks/useOrders";
 import { useIsStoreOwner } from "@/hooks/useUserStore";
+import { useAuth } from "@/hooks/useAuth";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import StoreFront from "./StoreFront";
 import AdminPanel from "./AdminPanel";
@@ -13,10 +14,14 @@ export default function SellerWorkspace() {
   const { subdomain } = useParams<{ subdomain: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { store, loading: storeLoading, error: storeError } = useStoreBySubdomain(subdomain);
-  const { isOwner } = useIsStoreOwner(store?.id);
+  const { isOwner: isStoreOwner } = useIsStoreOwner(store?.id);
+  const { isSuperAdmin } = useAuth();
   
-  // Получаем количество заказов только для владельца
-  const { orders } = useStoreOrders(isOwner && store?.id ? store.id : null);
+  // Супер-админ или владелец магазина имеют полные права
+  const hasFullAccess = isStoreOwner || isSuperAdmin;
+  
+  // Получаем количество заказов для владельца/супер-админа
+  const { orders } = useStoreOrders(hasFullAccess && store?.id ? store.id : null);
 
   const [activeView, setActiveView] = useState<ActiveView>("storefront");
   
@@ -79,8 +84,8 @@ export default function SellerWorkspace() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Общая шапка с вкладками */}
-      {isOwner && (
+      {/* Общая шапка с вкладками - для владельца или супер-админа */}
+      {hasFullAccess && (
         <WorkspaceHeader
           storeName={store.name}
           storeLogo={store.logo_url}
@@ -94,13 +99,13 @@ export default function SellerWorkspace() {
       <div className="flex-1 overflow-hidden">
         {activeView === "storefront" ? (
           <StoreFront 
-            workspaceMode={isOwner}
+            workspaceMode={hasFullAccess}
             storeData={store}
             onSwitchToAdmin={handleSwitchToAdmin}
           />
         ) : (
           <AdminPanel 
-            workspaceMode
+            workspaceMode={hasFullAccess}
             storeIdOverride={store.id}
             storeSubdomainOverride={store.subdomain}
             onSwitchToStorefront={handleSwitchToStorefront}
