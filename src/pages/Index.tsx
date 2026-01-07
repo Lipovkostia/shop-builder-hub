@@ -250,7 +250,34 @@ const Index = () => {
           }
         });
 
-        if (authError) throw authError;
+        // Handle "user already exists" - try to login instead
+        if (authError) {
+          if (authError.message.includes('already registered') || authError.code === 'user_already_exists') {
+            // User exists, try to login
+            const { error: loginError } = await supabase.auth.signInWithPassword({
+              email,
+              password: customerPassword
+            });
+            
+            if (loginError) {
+              toast({ 
+                title: "Пользователь уже зарегистрирован", 
+                description: "Неверный пароль. Попробуйте войти с правильным паролем.",
+                variant: "destructive" 
+              });
+              setIsCustomerLogin(true); // Switch to login mode
+              setCustomerLoading(false);
+              return;
+            }
+            
+            toast({ title: "Вход выполнен", description: "Вы уже были зарегистрированы" });
+            navigate('/customer-dashboard');
+            setCustomerLoading(false);
+            return;
+          }
+          throw authError;
+        }
+        
         if (!authData.user) throw new Error("Ошибка регистрации");
 
         // Update profile with phone
