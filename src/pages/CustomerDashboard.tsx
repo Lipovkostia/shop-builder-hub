@@ -629,6 +629,92 @@ const CustomerDashboard = () => {
             Попросите продавца поделиться ссылкой на прайс-лист
           </p>
         </main>
+
+        {/* Profile Sheet for empty catalogs state */}
+        <Sheet open={isProfileOpen} onOpenChange={setIsProfileOpen}>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Профиль
+              </SheetTitle>
+            </SheetHeader>
+            
+            <div className="mt-6 space-y-6">
+              {profileLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : (
+                <>
+                  {/* Личные данные */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-muted-foreground">Личные данные</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                        <User className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">{profileData?.full_name || "Имя не указано"}</span>
+                      </div>
+                      <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                        <span className="text-muted-foreground text-sm">📞</span>
+                        <span className="text-sm">{profileData?.phone || "Телефон не указан"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Смена пароля */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Key className="w-4 h-4" />
+                      Смена пароля
+                    </h3>
+                    <div className="flex gap-2">
+                      <Input
+                        type="password"
+                        placeholder="Новый пароль"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={handleChangePassword} 
+                        disabled={passwordLoading || !newPassword}
+                        size="sm"
+                      >
+                        {passwordLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Сменить"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Доступные прайс-листы */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Store className="w-4 h-4" />
+                      Доступные прайс-листы
+                    </h3>
+                    <div className="space-y-2 max-h-[200px] overflow-auto">
+                      <p className="text-sm text-muted-foreground">Нет доступных прайс-листов</p>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <SheetFooter className="mt-6">
+              {isImpersonating ? (
+                <Button variant="outline" onClick={handleExitImpersonation} className="w-full gap-2">
+                  <ArrowLeft className="w-4 h-4" />
+                  Вернуться в панель супер-админа
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={handleSignOut} className="w-full gap-2">
+                  <LogOut className="w-4 h-4" />
+                  Выйти из аккаунта
+                </Button>
+              )}
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
       </div>
     );
   }
