@@ -420,7 +420,7 @@ function StoreHeader({
   onStatusFilterChange: (status: string) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  onAdminClick?: () => void;
+  onAdminClick?: (section?: string) => void;
 }) {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
@@ -457,14 +457,24 @@ function StoreHeader({
         </div>
 
         {canShowAdminButton && (
-          <button
-            onClick={onAdminClick}
-            className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
-            title="Панель управления"
-            aria-label="Панель управления"
-          >
-            <Settings className="w-4 h-4 text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onAdminClick?.('orders')}
+              className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
+              title="Заказы"
+              aria-label="Заказы"
+            >
+              <ShoppingCart className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <button
+              onClick={() => onAdminClick?.('products')}
+              className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
+              title="Панель управления"
+              aria-label="Панель управления"
+            >
+              <Settings className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
         )}
         {!canShowAdminButton && <div className="w-8" />}
       </div>
@@ -623,7 +633,7 @@ function StoreSkeleton() {
 interface StoreFrontProps {
   workspaceMode?: boolean;
   storeData?: any;
-  onSwitchToAdmin?: () => void;
+  onSwitchToAdmin?: (section?: string) => void;
 }
 
 // Main StoreFront Component
@@ -737,11 +747,13 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   };
 
   // Обработчик клика на кнопку админки
-  const handleAdminClick = () => {
+  const handleAdminClick = (section?: string) => {
     if (workspaceMode && onSwitchToAdmin) {
-      onSwitchToAdmin();
+      onSwitchToAdmin(section);
     } else {
-      navigate(store?.id ? `/admin?storeId=${store.id}` : `/admin`);
+      const baseUrl = store?.id ? `/admin?storeId=${store.id}` : `/admin`;
+      const url = section ? `${baseUrl}&section=${section}` : baseUrl;
+      navigate(url);
     }
   };
 
