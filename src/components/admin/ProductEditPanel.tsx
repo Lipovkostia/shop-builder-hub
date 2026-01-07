@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toast } from "sonner";
 import { unitOptions as baseUnitOptions, packagingOptions as basePackagingOptions } from "./types";
 import type { StoreProduct } from "@/hooks/useStoreProducts";
+import { useStoreCategories, StoreCategory } from "@/hooks/useStoreCategories";
 
 interface Catalog {
   id: string;
@@ -39,6 +40,7 @@ interface ProductEditPanelProps {
   onStatusChange?: (catalogId: string, productId: string, status: string) => void;
   catalogSettings?: CatalogSettings;
   onCatalogSettingsChange?: (catalogId: string, productId: string, settings: Partial<CatalogSettings>) => void;
+  storeId?: string | null;
 }
 
 export function ProductEditPanel({
@@ -53,7 +55,11 @@ export function ProductEditPanel({
   onStatusChange,
   catalogSettings,
   onCatalogSettingsChange,
+  storeId,
 }: ProductEditPanelProps) {
+  // Fetch categories from database
+  const { categories: storeCategories } = useStoreCategories(storeId || product.store_id || null);
+  
   // Local state for form fields
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description || "");
@@ -82,6 +88,7 @@ export function ProductEditPanel({
   const [packagingType, setPackagingType] = useState(product.packaging_type || "piece");
   const [unitWeight, setUnitWeight] = useState(product.unit_weight?.toString() || "");
   const [status, setStatus] = useState(currentStatus || "in_stock");
+  const [categoryId, setCategoryId] = useState<string | null>(product.category_id || null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     catalogSettings?.categories || []
   );
@@ -119,6 +126,7 @@ export function ProductEditPanel({
     setUnit(product.unit || "кг");
     setPackagingType(product.packaging_type || "piece");
     setUnitWeight(product.unit_weight?.toString() || "");
+    setCategoryId(product.category_id || null);
   }, [product]);
 
   // Update catalog-specific fields only when catalogId changes (not on every catalogSettings update)
@@ -187,6 +195,7 @@ export function ProductEditPanel({
         packaging_type: packagingType,
         unit_weight: parseFloat(unitWeight) || null,
         is_active: status !== "hidden",
+        category_id: categoryId,
       };
 
       await onSave(product.id, updates);
@@ -244,7 +253,7 @@ export function ProductEditPanel({
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [name, buyPrice, markupType, markupValue, unit, packagingType, unitWeight, status, priceHalf, priceQuarter, pricePortion, selectedCategories, selectedCatalogs]);
+  }, [name, buyPrice, markupType, markupValue, unit, packagingType, unitWeight, status, categoryId, priceHalf, priceQuarter, pricePortion, selectedCategories, selectedCatalogs]);
 
   const toggleCatalog = (catalogId: string) => {
     setSelectedCatalogs(prev => 
@@ -507,100 +516,119 @@ export function ProductEditPanel({
           />
         </div>
 
-        {/* Категории - компактный выпадающий список */}
+        {/* Категория - выбор из базы данных */}
         <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Категории</label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full h-7 text-xs mt-0.5 justify-between font-normal"
-              >
-                <span className="truncate">
-                  {selectedCategories.length > 0 
-                    ? selectedCategories.join(", ")
-                    : "Выберите категории..."
-                  }
-                </span>
-                <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-2 bg-background z-50" align="start">
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {/* Предустановленные категории */}
-                {predefinedCategories.map((category) => (
-                  <label
-                    key={category}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={selectedCategories.includes(category)}
-                      onCheckedChange={() => {
-                        setSelectedCategories(prev => 
-                          prev.includes(category)
-                            ? prev.filter(c => c !== category)
-                            : [...prev, category]
-                        );
-                      }}
-                      className="h-4 w-4"
-                    />
-                    <span className="text-xs">{category}</span>
-                  </label>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Категория</label>
+          {storeCategories.length > 0 ? (
+            <Select 
+              value={categoryId || "none"} 
+              onValueChange={(v) => setCategoryId(v === "none" ? null : v)}
+            >
+              <SelectTrigger className="h-7 text-xs mt-0.5">
+                <SelectValue placeholder="Выберите категорию..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Без категории</SelectItem>
+                {storeCategories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </SelectItem>
                 ))}
-                {/* Кастомные категории */}
-                {selectedCategories
-                  .filter(c => !predefinedCategories.includes(c))
-                  .map((category) => (
+              </SelectContent>
+            </Select>
+          ) : (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full h-7 text-xs mt-0.5 justify-between font-normal"
+                >
+                  <span className="truncate">
+                    {selectedCategories.length > 0 
+                      ? selectedCategories.join(", ")
+                      : "Выберите категории..."
+                    }
+                  </span>
+                  <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2 bg-background z-50" align="start">
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {/* Предустановленные категории */}
+                  {predefinedCategories.map((category) => (
                     <label
                       key={category}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded bg-primary/10 cursor-pointer"
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer"
                     >
                       <Checkbox
-                        checked={true}
+                        checked={selectedCategories.includes(category)}
                         onCheckedChange={() => {
-                          setSelectedCategories(prev => prev.filter(c => c !== category));
+                          setSelectedCategories(prev => 
+                            prev.includes(category)
+                              ? prev.filter(c => c !== category)
+                              : [...prev, category]
+                          );
                         }}
                         className="h-4 w-4"
                       />
-                      <span className="text-xs text-primary">{category}</span>
+                      <span className="text-xs">{category}</span>
                     </label>
                   ))}
-              </div>
-              {/* Добавить новую категорию */}
-              <div className="flex gap-1 mt-2 pt-2 border-t">
-                <Input
-                  type="text"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && newCategory.trim()) {
-                      e.preventDefault();
-                      if (!selectedCategories.includes(newCategory.trim())) {
-                        setSelectedCategories(prev => [...prev, newCategory.trim()]);
+                  {/* Кастомные категории */}
+                  {selectedCategories
+                    .filter(c => !predefinedCategories.includes(c))
+                    .map((category) => (
+                      <label
+                        key={category}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded bg-primary/10 cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={true}
+                          onCheckedChange={() => {
+                            setSelectedCategories(prev => prev.filter(c => c !== category));
+                          }}
+                          className="h-4 w-4"
+                        />
+                        <span className="text-xs text-primary">{category}</span>
+                      </label>
+                    ))}
+                </div>
+                {/* Добавить новую категорию */}
+                <div className="flex gap-1 mt-2 pt-2 border-t">
+                  <Input
+                    type="text"
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newCategory.trim()) {
+                        e.preventDefault();
+                        if (!selectedCategories.includes(newCategory.trim())) {
+                          setSelectedCategories(prev => [...prev, newCategory.trim()]);
+                        }
+                        setNewCategory("");
                       }
-                      setNewCategory("");
-                    }
-                  }}
-                  placeholder="Новая..."
-                  className="h-7 text-xs flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-2"
-                  onClick={() => {
-                    if (newCategory.trim() && !selectedCategories.includes(newCategory.trim())) {
-                      setSelectedCategories(prev => [...prev, newCategory.trim()]);
-                      setNewCategory("");
-                    }
-                  }}
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+                    }}
+                    placeholder="Новая..."
+                    className="h-7 text-xs flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => {
+                      if (newCategory.trim() && !selectedCategories.includes(newCategory.trim())) {
+                        setSelectedCategories(prev => [...prev, newCategory.trim()]);
+                        setNewCategory("");
+                      }
+                    }}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
 
         {/* Статус - кнопки вместо Select */}

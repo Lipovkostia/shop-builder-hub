@@ -494,6 +494,7 @@ function ProductCard({
               status: catalogSettings.status,
             } : undefined}
             onCatalogSettingsChange={onCatalogSettingsChange}
+            storeId={product.store_id}
           />
         </CollapsibleContent>
       </Collapsible>
