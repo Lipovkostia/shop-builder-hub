@@ -791,26 +791,153 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   }
 
   return (
-    <div className="h-screen bg-background flex flex-col">
-      <StoreHeader
-        store={store}
-        cart={cart}
-        catalogs={catalogs}
-        selectedCatalog={selectedCatalog}
-        onSelectCatalog={setSelectedCatalog}
-        showImages={showImages}
-        onToggleImages={() => setShowImages(!showImages)}
-        isOwner={isOwner}
-        isOwnerLoading={ownerLoading}
-        filtersOpen={filtersOpen}
-        onToggleFilters={() => setFiltersOpen(!filtersOpen)}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onAdminClick={handleAdminClick}
-        ordersCount={orders.length}
-      />
+    <div className="h-full bg-background flex flex-col">
+      {/* Шапка скрывается в workspaceMode - там свой общий хедер */}
+      {!workspaceMode && (
+        <StoreHeader
+          store={store}
+          cart={cart}
+          catalogs={catalogs}
+          selectedCatalog={selectedCatalog}
+          onSelectCatalog={setSelectedCatalog}
+          showImages={showImages}
+          onToggleImages={() => setShowImages(!showImages)}
+          isOwner={isOwner}
+          isOwnerLoading={ownerLoading}
+          filtersOpen={filtersOpen}
+          onToggleFilters={() => setFiltersOpen(!filtersOpen)}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onAdminClick={handleAdminClick}
+          ordersCount={orders.length}
+        />
+      )}
+
+      {/* Упрощённый хедер в workspaceMode */}
+      {workspaceMode && (
+        <div className="sticky top-0 z-40 bg-background border-b border-border">
+          {/* Панель управления с иконками */}
+          <div className="h-10 flex items-center justify-between px-3 bg-muted/30">
+            <div className="flex items-center gap-1">
+              {/* Селектор прайс-листа */}
+              <DropdownMenu>
+                <DropdownMenuTrigger className="p-2 rounded hover:bg-muted transition-colors">
+                  <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-[200px] bg-popover z-50">
+                  <DropdownMenuItem 
+                    onClick={() => setSelectedCatalog(null)}
+                    className="cursor-pointer"
+                  >
+                    <span className={!selectedCatalog ? "font-semibold" : ""}>Все товары</span>
+                  </DropdownMenuItem>
+                  {catalogs.map((catalog) => (
+                    <DropdownMenuItem
+                      key={catalog.id}
+                      onClick={() => setSelectedCatalog(catalog.id)}
+                      className="cursor-pointer"
+                    >
+                      <span className={selectedCatalog === catalog.id ? "font-semibold" : ""}>
+                        {catalog.name}
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Фильтр */}
+              <button 
+                onClick={() => setFiltersOpen(!filtersOpen)}
+                className={`p-2 rounded transition-colors ${filtersOpen ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+              >
+                <Filter className="w-4 h-4" />
+              </button>
+
+              {/* Переключатель изображений */}
+              <button 
+                onClick={() => setShowImages(!showImages)}
+                className={`p-2 rounded transition-colors ${showImages ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+              >
+                <Image className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Название выбранного каталога */}
+            <span className="text-xs text-muted-foreground">
+              {catalogs.find(c => c.id === selectedCatalog)?.name || "Все товары"}
+            </span>
+
+            {/* Корзина */}
+            <button className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3">
+              <ShoppingCart className="w-4 h-4 text-primary" />
+              <span className="text-xs font-semibold text-foreground">
+                {formatPrice(cart.reduce((sum, item) => sum + item.price * item.quantity, 0))}
+              </span>
+              {cart.reduce((sum, item) => sum + item.quantity, 0) > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Выезжающий блок фильтров */}
+          <Collapsible open={filtersOpen}>
+            <CollapsibleContent>
+              <div className="px-3 py-2 border-t border-border bg-muted/20 space-y-2">
+                {/* Поиск */}
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Поиск товаров..."
+                    className="w-full h-8 pl-7 pr-3 text-xs rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  {searchQuery && (
+                    <button 
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2"
+                    >
+                      <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Фильтр по статусу (только для владельца) */}
+                {isOwner && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground uppercase">Статус:</span>
+                    <div className="flex gap-1">
+                      {[
+                        { value: "all", label: "Все" },
+                        { value: "in_stock", label: "В наличии" },
+                        { value: "out_of_stock", label: "Нет в наличии" },
+                        { value: "hidden", label: "Скрытые" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setStatusFilter(opt.value)}
+                          className={`px-2 py-0.5 text-[10px] rounded-full transition-colors ${
+                            statusFilter === opt.value
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+      )}
 
       <main className="flex-1 overflow-auto">
         {filteredProducts.length > 0 ? (
