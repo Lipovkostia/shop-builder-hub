@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store, Package } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store, Package, LayoutGrid } from "lucide-react";
 import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1020,10 +1020,13 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
               </button>
             </div>
 
-            {/* Название выбранного каталога */}
-            <span className="text-xs text-muted-foreground">
-              {catalogs.find(c => c.id === selectedCatalog)?.name || "Все товары"}
-            </span>
+            {/* Категории - центральная иконка */}
+            <button 
+              className="p-2 rounded hover:bg-muted transition-colors text-muted-foreground"
+              title="Категории"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
 
             {/* Корзина */}
             <button className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3">
