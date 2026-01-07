@@ -138,7 +138,9 @@ function ProductCard({
   showImages = true,
   isExpanded = false,
   onImageClick,
-  onOpenFullscreen
+  onOpenFullscreen,
+  isDescriptionExpanded = false,
+  onNameClick
 }: { 
   product: CatalogProduct;
   cart: LocalCartItem[];
@@ -147,6 +149,8 @@ function ProductCard({
   isExpanded?: boolean;
   onImageClick?: () => void;
   onOpenFullscreen?: (imageIndex: number) => void;
+  isDescriptionExpanded?: boolean;
+  onNameClick?: () => void;
 }) {
   const getCartQuantity = (variantIndex: number) => {
     const item = cart.find(
@@ -174,8 +178,8 @@ function ProductCard({
 
   return (
     <>
-      {/* Основная карточка с фиксированной высотой */}
-      <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border ${showImages ? 'h-[calc((100vh-44px)/8)] min-h-[72px]' : 'h-9 min-h-[36px]'}`}>
+      {/* Основная карточка - высота адаптируется при раскрытии описания */}
+      <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border transition-all ${showImages ? (isDescriptionExpanded ? 'min-h-[72px]' : 'h-[calc((100vh-44px)/8)] min-h-[72px]') : 'min-h-[36px]'}`}>
         {/* Изображение */}
         {showImages && (
           <button 
@@ -205,12 +209,26 @@ function ProductCard({
         {/* Контент справа */}
         <div className={`flex-1 min-w-0 flex ${showImages ? 'flex-col justify-center gap-0' : 'flex-row items-center gap-2'}`}>
           {/* Название */}
-          <div className={`relative overflow-hidden ${showImages ? '' : 'flex-1 min-w-0'}`}>
-            <h3 className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px]'}`}>
+          <button 
+            onClick={onNameClick}
+            className={`relative overflow-hidden text-left ${showImages ? '' : 'flex-1 min-w-0'} ${product.description ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+          >
+            <h3 className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px]'} ${isDescriptionExpanded ? 'text-primary' : ''}`}>
               {product.name}
             </h3>
-            {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />}
-          </div>
+            {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent pointer-events-none" />}
+          </button>
+          
+          {/* Описание (раскрывается при клике на название) */}
+          <Collapsible open={isDescriptionExpanded}>
+            <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+              {product.description && (
+                <p className="text-[10px] text-muted-foreground leading-relaxed py-1 pr-2">
+                  {product.description}
+                </p>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
 
           {/* Цена за кг */}
           <p className={`text-muted-foreground leading-tight ${showImages ? 'text-[10px]' : 'text-[9px] whitespace-nowrap'}`}>
@@ -517,6 +535,7 @@ const CustomerDashboard = () => {
   const [profileSection, setProfileSection] = useState<'personal' | 'catalogs' | 'settings'>('personal');
   const [showImages, setShowImages] = useState(true);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [expandedDescriptionId, setExpandedDescriptionId] = useState<string | null>(null);
   const [fullscreenImages, setFullscreenImages] = useState<{ images: string[]; index: number } | null>(null);
   
   // Profile data
@@ -1248,6 +1267,8 @@ const CustomerDashboard = () => {
               isExpanded={expandedProductId === product.id}
               onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
               onOpenFullscreen={(imageIndex) => product.images && setFullscreenImages({ images: product.images, index: imageIndex })}
+              isDescriptionExpanded={expandedDescriptionId === product.id}
+              onNameClick={() => product.description && setExpandedDescriptionId(expandedDescriptionId === product.id ? null : product.id)}
             />
           ))
         ) : (
