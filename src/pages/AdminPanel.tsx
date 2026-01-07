@@ -2419,7 +2419,8 @@ export default function AdminPanel({
   }, [moyskladProducts, importFilters]);
 
   // Loading state - wait for auth and store context
-  if (authLoading || (storeIdFromUrl && storeContextLoading)) {
+  // В workspaceMode не показываем спиннер, так как данные магазина уже загружены в SellerWorkspace
+  if (!workspaceMode && (authLoading || (storeIdFromUrl && storeContextLoading))) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
