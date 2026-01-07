@@ -789,17 +789,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [localProducts, setLocalProducts] = useState<StoreProduct[]>([]);
 
-  // Sync local products with fetched products
-  useEffect(() => {
-    if (products.length > 0) {
-      setLocalProducts(products);
-    }
-  }, [products]);
-
-  // Merged products for display (use local state for immediate updates)
-  const displayProducts = localProducts.length > 0 ? localProducts : products;
+  // Use products directly from hook - realtime handles sync
+  const displayProducts = products;
 
   // Get product catalog IDs for a specific product
   const getProductCatalogIds = (productId: string): string[] => {
@@ -822,11 +814,10 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
     await updateProductSettings(catalogId, productId, { status });
   };
 
-  // Handle images update for immediate UI feedback
-  const handleImagesUpdate = (productId: string, images: string[]) => {
-    setLocalProducts(prev => prev.map(p => 
-      p.id === productId ? { ...p, images } : p
-    ));
+  // Handle images update - realtime will sync automatically
+  const handleImagesUpdate = (_productId: string, _images: string[]) => {
+    // Images are now synced via realtime through updateProduct
+    // No local state update needed
   };
 
   // Filter products based on selected catalog, status filter, category filter, and search
