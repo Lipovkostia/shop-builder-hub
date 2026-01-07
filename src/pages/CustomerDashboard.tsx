@@ -64,7 +64,8 @@ import {
   Bell,
   MapPin,
   ChevronDown,
-  Check
+  Check,
+  Settings
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -810,187 +811,267 @@ const CustomerDashboard = () => {
     );
   }
 
+  // Profile section state
+  const [profileSection, setProfileSection] = useState<'personal' | 'catalogs' | 'settings'>('personal');
+
   // Profile View component (inline)
   const ProfileView = () => (
-    <div className="flex-1 overflow-auto p-4 space-y-6">
-      {profileLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      ) : (
-        <>
-          {/* Личные данные */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground">Личные данные</h3>
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-name" className="text-xs text-muted-foreground">Имя</Label>
-                <Input
-                  id="edit-name"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  placeholder="Ваше имя"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-phone" className="text-xs text-muted-foreground">Телефон</Label>
-                <Input
-                  id="edit-phone"
-                  value={editPhone}
-                  onChange={(e) => setEditPhone(e.target.value)}
-                  placeholder="+7 (999) 123-45-67"
-                />
-              </div>
-              <Button 
-                onClick={handleSaveProfile} 
-                disabled={savingProfile}
-                className="w-full"
-              >
-                {savingProfile ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Сохранить изменения
-              </Button>
-            </div>
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Profile tabs */}
+      <div className="flex border-b border-border bg-muted/30">
+        <button
+          onClick={() => setProfileSection('personal')}
+          className={`flex-1 py-2.5 text-xs font-medium transition-colors relative ${
+            profileSection === 'personal' 
+              ? 'text-primary' 
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-1.5">
+            <User className="w-3.5 h-3.5" />
+            <span>Личные данные</span>
           </div>
-
-          {/* Настройки уведомлений */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Bell className="w-4 h-4" />
-              Уведомления
-            </h3>
-            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-              <div className="space-y-0.5">
-                <Label htmlFor="toast-toggle" className="text-sm font-medium">
-                  Всплывающие уведомления
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Показывать уведомления о действиях в приложении
-                </p>
-              </div>
-              <Switch
-                id="toast-toggle"
-                checked={toastEnabled}
-                onCheckedChange={(checked) => updateSettings({ toast_notifications_enabled: checked })}
-                disabled={updatingSettings}
-              />
-            </div>
-          </div>
-
-          {!isImpersonating && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Key className="w-4 h-4" />
-                Смена пароля
-              </h3>
-              <div className="flex gap-2">
-                <Input
-                  type="password"
-                  placeholder="Новый пароль"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="flex-1"
-                />
-                <Button 
-                  onClick={handleChangePassword} 
-                  disabled={passwordLoading || !newPassword}
-                  size="sm"
-                >
-                  {passwordLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Сменить"}
-                </Button>
-              </div>
-            </div>
+          {profileSection === 'personal' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
           )}
+        </button>
+        <button
+          onClick={() => setProfileSection('catalogs')}
+          className={`flex-1 py-2.5 text-xs font-medium transition-colors relative ${
+            profileSection === 'catalogs' 
+              ? 'text-primary' 
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-1.5">
+            <Store className="w-3.5 h-3.5" />
+            <span>Прайс-листы</span>
+          </div>
+          {profileSection === 'catalogs' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+          )}
+        </button>
+        <button
+          onClick={() => setProfileSection('settings')}
+          className={`flex-1 py-2.5 text-xs font-medium transition-colors relative ${
+            profileSection === 'settings' 
+              ? 'text-primary' 
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-1.5">
+            <Settings className="w-3.5 h-3.5" />
+            <span>Настройки</span>
+          </div>
+          {profileSection === 'settings' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+          )}
+        </button>
+      </div>
 
-          {/* Адреса доставки */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <MapPin className="w-4 h-4" />
-              Адреса доставки
-            </h3>
-            {addresses.length > 0 ? (
-              <div className="space-y-2">
-                {addresses.map((addr) => (
-                  <div key={addr.id} className="flex items-start gap-2 p-2.5 bg-muted/50 rounded-lg group">
-                    <MapPin className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm leading-tight">{addr.address}</p>
-                      {addr.label && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{addr.label}</p>
-                      )}
+      {/* Profile content */}
+      <div className="flex-1 overflow-auto p-4">
+        {profileLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          <>
+            {/* Личные данные */}
+            {profileSection === 'personal' && (
+              <div className="space-y-4 animate-in fade-in duration-150">
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-name" className="text-xs text-muted-foreground">Имя</Label>
+                    <Input
+                      id="edit-name"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Ваше имя"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-phone" className="text-xs text-muted-foreground">Телефон</Label>
+                    <Input
+                      id="edit-phone"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      placeholder="+7 (999) 123-45-67"
+                    />
+                  </div>
+                  <Button 
+                    onClick={handleSaveProfile} 
+                    disabled={savingProfile}
+                    className="w-full"
+                  >
+                    {savingProfile ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Сохранить изменения
+                  </Button>
+                </div>
+
+                {/* Адреса доставки */}
+                <div className="space-y-3 pt-4 border-t border-border">
+                  <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Адреса доставки
+                  </h3>
+                  {addresses.length > 0 ? (
+                    <div className="space-y-2">
+                      {addresses.map((addr) => (
+                        <div key={addr.id} className="flex items-start gap-2 p-2.5 bg-muted/50 rounded-lg group">
+                          <MapPin className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm leading-tight">{addr.address}</p>
+                            {addr.label && (
+                              <p className="text-xs text-muted-foreground mt-0.5">{addr.label}</p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => deleteAddress(addr.id)}
+                            className="p-1 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 rounded transition-all"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                    <button
-                      onClick={() => deleteAddress(addr.id)}
-                      className="p-1 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 rounded transition-all"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                    </button>
-                  </div>
-                ))}
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Адреса сохраняются автоматически при оформлении заказа</p>
+                  )}
+                </div>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Адреса сохраняются автоматически при оформлении заказа</p>
             )}
-          </div>
 
-          {/* Добавить прайс-лист */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              Добавить прайс-лист
-            </h3>
-            <div className="space-y-2">
-              <Input
-                placeholder="Вставьте ссылку на прайс-лист"
-                value={catalogLinkInput}
-                onChange={(e) => setCatalogLinkInput(e.target.value)}
-              />
-              <Button 
-                onClick={handleAddCatalogByLink} 
-                disabled={addingCatalog || !catalogLinkInput.trim()}
-                className="w-full"
-              >
-                {addingCatalog ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                Добавить
-              </Button>
-            </div>
-          </div>
-
-          {/* Доступные прайс-листы */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Store className="w-4 h-4" />
-              Доступные прайс-листы ({catalogs.length})
-            </h3>
-            <div className="space-y-2">
-              {catalogs.length > 0 ? (
-                catalogs.map((catalog) => (
-                  <div key={catalog.id} className="p-3 bg-muted/50 rounded-lg">
-                    <div className="font-medium text-sm">{catalog.store_name}</div>
-                    <div className="text-xs text-muted-foreground">{catalog.catalog_name}</div>
+            {/* Прайс-листы */}
+            {profileSection === 'catalogs' && (
+              <div className="space-y-4 animate-in fade-in duration-150">
+                {/* Добавить прайс-лист */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Добавить новый прайс-лист</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Вставьте ссылку или код"
+                      value={catalogLinkInput}
+                      onChange={(e) => setCatalogLinkInput(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button 
+                      onClick={handleAddCatalogByLink} 
+                      disabled={addingCatalog || !catalogLinkInput.trim()}
+                      size="icon"
+                    >
+                      {addingCatalog ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    </Button>
                   </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">Нет доступных прайс-листов</p>
-              )}
-            </div>
-          </div>
+                </div>
 
-          {/* Выход */}
-          <div className="pt-4 border-t border-border">
-            {isImpersonating ? (
-              <Button variant="outline" onClick={handleExitImpersonation} className="w-full gap-2">
-                <ArrowLeft className="w-4 h-4" />
-                Вернуться в панель супер-админа
-              </Button>
-            ) : (
-              <Button variant="outline" onClick={handleSignOut} className="w-full gap-2">
-                <LogOut className="w-4 h-4" />
-                Выйти из аккаунта
-              </Button>
+                {/* Доступные прайс-листы */}
+                <div className="space-y-2 pt-4 border-t border-border">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Мои прайс-листы</span>
+                    <Badge variant="secondary" className="text-[10px]">{catalogs.length}</Badge>
+                  </div>
+                  {catalogs.length > 0 ? (
+                    <div className="space-y-2">
+                      {catalogs.map((catalog) => (
+                        <div 
+                          key={catalog.id} 
+                          onClick={() => {
+                            setCurrentCatalog(catalog);
+                            handleCloseProfile();
+                          }}
+                          className="p-3 bg-muted/50 hover:bg-muted rounded-lg cursor-pointer transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-sm">{catalog.store_name}</div>
+                              <div className="text-xs text-muted-foreground">{catalog.catalog_name}</div>
+                            </div>
+                            {currentCatalog?.id === catalog.id && (
+                              <CheckCircle2 className="w-4 h-4 text-primary" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <FolderOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-xs">Нет доступных прайс-листов</p>
+                      <p className="text-[10px] mt-1">Добавьте прайс-лист по ссылке выше</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
-          </div>
-        </>
-      )}
+
+            {/* Настройки */}
+            {profileSection === 'settings' && (
+              <div className="space-y-4 animate-in fade-in duration-150">
+                {/* Уведомления */}
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="toast-toggle" className="text-sm font-medium flex items-center gap-2">
+                      <Bell className="w-3.5 h-3.5" />
+                      Уведомления
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground">
+                      Всплывающие уведомления о действиях
+                    </p>
+                  </div>
+                  <Switch
+                    id="toast-toggle"
+                    checked={toastEnabled}
+                    onCheckedChange={(checked) => updateSettings({ toast_notifications_enabled: checked })}
+                    disabled={updatingSettings}
+                  />
+                </div>
+
+                {/* Смена пароля */}
+                {!isImpersonating && (
+                  <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Key className="w-3.5 h-3.5" />
+                      Смена пароля
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="password"
+                        placeholder="Новый пароль"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={handleChangePassword} 
+                        disabled={passwordLoading || !newPassword}
+                        size="sm"
+                      >
+                        {passwordLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Сменить"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Выход */}
+                <div className="pt-4 border-t border-border">
+                  {isImpersonating ? (
+                    <Button variant="outline" onClick={handleExitImpersonation} className="w-full gap-2">
+                      <ArrowLeft className="w-4 h-4" />
+                      Вернуться в панель супер-админа
+                    </Button>
+                  ) : (
+                    <Button variant="outline" onClick={handleSignOut} className="w-full gap-2">
+                      <LogOut className="w-4 h-4" />
+                      Выйти из аккаунта
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 
