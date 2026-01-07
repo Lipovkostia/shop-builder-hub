@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useCustomerCatalogs, CartItem, CatalogProduct, CustomerCatalog } from "@/hooks/useCustomerCatalogs";
-import { useCustomerOrders } from "@/hooks/useOrders";
+import { useCustomerOrders, useCustomerOrdersHistory, Order } from "@/hooks/useOrders";
 import { useProfileSettings } from "@/hooks/useProfileSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,8 @@ import {
   Minus, 
   Trash2, 
   LogOut, 
-  Package, 
+  Package,
+  PackageOpen,
   Loader2,
   FolderOpen,
   Filter,
@@ -312,7 +313,8 @@ function CustomerHeader({
   showImages,
   onToggleImages,
   onOpenCart,
-  onOpenProfile
+  onOpenProfile,
+  onOpenOrders
 }: { 
   cart: LocalCartItem[];
   catalogs: CustomerCatalog[];
@@ -322,6 +324,7 @@ function CustomerHeader({
   onToggleImages: () => void;
   onOpenCart: () => void;
   onOpenProfile: () => void;
+  onOpenOrders: () => void;
 }) {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -342,12 +345,22 @@ function CustomerHeader({
           )}
         </button>
 
-        <button
-          onClick={onOpenProfile}
-          className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
-        >
-          <User className="w-4 h-4 text-muted-foreground" />
-        </button>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          <button
+            onClick={onOpenOrders}
+            className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
+            title="Мои заказы"
+          >
+            <PackageOpen className="w-4 h-4 text-muted-foreground" />
+          </button>
+          <button
+            onClick={onOpenProfile}
+            className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
+            title="Профиль"
+          >
+            <User className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
       </div>
 
       {/* Панель управления с иконками */}
@@ -427,11 +440,13 @@ const CustomerDashboard = () => {
     refetch: refetchCatalogs
   } = useCustomerCatalogs(targetUserId);
   const { createOrder, loading: orderLoading } = useCustomerOrders();
+  const { orders: myOrders, loading: myOrdersLoading, refetch: refetchMyOrders } = useCustomerOrdersHistory();
   const { toastEnabled, updateSettings, isUpdating: updatingSettings } = useProfileSettings();
 
   const [cart, setCart] = useState<LocalCartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [showProfileView, setShowProfileView] = useState(false);
   const [showImages, setShowImages] = useState(true);
   
@@ -954,6 +969,10 @@ const CustomerDashboard = () => {
         onToggleImages={() => setShowImages(!showImages)}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenProfile={handleOpenProfile}
+        onOpenOrders={() => {
+          refetchMyOrders();
+          setIsOrdersOpen(true);
+        }}
       />
       
       <main className="flex-1 overflow-auto">
@@ -1164,6 +1183,79 @@ const CustomerDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Orders History Sheet */}
+      <Sheet open={isOrdersOpen} onOpenChange={setIsOrdersOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <PackageOpen className="w-5 h-5" />
+              Мои заказы
+            </SheetTitle>
+            <SheetDescription>
+              История ваших заказов
+            </SheetDescription>
+          </SheetHeader>
+          
+          <div className="flex-1 overflow-y-auto py-4 space-y-3">
+            {myOrdersLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : myOrders.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Package className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                <p>У вас пока нет заказов</p>
+              </div>
+            ) : (
+              myOrders.map((order) => (
+                <div key={order.id} className="border rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{order.order_number}</span>
+                    <Badge variant={
+                      order.status === 'delivered' ? 'default' :
+                      order.status === 'cancelled' ? 'destructive' :
+                      order.status === 'shipped' ? 'secondary' :
+                      'outline'
+                    }>
+                      {order.status === 'pending' ? 'Ожидает' :
+                       order.status === 'processing' ? 'Обработка' :
+                       order.status === 'shipped' ? 'Отправлен' :
+                       order.status === 'delivered' ? 'Доставлен' :
+                       'Отменён'}
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(order.created_at).toLocaleDateString('ru-RU', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </div>
+                  {order.items && order.items.length > 0 && (
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      {order.items.slice(0, 3).map((item, idx) => (
+                        <div key={idx} className="truncate">
+                          {item.product_name} × {item.quantity}
+                        </div>
+                      ))}
+                      {order.items.length > 3 && (
+                        <div className="text-primary">+ ещё {order.items.length - 3} позиций</div>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-1 border-t">
+                    <span className="text-xs text-muted-foreground">Итого:</span>
+                    <span className="font-semibold">{formatPrice(order.total)}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
