@@ -396,6 +396,7 @@ function StoreHeader({
   showImages,
   onToggleImages,
   isOwner,
+  isOwnerLoading,
   filtersOpen,
   onToggleFilters,
   statusFilter,
@@ -411,6 +412,7 @@ function StoreHeader({
   showImages: boolean;
   onToggleImages: () => void;
   isOwner: boolean;
+  isOwnerLoading: boolean;
   filtersOpen: boolean;
   onToggleFilters: () => void;
   statusFilter: string;
@@ -443,15 +445,17 @@ function StoreHeader({
           <span className="text-sm font-medium">{store.name}</span>
         </div>
 
-        {isOwner && (
+        {(isOwner || isOwnerLoading) ? (
           <button
             onClick={() => navigate(`/admin?storeId=${store.id}`)}
-            className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
+            className={`p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full ${isOwnerLoading ? 'opacity-50' : ''}`}
+            disabled={isOwnerLoading}
           >
             <Settings className="w-4 h-4 text-muted-foreground" />
           </button>
+        ) : (
+          <div className="w-8" />
         )}
-        {!isOwner && <div className="w-8" />}
       </div>
 
       {/* Панель управления с иконками */}
@@ -706,8 +710,8 @@ export default function StoreFront() {
     });
   };
 
-  // Loading state - wait for owner check to complete too
-  if (storeLoading || productsLoading || ownerLoading) {
+  // Loading state - don't wait for owner check, show page and let gear icon update
+  if (storeLoading || productsLoading) {
     return <StoreSkeleton />;
   }
 
@@ -739,6 +743,7 @@ export default function StoreFront() {
         showImages={showImages}
         onToggleImages={() => setShowImages(!showImages)}
         isOwner={isOwner}
+        isOwnerLoading={ownerLoading}
         filtersOpen={filtersOpen}
         onToggleFilters={() => setFiltersOpen(!filtersOpen)}
         statusFilter={statusFilter}
