@@ -145,28 +145,38 @@ export function useStoreProducts(storeId: string | null) {
     }
 
     try {
-      const { data, error, count } = await supabase
+      // First, do the update without select to avoid PGRST116 on RLS block
+      const { error: updateError } = await supabase
         .from("products")
         .update(updates)
-        .eq("id", productId)
-        .select()
-        .maybeSingle();
+        .eq("id", productId);
 
-      if (error) {
-        if (error.code === '42501') {
+      if (updateError) {
+        if (updateError.code === '42501') {
           throw new Error("Нет прав для редактирования. Убедитесь, что вы владелец магазина.");
         }
-        throw error;
+        throw updateError;
       }
       
-      // If no data returned, RLS blocked the update
-      if (!data) {
+      // Then fetch the updated product to verify it was actually updated
+      const { data: updatedProduct, error: selectError } = await supabase
+        .from("products")
+        .select("*")
+        .eq("id", productId)
+        .maybeSingle();
+
+      if (selectError) {
+        throw selectError;
+      }
+      
+      // If we can't see the product after update, RLS blocked it
+      if (!updatedProduct) {
         throw new Error("Нет прав для редактирования. Убедитесь, что вы владелец магазина.");
       }
       
       // Update local state with the returned data
-      setProducts(prev => prev.map(p => p.id === productId ? data : p));
-      return data;
+      setProducts(prev => prev.map(p => p.id === productId ? updatedProduct : p));
+      return updatedProduct;
     } catch (error: any) {
       console.error("Error updating product:", error);
       toast({
