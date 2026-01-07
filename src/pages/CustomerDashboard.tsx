@@ -51,6 +51,9 @@ import {
   PackageOpen,
   Loader2,
   FolderOpen,
+  RotateCcw,
+  AlertCircle,
+  CheckCircle2,
   Filter,
   Image,
   User,
@@ -117,6 +120,9 @@ interface LocalCartItem {
   variantIndex: number;
   quantity: number;
   price: number;
+  // For repeat order items
+  originalProductName?: string;
+  isAvailable?: boolean;
 }
 
 // Карточка товара в стиле TestStore
@@ -659,7 +665,13 @@ const CustomerDashboard = () => {
     setCart(prev => prev.filter((_, i) => i !== index));
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  // Calculate cart total only for available items
+  const cartTotal = cart
+    .filter(item => item.isAvailable !== false)
+    .reduce((sum, item) => sum + item.price * item.quantity, 0);
+  
+  const availableItemsCount = cart.filter(item => item.isAvailable !== false).length;
+  const unavailableItemsCount = cart.filter(item => item.isAvailable === false).length;
 
   const [orderSuccess, setOrderSuccess] = useState(false);
 
@@ -706,6 +718,82 @@ const CustomerDashboard = () => {
       setTimeout(() => {
         setOrderSuccess(false);
       }, 1000);
+    }
+  };
+
+  // Repeat order function - adds all items from order to cart with availability check
+  const handleRepeatOrder = (order: Order) => {
+    if (!order.items || order.items.length === 0) return;
+
+    const newCartItems: LocalCartItem[] = [];
+    let availableCount = 0;
+    let unavailableCount = 0;
+
+    order.items.forEach(item => {
+      // Try to find the product in current catalog
+      const product = item.product_id ? getProductById(item.product_id) : null;
+      const isAvailable = !!product;
+      
+      if (isAvailable) {
+        availableCount++;
+      } else {
+        unavailableCount++;
+      }
+
+      // Parse variant from product name (e.g., "Сыр (½)" -> variantIndex 1)
+      let variantIndex = 0;
+      const variantMatch = item.product_name.match(/\((Целая|½|¼|Порция)\)$/);
+      if (variantMatch) {
+        switch (variantMatch[1]) {
+          case 'Целая': variantIndex = 0; break;
+          case '½': variantIndex = 1; break;
+          case '¼': variantIndex = 2; break;
+          case 'Порция': variantIndex = 3; break;
+        }
+      }
+
+      // Get current price from product or use order item price
+      let price = item.price;
+      if (product) {
+        const isHead = product.packaging_type === 'head' && (product.unit_weight || 0) > 0;
+        if (isHead) {
+          const catalogPrices = product.catalog_portion_prices;
+          switch (variantIndex) {
+            case 0: price = catalogPrices?.full || product.price_full || product.price * (product.unit_weight || 1); break;
+            case 1: price = catalogPrices?.half || product.price_half || product.price * ((product.unit_weight || 1) / 2); break;
+            case 2: price = catalogPrices?.quarter || product.price_quarter || product.price * ((product.unit_weight || 1) / 4); break;
+            case 3: price = catalogPrices?.portion || product.price_portion || item.price; break;
+          }
+        } else {
+          price = product.price;
+        }
+      }
+
+      newCartItems.push({
+        productId: item.product_id || `unavailable-${item.id}`,
+        variantIndex,
+        quantity: item.quantity,
+        price,
+        originalProductName: item.product_name,
+        isAvailable,
+      });
+    });
+
+    setCart(newCartItems);
+    setIsOrdersOpen(false);
+    setIsCartOpen(true);
+
+    if (unavailableCount > 0) {
+      toast({
+        title: "Заказ добавлен в корзину",
+        description: `${availableCount} товаров доступно, ${unavailableCount} нет в наличии`,
+        variant: unavailableCount > availableCount ? "destructive" : "default",
+      });
+    } else {
+      toast({
+        title: "Заказ добавлен в корзину",
+        description: `Все ${availableCount} товаров доступны`,
+      });
     }
   };
 
@@ -1072,44 +1160,73 @@ const CustomerDashboard = () => {
               <div className="divide-y divide-border/50">
                 {cart.map((item, index) => {
                   const product = getProductById(item.productId);
-                  if (!product) return null;
-                  const variantLabel = getVariantLabel(product, item.variantIndex);
+                  // For repeat order items, product might be null but we have originalProductName
+                  const isUnavailable = item.isAvailable === false;
+                  const displayName = product?.name || item.originalProductName || 'Товар';
+                  const variantLabel = product ? getVariantLabel(product, item.variantIndex) : '';
                   
                   return (
-                    <div key={`${item.productId}-${item.variantIndex}`} className="grid grid-cols-[32px_1fr_auto_auto] gap-2 py-2 items-center">
-                      {/* Изображение */}
-                      <div className="w-8 h-8 rounded bg-muted flex items-center justify-center overflow-hidden">
-                        {product.images?.[0] ? (
-                          <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                    <div 
+                      key={`${item.productId}-${item.variantIndex}-${index}`} 
+                      className={`grid grid-cols-[32px_1fr_auto_auto] gap-2 py-2 items-center ${isUnavailable ? 'opacity-60' : ''}`}
+                    >
+                      {/* Изображение с индикатором доступности */}
+                      <div className="relative w-8 h-8 rounded bg-muted flex items-center justify-center overflow-hidden">
+                        {product?.images?.[0] ? (
+                          <img src={product.images[0]} alt={displayName} className="w-full h-full object-cover" />
                         ) : (
                           <Package className="h-3.5 w-3.5 text-muted-foreground" />
                         )}
+                        {/* Availability indicator */}
+                        {item.isAvailable !== undefined && (
+                          <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center ${
+                            item.isAvailable ? 'bg-green-500' : 'bg-destructive'
+                          }`}>
+                            {item.isAvailable ? (
+                              <CheckCircle2 className="w-2 h-2 text-white" />
+                            ) : (
+                              <AlertCircle className="w-2 h-2 text-white" />
+                            )}
+                          </div>
+                        )}
                       </div>
                       
-                      {/* Название + вариант + цена за 1 */}
+                      {/* Название + вариант + цена за 1 + статус */}
                       <div className="min-w-0">
-                        <p className="font-medium text-[11px] truncate leading-tight">{product.name}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">
-                          {variantLabel && <span>{variantLabel} · </span>}
-                          {formatPrice(item.price)}/шт
+                        <p className={`font-medium text-[11px] truncate leading-tight ${isUnavailable ? 'line-through' : ''}`}>
+                          {displayName}
                         </p>
+                        <div className="flex items-center gap-1">
+                          {isUnavailable ? (
+                            <span className="text-[9px] text-destructive">Нет в прайсе</span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground truncate">
+                              {variantLabel && <span>{variantLabel} · </span>}
+                              {formatPrice(item.price)}/шт
+                            </span>
+                          )}
+                        </div>
                       </div>
                       
                       {/* Кнопки +/- с количеством */}
                       <div className="flex items-center gap-0.5">
-                        <button 
-                          className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-muted/80 transition-colors"
-                          onClick={() => updateCartQuantity(index, -1)}
-                        >
-                          <Minus className="h-2.5 w-2.5" />
-                        </button>
-                        <span className="w-5 text-center text-[11px] font-semibold tabular-nums">{item.quantity}</span>
-                        <button 
-                          className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-muted/80 transition-colors"
-                          onClick={() => updateCartQuantity(index, 1)}
-                        >
-                          <Plus className="h-2.5 w-2.5" />
-                        </button>
+                        {!isUnavailable && (
+                          <>
+                            <button 
+                              className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-muted/80 transition-colors"
+                              onClick={() => updateCartQuantity(index, -1)}
+                            >
+                              <Minus className="h-2.5 w-2.5" />
+                            </button>
+                            <span className="w-5 text-center text-[11px] font-semibold tabular-nums">{item.quantity}</span>
+                            <button 
+                              className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-muted/80 transition-colors"
+                              onClick={() => updateCartQuantity(index, 1)}
+                            >
+                              <Plus className="h-2.5 w-2.5" />
+                            </button>
+                          </>
+                        )}
                         <button 
                           className="w-5 h-5 flex items-center justify-center rounded hover:bg-destructive/10 transition-colors"
                           onClick={() => removeFromCart(index)}
@@ -1120,7 +1237,9 @@ const CustomerDashboard = () => {
                       
                       {/* Сумма */}
                       <div className="text-right w-14">
-                        <span className="text-[11px] font-bold text-primary tabular-nums">{formatPriceSpaced(item.price * item.quantity)}</span>
+                        {!isUnavailable && (
+                          <span className="text-[11px] font-bold text-primary tabular-nums">{formatPriceSpaced(item.price * item.quantity)}</span>
+                        )}
                       </div>
                     </div>
                   );
@@ -1130,15 +1249,26 @@ const CustomerDashboard = () => {
           </div>
           
           {cart.length > 0 && (
-            <div className="px-3 py-2 border-t border-border bg-muted/30">
+            <div className="px-3 py-2 border-t border-border bg-muted/30 space-y-1.5">
+              {/* Warning about unavailable items */}
+              {unavailableItemsCount > 0 && (
+                <div className="flex items-center gap-1.5 text-[10px] text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="w-3 h-3" />
+                  <span>{unavailableItemsCount} товаров нет в прайсе — они будут исключены</span>
+                </div>
+              )}
               <Button 
                 className="w-full h-9 text-sm font-semibold" 
+                disabled={availableItemsCount === 0}
                 onClick={() => {
+                  // Remove unavailable items before checkout
+                  if (unavailableItemsCount > 0) {
+                    setCart(prev => prev.filter(item => item.isAvailable !== false));
+                  }
                   if (profileData) {
                     setCheckoutName(profileData.full_name || "");
                     setCheckoutPhone(profileData.phone || "");
                   }
-                  // Pre-fill with last used address
                   if (lastUsedAddress) {
                     setCheckoutAddress(lastUsedAddress.address);
                   }
@@ -1146,7 +1276,10 @@ const CustomerDashboard = () => {
                   setIsCheckoutOpen(true);
                 }}
               >
-                Оформить · {formatPrice(cartTotal)}
+                {availableItemsCount > 0 
+                  ? `Оформить ${availableItemsCount} поз. · ${formatPrice(cartTotal)}`
+                  : 'Нет доступных товаров'
+                }
               </Button>
             </div>
           )}
@@ -1357,24 +1490,47 @@ const CustomerDashboard = () => {
                       {/* Expanded content */}
                       {isExpanded && order.items && order.items.length > 0 && (
                         <div className="px-2.5 pb-2 pt-0.5 animate-in slide-in-from-top-1 duration-150">
-                          <div className="flex items-center gap-1.5 mb-1.5">
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full text-white ${statusColor}`}>
-                              {statusText}
-                            </span>
-                            <span className="text-[9px] text-muted-foreground">
-                              {new Date(order.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded-full text-white ${statusColor}`}>
+                                {statusText}
+                              </span>
+                              <span className="text-[9px] text-muted-foreground">
+                                {new Date(order.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            {/* Repeat order button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRepeatOrder(order);
+                              }}
+                              className="flex items-center gap-1 px-2 py-0.5 text-[9px] font-medium bg-primary/10 hover:bg-primary/20 text-primary rounded-full transition-colors"
+                            >
+                              <RotateCcw className="w-2.5 h-2.5" />
+                              Повторить
+                            </button>
                           </div>
                           <div className="space-y-0.5 border-t border-border/50 pt-1.5">
-                            {order.items.map((item, idx) => (
-                              <div key={idx} className="flex items-center justify-between text-[10px]">
-                                <span className="truncate flex-1 text-muted-foreground">{item.product_name}</span>
-                                <span className="flex-shrink-0 ml-2 text-foreground">
-                                  <span className="text-muted-foreground">×{item.quantity}</span>
-                                  <span className="ml-1.5 font-medium">{formatPriceSpaced(item.total)}</span>
-                                </span>
-                              </div>
-                            ))}
+                            {order.items.map((item, idx) => {
+                              // Check if this product is available in current catalog
+                              const productAvailable = item.product_id ? !!getProductById(item.product_id) : false;
+                              return (
+                                <div key={idx} className="flex items-center justify-between text-[10px]">
+                                  <div className="flex items-center gap-1 flex-1 min-w-0">
+                                    {/* Availability indicator */}
+                                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${productAvailable ? 'bg-green-500' : 'bg-muted-foreground/40'}`} />
+                                    <span className={`truncate ${productAvailable ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
+                                      {item.product_name}
+                                    </span>
+                                  </div>
+                                  <span className="flex-shrink-0 ml-2 text-foreground">
+                                    <span className="text-muted-foreground">×{item.quantity}</span>
+                                    <span className="ml-1.5 font-medium">{formatPriceSpaced(item.total)}</span>
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
