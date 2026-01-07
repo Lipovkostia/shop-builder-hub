@@ -563,6 +563,14 @@ const CustomerDashboard = () => {
     }
   }, [user, authLoading, navigate, isImpersonating]);
 
+  // Fetch profile data on mount for checkout auto-fill
+  useEffect(() => {
+    const userId = targetUserId || user?.id;
+    if (userId && !profileData) {
+      fetchProfileData();
+    }
+  }, [user, targetUserId]);
+
   const getProductById = (productId: string) => products.find(p => p.id === productId);
 
   const getVariantLabel = (product: CatalogProduct, variantIndex: number): string => {
@@ -620,6 +628,8 @@ const CustomerDashboard = () => {
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
+  const [orderSuccess, setOrderSuccess] = useState(false);
+
   const handleCheckout = async () => {
     if (!currentCatalog || cart.length === 0) return;
 
@@ -652,6 +662,12 @@ const CustomerDashboard = () => {
       setCheckoutPhone("");
       setCheckoutAddress("");
       setCheckoutComment("");
+      
+      // Show success message for 1 second then redirect to catalog
+      setOrderSuccess(true);
+      setTimeout(() => {
+        setOrderSuccess(false);
+      }, 1000);
     }
   };
 
@@ -874,7 +890,20 @@ const CustomerDashboard = () => {
   }
 
   return (
-    <div className="h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col relative">
+      {/* Order Success Overlay */}
+      {orderSuccess && (
+        <div className="absolute inset-0 z-[100] bg-background/95 flex items-center justify-center">
+          <div className="text-center space-y-3 animate-in fade-in zoom-in duration-200">
+            <div className="w-16 h-16 mx-auto bg-green-500 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="text-lg font-semibold text-foreground">Заказ успешно отправлен!</p>
+          </div>
+        </div>
+      )}
       {/* Impersonation banner */}
       {isImpersonating && (
         <div className="bg-amber-500 text-amber-950 px-3 py-2 flex items-center justify-between">
@@ -1002,6 +1031,11 @@ const CustomerDashboard = () => {
               <Button 
                 className="w-full" 
                 onClick={() => {
+                  // Pre-fill checkout form with profile data
+                  if (profileData) {
+                    setCheckoutName(profileData.full_name || "");
+                    setCheckoutPhone(profileData.phone || "");
+                  }
                   setIsCartOpen(false);
                   setIsCheckoutOpen(true);
                 }}
