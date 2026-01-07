@@ -335,9 +335,34 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
     }
   }, [toast, fetchCatalogs]);
 
-  // Add catalog by access code (from link)
-  const addCatalogByCode = useCallback(async (accessCode: string) => {
+  // Extract access code from URL or use as-is
+  const extractAccessCode = (input: string): string => {
+    const trimmed = input.trim();
+    
+    // Try to parse as URL
     try {
+      const url = new URL(trimmed);
+      // Extract last path segment (e.g., /catalog/1857c058 -> 1857c058)
+      const pathParts = url.pathname.split('/').filter(Boolean);
+      if (pathParts.length > 0) {
+        return pathParts[pathParts.length - 1];
+      }
+    } catch {
+      // Not a valid URL, check if it contains /catalog/ pattern
+      const match = trimmed.match(/\/catalog\/([a-zA-Z0-9]+)/);
+      if (match) {
+        return match[1];
+      }
+    }
+    
+    // Return as-is if no URL pattern found
+    return trimmed;
+  };
+
+  // Add catalog by access code (from link)
+  const addCatalogByCode = useCallback(async (input: string) => {
+    try {
+      const accessCode = extractAccessCode(input);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Не авторизован");
 
