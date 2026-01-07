@@ -22,6 +22,7 @@ interface CatalogSettings {
     portionPrice?: number;
   } | null;
   status?: string;
+  categories?: string[];
 }
 
 interface ProductEditPanelProps {
@@ -95,6 +96,9 @@ export function ProductEditPanel({
   const [packagingType, setPackagingType] = useState(product.packaging_type || "piece");
   const [unitWeight, setUnitWeight] = useState(product.unit_weight?.toString() || "");
   const [status, setStatus] = useState(currentStatus || "in_stock");
+  const [categories, setCategories] = useState(
+    catalogSettings?.categories?.join(", ") || ""
+  );
   const [selectedCatalogs, setSelectedCatalogs] = useState<string[]>(productCatalogIds);
   const [saving, setSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -128,6 +132,7 @@ export function ProductEditPanel({
     setPricePortion(
       catalogSettings?.portion_prices?.portionPrice?.toString() || product.price_portion?.toString() || ""
     );
+    setCategories(catalogSettings?.categories?.join(", ") || "");
   }, [catalogSettings, catalogId, product]);
 
   // Sync status with currentStatus prop only on initial mount or when catalogId changes
@@ -178,8 +183,13 @@ export function ProductEditPanel({
         onCatalogsChange(product.id, selectedCatalogs);
       }
 
-      // Update catalog-specific settings (markup and portion prices)
+      // Update catalog-specific settings (markup, portion prices, categories)
       if (catalogId && onCatalogSettingsChange) {
+        const categoriesArray = categories
+          .split(",")
+          .map(c => c.trim())
+          .filter(c => c.length > 0);
+        
         onCatalogSettingsChange(catalogId, product.id, {
           markup_type: markupType,
           markup_value: parseFloat(markupValue) || 0,
@@ -189,6 +199,7 @@ export function ProductEditPanel({
             portionPrice: parseFloat(pricePortion) || undefined,
           },
           status,
+          categories: categoriesArray,
         });
       } else if (catalogId && onStatusChange && status !== currentStatus) {
         // Fallback: just update status if no onCatalogSettingsChange
@@ -199,7 +210,7 @@ export function ProductEditPanel({
     } finally {
       setSaving(false);
     }
-  }, [name, description, buyPrice, markupType, markupValue, unit, packagingType, unitWeight, status, priceHalf, priceQuarter, pricePortion, selectedCatalogs, product.id, productCatalogIds, onSave, onCatalogsChange, catalogId, currentStatus, onStatusChange, onCatalogSettingsChange, calculateSalePrice]);
+  }, [name, description, buyPrice, markupType, markupValue, unit, packagingType, unitWeight, status, priceHalf, priceQuarter, pricePortion, categories, selectedCatalogs, product.id, productCatalogIds, onSave, onCatalogsChange, catalogId, currentStatus, onStatusChange, onCatalogSettingsChange, calculateSalePrice]);
 
   // Debounced auto-save effect
   useEffect(() => {
@@ -371,6 +382,19 @@ export function ProductEditPanel({
             step="0.1"
             min="0"
           />
+        </div>
+
+        {/* Категории */}
+        <div className="col-span-2 sm:col-span-3">
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Категории</label>
+          <Input
+            type="text"
+            value={categories}
+            onChange={(e) => setCategories(e.target.value)}
+            placeholder="Сыры, Молочные продукты"
+            className="h-7 text-xs mt-0.5"
+          />
+          <p className="text-[9px] text-muted-foreground mt-0.5">Через запятую</p>
         </div>
 
         {/* Статус - кнопки вместо Select */}
