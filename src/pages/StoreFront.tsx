@@ -325,10 +325,11 @@ function ProductCard({
           {/* Целая - всегда показываем */}
           {(() => {
             const qty = getCartQuantity(0);
-            const price = packagingPrices?.full || salePrice;
+            // Цена = объём * цена за кг
+            const fullPrice = (product.unit_weight || 1) * salePrice;
             return (
               <button
-                onClick={() => inStock && onAddToCart(product.id, 0, price)}
+                onClick={() => inStock && onAddToCart(product.id, 0, fullPrice)}
                 disabled={!inStock}
                 className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
                   inStock 
@@ -343,7 +344,7 @@ function ProductCard({
                 )}
                 <PortionIndicator type="full" />
                 <span className="text-sm font-medium text-foreground">
-                  {formatPriceSpaced(price)}
+                  {formatPriceSpaced(fullPrice)}
                 </span>
               </button>
             );
