@@ -283,7 +283,10 @@ function ProductCard({
             onClick={isOwner && onToggleExpand ? () => onToggleExpand() : undefined}
           >
             {effectiveStatus === "out_of_stock" && (
-              <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground/50 mr-1.5 align-middle" title="Нет в наличии" />
+              <span className="inline-flex items-center gap-1 mr-1.5 text-muted-foreground text-xs align-middle">
+                <span className="w-2 h-2 rounded-full bg-muted-foreground/50" />
+                <span>нет в наличии</span>
+              </span>
             )}
             {product.name}
             {isOwner && isHidden && (
