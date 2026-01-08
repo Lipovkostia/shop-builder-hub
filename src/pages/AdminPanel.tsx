@@ -3670,16 +3670,6 @@ export default function AdminPanel({
                             onChange={(e) => setNewCatalogName(e.target.value)}
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="catalog-desc">Описание</Label>
-                          <Input
-                            id="catalog-desc"
-                            type="text"
-                            placeholder="Описание прайс-листа"
-                            value={newCatalogDescription}
-                            onChange={(e) => setNewCatalogDescription(e.target.value)}
-                          />
-                        </div>
                         <div className="flex gap-2">
                           <Button
                             onClick={createCatalog}
