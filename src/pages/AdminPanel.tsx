@@ -2736,6 +2736,38 @@ export default function AdminPanel({
                 onBulkDelete={bulkDeleteProducts}
                 unitOptions={allUnitOptions}
                 packagingOptions={allPackagingOptions}
+                catalogs={catalogs}
+                onAddToCatalog={async (catalogId) => {
+                  const productIds = Array.from(selectedBulkProducts);
+                  let addedCount = 0;
+                  for (const productId of productIds) {
+                    const currentSet = productCatalogVisibility[productId] || new Set();
+                    if (!currentSet.has(catalogId)) {
+                      await toggleProductCatalogVisibility(productId, catalogId);
+                      addedCount++;
+                    }
+                  }
+                  const catalogName = catalogs.find(c => c.id === catalogId)?.name || "прайс-лист";
+                  toast({
+                    title: "Товары добавлены",
+                    description: `${addedCount} товар(ов) добавлено в "${catalogName}"`,
+                  });
+                  setSelectedBulkProducts(new Set());
+                }}
+                onCreateCatalogAndAdd={async (catalogName) => {
+                  const newCatalog = await createSupabaseCatalog(catalogName);
+                  if (newCatalog) {
+                    const productIds = Array.from(selectedBulkProducts);
+                    for (const productId of productIds) {
+                      await toggleProductCatalogVisibility(productId, newCatalog.id);
+                    }
+                    toast({
+                      title: "Прайс-лист создан",
+                      description: `"${catalogName}" создан и ${productIds.length} товар(ов) добавлено`,
+                    });
+                    setSelectedBulkProducts(new Set());
+                  }
+                }}
               />
 
               <div className="bg-card rounded-lg border border-border">

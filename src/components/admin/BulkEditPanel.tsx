@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Trash2, Package, Tag, Check } from "lucide-react";
+import { X, Trash2, Package, Tag, Check, FolderPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +21,11 @@ import {
 import { Product, PackagingType, MarkupSettings, ProductStatus } from "./types";
 import { InlineMarkupCell } from "./InlineMarkupCell";
 
+interface Catalog {
+  id: string;
+  name: string;
+}
+
 interface BulkEditPanelProps {
   selectedCount: number;
   onClearSelection: () => void;
@@ -29,6 +34,9 @@ interface BulkEditPanelProps {
   unitOptions: { value: string; label: string }[];
   packagingOptions: { value: string; label: string }[];
   showDelete?: boolean;
+  catalogs?: Catalog[];
+  onAddToCatalog?: (catalogId: string) => void;
+  onCreateCatalogAndAdd?: (catalogName: string) => void;
 }
 
 export function BulkEditPanel({
@@ -39,11 +47,17 @@ export function BulkEditPanel({
   unitOptions,
   packagingOptions,
   showDelete = true,
+  catalogs = [],
+  onAddToCatalog,
+  onCreateCatalogAndAdd,
 }: BulkEditPanelProps) {
   const [editField, setEditField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
   const [markupValue, setMarkupValue] = useState<MarkupSettings | undefined>();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showAddToCatalogDialog, setShowAddToCatalogDialog] = useState(false);
+  const [selectedCatalogId, setSelectedCatalogId] = useState<string>("");
+  const [newCatalogName, setNewCatalogName] = useState("");
 
   const handleApply = () => {
     if (!editField) return;
@@ -85,6 +99,18 @@ export function BulkEditPanel({
     onBulkDelete?.();
   };
 
+  const handleAddToCatalog = () => {
+    if (catalogs.length > 0 && selectedCatalogId) {
+      onAddToCatalog?.(selectedCatalogId);
+      setShowAddToCatalogDialog(false);
+      setSelectedCatalogId("");
+    } else if (catalogs.length === 0 && newCatalogName.trim()) {
+      onCreateCatalogAndAdd?.(newCatalogName.trim());
+      setShowAddToCatalogDialog(false);
+      setNewCatalogName("");
+    }
+  };
+
   if (selectedCount === 0) return null;
 
   return (
@@ -106,6 +132,22 @@ export function BulkEditPanel({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Add to catalog button */}
+          {(onAddToCatalog || onCreateCatalogAndAdd) && (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowAddToCatalogDialog(true)}
+                className="h-8"
+              >
+                <FolderPlus className="h-4 w-4 mr-1" />
+                В прайс-лист
+              </Button>
+              <div className="w-px h-6 bg-primary-foreground/20 mx-1" />
+            </>
+          )}
+
           {/* Edit field selector */}
           <Select value={editField || ""} onValueChange={(v) => {
             setEditField(v);
@@ -214,6 +256,7 @@ export function BulkEditPanel({
         </div>
       </div>
 
+      {/* Delete confirmation dialog */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent>
           <DialogHeader>
@@ -228,6 +271,72 @@ export function BulkEditPanel({
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
               Удалить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add to catalog dialog */}
+      <Dialog open={showAddToCatalogDialog} onOpenChange={setShowAddToCatalogDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Добавить в прайс-лист</DialogTitle>
+            <DialogDescription>
+              {catalogs.length > 0 
+                ? `Выберите прайс-лист для добавления ${selectedCount} товар(ов)`
+                : `Создайте новый прайс-лист для ${selectedCount} товар(ов)`
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {catalogs.length > 0 ? (
+              <div className="space-y-2">
+                <Label>Прайс-лист</Label>
+                <Select value={selectedCatalogId} onValueChange={setSelectedCatalogId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите прайс-лист..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {catalogs.map(catalog => (
+                      <SelectItem key={catalog.id} value={catalog.id}>
+                        {catalog.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Название нового прайс-листа</Label>
+                <Input
+                  value={newCatalogName}
+                  onChange={(e) => setNewCatalogName(e.target.value)}
+                  placeholder="Введите название..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newCatalogName.trim()) {
+                      handleAddToCatalog();
+                    }
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowAddToCatalogDialog(false);
+              setSelectedCatalogId("");
+              setNewCatalogName("");
+            }}>
+              Отмена
+            </Button>
+            <Button 
+              onClick={handleAddToCatalog}
+              disabled={catalogs.length > 0 ? !selectedCatalogId : !newCatalogName.trim()}
+            >
+              <FolderPlus className="h-4 w-4 mr-1" />
+              {catalogs.length > 0 ? "Добавить" : "Создать и добавить"}
             </Button>
           </DialogFooter>
         </DialogContent>
