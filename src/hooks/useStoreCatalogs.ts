@@ -190,10 +190,13 @@ export function useStoreCatalogs(storeId: string | null) {
           return { ...prev, [productId]: newSet };
         });
       } else {
-        // Add to catalog
+        // Add to catalog - use upsert to avoid duplicate key error
         const { error } = await supabase
           .from("product_catalog_visibility")
-          .insert({ product_id: productId, catalog_id: catalogId });
+          .upsert(
+            { product_id: productId, catalog_id: catalogId },
+            { onConflict: "product_id,catalog_id", ignoreDuplicates: true }
+          );
 
         if (error) throw error;
 
@@ -231,11 +234,14 @@ export function useStoreCatalogs(storeId: string | null) {
         if (error) throw error;
       }
 
-      // Add new visibility
+      // Add new visibility - use upsert to avoid duplicate key error
       if (toAdd.length > 0) {
         const { error } = await supabase
           .from("product_catalog_visibility")
-          .insert(toAdd.map(catalog_id => ({ product_id: productId, catalog_id })));
+          .upsert(
+            toAdd.map(catalog_id => ({ product_id: productId, catalog_id })),
+            { onConflict: "product_id,catalog_id", ignoreDuplicates: true }
+          );
 
         if (error) throw error;
       }
