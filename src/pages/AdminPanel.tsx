@@ -547,6 +547,7 @@ export default function AdminPanel({
     cost: "",
     status: "all",
     sync: "all",
+    group: "all",
   });
 
   // Filters for MoySklad import table
@@ -2418,6 +2419,15 @@ export default function AdminPanel({
         if (allProductsFilters.sync === "synced" && !product.autoSync) return false;
         if (allProductsFilters.sync === "notSynced" && product.autoSync) return false;
       }
+      // Filter by group
+      if (allProductsFilters.group !== "all") {
+        const productGroupIds = getProductGroupIds(product.id);
+        if (allProductsFilters.group === "none") {
+          if (productGroupIds.length > 0) return false;
+        } else {
+          if (!productGroupIds.includes(allProductsFilters.group)) return false;
+        }
+      }
       return true;
     });
     
@@ -2434,7 +2444,7 @@ export default function AdminPanel({
     }
     
     return filtered;
-  }, [allProducts, allProductsFilters, productOrder]);
+  }, [allProducts, allProductsFilters, productOrder, getProductGroupIds]);
   
   // Product IDs for sortable rows
   const productIds = useMemo(() => filteredAllProducts.map(p => p.id), [filteredAllProducts]);
@@ -2820,7 +2830,17 @@ export default function AdminPanel({
                         </ResizableTableHead>
                       )}
                       {visibleColumns.groups && (
-                        <ResizableTableHead columnId="groups" minWidth={100} resizable={false}></ResizableTableHead>
+                        <ResizableTableHead columnId="groups" minWidth={100} resizable={false}>
+                          <SelectFilter
+                            value={allProductsFilters.group}
+                            onChange={(v) => setAllProductsFilters(f => ({...f, group: v}))}
+                            options={[
+                              { value: "none", label: "Без группы" },
+                              ...productGroups.map(g => ({ value: g.id, label: g.name }))
+                            ]}
+                            placeholder="Все"
+                          />
+                        </ResizableTableHead>
                       )}
                       {visibleColumns.catalogs && (
                         <ResizableTableHead columnId="catalogs" minWidth={120} resizable={false}></ResizableTableHead>
