@@ -288,12 +288,13 @@ function ProductCard({
                 <span>нет в наличии</span>
               </span>
             )}
-            {product.name}
             {isOwner && isHidden && (
-              <Badge variant="outline" className="ml-1 text-[8px] py-0 px-1 bg-muted/50 text-muted-foreground border-dashed">
-                Скрыт
-              </Badge>
+              <span className="inline-flex items-center gap-1 mr-1.5 text-muted-foreground text-xs align-middle">
+                <span className="w-2 h-2 rounded-full bg-muted-foreground/50 border border-dashed border-muted-foreground" />
+                <span>скрыт</span>
+              </span>
             )}
+            {product.name}
             {isOwner && (
               <Pencil className="inline-block ml-1 w-3 h-3 text-muted-foreground" />
             )}
