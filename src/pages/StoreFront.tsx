@@ -313,7 +313,7 @@ function ProductCard({
         )}
 
         {/* Кнопки - flex-shrink-0 чтобы не сжимались */}
-        <div className={`flex items-center gap-0.5 flex-shrink-0 mt-0.5 flex-wrap`}>
+        <div className={`flex items-center gap-0.5 flex-shrink-0 mt-0.5 flex-wrap justify-end flex-row-reverse`}>
           {/* Статус бейдж для "нет в наличии" или "скрыт" */}
           {effectiveStatus === "out_of_stock" && (
             <Badge variant="secondary" className="text-[11px] h-6 mr-1">
