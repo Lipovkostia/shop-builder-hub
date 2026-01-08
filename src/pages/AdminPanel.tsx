@@ -51,6 +51,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Product,
   ProductStatus,
   MoySkladProduct,
@@ -326,6 +331,79 @@ function SelectFilter({
   );
 }
 
+function MultiSelectFilter({
+  values,
+  onChange,
+  options,
+  placeholder
+}: {
+  values: string[];
+  onChange: (values: string[]) => void;
+  options: { value: string; label: string }[];
+  placeholder: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleToggle = (optionValue: string) => {
+    if (values.includes(optionValue)) {
+      onChange(values.filter(v => v !== optionValue));
+    } else {
+      onChange([...values, optionValue]);
+    }
+  };
+
+  const selectedLabels = values
+    .map(v => options.find(o => o.value === v)?.label)
+    .filter(Boolean);
+
+  const displayText = values.length === 0 
+    ? placeholder 
+    : selectedLabels.length <= 1 
+      ? selectedLabels.join(", ") 
+      : `${selectedLabels.length} групп`;
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <button className={`flex items-center justify-between w-full h-5 text-[10px] px-1 border rounded-md bg-background hover:bg-muted/50 ${values.length > 0 ? 'border-primary/50' : 'border-input'}`}>
+          <span className="truncate">{displayText}</span>
+          <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-48 p-1" align="start">
+        <div className="flex flex-col gap-0.5 max-h-[200px] overflow-y-auto">
+          {options.map((option) => {
+            const isSelected = values.includes(option.value);
+            return (
+              <div
+                key={option.value}
+                onClick={() => handleToggle(option.value)}
+                className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted cursor-pointer text-xs"
+              >
+                <Checkbox checked={isSelected} className="h-3 w-3 pointer-events-none" />
+                <span className="truncate">{option.label}</span>
+              </div>
+            );
+          })}
+          {options.length === 0 && (
+            <p className="text-xs text-muted-foreground px-2 py-1">Нет групп</p>
+          )}
+        </div>
+        {values.length > 0 && (
+          <div className="border-t mt-1 pt-1">
+            <button
+              onClick={() => onChange([])}
+              className="w-full text-xs text-muted-foreground hover:text-foreground px-2 py-1 text-left"
+            >
+              Сбросить фильтр
+            </button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // Props interface for workspace mode
 interface AdminPanelProps {
   workspaceMode?: boolean;
@@ -547,7 +625,7 @@ export default function AdminPanel({
     cost: "",
     status: "all",
     sync: "all",
-    group: "all",
+    groups: [] as string[],
   });
 
   // Filters for MoySklad import table
@@ -2419,14 +2497,18 @@ export default function AdminPanel({
         if (allProductsFilters.sync === "synced" && !product.autoSync) return false;
         if (allProductsFilters.sync === "notSynced" && product.autoSync) return false;
       }
-      // Filter by group
-      if (allProductsFilters.group !== "all") {
+      // Filter by groups (multi-select)
+      if (allProductsFilters.groups.length > 0) {
         const productGroupIds = getProductGroupIds(product.id);
-        if (allProductsFilters.group === "none") {
-          if (productGroupIds.length > 0) return false;
-        } else {
-          if (!productGroupIds.includes(allProductsFilters.group)) return false;
-        }
+        // Check if product has at least one of the selected groups
+        // Special case: "none" means products without any groups
+        const hasNoneFilter = allProductsFilters.groups.includes("none");
+        const otherGroupFilters = allProductsFilters.groups.filter(g => g !== "none");
+        
+        const matchesNone = hasNoneFilter && productGroupIds.length === 0;
+        const matchesGroups = otherGroupFilters.length > 0 && otherGroupFilters.some(g => productGroupIds.includes(g));
+        
+        if (!matchesNone && !matchesGroups) return false;
       }
       return true;
     });
@@ -2831,9 +2913,9 @@ export default function AdminPanel({
                       )}
                       {visibleColumns.groups && (
                         <ResizableTableHead columnId="groups" minWidth={100} resizable={false}>
-                          <SelectFilter
-                            value={allProductsFilters.group}
-                            onChange={(v) => setAllProductsFilters(f => ({...f, group: v}))}
+                          <MultiSelectFilter
+                            values={allProductsFilters.groups}
+                            onChange={(v) => setAllProductsFilters(f => ({...f, groups: v}))}
                             options={[
                               { value: "none", label: "Без группы" },
                               ...productGroups.map(g => ({ value: g.id, label: g.name }))
