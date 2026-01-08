@@ -89,6 +89,7 @@ import { useStoreSyncSettings, SyncSettings as StoreSyncSettings, SyncFieldMappi
 import { useStoreOrders, Order } from "@/hooks/useOrders";
 import { StoreCustomersTable } from "@/components/admin/StoreCustomersTable";
 import { useCatalogProductSettings } from "@/hooks/useCatalogProductSettings";
+import { useProductGroups } from "@/hooks/useProductGroups";
 
 // Removed localStorage keys - now using Supabase
 
@@ -421,6 +422,15 @@ export default function AdminPanel({
     updateProductSettings: updateCatalogProductSettingsInDB,
     refetch: refetchCatalogProductSettings
   } = useCatalogProductSettings(effectiveStoreId);
+  
+  // Product groups from Supabase
+  const {
+    groups: productGroups,
+    getProductGroupIds,
+    setProductGroups: setProductGroupAssignments,
+    createGroup: createProductGroup,
+    deleteGroup: deleteProductGroup,
+  } = useProductGroups(effectiveStoreId);
   // ================ END SUPABASE DATA HOOKS ================
   
   const [activeSection, setActiveSection] = useState<ActiveSection>(() => {
@@ -627,6 +637,7 @@ export default function AdminPanel({
     type: true,
     volume: true,
     cost: true,
+    groups: true,
     catalogs: true,
   });
 
@@ -642,6 +653,7 @@ export default function AdminPanel({
     type: "Вид",
     volume: "Объем",
     cost: "Себест.",
+    groups: "Группа",
     catalogs: "Прайс-листы",
   };
 
@@ -2649,6 +2661,7 @@ export default function AdminPanel({
                     { id: "type", minWidth: 70, defaultWidth: 85 },
                     { id: "volume", minWidth: 70, defaultWidth: 80 },
                     { id: "cost", minWidth: 70, defaultWidth: 90 },
+                    { id: "groups", minWidth: 100, defaultWidth: 120 },
                     { id: "catalogs", minWidth: 100, defaultWidth: 120 },
                     { id: "status", minWidth: 70, defaultWidth: 80 },
                     { id: "sync", minWidth: 50, defaultWidth: 50 },
@@ -2697,6 +2710,9 @@ export default function AdminPanel({
                       )}
                       {visibleColumns.cost && (
                         <ResizableTableHead columnId="cost" minWidth={70}>Себест.</ResizableTableHead>
+                      )}
+                      {visibleColumns.groups && (
+                        <ResizableTableHead columnId="groups" minWidth={100}>Группа</ResizableTableHead>
                       )}
                       {visibleColumns.catalogs && (
                         <ResizableTableHead columnId="catalogs" minWidth={120}>Прайс-листы</ResizableTableHead>
@@ -2802,6 +2818,9 @@ export default function AdminPanel({
                             placeholder="Поиск..."
                           />
                         </ResizableTableHead>
+                      )}
+                      {visibleColumns.groups && (
+                        <ResizableTableHead columnId="groups" minWidth={100} resizable={false}></ResizableTableHead>
                       )}
                       {visibleColumns.catalogs && (
                         <ResizableTableHead columnId="catalogs" minWidth={120} resizable={false}></ResizableTableHead>
@@ -2934,6 +2953,27 @@ export default function AdminPanel({
                               value={product.buyPrice}
                               onSave={(newPrice) => updateProduct({ ...product, buyPrice: newPrice })}
                               placeholder="0"
+                            />
+                          </ResizableTableCell>
+                        ),
+                        groups: (
+                          <ResizableTableCell key="groups" columnId="groups">
+                            <InlineMultiSelectCell
+                              values={getProductGroupIds(product.id)}
+                              options={productGroups.map(g => ({ value: g.id, label: g.name }))}
+                              onSave={(selectedIds) => {
+                                setProductGroupAssignments(product.id, selectedIds);
+                              }}
+                              onAddOption={async (newGroupName) => {
+                                const newGroup = await createProductGroup(newGroupName);
+                                if (newGroup) {
+                                  return newGroup.id;
+                                }
+                                return null;
+                              }}
+                              placeholder="Группа..."
+                              addNewPlaceholder="Новая группа..."
+                              allowAddNew={true}
                             />
                           </ResizableTableCell>
                         ),
