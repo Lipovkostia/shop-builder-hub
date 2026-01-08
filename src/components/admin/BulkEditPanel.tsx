@@ -58,6 +58,7 @@ export function BulkEditPanel({
   const [showAddToCatalogDialog, setShowAddToCatalogDialog] = useState(false);
   const [selectedCatalogId, setSelectedCatalogId] = useState<string>("");
   const [newCatalogName, setNewCatalogName] = useState("");
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
 
   const handleApply = () => {
     if (!editField) return;
@@ -100,10 +101,18 @@ export function BulkEditPanel({
   };
 
   const handleAddToCatalog = () => {
-    if (catalogs.length > 0 && selectedCatalogId) {
+    if (isCreatingNew && newCatalogName.trim()) {
+      onCreateCatalogAndAdd?.(newCatalogName.trim());
+      setShowAddToCatalogDialog(false);
+      setSelectedCatalogId("");
+      setNewCatalogName("");
+      setIsCreatingNew(false);
+    } else if (!isCreatingNew && selectedCatalogId) {
       onAddToCatalog?.(selectedCatalogId);
       setShowAddToCatalogDialog(false);
       setSelectedCatalogId("");
+      setNewCatalogName("");
+      setIsCreatingNew(false);
     } else if (catalogs.length === 0 && newCatalogName.trim()) {
       onCreateCatalogAndAdd?.(newCatalogName.trim());
       setShowAddToCatalogDialog(false);
@@ -277,22 +286,29 @@ export function BulkEditPanel({
       </Dialog>
 
       {/* Add to catalog dialog */}
-      <Dialog open={showAddToCatalogDialog} onOpenChange={setShowAddToCatalogDialog}>
+      <Dialog open={showAddToCatalogDialog} onOpenChange={(open) => {
+        setShowAddToCatalogDialog(open);
+        if (!open) {
+          setIsCreatingNew(false);
+          setSelectedCatalogId("");
+          setNewCatalogName("");
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Добавить в прайс-лист</DialogTitle>
             <DialogDescription>
               {catalogs.length > 0 
-                ? `Выберите прайс-лист для добавления ${selectedCount} товар(ов)`
+                ? `Выберите прайс-лист или создайте новый для ${selectedCount} товар(ов)`
                 : `Создайте новый прайс-лист для ${selectedCount} товар(ов)`
               }
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-4">
-            {catalogs.length > 0 ? (
+          <div className="py-4 space-y-4">
+            {catalogs.length > 0 && !isCreatingNew && (
               <div className="space-y-2">
-                <Label>Прайс-лист</Label>
+                <Label>Выбрать существующий прайс-лист</Label>
                 <Select value={selectedCatalogId} onValueChange={setSelectedCatalogId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Выберите прайс-лист..." />
@@ -306,20 +322,56 @@ export function BulkEditPanel({
                   </SelectContent>
                 </Select>
               </div>
-            ) : (
+            )}
+
+            {catalogs.length > 0 && !isCreatingNew && (
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground">или</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+            )}
+
+            {(catalogs.length === 0 || isCreatingNew) ? (
               <div className="space-y-2">
                 <Label>Название нового прайс-листа</Label>
                 <Input
                   value={newCatalogName}
                   onChange={(e) => setNewCatalogName(e.target.value)}
                   placeholder="Введите название..."
+                  autoFocus
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && newCatalogName.trim()) {
                       handleAddToCatalog();
                     }
                   }}
                 />
+                {catalogs.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setIsCreatingNew(false);
+                      setNewCatalogName("");
+                    }}
+                    className="text-xs text-muted-foreground"
+                  >
+                    ← Назад к выбору
+                  </Button>
+                )}
               </div>
+            ) : (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setIsCreatingNew(true);
+                  setSelectedCatalogId("");
+                }}
+              >
+                <FolderPlus className="h-4 w-4 mr-2" />
+                Создать новый прайс-лист
+              </Button>
             )}
           </div>
 
@@ -328,15 +380,16 @@ export function BulkEditPanel({
               setShowAddToCatalogDialog(false);
               setSelectedCatalogId("");
               setNewCatalogName("");
+              setIsCreatingNew(false);
             }}>
               Отмена
             </Button>
             <Button 
               onClick={handleAddToCatalog}
-              disabled={catalogs.length > 0 ? !selectedCatalogId : !newCatalogName.trim()}
+              disabled={isCreatingNew || catalogs.length === 0 ? !newCatalogName.trim() : !selectedCatalogId}
             >
               <FolderPlus className="h-4 w-4 mr-1" />
-              {catalogs.length > 0 ? "Добавить" : "Создать и добавить"}
+              {isCreatingNew || catalogs.length === 0 ? "Создать и добавить" : "Добавить"}
             </Button>
           </DialogFooter>
         </DialogContent>
