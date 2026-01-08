@@ -4191,69 +4191,15 @@ export default function AdminPanel({
                                 </ResizableTableCell>
                                 {/* Цена за ½ - независимая для каждого каталога */}
                                 <ResizableTableCell columnId="priceHalf">
-                                  {basePackagingType === "head" ? (
-                                    <div className="flex flex-col gap-0.5">
-                                      <InlinePriceCell
-                                        value={effectivePortionPrices?.halfPricePerKg}
-                                        onSave={(value) => {
-                                          if (currentCatalog) {
-                                            updateCatalogProductPricing(currentCatalog.id, product.id, { 
-                                              portionPrices: { 
-                                                ...effectivePortionPrices, 
-                                                halfPricePerKg: value 
-                                              } 
-                                            });
-                                          }
-                                        }}
-                                        placeholder="авто"
-                                        suffix={`/${baseUnit}`}
-                                      />
-                                      {baseUnitWeight && effectivePortionPrices?.halfPricePerKg && (
-                                        <span className="text-[10px] text-muted-foreground">
-                                          = {formatPrice(effectivePortionPrices.halfPricePerKg * (baseUnitWeight / 2))}
-                                        </span>
-                                      )}
-                                    </div>
-                                  ) : "-"}
-                                </ResizableTableCell>
-                                {/* Цена за ¼ - независимая для каждого каталога */}
-                                <ResizableTableCell columnId="priceQuarter">
-                                  {basePackagingType === "head" ? (
-                                    <div className="flex flex-col gap-0.5">
-                                      <InlinePriceCell
-                                        value={effectivePortionPrices?.quarterPricePerKg}
-                                        onSave={(value) => {
-                                          if (currentCatalog) {
-                                            updateCatalogProductPricing(currentCatalog.id, product.id, { 
-                                              portionPrices: { 
-                                                ...effectivePortionPrices, 
-                                                quarterPricePerKg: value 
-                                              } 
-                                            });
-                                          }
-                                        }}
-                                        placeholder="авто"
-                                        suffix={`/${baseUnit}`}
-                                      />
-                                      {baseUnitWeight && effectivePortionPrices?.quarterPricePerKg && (
-                                        <span className="text-[10px] text-muted-foreground">
-                                          = {formatPrice(effectivePortionPrices.quarterPricePerKg * (baseUnitWeight / 4))}
-                                        </span>
-                                      )}
-                                    </div>
-                                  ) : "-"}
-                                </ResizableTableCell>
-                                {/* Цена за порцию - независимая для каждого каталога */}
-                                <ResizableTableCell columnId="pricePortion">
-                                  {basePackagingType === "head" ? (
+                                  <div className="flex flex-col gap-0.5">
                                     <InlinePriceCell
-                                      value={effectivePortionPrices?.portionPrice}
+                                      value={effectivePortionPrices?.halfPricePerKg}
                                       onSave={(value) => {
                                         if (currentCatalog) {
                                           updateCatalogProductPricing(currentCatalog.id, product.id, { 
                                             portionPrices: { 
                                               ...effectivePortionPrices, 
-                                              portionPrice: value 
+                                              halfPricePerKg: value 
                                             } 
                                           });
                                         }
@@ -4261,7 +4207,45 @@ export default function AdminPanel({
                                       placeholder="—"
                                       suffix=""
                                     />
-                                  ) : "-"}
+                                  </div>
+                                </ResizableTableCell>
+                                {/* Цена за ¼ - независимая для каждого каталога */}
+                                <ResizableTableCell columnId="priceQuarter">
+                                  <div className="flex flex-col gap-0.5">
+                                    <InlinePriceCell
+                                      value={effectivePortionPrices?.quarterPricePerKg}
+                                      onSave={(value) => {
+                                        if (currentCatalog) {
+                                          updateCatalogProductPricing(currentCatalog.id, product.id, { 
+                                            portionPrices: { 
+                                              ...effectivePortionPrices, 
+                                              quarterPricePerKg: value 
+                                            } 
+                                          });
+                                        }
+                                      }}
+                                      placeholder="—"
+                                      suffix=""
+                                    />
+                                  </div>
+                                </ResizableTableCell>
+                                {/* Цена за порцию - независимая для каждого каталога */}
+                                <ResizableTableCell columnId="pricePortion">
+                                  <InlinePriceCell
+                                    value={effectivePortionPrices?.portionPrice}
+                                    onSave={(value) => {
+                                      if (currentCatalog) {
+                                        updateCatalogProductPricing(currentCatalog.id, product.id, { 
+                                          portionPrices: { 
+                                            ...effectivePortionPrices, 
+                                            portionPrice: value 
+                                          } 
+                                        });
+                                      }
+                                    }}
+                                    placeholder="—"
+                                    suffix=""
+                                  />
                                 </ResizableTableCell>
                                 {/* Статус - независимый для каждого каталога */}
                                 <ResizableTableCell columnId="status">
