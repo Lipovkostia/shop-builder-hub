@@ -2788,7 +2788,7 @@ export default function AdminPanel({
                     { id: "groups", minWidth: 100, defaultWidth: 120 },
                     { id: "catalogs", minWidth: 100, defaultWidth: 120 },
                     { id: "status", minWidth: 70, defaultWidth: 80 },
-                    { id: "sync", minWidth: 50, defaultWidth: 50 },
+                    { id: "sync", minWidth: 36, defaultWidth: 36 },
                     { id: "actions", minWidth: 40, defaultWidth: 40 },
                   ]}
                 >
@@ -2801,7 +2801,9 @@ export default function AdminPanel({
                         </ResizableTableHead>
                       )}
                       {visibleColumns.sync && (
-                        <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>Синхр.</ResizableTableHead>
+                        <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        </ResizableTableHead>
                       )}
                       {visibleColumns.checkbox && (
                         <ResizableTableHead columnId="checkbox" minWidth={40} resizable={false}>
