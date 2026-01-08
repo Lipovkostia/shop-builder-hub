@@ -32,9 +32,9 @@ export function InlineMultiSelectCell({
   onSave,
   onAddOption,
   allowAddNew = true,
-  addNewPlaceholder = "Новая категория...",
+  addNewPlaceholder = "Новая группа...",
   className = "",
-  placeholder = "Без категории",
+  placeholder = "Без группы",
 }: InlineMultiSelectCellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -112,7 +112,7 @@ export function InlineMultiSelectCell({
             <span className="truncate">
               {selectedLabels.length <= 2 
                 ? selectedLabels.join(", ") 
-                : `${selectedLabels.length} категорий`}
+                : `${selectedLabels.length} групп`}
             </span>
           ) : (
             <span>{placeholder}</span>
@@ -144,7 +144,7 @@ export function InlineMultiSelectCell({
               );
             })
           ) : (
-            <p className="text-xs text-muted-foreground px-2 py-1">Нет категорий</p>
+            <p className="text-xs text-muted-foreground px-2 py-1">Нет групп</p>
           )}
         </div>
         
@@ -183,7 +183,7 @@ export function InlineMultiSelectCell({
                 className="flex items-center gap-1 w-full px-2 py-1.5 text-xs text-primary hover:bg-muted rounded"
               >
                 <Plus className="h-3 w-3" />
-                Добавить категорию
+                Добавить группу
               </button>
             )}
           </div>
