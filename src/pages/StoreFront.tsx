@@ -322,138 +322,110 @@ function ProductCard({
           )}
           
           {/* Кнопки покупки - всегда показываем, но disabled если не in_stock */}
-          {packagingPrices ? (
-            <>
-              {/* Целая */}
-              {(() => {
-                const qty = getCartQuantity(0);
-                return (
-                  <button
-                    onClick={() => inStock && onAddToCart(product.id, 0, packagingPrices.full)}
-                    disabled={!inStock}
-                    className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
-                      inStock 
-                        ? 'border-border hover:border-primary hover:bg-primary/5' 
-                        : 'border-border/50 opacity-50 cursor-not-allowed'
-                    }`}
-                  >
-                    {qty > 0 && (
-                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                        {qty}
-                      </span>
-                    )}
-                    <PortionIndicator type="full" />
-                    <span className="text-sm font-medium text-foreground">
-                      {formatPriceSpaced(packagingPrices.full)}
-                    </span>
-                  </button>
-                );
-              })()}
-              {/* Половина */}
-              {(() => {
-                const qty = getCartQuantity(1);
-                return (
-                  <button
-                    onClick={() => inStock && onAddToCart(product.id, 1, packagingPrices.half)}
-                    disabled={!inStock}
-                    className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
-                      inStock 
-                        ? 'border-border hover:border-primary hover:bg-primary/5' 
-                        : 'border-border/50 opacity-50 cursor-not-allowed'
-                    }`}
-                  >
-                    {qty > 0 && (
-                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                        {qty}
-                      </span>
-                    )}
-                    <PortionIndicator type="half" />
-                    <span className="text-sm font-medium text-foreground">
-                      {formatPriceSpaced(packagingPrices.half)}
-                    </span>
-                  </button>
-                );
-              })()}
-              {/* Четверть */}
-              {(() => {
-                const qty = getCartQuantity(2);
-                return (
-                  <button
-                    onClick={() => inStock && onAddToCart(product.id, 2, packagingPrices.quarter)}
-                    disabled={!inStock}
-                    className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
-                      inStock 
-                        ? 'border-border hover:border-primary hover:bg-primary/5' 
-                        : 'border-border/50 opacity-50 cursor-not-allowed'
-                    }`}
-                  >
-                    {qty > 0 && (
-                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                        {qty}
-                      </span>
-                    )}
-                    <PortionIndicator type="quarter" />
-                    <span className="text-sm font-medium text-foreground">
-                      {formatPriceSpaced(packagingPrices.quarter)}
-                    </span>
-                  </button>
-                );
-              })()}
-              {/* Порция - показываем если есть price_portion (из каталога или товара) */}
-              {portionPricePortion && (
-                (() => {
-                  const qty = getCartQuantity(3);
-                  return (
-                    <button
-                      onClick={() => inStock && onAddToCart(product.id, 3, portionPricePortion)}
-                      disabled={!inStock}
-                      className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
-                        inStock 
-                          ? 'border-border hover:border-primary hover:bg-primary/5' 
-                          : 'border-border/50 opacity-50 cursor-not-allowed'
-                      }`}
-                    >
-                      {qty > 0 && (
-                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                          {qty}
-                        </span>
-                      )}
-                      <PortionIndicator type="portion" />
-                      <span className="text-sm font-medium text-foreground">
-                        {formatPriceSpaced(portionPricePortion)}
-                      </span>
-                    </button>
-                  );
-                })()
-              )}
-            </>
-          ) : (
-            // Простая кнопка для товаров без вариантов фасовки
-            (() => {
-              const qty = getCartQuantity(0);
-              return (
-                <button
-                  onClick={() => inStock && onAddToCart(product.id, 0, salePrice)}
-                  disabled={!inStock}
-                  className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
-                    inStock 
-                      ? 'border-border hover:border-primary hover:bg-primary/5' 
-                      : 'border-border/50 opacity-50 cursor-not-allowed'
-                  }`}
-                >
-                  {qty > 0 && (
-                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                      {qty}
-                    </span>
-                  )}
-                  <PortionIndicator type="full" />
-                  <span className="text-sm font-medium text-foreground">
-                    {formatPriceSpaced(salePrice)}
+          {/* Целая - всегда показываем */}
+          {(() => {
+            const qty = getCartQuantity(0);
+            const price = packagingPrices?.full || salePrice;
+            return (
+              <button
+                onClick={() => inStock && onAddToCart(product.id, 0, price)}
+                disabled={!inStock}
+                className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
+                  inStock 
+                    ? 'border-border hover:border-primary hover:bg-primary/5' 
+                    : 'border-border/50 opacity-50 cursor-not-allowed'
+                }`}
+              >
+                {qty > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {qty}
                   </span>
-                </button>
-              );
-            })()
-          )}
+                )}
+                <PortionIndicator type="full" />
+                <span className="text-sm font-medium text-foreground">
+                  {formatPriceSpaced(price)}
+                </span>
+              </button>
+            );
+          })()}
+          
+          {/* Половина - показываем только если есть ненулевая цена */}
+          {portionPriceHalf && portionPriceHalf > 0 && (() => {
+            const qty = getCartQuantity(1);
+            return (
+              <button
+                onClick={() => inStock && onAddToCart(product.id, 1, portionPriceHalf)}
+                disabled={!inStock}
+                className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
+                  inStock 
+                    ? 'border-border hover:border-primary hover:bg-primary/5' 
+                    : 'border-border/50 opacity-50 cursor-not-allowed'
+                }`}
+              >
+                {qty > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {qty}
+                  </span>
+                )}
+                <PortionIndicator type="half" />
+                <span className="text-sm font-medium text-foreground">
+                  {formatPriceSpaced(portionPriceHalf)}
+                </span>
+              </button>
+            );
+          })()}
+          
+          {/* Четверть - показываем только если есть ненулевая цена */}
+          {portionPriceQuarter && portionPriceQuarter > 0 && (() => {
+            const qty = getCartQuantity(2);
+            return (
+              <button
+                onClick={() => inStock && onAddToCart(product.id, 2, portionPriceQuarter)}
+                disabled={!inStock}
+                className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
+                  inStock 
+                    ? 'border-border hover:border-primary hover:bg-primary/5' 
+                    : 'border-border/50 opacity-50 cursor-not-allowed'
+                }`}
+              >
+                {qty > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {qty}
+                  </span>
+                )}
+                <PortionIndicator type="quarter" />
+                <span className="text-sm font-medium text-foreground">
+                  {formatPriceSpaced(portionPriceQuarter)}
+                </span>
+              </button>
+            );
+          })()}
+          
+          {/* Порция - показываем только если есть ненулевая цена */}
+          {portionPricePortion && portionPricePortion > 0 && (() => {
+            const qty = getCartQuantity(3);
+            return (
+              <button
+                onClick={() => inStock && onAddToCart(product.id, 3, portionPricePortion)}
+                disabled={!inStock}
+                className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
+                  inStock 
+                    ? 'border-border hover:border-primary hover:bg-primary/5' 
+                    : 'border-border/50 opacity-50 cursor-not-allowed'
+                }`}
+              >
+                {qty > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {qty}
+                  </span>
+                )}
+                <PortionIndicator type="portion" />
+                <span className="text-sm font-medium text-foreground">
+                  {formatPriceSpaced(portionPricePortion)}
+                </span>
+              </button>
+            );
+          })()}
         </div>
       </div>
     </div>
