@@ -4009,7 +4009,7 @@ export default function AdminPanel({
                           <ResizableTableHead columnId="unit">Ед. изм.</ResizableTableHead>
                           <ResizableTableHead columnId="volume">Объем</ResizableTableHead>
                           <ResizableTableHead columnId="type">Вид</ResizableTableHead>
-                          <ResizableTableHead columnId="buyPrice" title="Себестоимость из ассортимента (только чтение)">Себест-ть*</ResizableTableHead>
+                          <ResizableTableHead columnId="buyPrice">Себест-ть</ResizableTableHead>
                           <ResizableTableHead columnId="markup">Наценка</ResizableTableHead>
                           <ResizableTableHead columnId="price">Цена</ResizableTableHead>
                           <ResizableTableHead columnId="priceFull">Целая</ResizableTableHead>
@@ -4164,11 +4164,18 @@ export default function AdminPanel({
                                     allowAddNew={true}
                                   />
                                 </ResizableTableCell>
-                                {/* Себестоимость - read-only, берётся из ассортимента */}
+                                {/* Себестоимость - редактируемая, сохраняется в ассортимент */}
                                 <ResizableTableCell columnId="buyPrice">
-                                  <span className="text-xs text-muted-foreground">
-                                    {product.buyPrice ? formatPrice(product.buyPrice) : "-"}
-                                  </span>
+                                  <InlinePriceCell
+                                    value={product.buyPrice}
+                                    onSave={(newBuyPrice) => {
+                                      if (newBuyPrice !== product.buyPrice) {
+                                        updateProduct({ ...product, buyPrice: newBuyPrice });
+                                      }
+                                    }}
+                                    placeholder="—"
+                                    suffix="₽"
+                                  />
                                 </ResizableTableCell>
                                 {/* Наценка - независимая для каждого каталога */}
                                 <ResizableTableCell columnId="markup">
