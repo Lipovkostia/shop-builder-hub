@@ -282,6 +282,9 @@ function ProductCard({
             className={`font-medium text-foreground leading-tight ${showImages ? 'text-lg pr-6 whitespace-nowrap' : 'text-base truncate pr-2'} ${isOwner ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
             onClick={isOwner && onToggleExpand ? () => onToggleExpand() : undefined}
           >
+            {effectiveStatus === "out_of_stock" && (
+              <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground/50 mr-1.5 align-middle" title="Нет в наличии" />
+            )}
             {product.name}
             {isOwner && isHidden && (
               <Badge variant="outline" className="ml-1 text-[8px] py-0 px-1 bg-muted/50 text-muted-foreground border-dashed">
@@ -314,12 +317,6 @@ function ProductCard({
 
         {/* Кнопки - flex-shrink-0 чтобы не сжимались */}
         <div className={`flex items-center gap-0.5 flex-shrink-0 mt-0.5 flex-wrap justify-end flex-row-reverse`}>
-          {/* Статус бейдж для "нет в наличии" или "скрыт" */}
-          {effectiveStatus === "out_of_stock" && (
-            <Badge variant="secondary" className="text-[11px] h-6 mr-1">
-              Нет в наличии
-            </Badge>
-          )}
           
           {/* Кнопки покупки - всегда показываем, но disabled если не in_stock */}
           {/* Целая - всегда показываем */}
