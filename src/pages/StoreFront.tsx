@@ -352,9 +352,12 @@ function ProductCard({
           {/* Половина - показываем только если есть ненулевая цена */}
           {portionPriceHalf && portionPriceHalf > 0 && (() => {
             const qty = getCartQuantity(1);
+            // Цена = половина объёма * цена за кг
+            const halfWeight = (product.unit_weight || 1) / 2;
+            const halfPrice = halfWeight * portionPriceHalf;
             return (
               <button
-                onClick={() => inStock && onAddToCart(product.id, 1, portionPriceHalf)}
+                onClick={() => inStock && onAddToCart(product.id, 1, halfPrice)}
                 disabled={!inStock}
                 className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
                   inStock 
@@ -369,7 +372,7 @@ function ProductCard({
                 )}
                 <PortionIndicator type="half" />
                 <span className="text-sm font-medium text-foreground">
-                  {formatPriceSpaced(portionPriceHalf)}
+                  {formatPriceSpaced(halfPrice)}
                 </span>
               </button>
             );
@@ -378,9 +381,12 @@ function ProductCard({
           {/* Четверть - показываем только если есть ненулевая цена */}
           {portionPriceQuarter && portionPriceQuarter > 0 && (() => {
             const qty = getCartQuantity(2);
+            // Цена = четверть объёма * цена за кг
+            const quarterWeight = (product.unit_weight || 1) / 4;
+            const quarterPrice = quarterWeight * portionPriceQuarter;
             return (
               <button
-                onClick={() => inStock && onAddToCart(product.id, 2, portionPriceQuarter)}
+                onClick={() => inStock && onAddToCart(product.id, 2, quarterPrice)}
                 disabled={!inStock}
                 className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
                   inStock 
@@ -395,7 +401,7 @@ function ProductCard({
                 )}
                 <PortionIndicator type="quarter" />
                 <span className="text-sm font-medium text-foreground">
-                  {formatPriceSpaced(portionPriceQuarter)}
+                  {formatPriceSpaced(quarterPrice)}
                 </span>
               </button>
             );
