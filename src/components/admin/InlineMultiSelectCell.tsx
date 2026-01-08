@@ -19,7 +19,7 @@ interface InlineMultiSelectCellProps {
   values: string[];
   options: SelectOption[];
   onSave: (newValues: string[]) => void;
-  onAddOption?: (newOption: string) => void;
+  onAddOption?: (newOption: string) => void | string | null | Promise<string | null | void>;
   allowAddNew?: boolean;
   addNewPlaceholder?: string;
   className?: string;
@@ -63,10 +63,18 @@ export function InlineMultiSelectCell({
     });
   };
 
-  const handleAddNew = () => {
+  const handleAddNew = async () => {
     const trimmed = newOptionValue.trim();
     if (trimmed && onAddOption) {
-      onAddOption(trimmed);
+      const result = await onAddOption(trimmed);
+      // If the callback returns a new ID, automatically select it
+      if (typeof result === 'string') {
+        setDraftValues(prev => {
+          const next = [...prev, result];
+          onSave(next);
+          return next;
+        });
+      }
       setNewOptionValue("");
       setIsAddingNew(false);
     }
