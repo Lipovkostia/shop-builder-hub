@@ -684,6 +684,9 @@ export default function AdminPanel({
   
   // Onboarding step 6 sub-step state: "volume" | "half" | "quarter" | "done"
   const [onboardingStep6SubStep, setOnboardingStep6SubStep] = useState<"volume" | "half" | "quarter" | "done">("volume");
+  
+  // Onboarding step 7 visibility state
+  const [onboardingStep7Visible, setOnboardingStep7Visible] = useState(true);
 
   // Expanded product images state for import section
   const [expandedProductImages, setExpandedProductImages] = useState<string | null>(null);
@@ -4186,6 +4189,7 @@ export default function AdminPanel({
                         size="icon"
                         className="h-7 w-7"
                         title="Скопировать ссылку для покупателя"
+                        data-onboarding-link-button
                         onClick={() => {
                           const supabaseCatalog = supabaseCatalogs.find(c => c.id === currentCatalog.id);
                           if (supabaseCatalog?.access_code) {
@@ -4381,6 +4385,84 @@ export default function AdminPanel({
                             </div>
                           </div>
                           <ChevronRight className="h-5 w-5 text-primary" />
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Onboarding Step 7: Price list link explanation - show when step 6 is complete */}
+                  {(() => {
+                    const catalogProductIds = allProducts.filter(p => selectedCatalogProducts.has(p.id)).map(p => p.id);
+                    const hasBuyPrice = catalogProductIds.some(id => {
+                      const product = allProducts.find(p => p.id === id);
+                      return product?.buyPrice && product.buyPrice > 0;
+                    });
+                    const hasMarkup = currentCatalog && catalogProductIds.some(id => {
+                      const setting = catalogProductSettings.find(s => s.catalog_id === currentCatalog.id && s.product_id === id);
+                      return setting?.markup_value && setting.markup_value > 0;
+                    });
+                    
+                    // Check volume (unitWeight) for any product in catalog
+                    const hasVolume = catalogProductIds.some(id => {
+                      const product = allProducts.find(p => p.id === id);
+                      return product?.unitWeight && product.unitWeight > 0;
+                    });
+                    
+                    // Check half price
+                    const hasHalfPrice = currentCatalog && catalogProductIds.some(id => {
+                      const setting = catalogProductSettings.find(s => s.catalog_id === currentCatalog.id && s.product_id === id);
+                      const portionPrices = setting?.portion_prices as { halfPricePerKg?: number; quarterPricePerKg?: number } | null;
+                      return portionPrices?.halfPricePerKg && portionPrices.halfPricePerKg > 0;
+                    });
+                    
+                    // Check quarter price
+                    const hasQuarterPrice = currentCatalog && catalogProductIds.some(id => {
+                      const setting = catalogProductSettings.find(s => s.catalog_id === currentCatalog.id && s.product_id === id);
+                      const portionPrices = setting?.portion_prices as { halfPricePerKg?: number; quarterPricePerKg?: number } | null;
+                      return portionPrices?.quarterPricePerKg && portionPrices.quarterPricePerKg > 0;
+                    });
+                    
+                    // Step 6 is complete when all portion data is filled
+                    const step6Complete = hasVolume && hasHalfPrice && hasQuarterPrice;
+                    
+                    // Show step 7 only when step 6 is complete and step 7 hasn't been dismissed
+                    const shouldShowStep7 = supabaseProducts.length > 0 && catalogs.length > 0 && 
+                      Object.values(productCatalogVisibility).some(cats => cats.size > 0) && 
+                      hasBuyPrice && hasMarkup && step6Complete && onboardingStep7Visible;
+                    
+                    if (!shouldShowStep7) return null;
+                    
+                    return (
+                      <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 mb-3">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                            <span className="text-primary font-bold text-sm">7</span>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Link2 className="h-5 w-5 text-primary" />
+                              <p className="text-sm font-medium text-foreground">Это ссылка на ваш прайс-лист</p>
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-3">
+                              При нажатии автоматически копируется и её можно дать покупателю. При переходе покупатель в личном кабинете увидит каталог строго с теми ценами, которые заданы в этом прайс-листе.
+                            </p>
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                // Highlight the link button
+                                const linkButton = document.querySelector('[data-onboarding-link-button]');
+                                if (linkButton) {
+                                  linkButton.classList.add('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary', 'ring-offset-2');
+                                  setTimeout(() => {
+                                    linkButton.classList.remove('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary', 'ring-offset-2');
+                                  }, 3000);
+                                }
+                                setOnboardingStep7Visible(false);
+                              }}
+                            >
+                              Я понял. Продолжить
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     );
