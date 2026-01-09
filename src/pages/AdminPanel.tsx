@@ -5104,17 +5104,23 @@ export default function AdminPanel({
               <div className="grid gap-4 md:grid-cols-2">
                 {/* Quick Start */}
                 <div className="bg-card rounded-lg border border-border p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Package className="h-5 w-5 text-primary" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Package className="h-5 w-5 text-primary" />
+                      </div>
+                      <h3 className="font-semibold text-foreground">Быстрый старт</h3>
                     </div>
-                    <h3 className="font-semibold text-foreground">Быстрый старт</h3>
-                  </div>
-                  <div className="space-y-3 text-sm text-muted-foreground">
-                    <p><span className="font-medium text-foreground">1.</span> Добавьте товары в разделе «Ассортимент»</p>
-                    <p><span className="font-medium text-foreground">2.</span> Создайте прайс-лист в разделе «Прайс-листы»</p>
-                    <p><span className="font-medium text-foreground">3.</span> Добавьте товары в прайс-лист</p>
-                    <p><span className="font-medium text-foreground">4.</span> Отправьте ссылку на прайс-лист клиентам</p>
+                    <Button
+                      onClick={() => {
+                        localStorage.setItem('seller_onboarding_step1', 'true');
+                        if (onSwitchToStorefront) {
+                          onSwitchToStorefront();
+                        }
+                      }}
+                    >
+                      Старт
+                    </Button>
                   </div>
                 </div>
 
