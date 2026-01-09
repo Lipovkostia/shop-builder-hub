@@ -29,6 +29,7 @@ interface InlineMultiSelectCellProps {
   emptyStateMessage?: string;
   showOnboardingHint?: boolean;
   onboardingHintText?: string;
+  showNavigateOnboardingHint?: boolean;
 }
 
 export function InlineMultiSelectCell({
@@ -45,6 +46,7 @@ export function InlineMultiSelectCell({
   emptyStateMessage = "Нет групп",
   showOnboardingHint = false,
   onboardingHintText,
+  showNavigateOnboardingHint = false,
 }: InlineMultiSelectCellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -166,7 +168,11 @@ export function InlineMultiSelectCell({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-5 w-5 flex-shrink-0 text-muted-foreground hover:text-foreground"
+                      className={`h-5 w-5 flex-shrink-0 ${
+                        showNavigateOnboardingHint 
+                          ? "text-primary bg-primary/10 ring-2 ring-primary/50 ring-offset-1 animate-pulse" 
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
                       title="Открыть прайс-лист"
                       onClick={(e) => {
                         e.preventDefault();

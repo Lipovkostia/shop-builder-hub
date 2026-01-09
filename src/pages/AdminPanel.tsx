@@ -2852,6 +2852,32 @@ export default function AdminPanel({
                 </div>
               )}
 
+              {/* Onboarding Step 3: Go to price list and set price */}
+              {supabaseProducts.length > 0 && catalogs.length > 0 && 
+               Object.values(productCatalogVisibility).some(cats => cats.size > 0) && (
+                <div 
+                  className="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-3 cursor-pointer hover:bg-primary/15 transition-colors"
+                  onClick={() => {
+                    // Scroll table to show catalogs column
+                    const catalogsHeader = document.querySelector('[data-column-id="catalogs"]');
+                    if (catalogsHeader) {
+                      catalogsHeader.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                      <span className="text-primary font-bold text-sm">3</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">Перейдите в прайс-лист и установите цену на товар</p>
+                      <p className="text-xs text-muted-foreground">Нажмите на кнопку перехода в прайс-листе в столбике "Прайс-листы"</p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+              )}
+
               <div className="bg-card rounded-lg border border-border">
                 <DraggableTableWrapper items={productIds} onReorder={handleProductReorder}>
                 <ResizableTable
@@ -3251,6 +3277,12 @@ export default function AdminPanel({
                               addNewButtonLabel="Создать прайс-лист"
                               allowAddNew={true}
                               emptyStateMessage="Нет прайс-листов"
+                              showNavigateOnboardingHint={
+                                supabaseProducts.length > 0 && 
+                                catalogs.length > 0 && 
+                                Object.values(productCatalogVisibility).some(cats => cats.size > 0) &&
+                                (productCatalogVisibility[product.id]?.size || 0) > 0
+                              }
                             />
                           </ResizableTableCell>
                         ),
