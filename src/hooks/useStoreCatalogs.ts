@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
+import { useVisibilityRefetch } from "@/hooks/useVisibilityRefetch";
 export interface Catalog {
   id: string;
   store_id: string;
@@ -266,6 +266,11 @@ export function useStoreCatalogs(storeId: string | null) {
     fetchProductVisibility();
   }, [fetchCatalogs, fetchProductVisibility]);
 
+  // Refetch when page becomes visible (user returns from admin panel or another app)
+  useVisibilityRefetch(() => {
+    fetchCatalogs();
+    fetchProductVisibility();
+  }, !!storeId);
   return {
     catalogs,
     productVisibility,
