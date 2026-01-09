@@ -167,6 +167,9 @@ const Dashboard = () => {
         title: "Магазин создан!",
         description: `Ваш магазин доступен по адресу ${subdomain}.shopforge.com`,
       });
+
+      // Redirect to the store's storefront
+      navigate(`/store/${data.subdomain}`);
     } catch (error) {
       toast({
         title: "Ошибка создания магазина",

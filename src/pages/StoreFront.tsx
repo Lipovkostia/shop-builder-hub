@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store, Package, LayoutGrid } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store, Package, LayoutGrid, Plus } from "lucide-react";
 import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1186,16 +1186,36 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
           })
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
-            <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">
-              {selectedCatalog 
-                ? "В этом прайс-листе нет товаров"
-                : "Выберите прайс-лист для просмотра товаров"}
-            </p>
-            {!selectedCatalog && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Нажмите на иконку папки слева вверху
-              </p>
+            {/* Empty state for owner with no products at all */}
+            {isOwner && displayProducts.length === 0 ? (
+              <>
+                <Package className="w-16 h-16 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">Добавьте свой первый товар</h3>
+                <p className="text-muted-foreground text-sm mb-4 max-w-xs">
+                  Ваш ассортимент пока пуст. Добавьте товары, чтобы начать продажи.
+                </p>
+                <Button 
+                  onClick={() => handleAdminClick('products')}
+                  className="gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Добавить товар
+                </Button>
+              </>
+            ) : (
+              <>
+                <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
+                <p className="text-muted-foreground">
+                  {selectedCatalog 
+                    ? "В этом прайс-листе нет товаров"
+                    : "Выберите прайс-лист для просмотра товаров"}
+                </p>
+                {!selectedCatalog && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Нажмите на иконку папки слева вверху
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}
