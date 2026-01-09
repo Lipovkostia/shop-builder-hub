@@ -785,6 +785,50 @@ const CustomerDashboard = () => {
     }
   };
 
+  // Получить информацию о цене за единицу для отображения в корзине
+  const getItemPriceInfo = (product: CatalogProduct | undefined, variantIndex: number, itemPrice: number): { pricePerUnit: string; unitLabel: string } => {
+    if (!product) return { pricePerUnit: formatPrice(itemPrice), unitLabel: 'шт' };
+    
+    const isHead = product.packaging_type === 'head';
+    
+    if (isHead) {
+      // Для весовых товаров показываем базовую цену за кг
+      const basePrice = product.price;
+      return { pricePerUnit: formatPrice(basePrice), unitLabel: 'кг' };
+    } else {
+      // Для штучных товаров показываем цену за штуку
+      const unit = product.unit === 'kg' ? 'кг' : 'шт';
+      return { pricePerUnit: formatPrice(itemPrice), unitLabel: unit };
+    }
+  };
+
+  // Получить вес одной порции для отображения в корзине
+  const getPortionWeight = (product: CatalogProduct | undefined, variantIndex: number): string => {
+    if (!product) return '';
+    
+    const isHead = product.packaging_type === 'head';
+    const unitWeight = product.unit_weight || 0;
+    const portionWeight = product.portion_weight || 0.1;
+    
+    if (isHead && unitWeight > 0) {
+      let weight: number;
+      switch (variantIndex) {
+        case 0: weight = unitWeight; break;
+        case 1: weight = unitWeight / 2; break;
+        case 2: weight = unitWeight / 4; break;
+        case 3: weight = portionWeight; break;
+        default: weight = unitWeight;
+      }
+      // Форматируем вес одной порции
+      if (weight >= 1) {
+        return `${weight.toFixed(1).replace('.0', '')} кг`;
+      } else {
+        return `${Math.round(weight * 1000)} г`;
+      }
+    }
+    return '';
+  };
+
   const handleAddToCart = (productId: string, variantIndex: number, price: number) => {
     setCart((prev) => {
       const existingIndex = prev.findIndex(
@@ -1406,6 +1450,9 @@ const CustomerDashboard = () => {
                   const displayName = product?.name || item.originalProductName || 'Товар';
                   const variantLabel = product ? getVariantLabel(product, item.variantIndex) : '';
                   const itemVolume = getItemVolume(product, item.variantIndex, item.quantity);
+                  const portionWeight = getPortionWeight(product, item.variantIndex);
+                  const priceInfo = getItemPriceInfo(product, item.variantIndex, item.price);
+                  const isHead = product?.packaging_type === 'head';
                   
                     return (
                       <div 
@@ -1453,16 +1500,17 @@ const CustomerDashboard = () => {
                               <span className="text-[9px] text-destructive">Нет в прайсе</span>
                             ) : (
                               <>
-                                {/* Порция (если есть) */}
-                                {variantLabel && (
+                                {/* Порция с весом (если весовой товар) */}
+                                {isHead && variantLabel && portionWeight && (
                                   <span className="flex-shrink-0 px-1.5 py-0.5 text-[9px] font-medium bg-primary/10 text-primary rounded">
-                                    {variantLabel}
+                                    {variantLabel} {portionWeight}
                                   </span>
                                 )}
-                                {/* Объём/вес */}
+                                {/* Общий вес/объём */}
                                 <span className="text-[10px] text-primary font-medium">{itemVolume}</span>
                                 <span className="text-[9px] text-muted-foreground">·</span>
-                                <span className="text-[9px] text-muted-foreground">{formatPrice(item.price)}/шт</span>
+                                {/* Цена с правильной единицей */}
+                                <span className="text-[9px] text-muted-foreground">{priceInfo.pricePerUnit}/{priceInfo.unitLabel}</span>
                               </>
                             )}
                           </div>
