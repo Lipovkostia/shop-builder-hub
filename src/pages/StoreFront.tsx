@@ -773,10 +773,12 @@ interface StoreFrontProps {
   onOnboardingStep9Complete?: () => void;
   onboardingStep10Active?: boolean;
   onOnboardingStep10Complete?: () => void;
+  triggerRefetch?: boolean; // Trigger refetch when this changes to true
+  onRefetchComplete?: () => void; // Called after refetch is done
 }
 
 // Main StoreFront Component
-export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, onboardingStep1Active, onOnboardingStep1Complete, onboardingStep9Active, onOnboardingStep9Complete, onboardingStep10Active, onOnboardingStep10Complete }: StoreFrontProps = {}) {
+export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, onboardingStep1Active, onOnboardingStep1Complete, onboardingStep9Active, onOnboardingStep9Complete, onboardingStep10Active, onOnboardingStep10Complete, triggerRefetch, onRefetchComplete }: StoreFrontProps = {}) {
   const { subdomain } = useParams<{ subdomain: string }>();
   const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
@@ -787,8 +789,8 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
   
   const { isOwner: isStoreOwner, loading: ownerLoading } = useIsStoreOwner(store?.id || null);
   const { products, loading: productsLoading, updateProduct } = useStoreProducts(store?.id || null);
-  const { catalogs, productVisibility, setProductCatalogs } = useStoreCatalogs(store?.id || null);
-  const { settings: catalogProductSettings, getProductSettings, updateProductSettings } = useCatalogProductSettings(store?.id || null);
+  const { catalogs, productVisibility, setProductCatalogs, refetch: refetchCatalogs } = useStoreCatalogs(store?.id || null);
+  const { settings: catalogProductSettings, getProductSettings, updateProductSettings, refetch: refetchCatalogSettings } = useCatalogProductSettings(store?.id || null);
   const { categories } = useStoreCategories(store?.id || null);
   
   // Check for temp super admin from localStorage (used when super admin navigates from super admin panel)
@@ -835,6 +837,15 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
   
   // Onboarding step 10: track if name was edited
   const [onboardingStep10NameEdited, setOnboardingStep10NameEdited] = useState(false);
+
+  // Refetch catalogs when triggerRefetch prop changes to true
+  useEffect(() => {
+    if (triggerRefetch) {
+      refetchCatalogs();
+      refetchCatalogSettings();
+      onRefetchComplete?.();
+    }
+  }, [triggerRefetch, refetchCatalogs, refetchCatalogSettings, onRefetchComplete]);
 
   // Use products directly from hook - realtime handles sync
   const displayProducts = products;
