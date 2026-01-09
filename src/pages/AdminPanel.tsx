@@ -3884,6 +3884,58 @@ export default function AdminPanel({
                     </p>
                   </div>
 
+                  {/* Add new catalog form/button - moved above the list */}
+                  {showAddCatalog ? (
+                    <div className="bg-card rounded-lg border border-border p-6 max-w-md mb-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Plus className="h-5 w-5 text-primary" />
+                        <h3 className="font-medium text-foreground">Новый прайс-лист</h3>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="catalog-name">Название прайс-листа</Label>
+                          <Input
+                            id="catalog-name"
+                            type="text"
+                            placeholder="Например: Сыры премиум"
+                            value={newCatalogName}
+                            onChange={(e) => setNewCatalogName(e.target.value)}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={createCatalog}
+                            disabled={!newCatalogName.trim()}
+                            className="flex-1"
+                          >
+                            <Check className="h-4 w-4 mr-2" />
+                            Создать
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setShowAddCatalog(false);
+                              setNewCatalogName("");
+                              setNewCatalogDescription("");
+                              setNewCatalogCategories(new Set());
+                            }}
+                            variant="outline"
+                          >
+                            Отмена
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={() => setShowAddCatalog(true)}
+                      variant="outline"
+                      className="w-full max-w-md mb-6"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Создать прайс-лист
+                    </Button>
+                  )}
+
                   {/* Catalogs list */}
                   {catalogs.length > 0 ? (
                     <div className="space-y-2 mb-6">
@@ -4045,57 +4097,6 @@ export default function AdminPanel({
                     </div>
                   ) : null}
 
-                  {/* Add new catalog form */}
-                  {showAddCatalog ? (
-                    <div className="bg-card rounded-lg border border-border p-6 max-w-md">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Plus className="h-5 w-5 text-primary" />
-                        <h3 className="font-medium text-foreground">Новый прайс-лист</h3>
-                      </div>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="catalog-name">Название прайс-листа</Label>
-                          <Input
-                            id="catalog-name"
-                            type="text"
-                            placeholder="Например: Сыры премиум"
-                            value={newCatalogName}
-                            onChange={(e) => setNewCatalogName(e.target.value)}
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={createCatalog}
-                            disabled={!newCatalogName.trim()}
-                            className="flex-1"
-                          >
-                            <Check className="h-4 w-4 mr-2" />
-                            Создать
-                          </Button>
-                          <Button
-                            onClick={() => {
-                              setShowAddCatalog(false);
-                              setNewCatalogName("");
-                              setNewCatalogDescription("");
-                              setNewCatalogCategories(new Set());
-                            }}
-                            variant="outline"
-                          >
-                            Отмена
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button
-                      onClick={() => setShowAddCatalog(true)}
-                      variant="outline"
-                      className="w-full max-w-md"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Создать прайс-лист
-                    </Button>
-                  )}
                 </>
               )}
 
