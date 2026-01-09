@@ -253,9 +253,9 @@ function ProductCard({
 
           <p className={`text-muted-foreground leading-tight ${showImages ? 'text-[10px]' : 'text-[9px] whitespace-nowrap'}`}>
             {formatPrice(basePrice)}/{product.unit}
-            {showImages && hasVariantPrices && isHead && unitWeight > 0 && (
+            {showImages && hasVariantPrices && unitWeight > 0 && (
               <span className="ml-1">
-                · головка ~{formatPrice(fullPrice)}
+                · {unitWeight}кг ~{formatPrice(fullPrice)}
               </span>
             )}
           </p>
