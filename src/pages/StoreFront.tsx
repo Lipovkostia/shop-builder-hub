@@ -9,6 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { useStoreBySubdomain, useIsStoreOwner } from "@/hooks/useUserStore";
@@ -1028,12 +1029,38 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
             </div>
 
             {/* Категории - центральная иконка */}
-            <button 
-              className="p-2 rounded hover:bg-muted transition-colors text-muted-foreground"
-              title="Категории"
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button 
+                  className={`p-2 rounded transition-colors ${categoryFilter ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+                  title="Категории"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="min-w-[160px] max-h-[300px] overflow-y-auto">
+                <DropdownMenuItem
+                  onClick={() => setCategoryFilter(null)}
+                  className={`cursor-pointer ${categoryFilter === null ? 'font-semibold bg-primary/10' : ''}`}
+                >
+                  Все товары
+                </DropdownMenuItem>
+                {categories.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {categories.map((cat) => (
+                      <DropdownMenuItem
+                        key={cat.id}
+                        onClick={() => setCategoryFilter(cat.id)}
+                        className={`cursor-pointer ${categoryFilter === cat.id ? 'font-semibold bg-primary/10' : ''}`}
+                      >
+                        {cat.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Выезжающий блок фильтров */}
