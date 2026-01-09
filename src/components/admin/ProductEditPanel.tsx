@@ -295,8 +295,12 @@ export function ProductEditPanel({
 
   return (
     <div className="bg-gradient-to-b from-muted/40 to-muted/20 border-t border-primary/20 animate-fade-in shadow-inner">
+      {/* Заголовок блока */}
+      <div className="px-2 pt-1.5 pb-0.5">
+        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Редактирование</span>
+      </div>
       {/* Компактная сетка полей */}
-      <div className="p-2 grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+      <div className="p-2 pt-0 grid grid-cols-2 sm:grid-cols-3 gap-1.5">
         {/* Название - на всю ширину */}
         <div className="col-span-2 sm:col-span-3">
           <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Название</label>
