@@ -678,6 +678,9 @@ export default function AdminPanel({
   const [editingCatalogName, setEditingCatalogName] = useState(false);
   const [selectedCatalogBulkProducts, setSelectedCatalogBulkProducts] = useState<Set<string>>(new Set());
   const [expandedCatalogId, setExpandedCatalogId] = useState<string | null>(null);
+  const [catalogSettingsOpen, setCatalogSettingsOpen] = useState<string | null>(null);
+  const [editingCatalogListName, setEditingCatalogListName] = useState<string | null>(null);
+  const [catalogListNameValue, setCatalogListNameValue] = useState("");
 
   // Expanded product images state for import section
   const [expandedProductImages, setExpandedProductImages] = useState<string | null>(null);
@@ -3903,29 +3906,131 @@ export default function AdminPanel({
                                 </Badge>
                               </button>
                               
-                              {/* Copy link button */}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 flex-shrink-0"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // Get access_code from the Supabase catalog
-                                  const supabaseCatalog = supabaseCatalogs.find(c => c.id === catalog.id);
-                                  if (supabaseCatalog?.access_code) {
-                                    const url = `${window.location.origin}/catalog/${supabaseCatalog.access_code}`;
-                                    navigator.clipboard.writeText(url);
-                                    toast({
-                                      title: "Ссылка скопирована",
-                                      description: "Отправьте её покупателю для доступа к прайс-листу",
-                                    });
-                                  }
-                                }}
-                                title="Копировать ссылку"
-                              >
-                                <Link2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {/* Copy link button */}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const supabaseCatalog = supabaseCatalogs.find(c => c.id === catalog.id);
+                                    if (supabaseCatalog?.access_code) {
+                                      const url = `${window.location.origin}/catalog/${supabaseCatalog.access_code}`;
+                                      navigator.clipboard.writeText(url);
+                                      toast({
+                                        title: "Ссылка скопирована",
+                                        description: "Отправьте её покупателю для доступа к прайс-листу",
+                                      });
+                                    }
+                                  }}
+                                  title="Копировать ссылку"
+                                >
+                                  <Link2 className="h-4 w-4" />
+                                </Button>
+                                
+                                {/* Settings button */}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={`h-8 w-8 ${catalogSettingsOpen === catalog.id ? 'bg-muted' : ''}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (catalogSettingsOpen === catalog.id) {
+                                      setCatalogSettingsOpen(null);
+                                      setEditingCatalogListName(null);
+                                    } else {
+                                      setCatalogSettingsOpen(catalog.id);
+                                      setCatalogListNameValue(catalog.name);
+                                    }
+                                  }}
+                                  title="Настройки прайс-листа"
+                                >
+                                  <Settings className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
+                            
+                            {/* Settings panel */}
+                            {catalogSettingsOpen === catalog.id && (
+                              <div className="border-t border-border px-4 py-3 bg-muted/30">
+                                <div className="space-y-3">
+                                  {/* Rename */}
+                                  <div className="space-y-2">
+                                    <Label className="text-xs text-muted-foreground">Название прайс-листа</Label>
+                                    {editingCatalogListName === catalog.id ? (
+                                      <div className="flex items-center gap-2">
+                                        <Input
+                                          value={catalogListNameValue}
+                                          onChange={(e) => setCatalogListNameValue(e.target.value)}
+                                          className="h-8 text-sm"
+                                          autoFocus
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && catalogListNameValue.trim()) {
+                                              updateSupabaseCatalog(catalog.id, { name: catalogListNameValue.trim() });
+                                              setEditingCatalogListName(null);
+                                            } else if (e.key === 'Escape') {
+                                              setEditingCatalogListName(null);
+                                              setCatalogListNameValue(catalog.name);
+                                            }
+                                          }}
+                                        />
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-green-600"
+                                          onClick={() => {
+                                            if (catalogListNameValue.trim()) {
+                                              updateSupabaseCatalog(catalog.id, { name: catalogListNameValue.trim() });
+                                              setEditingCatalogListName(null);
+                                            }
+                                          }}
+                                        >
+                                          <Check className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-destructive"
+                                          onClick={() => {
+                                            setEditingCatalogListName(null);
+                                            setCatalogListNameValue(catalog.name);
+                                          }}
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        onClick={() => setEditingCatalogListName(catalog.id)}
+                                        className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-md border border-border hover:bg-muted transition-colors text-sm"
+                                      >
+                                        <span className="flex-1 truncate">{catalog.name}</span>
+                                        <Edit2 className="h-3 w-3 text-muted-foreground" />
+                                      </button>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Delete */}
+                                  <div className="pt-2 border-t border-border">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full justify-start"
+                                      onClick={() => {
+                                        if (window.confirm(`Удалить прайс-лист "${catalog.name}"?`)) {
+                                          deleteCatalog(catalog.id);
+                                          setCatalogSettingsOpen(null);
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Удалить прайс-лист
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
