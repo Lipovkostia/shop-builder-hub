@@ -484,6 +484,7 @@ function ProductCard({
               markup_value: catalogSettings.markup_value,
               portion_prices: catalogSettings.portion_prices,
               status: catalogSettings.status,
+              categories: catalogSettings.categories,
             } : undefined}
             onCatalogSettingsChange={onCatalogSettingsChange}
             storeId={product.store_id}
