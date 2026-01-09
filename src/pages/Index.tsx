@@ -331,7 +331,7 @@ const Index = () => {
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="register" className="text-xs sm:text-sm">
               <Store className="h-4 w-4 mr-1 hidden sm:inline" />
-              Создать
+              Продавец
             </TabsTrigger>
             <TabsTrigger value="login" className="text-xs sm:text-sm">
               <LogIn className="h-4 w-4 mr-1 hidden sm:inline" />
