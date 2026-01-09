@@ -77,7 +77,7 @@ export function MobileTabNav({ activeSection, onSectionChange, workspaceMode }: 
       aria-label="Навигация панели управления"
       className={cn(
         "sticky z-40 bg-card border-b border-border overflow-x-auto scrollbar-hide",
-        workspaceMode ? "top-0" : "top-14"
+        workspaceMode ? "top-12" : "top-14"
       )}
       style={{ 
         scrollbarWidth: "none", 
