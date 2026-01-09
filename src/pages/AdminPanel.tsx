@@ -3900,10 +3900,10 @@ export default function AdminPanel({
                                 className="flex items-center gap-3 text-left hover:text-primary transition-colors flex-1 min-w-0"
                               >
                                 <FolderOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                <span className="font-medium text-foreground truncate">{catalog.name}</span>
                                 <Badge variant="outline" className="text-xs flex-shrink-0">
                                   {catalogProducts.length}
                                 </Badge>
+                                <span className="font-medium text-foreground truncate">{catalog.name}</span>
                               </button>
                               
                               <div className="flex items-center gap-1 flex-shrink-0">
