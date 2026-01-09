@@ -3962,6 +3962,20 @@ export default function AdminPanel({
                               </button>
                               
                               <div className="flex items-center gap-1 flex-shrink-0">
+                                {/* Add products button */}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSectionChange("products");
+                                  }}
+                                  title="Добавить товары из ассортимента"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                                
                                 {/* Copy link button */}
                                 <Button
                                   variant="ghost"
