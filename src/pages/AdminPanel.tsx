@@ -3124,7 +3124,9 @@ export default function AdminPanel({
                                   className="w-6 h-6 rounded object-cover flex-shrink-0"
                                 />
                               ) : (
-                                <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                                <div className="w-6 h-6 rounded bg-muted flex items-center justify-center flex-shrink-0 hover:bg-primary/10 transition-colors">
+                                  <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+                                </div>
                               )}
                               {product.images && product.images.length > 0 && (
                                 <Badge variant="secondary" className="text-[10px] px-1 py-0">
