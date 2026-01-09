@@ -179,7 +179,7 @@ function ProductCard({
   return (
     <>
       {/* Основная карточка - высота адаптируется при раскрытии описания */}
-      <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border transition-all ${showImages ? (isDescriptionExpanded ? 'min-h-[72px]' : 'h-[calc((100vh-44px)/8)] min-h-[72px]') : 'min-h-[36px]'}`}>
+      <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border transition-all ${showImages ? (isDescriptionExpanded ? 'min-h-[72px]' : 'h-[calc((100vh-44px)/8)] min-h-[72px]') : 'h-9 min-h-[36px]'}`}>
         {/* Изображение */}
         {showImages && (
           <button 
