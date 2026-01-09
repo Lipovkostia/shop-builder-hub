@@ -681,6 +681,9 @@ export default function AdminPanel({
   const [catalogSettingsOpen, setCatalogSettingsOpen] = useState<string | null>(null);
   const [editingCatalogListName, setEditingCatalogListName] = useState<string | null>(null);
   const [catalogListNameValue, setCatalogListNameValue] = useState("");
+  
+  // Onboarding step 6 sub-step state: "volume" | "half" | "quarter" | "done"
+  const [onboardingStep6SubStep, setOnboardingStep6SubStep] = useState<"volume" | "half" | "quarter" | "done">("volume");
 
   // Expanded product images state for import section
   const [expandedProductImages, setExpandedProductImages] = useState<string | null>(null);
@@ -4299,49 +4302,89 @@ export default function AdminPanel({
                       const setting = catalogProductSettings.find(s => s.catalog_id === currentCatalog.id && s.product_id === id);
                       return setting?.markup_value && setting.markup_value > 0;
                     });
-                    const hasPortionPrices = currentCatalog && catalogProductIds.some(id => {
+                    
+                    // Check volume (unitWeight) for any product in catalog
+                    const hasVolume = catalogProductIds.some(id => {
+                      const product = allProducts.find(p => p.id === id);
+                      return product?.unitWeight && product.unitWeight > 0;
+                    });
+                    
+                    // Check half price
+                    const hasHalfPrice = currentCatalog && catalogProductIds.some(id => {
                       const setting = catalogProductSettings.find(s => s.catalog_id === currentCatalog.id && s.product_id === id);
                       const portionPrices = setting?.portion_prices as { halfPricePerKg?: number; quarterPricePerKg?: number } | null;
-                      return portionPrices && (portionPrices.halfPricePerKg || portionPrices.quarterPricePerKg);
+                      return portionPrices?.halfPricePerKg && portionPrices.halfPricePerKg > 0;
                     });
-                    return supabaseProducts.length > 0 && catalogs.length > 0 && 
+                    
+                    // Check quarter price
+                    const hasQuarterPrice = currentCatalog && catalogProductIds.some(id => {
+                      const setting = catalogProductSettings.find(s => s.catalog_id === currentCatalog.id && s.product_id === id);
+                      const portionPrices = setting?.portion_prices as { halfPricePerKg?: number; quarterPricePerKg?: number } | null;
+                      return portionPrices?.quarterPricePerKg && portionPrices.quarterPricePerKg > 0;
+                    });
+                    
+                    // Determine current sub-step based on data
+                    const currentSubStep = !hasVolume ? "volume" : !hasHalfPrice ? "half" : !hasQuarterPrice ? "quarter" : "done";
+                    
+                    // Show step 6 only when markup is set and not all portion prices are set
+                    const shouldShowStep6 = supabaseProducts.length > 0 && catalogs.length > 0 && 
                       Object.values(productCatalogVisibility).some(cats => cats.size > 0) && 
-                      hasBuyPrice && hasMarkup && !hasPortionPrices;
-                  })() && (
-                    <div 
-                      className="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-3 cursor-pointer hover:bg-primary/15 transition-colors"
-                      onClick={() => {
-                        // Find and scroll to the priceHalf column header
-                        const priceHalfHeader = document.querySelector('[data-column-id="priceHalf"]');
-                        if (priceHalfHeader) {
-                          priceHalfHeader.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-                          // Highlight the columns briefly
-                          const priceQuarterHeader = document.querySelector('[data-column-id="priceQuarter"]');
-                          priceHalfHeader.classList.add('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary');
-                          priceQuarterHeader?.classList.add('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary');
-                          setTimeout(() => {
-                            priceHalfHeader.classList.remove('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary');
-                            priceQuarterHeader?.classList.remove('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary');
-                          }, 3000);
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                          <span className="text-primary font-bold text-sm">6</span>
+                      hasBuyPrice && hasMarkup && currentSubStep !== "done";
+                    
+                    if (!shouldShowStep6) return null;
+                    
+                    const subStepConfig = {
+                      volume: {
+                        title: "Шаг 6.1: Установите объём товара",
+                        description: "Укажите вес или объём единицы товара (например, 10 кг для головки сыра). Это нужно для расчёта цен на половинки и четвертинки.",
+                        columnId: "volume",
+                      },
+                      half: {
+                        title: "Шаг 6.2: Установите цену за ½ (половинку)",
+                        description: "Укажите цену за 1 кг при покупке половинки. Например, если целая головка стоит 2000₽/кг, за половинку можно установить 2200₽/кг.",
+                        columnId: "priceHalf",
+                      },
+                      quarter: {
+                        title: "Шаг 6.3: Установите цену за ¼ (четвертинку)",
+                        description: "Укажите цену за 1 кг при покупке четвертинки. Например, 2500₽/кг. Система автоматически умножит на вес.",
+                        columnId: "priceQuarter",
+                      },
+                    };
+                    
+                    const config = subStepConfig[currentSubStep as keyof typeof subStepConfig];
+                    
+                    return (
+                      <div 
+                        className="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-3 cursor-pointer hover:bg-primary/15 transition-colors"
+                        onClick={() => {
+                          const header = document.querySelector(`[data-column-id="${config.columnId}"]`);
+                          if (header) {
+                            header.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                            header.classList.add('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary');
+                            setTimeout(() => {
+                              header.classList.remove('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary');
+                            }, 3000);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                            <span className="text-primary font-bold text-sm">6</span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-foreground">{config.title}</p>
+                            <p className="text-xs text-muted-foreground">{config.description}</p>
+                            <div className="flex gap-1 mt-2">
+                              <div className={`h-1.5 w-8 rounded-full ${hasVolume ? 'bg-primary' : 'bg-muted'}`} />
+                              <div className={`h-1.5 w-8 rounded-full ${hasHalfPrice ? 'bg-primary' : 'bg-muted'}`} />
+                              <div className={`h-1.5 w-8 rounded-full ${hasQuarterPrice ? 'bg-primary' : 'bg-muted'}`} />
+                            </div>
+                          </div>
+                          <ChevronRight className="h-5 w-5 text-primary" />
                         </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">Установите объем и уникальные цены на половинки и четвертинки</p>
-                          <p className="text-xs text-muted-foreground">
-                            Вы можете установить уникальную цену за единицу товара если он продается частями. 
-                            Например, если целая Голова сыра весом 10кг стоит 2000₽/кг, то за ½ можно установить 2200₽/кг, а за ¼ — 2500₽/кг. 
-                            Система автоматически умножит цену на вес и верно посчитает сумму в заказе.
-                          </p>
-                        </div>
-                        <ChevronRight className="h-5 w-5 text-primary" />
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   <div className="mb-4">
                     <Input
