@@ -135,7 +135,11 @@ export function InlineMultiSelectCell({
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-56 p-2 pointer-events-auto" align="start">
-        <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto">
+        <div
+          className="flex flex-col gap-1 max-h-[240px] overflow-y-auto overscroll-contain"
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+        >
           {options.length > 0 ? (
             options.map((option) => {
               const isSelected = draftValues.includes(option.value);
