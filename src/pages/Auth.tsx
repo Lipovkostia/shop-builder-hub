@@ -136,10 +136,7 @@ const Auth = () => {
           return;
         }
         
-        // Set flag to start onboarding for new sellers
-        if (data?.user) {
-          localStorage.setItem('seller_onboarding_step1', 'true');
-        }
+        // Onboarding will be triggered after store creation in Dashboard
         
         toast({
           title: "Регистрация успешна!",

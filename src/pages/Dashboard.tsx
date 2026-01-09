@@ -168,6 +168,9 @@ const Dashboard = () => {
         description: `Ваш магазин доступен по адресу ${subdomain}.shopforge.com`,
       });
 
+      // Set flag to start onboarding for new store
+      localStorage.setItem('seller_onboarding_step1', 'true');
+
       // Redirect to the store's storefront
       navigate(`/store/${data.subdomain}`);
     } catch (error) {
