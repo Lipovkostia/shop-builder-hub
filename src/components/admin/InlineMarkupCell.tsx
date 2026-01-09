@@ -73,15 +73,15 @@ export function InlineMarkupCell({
 
   if (isEditing) {
     return (
-      <div ref={containerRef} className="flex items-center">
-        <div className="relative flex items-center">
+      <div ref={containerRef} className="flex items-center relative z-50">
+        <div className="flex items-center gap-1 bg-background rounded-md shadow-lg border border-primary/30 p-1">
           <Input
             ref={inputRef}
             type="number"
             value={editedValue}
             onChange={(e) => setEditedValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="h-7 w-20 text-xs pl-2 pr-8 rounded-md border-primary/50 focus-visible:ring-1 focus-visible:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className="h-7 w-16 text-xs px-2 rounded border-0 focus-visible:ring-0 focus-visible:ring-offset-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             placeholder="0"
             min="0"
             step="0.01"
@@ -90,12 +90,12 @@ export function InlineMarkupCell({
             type="button"
             onClick={toggleType}
             className={cn(
-              "absolute right-1 h-5 w-5 rounded text-[10px] font-semibold transition-all",
+              "h-7 px-2 rounded text-xs font-semibold transition-all flex-shrink-0",
               "flex items-center justify-center",
-              "hover:scale-110 active:scale-95",
+              "hover:scale-105 active:scale-95",
               editedType === "percent" 
-                ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" 
-                : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/30" 
+                : "bg-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/30"
             )}
             title={editedType === "percent" ? "Проценты → Рубли" : "Рубли → Проценты"}
           >
