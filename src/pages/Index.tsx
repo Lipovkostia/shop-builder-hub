@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Store, LogIn, Shield, User } from "lucide-react";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -361,12 +362,10 @@ const Index = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="regPhone">Номер телефона</Label>
-                    <Input
+                    <PhoneInput
                       id="regPhone"
-                      type="tel"
-                      placeholder="+7 999 123 45 67"
                       value={regPhone}
-                      onChange={(e) => setRegPhone(e.target.value)}
+                      onChange={setRegPhone}
                     />
                   </div>
                   <div className="space-y-2">
@@ -397,12 +396,10 @@ const Index = () => {
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="loginPhone">Номер телефона</Label>
-                    <Input
+                    <PhoneInput
                       id="loginPhone"
-                      type="tel"
-                      placeholder="+7 999 123 45 67"
                       value={loginPhone}
-                      onChange={(e) => setLoginPhone(e.target.value)}
+                      onChange={setLoginPhone}
                     />
                   </div>
                   <div className="space-y-2">
@@ -445,12 +442,10 @@ const Index = () => {
                   )}
                   <div className="space-y-2">
                     <Label htmlFor="customerPhone">Номер телефона</Label>
-                    <Input
+                    <PhoneInput
                       id="customerPhone"
-                      type="tel"
-                      placeholder="+7 999 123 45 67"
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      onChange={setCustomerPhone}
                     />
                   </div>
                   <div className="space-y-2">
