@@ -4235,6 +4235,37 @@ export default function AdminPanel({
                     </div>
                   )}
 
+                  {/* Onboarding Step 5: Set markup */}
+                  {supabaseProducts.length > 0 && catalogs.length > 0 && 
+                   Object.values(productCatalogVisibility).some(cats => cats.size > 0) && (
+                    <div 
+                      className="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-3 cursor-pointer hover:bg-primary/15 transition-colors"
+                      onClick={() => {
+                        // Find and scroll to the markup column header
+                        const markupHeader = document.querySelector('[data-column-id="markup"]');
+                        if (markupHeader) {
+                          markupHeader.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                          // Highlight the column briefly
+                          markupHeader.classList.add('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary');
+                          setTimeout(() => {
+                            markupHeader.classList.remove('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary');
+                          }, 3000);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                          <span className="text-primary font-bold text-sm">5</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">Установите наценку на товар</p>
+                          <p className="text-xs text-muted-foreground">Наценка может быть в рублях или процентах, индивидуально для каждого товара</p>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-primary" />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="mb-4">
                     <Input
                       type="text"
