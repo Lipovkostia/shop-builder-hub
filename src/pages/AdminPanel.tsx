@@ -4045,7 +4045,6 @@ export default function AdminPanel({
                         { id: "bulkCheckbox", minWidth: 40, defaultWidth: 40 },
                         { id: "photo", minWidth: 50, defaultWidth: 60 },
                         { id: "name", minWidth: 120, defaultWidth: 180 },
-                        { id: "category", minWidth: 100, defaultWidth: 120 },
                         { id: "description", minWidth: 100, defaultWidth: 200 },
                         { id: "unit", minWidth: 60, defaultWidth: 80 },
                         { id: "volume", minWidth: 60, defaultWidth: 80 },
@@ -4081,7 +4080,6 @@ export default function AdminPanel({
                           </ResizableTableHead>
                           <ResizableTableHead columnId="photo">Фото</ResizableTableHead>
                           <ResizableTableHead columnId="name">Название</ResizableTableHead>
-                          <ResizableTableHead columnId="category">Категория</ResizableTableHead>
                           <ResizableTableHead columnId="description">Описание</ResizableTableHead>
                           <ResizableTableHead columnId="unit">Ед. изм.</ResizableTableHead>
                           <ResizableTableHead columnId="volume">Объем</ResizableTableHead>
@@ -4167,22 +4165,6 @@ export default function AdminPanel({
                                       }
                                     }}
                                     placeholder="Название"
-                                  />
-                                </ResizableTableCell>
-                                {/* Категории - редактируемые для каталога */}
-                                <ResizableTableCell columnId="category">
-                                  <InlineMultiSelectCell
-                                    values={effectiveCategories || []}
-                                    options={categories.map(c => ({ value: c.id, label: c.name }))}
-                                    onSave={(cats) => {
-                                      if (currentCatalog) {
-                                        updateCatalogProductPricing(currentCatalog.id, product.id, { categories: cats });
-                                      }
-                                    }}
-                                    onAddOption={handleAddCategory}
-                                    allowAddNew={true}
-                                    addNewPlaceholder="Название категории..."
-                                    placeholder="Категории"
                                   />
                                 </ResizableTableCell>
                                 {/* Описание - редактируемое, сохраняется в ассортимент */}
