@@ -466,9 +466,9 @@ export function ProductEditPanel({
           </Popover>
         </div>
 
-        {/* Упаковка с возможностью добавления */}
+        {/* Вид товара */}
         <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Упаковка</label>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Вид</label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
