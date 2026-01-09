@@ -320,10 +320,10 @@ const Index = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <p className="text-lg font-bold text-foreground">Сохраняем время. Убираем хаос в работе.</p>
-          <div className="mt-3 space-y-1 text-sm text-muted-foreground">
-            <p>Покупатель всегда видит индивидуальную актуальную цену и наличие.</p>
-            <p>Заказ упаковкой или штучно в 1 клик.</p>
-            <p>Повторить заказ в 1 клик.</p>
+          <div className="mt-3 space-y-1 text-sm text-muted-foreground text-left">
+            <p>1. Покупатель всегда видит индивидуальную актуальную цену и наличие.</p>
+            <p>2. Заказ упаковкой или штучно в 1 клик.</p>
+            <p>3. Повторить заказ в 1 клик.</p>
           </div>
         </div>
 
