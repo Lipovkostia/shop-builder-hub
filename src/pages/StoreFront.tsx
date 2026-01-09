@@ -756,6 +756,8 @@ interface StoreFrontProps {
   workspaceMode?: boolean;
   storeData?: any;
   onSwitchToAdmin?: (section?: string) => void;
+  onboardingStep1Active?: boolean;
+  onOnboardingStep1Complete?: () => void;
   onboardingStep9Active?: boolean;
   onOnboardingStep9Complete?: () => void;
   onboardingStep10Active?: boolean;
@@ -763,7 +765,7 @@ interface StoreFrontProps {
 }
 
 // Main StoreFront Component
-export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, onboardingStep9Active, onOnboardingStep9Complete, onboardingStep10Active, onOnboardingStep10Complete }: StoreFrontProps = {}) {
+export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, onboardingStep1Active, onOnboardingStep1Complete, onboardingStep9Active, onOnboardingStep9Complete, onboardingStep10Active, onOnboardingStep10Complete }: StoreFrontProps = {}) {
   const { subdomain } = useParams<{ subdomain: string }>();
   const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
@@ -1026,6 +1028,38 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
       {/* Упрощённый хедер в workspaceMode */}
       {workspaceMode && (
         <div className="sticky top-0 z-40 bg-background border-b border-border">
+          {/* Onboarding Step 1: Go to Admin Panel */}
+          {onboardingStep1Active && (
+            <div 
+              className="bg-primary/10 border-b border-primary/30 p-3 cursor-pointer hover:bg-primary/15 transition-colors"
+              onClick={() => {
+                const adminButton = document.querySelector('[data-onboarding-admin-button]');
+                if (adminButton) {
+                  adminButton.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                  adminButton.classList.add('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2', 'bg-primary/20');
+                  setTimeout(() => {
+                    adminButton.classList.remove('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2', 'bg-primary/20');
+                  }, 3000);
+                }
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                  <span className="text-primary font-bold text-sm">1</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">Добро пожаловать! Начнём обучение</p>
+                  <p className="text-xs text-muted-foreground">
+                    Зайдите в панель управления в раздел "Ассортимент" и создайте первый товар.
+                  </p>
+                  <p className="text-xs text-primary mt-1 font-medium">
+                    👆 Нажмите на кнопку "Управление" в правом верхнем углу
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Onboarding Step 9 */}
           {onboardingStep9Active && onboardingStep9SubStep !== "done" && (
             <div className="bg-primary/10 border-b border-primary/30 p-3">

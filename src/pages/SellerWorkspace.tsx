@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useStoreBySubdomain } from "@/hooks/useUserStore";
 import { useStoreOrders } from "@/hooks/useOrders";
@@ -25,6 +25,11 @@ export default function SellerWorkspace() {
 
   const [activeView, setActiveView] = useState<ActiveView>("storefront");
   
+  // Onboarding step 1 state - triggered after seller registration
+  const [onboardingStep1Active, setOnboardingStep1Active] = useState(() => {
+    return localStorage.getItem('seller_onboarding_step1') === 'true';
+  });
+  
   // Onboarding step 9 state - triggered when user completes step 8 and switches to storefront
   const [onboardingStep9Active, setOnboardingStep9Active] = useState(false);
   
@@ -37,6 +42,12 @@ export default function SellerWorkspace() {
 
   const handleViewChange = useCallback((view: ActiveView) => {
     if (view === activeView) return;
+    
+    // Complete onboarding step 1 when switching to admin
+    if (view === "admin" && onboardingStep1Active) {
+      localStorage.removeItem('seller_onboarding_step1');
+      setOnboardingStep1Active(false);
+    }
     
     // Сохраняем текущую позицию скролла
     if (activeView === "storefront") {
@@ -55,7 +66,22 @@ export default function SellerWorkspace() {
         window.scrollTo(0, adminScrollRef.current);
       }
     });
-  }, [activeView]);
+  }, [activeView, onboardingStep1Active]);
+  
+  // Highlight admin button when onboarding step 1 is active
+  useEffect(() => {
+    if (onboardingStep1Active) {
+      const adminButton = document.querySelector('[data-onboarding-admin-button]');
+      if (adminButton) {
+        adminButton.classList.add('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2', 'bg-primary/20');
+      }
+      return () => {
+        if (adminButton) {
+          adminButton.classList.remove('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2', 'bg-primary/20');
+        }
+      };
+    }
+  }, [onboardingStep1Active]);
 
   const handleSwitchToAdmin = useCallback((section?: string) => {
     if (section) {
@@ -109,6 +135,11 @@ export default function SellerWorkspace() {
             workspaceMode={hasFullAccess}
             storeData={store}
             onSwitchToAdmin={handleSwitchToAdmin}
+            onboardingStep1Active={onboardingStep1Active}
+            onOnboardingStep1Complete={() => {
+              localStorage.removeItem('seller_onboarding_step1');
+              setOnboardingStep1Active(false);
+            }}
             onboardingStep9Active={onboardingStep9Active}
             onOnboardingStep9Complete={() => {
               setOnboardingStep9Active(false);
