@@ -892,6 +892,28 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
     return filtered;
   }, [displayProducts, selectedCatalog, productVisibility, getProductSettings, isOwner, statusFilter, categoryFilter, searchQuery]);
 
+  // Get categories that exist in the current catalog (from products visible in this catalog)
+  const catalogCategories = useMemo(() => {
+    if (!selectedCatalog) return [];
+    
+    // Collect all unique category IDs from products in the current catalog
+    const categoryIds = new Set<string>();
+    
+    displayProducts.forEach((p) => {
+      // Check if product is in this catalog
+      if (!productVisibility[p.id]?.has(selectedCatalog)) return;
+      
+      // Get catalog-specific categories for this product
+      const catalogSettings = getProductSettings(selectedCatalog, p.id);
+      const productCategories = catalogSettings?.categories || [];
+      
+      productCategories.forEach((catId) => categoryIds.add(catId));
+    });
+    
+    // Filter the categories list to only include those that exist in this catalog
+    return categories.filter((cat) => categoryIds.has(cat.id));
+  }, [selectedCatalog, displayProducts, productVisibility, getProductSettings, categories]);
+
   // Handle add to cart
   const handleAddToCart = (productId: string, variantIndex: number, price: number) => {
     setCart((prev) => {
@@ -1045,10 +1067,10 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                 >
                   Все товары
                 </DropdownMenuItem>
-                {categories.length > 0 && (
+                {catalogCategories.length > 0 && (
                   <>
                     <DropdownMenuSeparator />
-                    {categories.map((cat) => (
+                    {catalogCategories.map((cat) => (
                       <DropdownMenuItem
                         key={cat.id}
                         onClick={() => setCategoryFilter(cat.id)}
