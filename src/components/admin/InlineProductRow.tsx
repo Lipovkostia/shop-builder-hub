@@ -14,6 +14,7 @@ import {
 import {
   Product,
   packagingTypeLabels,
+  packagingOptions,
   formatPrice,
   calculateSalePrice,
   calculatePackagingPrices,
@@ -169,21 +170,30 @@ export function InlineProductRow({
             }
           >
             <SelectTrigger className="h-8 w-[100px]">
-              <SelectValue />
+              <SelectValue>
+                {packagingTypeLabels[editedProduct.packagingType as PackagingType] || editedProduct.packagingType || "Выбрать"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(packagingTypeLabels).map(([value, label]) => (
+              {packagingOptions.map(({ value, label }) => (
                 <SelectItem key={value} value={value}>
                   {label}
                 </SelectItem>
               ))}
+              {/* Show current value if it's custom and not in predefined list */}
+              {editedProduct.packagingType && 
+               !packagingOptions.find(o => o.value === editedProduct.packagingType) && (
+                <SelectItem key={editedProduct.packagingType} value={editedProduct.packagingType}>
+                  {editedProduct.packagingType}
+                </SelectItem>
+              )}
             </SelectContent>
           </Select>
         ) : (
           <div>
             <Badge variant="outline" className="text-xs">
               {product.packagingType
-                ? packagingTypeLabels[product.packagingType]
+                ? (packagingTypeLabels[product.packagingType as PackagingType] || product.packagingType)
                 : product.productType === "weight"
                 ? "Весовой"
                 : "Штучный"}
