@@ -255,7 +255,7 @@ function ProductCard({
             {formatPrice(basePrice)}/{product.unit}
             {showImages && hasVariantPrices && unitWeight > 0 && (
               <span className="ml-1">
-                · {unitWeight}кг ~{formatPrice(fullPrice)}
+                · {unitWeight}{product.unit === 'шт' ? 'шт' : 'кг'} ~{formatPrice(fullPrice)}
               </span>
             )}
           </p>
