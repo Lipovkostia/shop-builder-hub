@@ -1532,32 +1532,19 @@ const CustomerDashboard = () => {
                               {displayName}
                             </p>
                           </div>
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {isUnavailable ? (
+                          {isUnavailable && (
+                            <div className="flex items-center gap-1 flex-wrap">
                               <span className="text-[9px] text-destructive">Нет в прайсе</span>
-                            ) : (
-                              <>
-                                {/* Порция с весом (если весовой товар) */}
-                                {isHead && variantLabel && portionWeight && (
-                                  <span className="flex-shrink-0 px-1.5 py-0.5 text-[9px] font-medium bg-primary/10 text-primary rounded">
-                                    {variantLabel} {portionWeight}
-                                  </span>
-                                )}
-
-                                {/* Объём одной порции (для штучных/упаковочных товаров) */}
-                                {!isHead && portionVolumeLabel && (
-                                  <span className="text-[10px] text-primary font-medium">{portionVolumeLabel}</span>
-                                )}
-
-                                <span className="text-[9px] text-muted-foreground">·</span>
-
-                                {/* Цена за 1 порцию */}
-                                <span className="text-[9px] text-muted-foreground">
-                                  {formatPriceSpaced(portionUnitPrice)} ₽/{portionUnitLabel}
-                                </span>
-                              </>
-                            )}
-                          </div>
+                            </div>
+                          )}
+                          {/* Порция с весом (если весовой товар) */}
+                          {!isUnavailable && isHead && variantLabel && portionWeight && (
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <span className="flex-shrink-0 px-1.5 py-0.5 text-[9px] font-medium bg-primary/10 text-primary rounded">
+                                {variantLabel} {portionWeight}
+                              </span>
+                            </div>
+                          )}
                         </div>
                         
                         {/* Кнопки +/- с количеством */}
