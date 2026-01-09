@@ -3134,8 +3134,17 @@ export default function AdminPanel({
                                   }
                                 });
                               }}
+                              onAddOption={async (newCatalogName) => {
+                                const newCatalog = await createSupabaseCatalog(newCatalogName);
+                                if (newCatalog) {
+                                  return newCatalog.id;
+                                }
+                                return null;
+                              }}
                               placeholder="Выбрать..."
-                              allowAddNew={false}
+                              addNewPlaceholder="Новый прайс-лист..."
+                              addNewButtonLabel="Создать прайс-лист"
+                              allowAddNew={true}
                             />
                           </ResizableTableCell>
                         ),
