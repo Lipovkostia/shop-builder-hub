@@ -209,6 +209,7 @@ export function BulkEditPanel({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="in_stock">В наличии</SelectItem>
+                <SelectItem value="pre_order">Под заказ</SelectItem>
                 <SelectItem value="out_of_stock">Нет в наличии</SelectItem>
                 <SelectItem value="hidden">Скрыт</SelectItem>
               </SelectContent>

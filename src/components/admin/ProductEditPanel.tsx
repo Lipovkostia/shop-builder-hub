@@ -566,6 +566,17 @@ export function ProductEditPanel({
             </button>
             <button
               type="button"
+              onClick={() => setStatus("pre_order")}
+              className={`flex-1 h-7 text-xs rounded-md border transition-colors ${
+                status === "pre_order"
+                  ? "bg-blue-500/20 border-blue-500/50 text-blue-700 dark:text-blue-400 font-medium"
+                  : "bg-muted/50 border-border text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              Под заказ
+            </button>
+            <button
+              type="button"
               onClick={() => setStatus("out_of_stock")}
               className={`flex-1 h-7 text-xs rounded-md border transition-colors ${
                 status === "out_of_stock"
