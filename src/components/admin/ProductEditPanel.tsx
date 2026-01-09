@@ -58,7 +58,7 @@ export function ProductEditPanel({
   storeId,
 }: ProductEditPanelProps) {
   // Fetch categories from database
-  const { categories: storeCategories } = useStoreCategories(storeId || product.store_id || null);
+  const { categories: storeCategories, createCategory } = useStoreCategories(storeId || product.store_id || null);
   
   // Local state for form fields
   const [name, setName] = useState(product.name);
@@ -607,12 +607,17 @@ export function ProductEditPanel({
                     type="text"
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value)}
-                    onKeyDown={(e) => {
+                    onKeyDown={async (e) => {
                       if (e.key === "Enter" && newCategory.trim()) {
                         e.preventDefault();
-                        // Note: Creating new category would need additional DB call
-                        // For now, just show toast that category needs to be created in admin
-                        toast.info("Создайте категорию в панели управления");
+                        const created = await createCategory(newCategory.trim());
+                        if (created) {
+                          setSelectedCategories(prev => [...prev, created.id]);
+                          toast.success(`Категория "${created.name}" создана`);
+                          setNewCategory("");
+                        } else {
+                          toast.error("Не удалось создать категорию");
+                        }
                       }
                     }}
                     placeholder="Новая категория..."
@@ -623,10 +628,16 @@ export function ProductEditPanel({
                     variant="outline"
                     size="sm"
                     className="h-7 px-2"
-                    onClick={() => {
+                    onClick={async () => {
                       if (newCategory.trim()) {
-                        toast.info("Создайте категорию в панели управления");
-                        setNewCategory("");
+                        const created = await createCategory(newCategory.trim());
+                        if (created) {
+                          setSelectedCategories(prev => [...prev, created.id]);
+                          toast.success(`Категория "${created.name}" создана`);
+                          setNewCategory("");
+                        } else {
+                          toast.error("Не удалось создать категорию");
+                        }
                       }
                     }}
                     disabled={!newCategory.trim()}
