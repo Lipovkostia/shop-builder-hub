@@ -95,6 +95,7 @@ import { useStoreOrders, Order } from "@/hooks/useOrders";
 import { StoreCustomersTable } from "@/components/admin/StoreCustomersTable";
 import { useCatalogProductSettings } from "@/hooks/useCatalogProductSettings";
 import { useProductGroups } from "@/hooks/useProductGroups";
+import { useProductCategories } from "@/hooks/useProductCategories";
 
 // Removed localStorage keys - now using Supabase
 
@@ -509,6 +510,12 @@ export default function AdminPanel({
     createGroup: createProductGroup,
     deleteGroup: deleteProductGroup,
   } = useProductGroups(effectiveStoreId);
+
+  // Product categories
+  const {
+    getProductCategoryIds,
+    setProductCategoryAssignments,
+  } = useProductCategories(effectiveStoreId);
   // ================ END SUPABASE DATA HOOKS ================
   
   const [activeSection, setActiveSection] = useState<ActiveSection>(() => {
@@ -3156,6 +3163,22 @@ export default function AdminPanel({
                               value={product.buyPrice}
                               onSave={(newPrice) => updateProduct({ ...product, buyPrice: newPrice })}
                               placeholder="0"
+                            />
+                          </ResizableTableCell>
+                        ),
+                        categories: (
+                          <ResizableTableCell key="categories" columnId="categories">
+                            <InlineMultiSelectCell
+                              values={getProductCategoryIds(product.id)}
+                              options={categories.map(c => ({ value: c.id, label: c.name }))}
+                              onSave={(selectedIds) => {
+                                setProductCategoryAssignments(product.id, selectedIds);
+                              }}
+                              onAddOption={handleAddCategory}
+                              placeholder="Категории..."
+                              addNewPlaceholder="Новая категория..."
+                              addNewButtonLabel="Создать категорию"
+                              allowAddNew={true}
                             />
                           </ResizableTableCell>
                         ),
