@@ -731,7 +731,6 @@ export default function AdminPanel({
   // Column visibility state for products table
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
     drag: true,
-    sync: true,
     checkbox: true,
     photo: true,
     name: true,
@@ -743,11 +742,11 @@ export default function AdminPanel({
     cost: true,
     groups: true,
     catalogs: true,
+    sync: true,
   });
 
   const columnLabels: Record<string, string> = {
     drag: "⋮⋮",
-    sync: "Синхр.",
     checkbox: "Выбор",
     photo: "Фото",
     name: "Название",
@@ -759,6 +758,7 @@ export default function AdminPanel({
     cost: "Себест.",
     groups: "Группа",
     catalogs: "Прайс-листы",
+    sync: "Синхр.",
   };
 
   const toggleColumnVisibility = (columnId: string) => {
@@ -2920,11 +2920,6 @@ export default function AdminPanel({
                           <span className="text-muted-foreground/50 text-[10px]">⋮⋮</span>
                         </ResizableTableHead>
                       )}
-                      {visibleColumns.sync && (
-                        <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
-                          <RefreshCw className="h-3.5 w-3.5" />
-                        </ResizableTableHead>
-                      )}
                       {visibleColumns.checkbox && (
                         <ResizableTableHead columnId="checkbox" minWidth={40} resizable={false}>
                           <Checkbox
@@ -2963,24 +2958,16 @@ export default function AdminPanel({
                       {visibleColumns.catalogs && (
                         <ResizableTableHead columnId="catalogs" minWidth={120}>Прайс-листы</ResizableTableHead>
                       )}
+                      {visibleColumns.sync && (
+                        <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        </ResizableTableHead>
+                      )}
                     </ResizableTableRow>
                     {/* Row 2: Filters */}
                     <ResizableTableRow className="h-6 border-b-0">
                       {visibleColumns.drag && (
                         <ResizableTableHead columnId="drag" minWidth={32} resizable={false}></ResizableTableHead>
-                      )}
-                      {visibleColumns.sync && (
-                        <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
-                          <SelectFilter
-                            value={allProductsFilters.sync}
-                            onChange={(v) => setAllProductsFilters(f => ({...f, sync: v}))}
-                            options={[
-                              { value: "synced", label: "Да" },
-                              { value: "notSynced", label: "Нет" },
-                            ]}
-                            placeholder="Все"
-                          />
-                        </ResizableTableHead>
                       )}
                       {visibleColumns.checkbox && (
                         <ResizableTableHead columnId="checkbox" minWidth={40} resizable={false}></ResizableTableHead>
@@ -3080,6 +3067,19 @@ export default function AdminPanel({
                       )}
                       {visibleColumns.catalogs && (
                         <ResizableTableHead columnId="catalogs" minWidth={120} resizable={false}></ResizableTableHead>
+                      )}
+                      {visibleColumns.sync && (
+                        <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
+                          <SelectFilter
+                            value={allProductsFilters.sync}
+                            onChange={(v) => setAllProductsFilters(f => ({...f, sync: v}))}
+                            options={[
+                              { value: "synced", label: "Да" },
+                              { value: "notSynced", label: "Нет" },
+                            ]}
+                            placeholder="Все"
+                          />
+                        </ResizableTableHead>
                       )}
                     </ResizableTableRow>
                   </ResizableTableHeader>
@@ -3325,7 +3325,8 @@ export default function AdminPanel({
                           <SortableTableRow id={product.id}>
                             <OrderedCellsContainer 
                               cells={cellsMap} 
-                              fixedStart={["drag", "sync", "checkbox"]}
+                              fixedStart={["drag", "checkbox"]}
+                              fixedEnd={["sync"]}
                               visibleColumns={visibleColumns}
                             />
                           </SortableTableRow>
