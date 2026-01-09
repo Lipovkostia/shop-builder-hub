@@ -215,11 +215,35 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
       const mappedProducts: CatalogProduct[] = (productsData || []).map(p => {
         const settings = settingsMap.get(p.id);
         
+        // Calculate final price with catalog markup if set
+        let finalPrice = p.price;
+        const buyPrice = p.buy_price || 0;
+        
+        // Priority: catalog markup > product markup > direct price
+        if (settings?.markup_type && settings?.markup_value !== null && settings?.markup_value !== undefined && buyPrice > 0) {
+          // Use catalog-specific markup
+          if (settings.markup_type === 'percent') {
+            finalPrice = buyPrice * (1 + (settings.markup_value || 0) / 100);
+          } else if (settings.markup_type === 'fixed') {
+            finalPrice = buyPrice + (settings.markup_value || 0);
+          }
+        } else if (p.markup_type && p.markup_value !== null && p.markup_value !== undefined && buyPrice > 0) {
+          // Use product markup
+          if (p.markup_type === 'percent') {
+            finalPrice = buyPrice * (1 + (p.markup_value || 0) / 100);
+          } else if (p.markup_type === 'fixed') {
+            finalPrice = buyPrice + (p.markup_value || 0);
+          }
+        } else if (p.price === 0 && buyPrice > 0) {
+          // Fallback: if price is 0 but buy_price exists, use buy_price
+          finalPrice = buyPrice;
+        }
+        
         return {
           id: p.id,
           name: p.name,
           description: p.description,
-          price: p.price,
+          price: finalPrice,
           compare_price: p.compare_price,
           unit: p.unit || "кг",
           unit_weight: p.unit_weight,
