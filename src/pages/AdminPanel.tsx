@@ -625,6 +625,7 @@ export default function AdminPanel({
     cost: "",
     status: "all",
     sync: "all",
+    categories: [] as string[],
     groups: [] as string[],
   });
 
@@ -716,6 +717,7 @@ export default function AdminPanel({
     type: true,
     volume: true,
     cost: true,
+    categories: true,
     groups: true,
     catalogs: true,
   });
@@ -732,6 +734,7 @@ export default function AdminPanel({
     type: "Вид",
     volume: "Объем",
     cost: "Себест.",
+    categories: "Категории",
     groups: "Группа",
     catalogs: "Прайс-листы",
   };
@@ -2832,6 +2835,7 @@ export default function AdminPanel({
                     { id: "type", minWidth: 70, defaultWidth: 85 },
                     { id: "volume", minWidth: 70, defaultWidth: 80 },
                     { id: "cost", minWidth: 70, defaultWidth: 90 },
+                    { id: "categories", minWidth: 100, defaultWidth: 120 },
                     { id: "groups", minWidth: 100, defaultWidth: 120 },
                     { id: "catalogs", minWidth: 100, defaultWidth: 120 },
                     { id: "status", minWidth: 70, defaultWidth: 80 },
@@ -2883,6 +2887,9 @@ export default function AdminPanel({
                       )}
                       {visibleColumns.cost && (
                         <ResizableTableHead columnId="cost" minWidth={70}>Себест.</ResizableTableHead>
+                      )}
+                      {visibleColumns.categories && (
+                        <ResizableTableHead columnId="categories" minWidth={100}>Категории</ResizableTableHead>
                       )}
                       {visibleColumns.groups && (
                         <ResizableTableHead columnId="groups" minWidth={100}>Группа</ResizableTableHead>
@@ -2989,6 +2996,19 @@ export default function AdminPanel({
                             value={allProductsFilters.cost} 
                             onChange={(v) => setAllProductsFilters(f => ({...f, cost: v}))}
                             placeholder="Поиск..."
+                          />
+                        </ResizableTableHead>
+                      )}
+                      {visibleColumns.categories && (
+                        <ResizableTableHead columnId="categories" minWidth={100} resizable={false}>
+                          <MultiSelectFilter
+                            values={allProductsFilters.categories || []}
+                            onChange={(v) => setAllProductsFilters(f => ({...f, categories: v}))}
+                            options={[
+                              { value: "none", label: "Без категории" },
+                              ...categories.map(c => ({ value: c.id, label: c.name }))
+                            ]}
+                            placeholder="Все"
                           />
                         </ResizableTableHead>
                       )}
