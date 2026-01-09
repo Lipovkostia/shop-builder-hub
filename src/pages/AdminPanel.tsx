@@ -2787,6 +2787,36 @@ export default function AdminPanel({
                 }}
               />
 
+              {/* Onboarding Step 2: Create price list hint */}
+              {supabaseProducts.length > 0 && catalogs.length === 0 && (
+                <div 
+                  className="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-3 cursor-pointer hover:bg-primary/15 transition-colors"
+                  onClick={() => {
+                    // Scroll table to show catalogs column
+                    const catalogsHeader = document.querySelector('[data-column-id="catalogs"]');
+                    if (catalogsHeader) {
+                      catalogsHeader.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                      // Highlight the column briefly
+                      catalogsHeader.classList.add('animate-pulse', 'bg-primary/20');
+                      setTimeout(() => {
+                        catalogsHeader.classList.remove('animate-pulse', 'bg-primary/20');
+                      }, 2000);
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                      <span className="text-primary font-bold text-sm">2</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">Создайте прайс-лист и привяжите товар</p>
+                      <p className="text-xs text-muted-foreground">Нажмите здесь, чтобы перейти к столбику "Прайс-листы"</p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+              )}
+
               <div className="bg-card rounded-lg border border-border">
                 <DraggableTableWrapper items={productIds} onReorder={handleProductReorder}>
                 <ResizableTable
@@ -3169,8 +3199,6 @@ export default function AdminPanel({
                               addNewButtonLabel="Создать прайс-лист"
                               allowAddNew={true}
                               emptyStateMessage="Нет прайс-листов"
-                              showOnboardingHint={supabaseProducts.length > 0 && catalogs.length === 0}
-                              onboardingHintText="Создайте прайс-лист и привяжите товар"
                             />
                           </ResizableTableCell>
                         ),

@@ -364,6 +364,7 @@ export function ResizableTableHead({
 
   return (
     <th
+      data-column-id={columnId}
       className={cn(
         "h-6 px-2 text-left align-middle font-medium text-muted-foreground text-xs",
         "whitespace-nowrap overflow-hidden relative select-none",
