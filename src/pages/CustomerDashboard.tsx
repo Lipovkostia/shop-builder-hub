@@ -161,13 +161,24 @@ function ProductCard({
 
   const basePrice = product.price;
   const unitWeight = product.unit_weight || 1;
-  const isHead = product.packaging_type === 'head' && unitWeight > 0;
-
+  
   // Расчёт цен - приоритет каталоговым ценам
   const catalogPrices = product.catalog_portion_prices;
-  const fullPrice = catalogPrices?.full || product.price_full || basePrice * unitWeight;
-  const halfPrice = catalogPrices?.half || product.price_half || basePrice * (unitWeight / 2);
-  const quarterPrice = catalogPrices?.quarter || product.price_quarter || basePrice * (unitWeight / 4);
+  
+  // Проверяем есть ли установленные цены для вариантов (из каталога или из товара)
+  const hasFullPrice = catalogPrices?.full != null || product.price_full != null;
+  const hasHalfPrice = catalogPrices?.half != null || product.price_half != null;
+  const hasQuarterPrice = catalogPrices?.quarter != null || product.price_quarter != null;
+  const hasPortionPrice = catalogPrices?.portion != null || product.price_portion != null;
+  
+  // Показываем кнопки вариантов если есть хотя бы одна цена варианта ИЛИ это head тип
+  const isHead = product.packaging_type === 'head';
+  const hasVariantPrices = hasFullPrice || hasHalfPrice || hasQuarterPrice || hasPortionPrice || isHead;
+  
+  // Расчёт цен для вариантов
+  const fullPrice = catalogPrices?.full || product.price_full || (isHead ? basePrice * unitWeight : basePrice);
+  const halfPrice = catalogPrices?.half || product.price_half || (isHead ? basePrice * (unitWeight / 2) : basePrice * 0.5);
+  const quarterPrice = catalogPrices?.quarter || product.price_quarter || (isHead ? basePrice * (unitWeight / 4) : basePrice * 0.25);
   const portionPrice = catalogPrices?.portion || product.price_portion || null;
 
   // Use catalog_status if available, otherwise fall back to quantity check
@@ -230,10 +241,9 @@ function ProductCard({
             </CollapsibleContent>
           </Collapsible>
 
-          {/* Цена за кг */}
           <p className={`text-muted-foreground leading-tight ${showImages ? 'text-[10px]' : 'text-[9px] whitespace-nowrap'}`}>
             {formatPrice(basePrice)}/{product.unit}
-            {showImages && isHead && (
+            {showImages && hasVariantPrices && isHead && unitWeight > 0 && (
               <span className="ml-1">
                 · головка ~{formatPrice(fullPrice)}
               </span>
@@ -244,10 +254,10 @@ function ProductCard({
           <div className={`flex items-center gap-0.5 flex-wrap ${showImages ? 'mt-0.5' : ''}`}>
             {inStock ? (
               <>
-                {isHead ? (
+                {hasVariantPrices ? (
                   <>
-                    {/* Целая */}
-                    {(() => {
+                    {/* Целая / Полная цена */}
+                    {(hasFullPrice || isHead) && (() => {
                       const qty = getCartQuantity(0);
                       return (
                         <button
@@ -267,7 +277,7 @@ function ProductCard({
                       );
                     })()}
                     {/* Половина */}
-                    {(() => {
+                    {(hasHalfPrice || isHead) && (() => {
                       const qty = getCartQuantity(1);
                       return (
                         <button
@@ -287,7 +297,7 @@ function ProductCard({
                       );
                     })()}
                     {/* Четверть */}
-                    {(() => {
+                    {(hasQuarterPrice || isHead) && (() => {
                       const qty = getCartQuantity(2);
                       return (
                         <button
@@ -307,27 +317,25 @@ function ProductCard({
                       );
                     })()}
                     {/* Порция */}
-                    {portionPrice && (
-                      (() => {
-                        const qty = getCartQuantity(3);
-                        return (
-                          <button
-                            onClick={() => onAddToCart(product.id, 3, portionPrice)}
-                            className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                          >
-                            {qty > 0 && (
-                              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                                {qty}
-                              </span>
-                            )}
-                            <PortionIndicator type="portion" />
-                            <span className="text-[9px] font-medium text-foreground">
-                              {formatPriceSpaced(portionPrice)}
+                    {portionPrice && (() => {
+                      const qty = getCartQuantity(3);
+                      return (
+                        <button
+                          onClick={() => onAddToCart(product.id, 3, portionPrice)}
+                          className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                        >
+                          {qty > 0 && (
+                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                              {qty}
                             </span>
-                          </button>
-                        );
-                      })()
-                    )}
+                          )}
+                          <PortionIndicator type="portion" />
+                          <span className="text-[9px] font-medium text-foreground">
+                            {formatPriceSpaced(portionPrice)}
+                          </span>
+                        </button>
+                      );
+                    })()}
                   </>
                 ) : (
                   // Простой товар (штучный)
