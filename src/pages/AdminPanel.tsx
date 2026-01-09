@@ -1528,10 +1528,18 @@ export default function AdminPanel({
   };
 
   // Get catalog-specific pricing for a product (from Supabase)
+  // Status is treated as "global" for the storefront and is mirrored into price-lists.
   const getCatalogProductPricing = useCallback((catalogId: string, productId: string): CatalogProductPricing | undefined => {
     const dbSettings = getCatalogProductSettingsFromDB(catalogId, productId);
-    if (!dbSettings) return undefined;
-    
+
+    // If this catalog doesn't have a settings row yet, fall back to any known status
+    // (we keep it synced across catalogs, but missing rows can exist for older products).
+    if (!dbSettings) {
+      const anyStatus = catalogProductSettings.find((s) => s.product_id === productId)?.status as ProductStatus | undefined;
+      if (!anyStatus) return undefined;
+      return { productId, status: anyStatus };
+    }
+
     return {
       productId: dbSettings.product_id,
       markup: dbSettings.markup_value > 0 ? {
@@ -1542,7 +1550,7 @@ export default function AdminPanel({
       categories: dbSettings.categories,
       portionPrices: dbSettings.portion_prices || undefined,
     };
-  }, [getCatalogProductSettingsFromDB]);
+  }, [getCatalogProductSettingsFromDB, catalogProductSettings]);
 
   // Update catalog-specific pricing for a product (save to Supabase)
   const updateCatalogProductPricing = useCallback(async (
