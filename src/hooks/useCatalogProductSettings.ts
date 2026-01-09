@@ -134,17 +134,30 @@ export function useCatalogProductSettings(storeId: string | null) {
   const updateProductSettings = useCallback(async (
     catalogId: string,
     productId: string,
-    updates: Partial<Omit<CatalogProductSetting, 'id' | 'catalog_id' | 'product_id'>>
+    updates: Partial<Omit<CatalogProductSetting, 'id' | 'catalog_id' | 'product_id'>>,
+    syncStatusToAllCatalogs: boolean = true // По умолчанию синхронизируем статус во все прайс-листы
   ) => {
     const existing = settings.find(s => s.catalog_id === catalogId && s.product_id === productId);
 
+    // If status is being updated and syncStatusToAllCatalogs is true, 
+    // also update status in all other catalogs where product exists
+    const shouldSyncStatus = syncStatusToAllCatalogs && updates.status !== undefined;
+    const otherCatalogSettings = shouldSyncStatus 
+      ? settings.filter(s => s.product_id === productId && s.catalog_id !== catalogId)
+      : [];
+
     // Optimistic update - apply immediately
     if (existing) {
-      setSettings(prev => prev.map(s => 
-        s.id === existing.id 
-          ? { ...s, ...updates }
-          : s
-      ));
+      setSettings(prev => prev.map(s => {
+        if (s.id === existing.id) {
+          return { ...s, ...updates };
+        }
+        // Sync status to other catalogs
+        if (shouldSyncStatus && s.product_id === productId && s.catalog_id !== catalogId) {
+          return { ...s, status: updates.status! };
+        }
+        return s;
+      }));
     } else {
       // For new settings, add optimistically with temp id
       const tempId = `temp_${catalogId}_${productId}`;
@@ -158,7 +171,18 @@ export function useCatalogProductSettings(storeId: string | null) {
         status: updates.status || 'in_stock',
         portion_prices: updates.portion_prices || null,
       };
-      setSettings(prev => [...prev, newSetting]);
+      setSettings(prev => {
+        const updated = [...prev, newSetting];
+        // Also update status in other catalogs
+        if (shouldSyncStatus) {
+          return updated.map(s => 
+            s.product_id === productId && s.catalog_id !== catalogId 
+              ? { ...s, status: updates.status! }
+              : s
+          );
+        }
+        return updated;
+      });
     }
 
     try {
@@ -212,6 +236,17 @@ export function useCatalogProductSettings(storeId: string | null) {
               : s
           ));
         }
+      }
+
+      // Sync status to all other catalogs in DB
+      if (shouldSyncStatus && otherCatalogSettings.length > 0) {
+        const updatePromises = otherCatalogSettings.map(s =>
+          supabase
+            .from('catalog_product_settings')
+            .update({ status: updates.status })
+            .eq('id', s.id)
+        );
+        await Promise.all(updatePromises);
       }
     } catch (error) {
       console.error('Error updating catalog product settings:', error);
