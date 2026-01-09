@@ -1309,84 +1309,86 @@ const CustomerDashboard = () => {
                   const displayName = product?.name || item.originalProductName || 'Товар';
                   const variantLabel = product ? getVariantLabel(product, item.variantIndex) : '';
                   
-                  return (
-                    <div 
-                      key={`${item.productId}-${item.variantIndex}-${index}`} 
-                      className={`grid grid-cols-[32px_1fr_auto_auto] gap-2 py-2 items-center ${isUnavailable ? 'opacity-60' : ''}`}
-                    >
-                      {/* Изображение с индикатором доступности */}
-                      <div className="relative w-8 h-8 rounded bg-muted flex items-center justify-center overflow-hidden">
-                        {product?.images?.[0] ? (
-                          <img src={product.images[0]} alt={displayName} className="w-full h-full object-cover" />
-                        ) : (
-                          <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                        )}
-                        {/* Availability indicator */}
-                        {item.isAvailable !== undefined && (
-                          <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center ${
-                            item.isAvailable ? 'bg-green-500' : 'bg-destructive'
-                          }`}>
-                            {item.isAvailable ? (
-                              <CheckCircle2 className="w-2 h-2 text-white" />
-                            ) : (
-                              <AlertCircle className="w-2 h-2 text-white" />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Название + вариант + цена за 1 + статус */}
-                      <div className="min-w-0">
-                        <p className={`font-medium text-[11px] truncate leading-tight ${isUnavailable ? 'line-through' : ''}`}>
-                          {displayName}
-                        </p>
-                        <div className="flex items-center gap-1">
-                          {isUnavailable ? (
-                            <span className="text-[9px] text-destructive">Нет в прайсе</span>
-                          ) : (
-                            <span className="text-[10px] text-muted-foreground truncate">
-                              {variantLabel && <span>{variantLabel} · </span>}
-                              {formatPrice(item.price)}/шт
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Кнопки +/- с количеством */}
-                      <div className="flex items-center gap-0.5">
-                        {!isUnavailable && (
-                          <>
-                            <button 
-                              className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-muted/80 transition-colors"
-                              onClick={() => updateCartQuantity(index, -1)}
-                            >
-                              <Minus className="h-2.5 w-2.5" />
-                            </button>
-                            <span className="w-5 text-center text-[11px] font-semibold tabular-nums">{item.quantity}</span>
-                            <button 
-                              className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-muted/80 transition-colors"
-                              onClick={() => updateCartQuantity(index, 1)}
-                            >
-                              <Plus className="h-2.5 w-2.5" />
-                            </button>
-                          </>
-                        )}
+                    return (
+                      <div 
+                        key={`${item.productId}-${item.variantIndex}-${index}`} 
+                        className={`grid grid-cols-[20px_32px_1fr_auto_auto] gap-2 py-2 items-center ${isUnavailable ? 'opacity-60' : ''}`}
+                      >
+                        {/* Кнопка удаления слева */}
                         <button 
                           className="w-5 h-5 flex items-center justify-center rounded hover:bg-destructive/10 transition-colors"
                           onClick={() => removeFromCart(index)}
                         >
                           <Trash2 className="h-2.5 w-2.5 text-destructive/70" />
                         </button>
+                        
+                        {/* Изображение с индикатором доступности */}
+                        <div className="relative w-8 h-8 rounded bg-muted flex items-center justify-center overflow-hidden">
+                          {product?.images?.[0] ? (
+                            <img src={product.images[0]} alt={displayName} className="w-full h-full object-cover" />
+                          ) : (
+                            <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                          )}
+                          {/* Availability indicator */}
+                          {item.isAvailable !== undefined && (
+                            <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center ${
+                              item.isAvailable ? 'bg-green-500' : 'bg-destructive'
+                            }`}>
+                              {item.isAvailable ? (
+                                <CheckCircle2 className="w-2 h-2 text-white" />
+                              ) : (
+                                <AlertCircle className="w-2 h-2 text-white" />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Название + вариант + цена за 1 + статус */}
+                        <div className="min-w-0">
+                          <p className={`font-medium text-[11px] truncate leading-tight ${isUnavailable ? 'line-through' : ''}`}>
+                            {displayName}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            {isUnavailable ? (
+                              <span className="text-[9px] text-destructive">Нет в прайсе</span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground truncate">
+                                {variantLabel && <span>{variantLabel} · </span>}
+                                {formatPrice(item.price)}/шт
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Кнопки +/- с количеством */}
+                        <div className="flex items-center gap-0.5">
+                          {!isUnavailable && (
+                            <>
+                              <button 
+                                className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-muted/80 transition-colors"
+                                onClick={() => updateCartQuantity(index, -1)}
+                              >
+                                <Minus className="h-2.5 w-2.5" />
+                              </button>
+                              <span className="w-5 text-center text-[11px] font-semibold tabular-nums">{item.quantity}</span>
+                              <button 
+                                className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-muted/80 transition-colors"
+                                onClick={() => updateCartQuantity(index, 1)}
+                              >
+                                <Plus className="h-2.5 w-2.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                        
+                        {/* Сумма */}
+                        <div className="text-right w-14">
+                          {!isUnavailable && (
+                            <span className="text-[11px] font-bold text-primary tabular-nums">{formatPriceSpaced(item.price * item.quantity)}</span>
+                          )}
+                        </div>
                       </div>
-                      
-                      {/* Сумма */}
-                      <div className="text-right w-14">
-                        {!isUnavailable && (
-                          <span className="text-[11px] font-bold text-primary tabular-nums">{formatPriceSpaced(item.price * item.quantity)}</span>
-                        )}
-                      </div>
-                    </div>
-                  );
+                    );
                 })}
               </div>
             )}
