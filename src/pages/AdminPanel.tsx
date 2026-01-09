@@ -4533,7 +4533,7 @@ export default function AdminPanel({
 
       {/* Quick Add Product Dialog */}
       <Dialog open={quickAddDialogOpen} onOpenChange={setQuickAddDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md top-4 translate-y-0 sm:top-1/2 sm:-translate-y-1/2">
           <DialogHeader>
             <DialogTitle>Добавить товар</DialogTitle>
           </DialogHeader>
