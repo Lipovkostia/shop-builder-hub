@@ -278,18 +278,37 @@ export function useCatalogProductSettings(storeId: string | null) {
         }
 
         if (catalogIds.length > 0) {
+          // Update status only for existing settings (don't create new ones with upsert)
+          // This prevents overwriting other fields like categories
           const { error: syncError } = await supabase
             .from('catalog_product_settings')
-            .upsert(
-              catalogIds.map((cid) => ({
-                catalog_id: cid,
-                product_id: productId,
-                status: updates.status,
-              })),
-              { onConflict: 'catalog_id,product_id' }
-            );
+            .update({ status: updates.status })
+            .eq('product_id', productId)
+            .in('catalog_id', catalogIds);
 
           if (syncError) throw syncError;
+
+          // For catalogs where settings don't exist yet, create them with just status
+          const existingCatalogIds = new Set(
+            settings
+              .filter(s => s.product_id === productId)
+              .map(s => s.catalog_id)
+          );
+          const newCatalogIds = catalogIds.filter(cid => !existingCatalogIds.has(cid));
+          
+          if (newCatalogIds.length > 0) {
+            const { error: insertError } = await supabase
+              .from('catalog_product_settings')
+              .insert(
+                newCatalogIds.map((cid) => ({
+                  catalog_id: cid,
+                  product_id: productId,
+                  status: updates.status,
+                }))
+              );
+
+            if (insertError) throw insertError;
+          }
 
           // Ensure UI reflects newly created rows
           await fetchSettings();
