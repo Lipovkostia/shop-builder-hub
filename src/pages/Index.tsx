@@ -319,8 +319,7 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex items-start md:items-center justify-center p-4 pt-8 md:pt-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">Маркетплейс</h1>
-          <p className="text-lg font-bold text-foreground mt-3">Сохраняем время. Убираем хаос в работе.</p>
+          <p className="text-lg font-bold text-foreground">Сохраняем время. Убираем хаос в работе.</p>
           <div className="mt-3 space-y-1 text-sm text-muted-foreground">
             <p>Покупатель всегда видит индивидуальную актуальную цену и наличие.</p>
             <p>Заказ упаковкой или штучно в 1 клик.</p>
