@@ -1475,10 +1475,21 @@ const CustomerDashboard = () => {
                   const isUnavailable = item.isAvailable === false;
                   const displayName = product?.name || item.originalProductName || 'Товар';
                   const variantLabel = product ? getVariantLabel(product, item.variantIndex) : '';
-                  const itemVolume = getItemVolume(product, item.variantIndex, item.quantity);
                   const portionWeight = getPortionWeight(product, item.variantIndex);
-                  const priceInfo = getItemPriceInfo(product, item.variantIndex, item.price);
                   const isHead = product?.packaging_type === 'head';
+
+                  const unitLabel = product?.unit === 'kg' ? 'кг' : 'шт';
+                  const unitWeight = product?.unit_weight || 1;
+
+                  // В корзине показываем:
+                  // 1) объём ОДНОЙ порции (упаковки/штуки)
+                  // 2) цену за 1 порцию
+                  const portionVolumeLabel = isHead
+                    ? ''
+                    : (unitLabel === 'шт' && unitWeight > 1 ? `${unitWeight} шт` : `1 ${unitLabel}`);
+
+                  const portionUnitLabel = isHead ? 'порц' : (unitLabel === 'шт' && unitWeight > 1 ? 'уп.' : unitLabel);
+                  const portionUnitPrice = item.price;
                   
                     return (
                       <div 
@@ -1532,11 +1543,18 @@ const CustomerDashboard = () => {
                                     {variantLabel} {portionWeight}
                                   </span>
                                 )}
-                                {/* Общий вес/объём */}
-                                <span className="text-[10px] text-primary font-medium">{itemVolume}</span>
+
+                                {/* Объём одной порции (для штучных/упаковочных товаров) */}
+                                {!isHead && portionVolumeLabel && (
+                                  <span className="text-[10px] text-primary font-medium">{portionVolumeLabel}</span>
+                                )}
+
                                 <span className="text-[9px] text-muted-foreground">·</span>
-                                {/* Цена с правильной единицей */}
-                                <span className="text-[9px] text-muted-foreground">{priceInfo.pricePerUnit}/{priceInfo.unitLabel}</span>
+
+                                {/* Цена за 1 порцию */}
+                                <span className="text-[9px] text-muted-foreground">
+                                  {formatPriceSpaced(portionUnitPrice)} ₽/{portionUnitLabel}
+                                </span>
                               </>
                             )}
                           </div>
