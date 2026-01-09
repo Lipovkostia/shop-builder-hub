@@ -4204,6 +4204,37 @@ export default function AdminPanel({
                     </Badge>
                   </div>
 
+                  {/* Onboarding Step 4: Set cost price */}
+                  {supabaseProducts.length > 0 && catalogs.length > 0 && 
+                   Object.values(productCatalogVisibility).some(cats => cats.size > 0) && (
+                    <div 
+                      className="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-3 cursor-pointer hover:bg-primary/15 transition-colors"
+                      onClick={() => {
+                        // Find and scroll to the buyPrice column header
+                        const buyPriceHeader = document.querySelector('[data-column-id="buyPrice"]');
+                        if (buyPriceHeader) {
+                          buyPriceHeader.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                          // Highlight the column briefly
+                          buyPriceHeader.classList.add('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary');
+                          setTimeout(() => {
+                            buyPriceHeader.classList.remove('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary');
+                          }, 3000);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                          <span className="text-primary font-bold text-sm">4</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">Установите себестоимость товара</p>
+                          <p className="text-xs text-muted-foreground">Нажмите здесь, чтобы перейти к столбику "Себестоимость"</p>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-primary" />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="mb-4">
                     <Input
                       type="text"
