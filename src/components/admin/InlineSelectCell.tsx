@@ -81,6 +81,16 @@ export function InlineSelectCell({
     }
   };
 
+  const handleBlur = () => {
+    // Auto-save on blur if there's a value
+    const trimmed = newOptionValue.trim();
+    if (trimmed) {
+      handleAddNew();
+    } else {
+      handleCancelAdd();
+    }
+  };
+
   const displayLabel = options.find(o => o.value === value)?.label || value;
 
   if (isAddingNew) {
@@ -91,25 +101,10 @@ export function InlineSelectCell({
           value={newOptionValue}
           onChange={(e) => setNewOptionValue(e.target.value)}
           onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
           className="h-6 min-w-[70px] text-xs px-1.5"
           placeholder={addNewPlaceholder}
         />
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-5 w-5 text-green-600 flex-shrink-0" 
-          onClick={handleAddNew}
-        >
-          <Check className="h-2.5 w-2.5" />
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-5 w-5 text-destructive flex-shrink-0" 
-          onClick={handleCancelAdd}
-        >
-          <X className="h-2.5 w-2.5" />
-        </Button>
       </div>
     );
   }
