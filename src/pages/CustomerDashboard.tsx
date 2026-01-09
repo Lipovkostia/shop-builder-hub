@@ -1780,7 +1780,9 @@ const CustomerDashboard = () => {
                         {/* Items count + total */}
                         <div className="flex items-center gap-1.5">
                           {order.items && order.items.length > 0 && (
-                            <span className="text-[9px] text-muted-foreground">{order.items.length} поз.</span>
+                            <span className="text-[9px] text-muted-foreground">
+                              {order.items.reduce((sum, i) => sum + (i.quantity || 0), 0)} ед.
+                            </span>
                           )}
                           <span className="text-[10px] font-bold text-primary">{formatPriceSpaced(order.total)}</span>
                         </div>
@@ -1816,7 +1818,10 @@ const CustomerDashboard = () => {
                           <div className="space-y-0.5 border-t border-border/50 pt-1.5">
                             {order.items.map((item, idx) => {
                               // Check if this product is available in current catalog
-                              const productAvailable = item.product_id ? !!getProductById(item.product_id) : false;
+                              const product = item.product_id ? getProductById(item.product_id) : undefined;
+                              const productAvailable = item.product_id ? !!product : false;
+                              const unitLabel = product?.unit === 'kg' ? 'кг' : 'шт';
+
                               return (
                                 <div key={idx} className="flex items-center justify-between text-[10px]">
                                   <div className="flex items-center gap-1 flex-1 min-w-0">
@@ -1826,9 +1831,11 @@ const CustomerDashboard = () => {
                                       {item.product_name}
                                     </span>
                                   </div>
-                                  <span className="flex-shrink-0 ml-2 text-foreground">
-                                    <span className="text-muted-foreground">×{item.quantity}</span>
-                                    <span className="ml-1.5 font-medium">{formatPriceSpaced(item.total)}</span>
+                                  <span className="flex-shrink-0 ml-2 text-foreground tabular-nums">
+                                    <span className="text-muted-foreground">
+                                      {formatPriceSpaced(item.price)} ₽/{unitLabel} · {item.quantity} {unitLabel}
+                                    </span>
+                                    <span className="ml-1.5 font-medium">{formatPriceSpaced(item.total)} ₽</span>
                                   </span>
                                 </div>
                               );
