@@ -1,4 +1,29 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+
+// Hook to refetch data when page becomes visible (user returns from another tab/app)
+function useVisibilityRefetch(refetchFn: () => void, enabled: boolean = true) {
+  useEffect(() => {
+    if (!enabled) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refetchFn();
+      }
+    };
+
+    const handleFocus = () => {
+      refetchFn();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [refetchFn, enabled]);
+}
 import { supabase } from "@/integrations/supabase/client";
 
 export interface CatalogProductSetting {
@@ -73,6 +98,9 @@ export function useCatalogProductSettings(storeId: string | null) {
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
+
+  // Refetch when page becomes visible (user returns from admin panel or another app)
+  useVisibilityRefetch(fetchSettings, !!storeId);
 
   // Realtime subscription for catalog_product_settings
   useEffect(() => {
