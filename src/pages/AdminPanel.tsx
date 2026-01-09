@@ -3882,6 +3882,9 @@ export default function AdminPanel({
                     <p className="text-sm text-muted-foreground">
                       Создавайте прайс-листы и добавляйте в них товары
                     </p>
+                    <p className="text-xs text-muted-foreground mt-2 italic">
+                      💡 Одинаковый товар в разных прайс-листах может иметь уникальную цену продажи.
+                    </p>
                   </div>
 
                   {/* Add new catalog form/button - moved above the list */}
