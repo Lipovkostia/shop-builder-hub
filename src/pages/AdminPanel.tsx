@@ -2822,7 +2822,7 @@ export default function AdminPanel({
                 }}
               />
 
-              {/* Onboarding Step 2: Create price list hint */}
+              {/* Onboarding Step 2: Create price list hint - show only when no catalogs exist */}
               {supabaseProducts.length > 0 && catalogs.length === 0 && (
                 <div 
                   className="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-3 cursor-pointer hover:bg-primary/15 transition-colors"
@@ -2852,9 +2852,10 @@ export default function AdminPanel({
                 </div>
               )}
 
-              {/* Onboarding Step 3: Go to price list and set price */}
+              {/* Onboarding Step 3: Go to price list - show only when catalog exists, product linked, but no buyPrice set yet */}
               {supabaseProducts.length > 0 && catalogs.length > 0 && 
-               Object.values(productCatalogVisibility).some(cats => cats.size > 0) && (
+               Object.values(productCatalogVisibility).some(cats => cats.size > 0) &&
+               !supabaseProducts.some(p => p.buy_price && p.buy_price > 0) && (
                 <div 
                   className="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-3 cursor-pointer hover:bg-primary/15 transition-colors"
                   onClick={() => {
@@ -3281,7 +3282,8 @@ export default function AdminPanel({
                                 supabaseProducts.length > 0 && 
                                 catalogs.length > 0 && 
                                 Object.values(productCatalogVisibility).some(cats => cats.size > 0) &&
-                                (productCatalogVisibility[product.id]?.size || 0) > 0
+                                (productCatalogVisibility[product.id]?.size || 0) > 0 &&
+                                !supabaseProducts.some(p => p.buy_price && p.buy_price > 0)
                               }
                             />
                           </ResizableTableCell>
@@ -4204,9 +4206,17 @@ export default function AdminPanel({
                     </Badge>
                   </div>
 
-                  {/* Onboarding Step 4: Set cost price */}
-                  {supabaseProducts.length > 0 && catalogs.length > 0 && 
-                   Object.values(productCatalogVisibility).some(cats => cats.size > 0) && (
+                  {/* Onboarding Step 4: Set cost price - show only when no buyPrice set yet for products in this catalog */}
+                  {(() => {
+                    const catalogProductIds = allProducts.filter(p => selectedCatalogProducts.has(p.id)).map(p => p.id);
+                    const hasBuyPrice = catalogProductIds.some(id => {
+                      const product = allProducts.find(p => p.id === id);
+                      return product?.buyPrice && product.buyPrice > 0;
+                    });
+                    return supabaseProducts.length > 0 && catalogs.length > 0 && 
+                      Object.values(productCatalogVisibility).some(cats => cats.size > 0) && 
+                      !hasBuyPrice;
+                  })() && (
                     <div 
                       className="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-3 cursor-pointer hover:bg-primary/15 transition-colors"
                       onClick={() => {
@@ -4235,9 +4245,21 @@ export default function AdminPanel({
                     </div>
                   )}
 
-                  {/* Onboarding Step 5: Set markup */}
-                  {supabaseProducts.length > 0 && catalogs.length > 0 && 
-                   Object.values(productCatalogVisibility).some(cats => cats.size > 0) && (
+                  {/* Onboarding Step 5: Set markup - show only when buyPrice set but no markup set yet */}
+                  {(() => {
+                    const catalogProductIds = allProducts.filter(p => selectedCatalogProducts.has(p.id)).map(p => p.id);
+                    const hasBuyPrice = catalogProductIds.some(id => {
+                      const product = allProducts.find(p => p.id === id);
+                      return product?.buyPrice && product.buyPrice > 0;
+                    });
+                    const hasMarkup = currentCatalog && catalogProductIds.some(id => {
+                      const setting = catalogProductSettings.find(s => s.catalog_id === currentCatalog.id && s.product_id === id);
+                      return setting?.markup_value && setting.markup_value > 0;
+                    });
+                    return supabaseProducts.length > 0 && catalogs.length > 0 && 
+                      Object.values(productCatalogVisibility).some(cats => cats.size > 0) && 
+                      hasBuyPrice && !hasMarkup;
+                  })() && (
                     <div 
                       className="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-3 cursor-pointer hover:bg-primary/15 transition-colors"
                       onClick={() => {
