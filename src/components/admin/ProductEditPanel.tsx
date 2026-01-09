@@ -548,6 +548,92 @@ export function ProductEditPanel({
           />
         </div>
 
+        {/* Категории - для текущего каталога */}
+        {catalogId && (
+          <div className="col-span-2 sm:col-span-3 pt-1 border-t border-border/50">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Категории</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full h-auto min-h-7 text-xs mt-0.5 justify-between font-normal py-1"
+                >
+                  <span className="truncate text-left flex-1">
+                    {selectedCategories.length > 0
+                      ? selectedCategories.map(catId => {
+                          const cat = storeCategories.find(c => c.id === catId);
+                          return cat?.name || catId;
+                        }).join(", ")
+                      : "Выбрать категории..."}
+                  </span>
+                  <ChevronDown className="h-3 w-3 shrink-0 opacity-50 ml-1" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2 bg-background z-50" align="start">
+                <div className="space-y-0.5 max-h-48 overflow-y-auto">
+                  {storeCategories.map((cat) => (
+                    <label
+                      key={cat.id}
+                      className={`flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted/50 cursor-pointer ${
+                        selectedCategories.includes(cat.id) ? 'bg-primary/10 text-primary' : ''
+                      }`}
+                    >
+                      <Checkbox
+                        checked={selectedCategories.includes(cat.id)}
+                        onCheckedChange={() => {
+                          setSelectedCategories(prev => 
+                            prev.includes(cat.id)
+                              ? prev.filter(id => id !== cat.id)
+                              : [...prev, cat.id]
+                          );
+                        }}
+                        className="h-3 w-3"
+                      />
+                      {cat.name}
+                    </label>
+                  ))}
+                  {storeCategories.length === 0 && (
+                    <div className="text-xs text-muted-foreground text-center py-2">
+                      Категории не созданы
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-1 mt-2 pt-2 border-t">
+                  <Input
+                    type="text"
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newCategory.trim()) {
+                        e.preventDefault();
+                        // Note: Creating new category would need additional DB call
+                        // For now, just show toast that category needs to be created in admin
+                        toast.info("Создайте категорию в панели управления");
+                      }
+                    }}
+                    placeholder="Новая категория..."
+                    className="h-7 text-xs flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => {
+                      if (newCategory.trim()) {
+                        toast.info("Создайте категорию в панели управления");
+                        setNewCategory("");
+                      }
+                    }}
+                    disabled={!newCategory.trim()}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
 
         {/* Статус - кнопки вместо Select */}
         <div className="col-span-2 sm:col-span-3">
