@@ -26,8 +26,11 @@ export default function SellerWorkspace() {
   const [activeView, setActiveView] = useState<ActiveView>("storefront");
   
   // Onboarding step 1 state - triggered after seller registration
+  // Only show if explicitly triggered AND not completed before
   const [onboardingStep1Active, setOnboardingStep1Active] = useState(() => {
-    return localStorage.getItem('seller_onboarding_step1') === 'true';
+    const isTriggered = localStorage.getItem('seller_onboarding_step1') === 'true';
+    const isCompleted = localStorage.getItem('seller_onboarding_completed') === 'true';
+    return isTriggered && !isCompleted;
   });
   
   // Onboarding step 9 state - triggered when user completes step 8 and switches to storefront
@@ -146,7 +149,12 @@ export default function SellerWorkspace() {
               setOnboardingStep10Active(true);
             }}
             onboardingStep10Active={onboardingStep10Active}
-            onOnboardingStep10Complete={() => setOnboardingStep10Active(false)}
+            onOnboardingStep10Complete={() => {
+              setOnboardingStep10Active(false);
+              // Mark onboarding as completed so it doesn't restart on refresh
+              localStorage.setItem('seller_onboarding_completed', 'true');
+              localStorage.removeItem('seller_onboarding_step1');
+            }}
           />
         </div>
         <div className={activeView === "admin" ? "block" : "hidden"}>
