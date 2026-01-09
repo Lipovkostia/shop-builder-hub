@@ -519,7 +519,7 @@ export default function AdminPanel({
   } = useProductCategories(effectiveStoreId);
 
   // Store categories from Supabase
-  const { categories: storeCategories, loading: categoriesLoading } = useStoreCategories(effectiveStoreId);
+  const { categories: storeCategories, loading: categoriesLoading, createCategory, refetch: refetchCategories } = useStoreCategories(effectiveStoreId);
   // ================ END SUPABASE DATA HOOKS ================
   
   const [activeSection, setActiveSection] = useState<ActiveSection>(() => {
@@ -759,47 +759,42 @@ export default function AdminPanel({
   const categories = storeCategories.map(c => ({ id: c.id, name: c.name }));
   const [newCategoryName, setNewCategoryName] = useState("");
   
-  // Add new category handler - creates in Supabase
+  // Add new category handler - creates in backend
   const handleAddCategory = useCallback(async (categoryName: string): Promise<string | null> => {
     if (!effectiveStoreId) return null;
-    
-    // Check if category already exists
-    if (storeCategories.some(c => c.name.toLowerCase() === categoryName.toLowerCase())) {
+
+    const normalized = categoryName.trim();
+    if (!normalized) return null;
+
+    // Check if category already exists (case-insensitive)
+    const existing = storeCategories.find(
+      (c) => c.name.toLowerCase() === normalized.toLowerCase()
+    );
+
+    if (existing) {
       toast({
         title: "Категория уже существует",
-        description: `Категория "${categoryName}" уже есть в списке`,
+        description: `Категория "${normalized}" уже есть в списке`,
       });
-      return storeCategories.find(c => c.name.toLowerCase() === categoryName.toLowerCase())?.id || null;
+      return existing.id;
     }
-    
+
     try {
-      // Create slug from name
-      const slug = categoryName.toLowerCase()
-        .replace(/[^a-zа-яё0-9\s-]/gi, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .trim();
-      
-      const { data, error } = await supabase
-        .from('categories')
-        .insert({
-          store_id: effectiveStoreId,
-          name: categoryName,
-          slug: slug || `category-${Date.now()}`,
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
+      const created = await createCategory(normalized);
+
+      if (!created) throw new Error("createCategory returned null");
+
       toast({
         title: "Категория создана",
-        description: `Категория "${categoryName}" успешно добавлена`,
+        description: `Категория "${normalized}" успешно добавлена`,
       });
-      
-      return data.id;
+
+      // Safety: if realtime is delayed, force refresh
+      refetchCategories();
+
+      return created.id;
     } catch (error) {
-      console.error('Error creating category:', error);
+      console.error("Error creating category:", error);
       toast({
         title: "Ошибка",
         description: "Не удалось создать категорию",
@@ -807,7 +802,7 @@ export default function AdminPanel({
       });
       return null;
     }
-  }, [effectiveStoreId, storeCategories, toast]);
+  }, [effectiveStoreId, storeCategories, toast, createCategory, refetchCategories]);
 
   // Build combined options lists
   const allUnitOptions = [
