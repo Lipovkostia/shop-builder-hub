@@ -2686,15 +2686,24 @@ export default function AdminPanel({
                       МС: {importedProducts.length}
                     </Badge>
                   )}
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => setQuickAddDialogOpen(true)}
-                    title="Добавить товар"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  <div className="relative">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => setQuickAddDialogOpen(true)}
+                      title="Добавить товар"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    {/* Hint for empty state */}
+                    {allProducts.length === 0 && (
+                      <div className="absolute left-8 top-1/2 -translate-y-1/2 whitespace-nowrap bg-primary text-primary-foreground text-xs px-2 py-1 rounded shadow-lg animate-pulse">
+                        Добавьте свой первый товар
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-primary rotate-45" />
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-1.5">
                   {importedProducts.some(p => p.autoSync) && (
