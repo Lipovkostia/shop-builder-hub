@@ -120,8 +120,9 @@ const Index = () => {
 
       if (storeError) throw storeError;
 
-      toast({ title: "Магазин создан!", description: "Вы можете войти в админ-панель" });
-      navigate(`/store/${subdomain}/admin`);
+       toast({ title: "Магазин создан!", description: "Переходим в витрину" });
+       localStorage.setItem('seller_onboarding_step1', 'true');
+       navigate(`/store/${subdomain}`);
       
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -168,10 +169,10 @@ const Index = () => {
           .eq('owner_id', profile.id)
           .single();
 
-        if (store) {
-          navigate(`/store/${store.subdomain}/admin`);
-          return;
-        }
+         if (store) {
+           navigate(`/store/${store.subdomain}`);
+           return;
+         }
       }
 
       navigate('/dashboard');
