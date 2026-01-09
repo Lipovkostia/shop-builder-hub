@@ -166,17 +166,20 @@ function ProductCard({
   const catalogPrices = product.catalog_portion_prices;
   
   // Проверяем есть ли установленные цены для вариантов (из каталога или из товара)
-  const hasFullPrice = catalogPrices?.full != null || product.price_full != null;
   const hasHalfPrice = catalogPrices?.half != null || product.price_half != null;
   const hasQuarterPrice = catalogPrices?.quarter != null || product.price_quarter != null;
   const hasPortionPrice = catalogPrices?.portion != null || product.price_portion != null;
   
   // Показываем кнопки вариантов если есть хотя бы одна цена варианта
-  const hasVariantPrices = hasFullPrice || hasHalfPrice || hasQuarterPrice || hasPortionPrice;
+  const hasAnyVariantPrice = hasHalfPrice || hasQuarterPrice || hasPortionPrice;
+  const hasVariantPrices = hasAnyVariantPrice;
   const isHead = product.packaging_type === 'head';
   
+  // Кнопка "целый" показывается если есть хотя бы одна цена варианта ИЛИ если явно задана fullPrice
+  const hasFullPrice = catalogPrices?.full != null || product.price_full != null || hasAnyVariantPrice;
+  
   // Расчёт цен для вариантов
-  const fullPrice = catalogPrices?.full || product.price_full || (isHead ? basePrice * unitWeight : basePrice);
+  const fullPrice = catalogPrices?.full || product.price_full || basePrice * unitWeight;
   const halfPrice = catalogPrices?.half || product.price_half || (isHead ? basePrice * (unitWeight / 2) : basePrice * 0.5);
   const quarterPrice = catalogPrices?.quarter || product.price_quarter || (isHead ? basePrice * (unitWeight / 4) : basePrice * 0.25);
   const portionPrice = catalogPrices?.portion || product.price_portion || null;
