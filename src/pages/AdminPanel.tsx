@@ -280,7 +280,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "orders" | "clients";
+type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "orders" | "clients" | "help";
 type ImportView = "accounts" | "catalog";
 type CatalogView = "list" | "detail";
 
@@ -553,7 +553,7 @@ export default function AdminPanel({
     }
     
     const section = searchParams.get('section');
-    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients') {
+    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients' || section === 'help') {
       setActiveSection(section);
     }
   }, [searchParams, workspaceMode, initialSection]);
@@ -5090,6 +5090,133 @@ export default function AdminPanel({
                 </div>
               )}
             </>
+          )}
+
+          {activeSection === "help" && (
+            <div className="space-y-6">
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold text-foreground">Помощь</h2>
+                <p className="text-sm text-muted-foreground">
+                  Руководства и ответы на частые вопросы
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Quick Start */}
+                <div className="bg-card rounded-lg border border-border p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Package className="h-5 w-5 text-primary" />
+                    </div>
+                    <h3 className="font-semibold text-foreground">Быстрый старт</h3>
+                  </div>
+                  <div className="space-y-3 text-sm text-muted-foreground">
+                    <p><span className="font-medium text-foreground">1.</span> Добавьте товары в разделе «Ассортимент»</p>
+                    <p><span className="font-medium text-foreground">2.</span> Создайте прайс-лист в разделе «Прайс-листы»</p>
+                    <p><span className="font-medium text-foreground">3.</span> Добавьте товары в прайс-лист</p>
+                    <p><span className="font-medium text-foreground">4.</span> Отправьте ссылку на прайс-лист клиентам</p>
+                  </div>
+                </div>
+
+                {/* Catalogs Help */}
+                <div className="bg-card rounded-lg border border-border p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                      <FolderOpen className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <h3 className="font-semibold text-foreground">Прайс-листы</h3>
+                  </div>
+                  <div className="space-y-3 text-sm text-muted-foreground">
+                    <p>Прайс-листы позволяют создавать разные каталоги товаров для разных групп клиентов.</p>
+                    <p>Вы можете настроить индивидуальные цены и наценки для каждого прайс-листа.</p>
+                    <p>Каждый прайс-лист имеет уникальную ссылку для доступа.</p>
+                  </div>
+                </div>
+
+                {/* Import Help */}
+                <div className="bg-card rounded-lg border border-border p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                      <Download className="h-5 w-5 text-green-500" />
+                    </div>
+                    <h3 className="font-semibold text-foreground">Импорт из МойСклад</h3>
+                  </div>
+                  <div className="space-y-3 text-sm text-muted-foreground">
+                    <p>Подключите аккаунт МойСклад для автоматической синхронизации товаров.</p>
+                    <p>Товары, цены и остатки будут обновляться автоматически.</p>
+                    <p>Вы можете настроить какие поля синхронизировать.</p>
+                  </div>
+                </div>
+
+                {/* Orders Help */}
+                <div className="bg-card rounded-lg border border-border p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
+                      <ShoppingCart className="h-5 w-5 text-orange-500" />
+                    </div>
+                    <h3 className="font-semibold text-foreground">Заказы</h3>
+                  </div>
+                  <div className="space-y-3 text-sm text-muted-foreground">
+                    <p>Когда клиент оформляет заказ через прайс-лист, он появится здесь.</p>
+                    <p>Управляйте статусами заказов: принять, отправить, доставлен.</p>
+                    <p>Все заказы сохраняются в истории.</p>
+                  </div>
+                </div>
+
+                {/* Visibility Help */}
+                <div className="bg-card rounded-lg border border-border p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
+                      <Eye className="h-5 w-5 text-purple-500" />
+                    </div>
+                    <h3 className="font-semibold text-foreground">Видимость товаров</h3>
+                  </div>
+                  <div className="space-y-3 text-sm text-muted-foreground">
+                    <p>Настройте видимость товаров для разных ролей клиентов.</p>
+                    <p>Создавайте роли (например: VIP, Оптовики, Розница).</p>
+                    <p>Назначайте роли клиентам для персональных прайсов.</p>
+                  </div>
+                </div>
+
+                {/* Clients Help */}
+                <div className="bg-card rounded-lg border border-border p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-pink-500/10 flex items-center justify-center">
+                      <Users className="h-5 w-5 text-pink-500" />
+                    </div>
+                    <h3 className="font-semibold text-foreground">Клиенты</h3>
+                  </div>
+                  <div className="space-y-3 text-sm text-muted-foreground">
+                    <p>Просматривайте всех зарегистрированных клиентов.</p>
+                    <p>Назначайте клиентам роли для персонализации.</p>
+                    <p>Управляйте доступом к прайс-листам.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* FAQ Section */}
+              <div className="bg-card rounded-lg border border-border p-6">
+                <h3 className="font-semibold text-foreground mb-4">Часто задаваемые вопросы</h3>
+                <div className="space-y-4">
+                  <div>
+                    <p className="font-medium text-foreground mb-1">Как добавить товар вручную?</p>
+                    <p className="text-sm text-muted-foreground">Перейдите в раздел «Ассортимент» и нажмите кнопку «+» или «Добавить товар». Введите название и нажмите ОК.</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground mb-1">Как отправить прайс-лист клиенту?</p>
+                    <p className="text-sm text-muted-foreground">Откройте прайс-лист, нажмите на кнопку копирования ссылки и отправьте её клиенту. Клиент увидит только товары из этого прайс-листа.</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground mb-1">Как настроить разные цены для разных клиентов?</p>
+                    <p className="text-sm text-muted-foreground">Создайте несколько прайс-листов с разными наценками. Или используйте роли клиентов для индивидуальных скидок/наценок.</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground mb-1">Прайс-лист не отображается?</p>
+                    <p className="text-sm text-muted-foreground">Обновите страницу (F5). Убедитесь, что прайс-лист создан и в него добавлены товары.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </main>
 
