@@ -64,6 +64,7 @@ export function WorkspaceHeader({
         <div className="flex-1 flex justify-end">
           <button
             onClick={() => onViewChange("admin")}
+            data-onboarding-admin-button
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               activeView === "admin"
                 ? "bg-muted text-foreground shadow-sm"

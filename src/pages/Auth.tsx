@@ -107,7 +107,7 @@ const Auth = () => {
           description: "Вы успешно вошли в систему",
         });
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { error, data } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: {
@@ -134,6 +134,11 @@ const Auth = () => {
             });
           }
           return;
+        }
+        
+        // Set flag to start onboarding for new sellers
+        if (data?.user) {
+          localStorage.setItem('seller_onboarding_step1', 'true');
         }
         
         toast({
