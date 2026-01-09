@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { unitOptions as baseUnitOptions, packagingOptions as basePackagingOptions } from "./types";
+import { unitOptions as baseUnitOptions, packagingOptions as basePackagingOptions, packagingTypeLabels, PackagingType } from "./types";
 import type { StoreProduct } from "@/hooks/useStoreProducts";
 import { useStoreCategories, StoreCategory } from "@/hooks/useStoreCategories";
 
@@ -464,6 +464,16 @@ export function ProductEditPanel({
               </div>
             </PopoverContent>
           </Popover>
+        </div>
+
+        {/* Вид (только для отображения - редактируется в ассортименте/прайс-листе) */}
+        <div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Вид</label>
+          <div className="h-7 mt-0.5 px-2 flex items-center text-xs bg-muted/50 rounded border border-border text-foreground">
+            {product.packaging_type 
+              ? (packagingTypeLabels[product.packaging_type as PackagingType] || product.packaging_type)
+              : "—"}
+          </div>
         </div>
 
         {/* Объем */}
