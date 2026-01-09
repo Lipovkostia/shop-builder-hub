@@ -90,12 +90,14 @@ export function useStoreCategories(storeId: string | null) {
   const createCategory = useCallback(async (name: string): Promise<StoreCategory | null> => {
     if (!storeId) return null;
 
-    // Create slug from name
-    const slug = name.toLowerCase()
+    // Create slug from name with unique timestamp suffix to avoid duplicates
+    const baseSlug = name.toLowerCase()
       .replace(/[^a-zа-яё0-9\s-]/gi, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
-      .trim() || `category-${Date.now()}`;
+      .trim();
+    
+    const slug = baseSlug ? `${baseSlug}-${Date.now()}` : `category-${Date.now()}`;
 
     try {
       const { data, error } = await supabase
