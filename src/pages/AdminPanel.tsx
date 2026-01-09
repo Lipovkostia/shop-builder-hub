@@ -4134,25 +4134,36 @@ export default function AdminPanel({
                       Назад
                     </Button>
                     <span className="text-sm font-medium text-muted-foreground">{currentCatalog.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      title="Скопировать ссылку для покупателя"
-                      onClick={() => {
-                        const supabaseCatalog = supabaseCatalogs.find(c => c.id === currentCatalog.id);
-                        if (supabaseCatalog?.access_code) {
-                          const url = `${window.location.origin}/catalog/${supabaseCatalog.access_code}`;
-                          navigator.clipboard.writeText(url);
-                          toast({
-                            title: "Ссылка скопирована",
-                            description: "Отправьте её покупателю для доступа к прайс-листу",
-                          });
-                        }
-                      }}
-                    >
-                      <Link2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        title="Добавить товары из ассортимента"
+                        onClick={() => handleSectionChange("products")}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        title="Скопировать ссылку для покупателя"
+                        onClick={() => {
+                          const supabaseCatalog = supabaseCatalogs.find(c => c.id === currentCatalog.id);
+                          if (supabaseCatalog?.access_code) {
+                            const url = `${window.location.origin}/catalog/${supabaseCatalog.access_code}`;
+                            navigator.clipboard.writeText(url);
+                            toast({
+                              title: "Ссылка скопирована",
+                              description: "Отправьте её покупателю для доступа к прайс-листу",
+                            });
+                          }
+                        }}
+                      >
+                        <Link2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="flex items-center mb-4">
