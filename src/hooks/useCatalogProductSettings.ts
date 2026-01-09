@@ -238,15 +238,39 @@ export function useCatalogProductSettings(storeId: string | null) {
         }
       }
 
-      // Sync status to all other catalogs in DB
-      if (shouldSyncStatus && otherCatalogSettings.length > 0) {
-        const updatePromises = otherCatalogSettings.map(s =>
-          supabase
+      // Sync status to all catalogs of this store (status column in "Прайс-листы")
+      if (shouldSyncStatus) {
+        let catalogIds = catalogIdsRef.current || [];
+
+        // Fallback: if catalogs weren't loaded yet, fetch them once
+        if (catalogIds.length === 0 && storeId) {
+          const { data: catalogs, error: catalogsError } = await supabase
+            .from('catalogs')
+            .select('id')
+            .eq('store_id', storeId);
+
+          if (catalogsError) throw catalogsError;
+          catalogIds = (catalogs || []).map(c => c.id);
+          catalogIdsRef.current = catalogIds;
+        }
+
+        if (catalogIds.length > 0) {
+          const { error: syncError } = await supabase
             .from('catalog_product_settings')
-            .update({ status: updates.status })
-            .eq('id', s.id)
-        );
-        await Promise.all(updatePromises);
+            .upsert(
+              catalogIds.map((cid) => ({
+                catalog_id: cid,
+                product_id: productId,
+                status: updates.status,
+              })),
+              { onConflict: 'catalog_id,product_id' }
+            );
+
+          if (syncError) throw syncError;
+
+          // Ensure UI reflects newly created rows
+          await fetchSettings();
+        }
       }
     } catch (error) {
       console.error('Error updating catalog product settings:', error);
