@@ -171,9 +171,9 @@ function ProductCard({
   const hasQuarterPrice = catalogPrices?.quarter != null || product.price_quarter != null;
   const hasPortionPrice = catalogPrices?.portion != null || product.price_portion != null;
   
-  // Показываем кнопки вариантов если есть хотя бы одна цена варианта ИЛИ это head тип
+  // Показываем кнопки вариантов если есть хотя бы одна цена варианта
+  const hasVariantPrices = hasFullPrice || hasHalfPrice || hasQuarterPrice || hasPortionPrice;
   const isHead = product.packaging_type === 'head';
-  const hasVariantPrices = hasFullPrice || hasHalfPrice || hasQuarterPrice || hasPortionPrice || isHead;
   
   // Расчёт цен для вариантов
   const fullPrice = catalogPrices?.full || product.price_full || (isHead ? basePrice * unitWeight : basePrice);
@@ -254,111 +254,103 @@ function ProductCard({
           <div className={`flex items-center gap-0.5 flex-wrap ${showImages ? 'mt-0.5' : ''}`}>
             {inStock ? (
               <>
-                {hasVariantPrices ? (
-                  <>
-                    {/* Целая / Полная цена */}
-                    {(hasFullPrice || isHead) && (() => {
-                      const qty = getCartQuantity(0);
-                      return (
-                        <button
-                          onClick={() => onAddToCart(product.id, 0, fullPrice)}
-                          className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                        >
-                          {qty > 0 && (
-                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                              {qty}
-                            </span>
-                          )}
-                          <PortionIndicator type="full" />
-                          <span className="text-[9px] font-medium text-foreground">
-                            {formatPriceSpaced(fullPrice)}
-                          </span>
-                        </button>
-                      );
-                    })()}
-                    {/* Половина */}
-                    {(hasHalfPrice || isHead) && (() => {
-                      const qty = getCartQuantity(1);
-                      return (
-                        <button
-                          onClick={() => onAddToCart(product.id, 1, halfPrice)}
-                          className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                        >
-                          {qty > 0 && (
-                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                              {qty}
-                            </span>
-                          )}
-                          <PortionIndicator type="half" />
-                          <span className="text-[9px] font-medium text-foreground">
-                            {formatPriceSpaced(halfPrice)}
-                          </span>
-                        </button>
-                      );
-                    })()}
-                    {/* Четверть */}
-                    {(hasQuarterPrice || isHead) && (() => {
-                      const qty = getCartQuantity(2);
-                      return (
-                        <button
-                          onClick={() => onAddToCart(product.id, 2, quarterPrice)}
-                          className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                        >
-                          {qty > 0 && (
-                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                              {qty}
-                            </span>
-                          )}
-                          <PortionIndicator type="quarter" />
-                          <span className="text-[9px] font-medium text-foreground">
-                            {formatPriceSpaced(quarterPrice)}
-                          </span>
-                        </button>
-                      );
-                    })()}
-                    {/* Порция */}
-                    {portionPrice && (() => {
-                      const qty = getCartQuantity(3);
-                      return (
-                        <button
-                          onClick={() => onAddToCart(product.id, 3, portionPrice)}
-                          className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                        >
-                          {qty > 0 && (
-                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                              {qty}
-                            </span>
-                          )}
-                          <PortionIndicator type="portion" />
-                          <span className="text-[9px] font-medium text-foreground">
-                            {formatPriceSpaced(portionPrice)}
-                          </span>
-                        </button>
-                      );
-                    })()}
-                  </>
-                ) : (
-                  // Простой товар (штучный)
-                  (() => {
-                    const qty = getCartQuantity(0);
-                    return (
-                      <button
-                        onClick={() => onAddToCart(product.id, 0, basePrice)}
-                        className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                      >
-                        {qty > 0 && (
-                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                            {qty}
-                          </span>
-                        )}
-                        <Plus className="w-3 h-3 text-primary" />
-                        <span className="text-[9px] font-medium text-foreground">
-                          {formatPriceSpaced(basePrice)}
+                {/* Кнопки вариантов - показываем если есть цены вариантов */}
+                {hasFullPrice && (() => {
+                  const qty = getCartQuantity(0);
+                  return (
+                    <button
+                      onClick={() => onAddToCart(product.id, 0, fullPrice)}
+                      className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                    >
+                      {qty > 0 && (
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                          {qty}
                         </span>
-                      </button>
-                    );
-                  })()
-                )}
+                      )}
+                      <PortionIndicator type="full" />
+                      <span className="text-[9px] font-medium text-foreground">
+                        {formatPriceSpaced(fullPrice)}
+                      </span>
+                    </button>
+                  );
+                })()}
+                {hasHalfPrice && (() => {
+                  const qty = getCartQuantity(1);
+                  return (
+                    <button
+                      onClick={() => onAddToCart(product.id, 1, halfPrice)}
+                      className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                    >
+                      {qty > 0 && (
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                          {qty}
+                        </span>
+                      )}
+                      <PortionIndicator type="half" />
+                      <span className="text-[9px] font-medium text-foreground">
+                        {formatPriceSpaced(halfPrice)}
+                      </span>
+                    </button>
+                  );
+                })()}
+                {hasQuarterPrice && (() => {
+                  const qty = getCartQuantity(2);
+                  return (
+                    <button
+                      onClick={() => onAddToCart(product.id, 2, quarterPrice)}
+                      className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                    >
+                      {qty > 0 && (
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                          {qty}
+                        </span>
+                      )}
+                      <PortionIndicator type="quarter" />
+                      <span className="text-[9px] font-medium text-foreground">
+                        {formatPriceSpaced(quarterPrice)}
+                      </span>
+                    </button>
+                  );
+                })()}
+                {hasPortionPrice && portionPrice && (() => {
+                  const qty = getCartQuantity(3);
+                  return (
+                    <button
+                      onClick={() => onAddToCart(product.id, 3, portionPrice)}
+                      className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                    >
+                      {qty > 0 && (
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                          {qty}
+                        </span>
+                      )}
+                      <PortionIndicator type="portion" />
+                      <span className="text-[9px] font-medium text-foreground">
+                        {formatPriceSpaced(portionPrice)}
+                      </span>
+                    </button>
+                  );
+                })()}
+                {/* Обычная кнопка - показываем только если нет ни одной цены варианта */}
+                {!hasVariantPrices && (() => {
+                  const qty = getCartQuantity(0);
+                  return (
+                    <button
+                      onClick={() => onAddToCart(product.id, 0, basePrice)}
+                      className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                    >
+                      {qty > 0 && (
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                          {qty}
+                        </span>
+                      )}
+                      <Plus className="w-3 h-3 text-primary" />
+                      <span className="text-[9px] font-medium text-foreground">
+                        {formatPriceSpaced(basePrice)}
+                      </span>
+                    </button>
+                  );
+                })()}
               </>
             ) : (
               <span className="text-[10px] text-muted-foreground">Нет в наличии</span>
