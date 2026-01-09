@@ -1378,15 +1378,21 @@ const CustomerDashboard = () => {
                         
                         {/* Название + вариант + объём + цена за 1 + статус */}
                         <div className="min-w-0">
-                          <p className={`font-medium text-[11px] truncate leading-tight ${isUnavailable ? 'line-through' : ''}`}>
-                            {displayName}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className={`font-medium text-[11px] truncate leading-tight ${isUnavailable ? 'line-through' : ''}`}>
+                              {displayName}
+                            </p>
+                            {variantLabel && !isUnavailable && (
+                              <span className="flex-shrink-0 px-1.5 py-0.5 text-[9px] font-medium bg-primary/10 text-primary rounded">
+                                {variantLabel}
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-1">
                             {isUnavailable ? (
                               <span className="text-[9px] text-destructive">Нет в прайсе</span>
                             ) : (
                               <span className="text-[10px] text-muted-foreground truncate">
-                                {variantLabel && <span>{variantLabel} · </span>}
                                 <span className="text-primary font-medium">{itemVolume}</span>
                                 {' · '}{formatPrice(item.price)}/шт
                               </span>
