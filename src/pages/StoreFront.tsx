@@ -1072,6 +1072,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                     <>
                       <p className="text-sm font-medium text-foreground">Шаг 9.1: Откройте список прайс-листов</p>
                       <p className="text-xs text-muted-foreground">Нажмите на иконку папки, чтобы увидеть все ваши прайс-листы</p>
+                      <p className="text-xs text-muted-foreground/70 mt-1">💡 Обновите страницу, если прайс-листа нет в списке</p>
                     </>
                   )}
                   {onboardingStep9SubStep === "catalog-item" && (
