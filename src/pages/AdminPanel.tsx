@@ -3168,6 +3168,9 @@ export default function AdminPanel({
                               addNewPlaceholder="Новый прайс-лист..."
                               addNewButtonLabel="Создать прайс-лист"
                               allowAddNew={true}
+                              emptyStateMessage="Нет прайс-листов"
+                              showOnboardingHint={supabaseProducts.length > 0 && catalogs.length === 0}
+                              onboardingHintText="Создайте прайс-лист и привяжите товар"
                             />
                           </ResizableTableCell>
                         ),

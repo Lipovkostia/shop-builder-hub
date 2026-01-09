@@ -26,6 +26,9 @@ interface InlineMultiSelectCellProps {
   addNewButtonLabel?: string;
   className?: string;
   placeholder?: string;
+  emptyStateMessage?: string;
+  showOnboardingHint?: boolean;
+  onboardingHintText?: string;
 }
 
 export function InlineMultiSelectCell({
@@ -39,6 +42,9 @@ export function InlineMultiSelectCell({
   addNewButtonLabel = "Добавить группу",
   className = "",
   placeholder = "Без группы",
+  emptyStateMessage = "Нет групп",
+  showOnboardingHint = false,
+  onboardingHintText,
 }: InlineMultiSelectCellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -100,6 +106,9 @@ export function InlineMultiSelectCell({
     .map(v => options.find(o => o.value === v)?.label)
     .filter(Boolean);
 
+  // Show onboarding highlight effect
+  const shouldHighlight = showOnboardingHint && options.length === 0;
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -107,7 +116,9 @@ export function InlineMultiSelectCell({
           className={`flex items-center gap-1 h-6 px-1.5 text-xs border border-dashed rounded-md min-w-[70px] max-w-[200px] hover:bg-muted/50 transition-colors ${
             values.length > 0 
               ? "bg-primary/5 border-primary/30 text-foreground" 
-              : "border-border text-muted-foreground"
+              : shouldHighlight
+                ? "border-primary bg-primary/10 text-primary animate-pulse"
+                : "border-border text-muted-foreground"
           } ${className}`}
         >
           <Tag className="h-2.5 w-2.5 flex-shrink-0" />
@@ -166,7 +177,12 @@ export function InlineMultiSelectCell({
               );
             })
           ) : (
-            <p className="text-xs text-muted-foreground px-2 py-1">Нет групп</p>
+            <div className="px-2 py-1">
+              <p className="text-xs text-muted-foreground">{emptyStateMessage}</p>
+              {showOnboardingHint && onboardingHintText && (
+                <p className="text-xs text-primary mt-1 font-medium">{onboardingHintText}</p>
+              )}
+            </div>
           )}
         </div>
         
