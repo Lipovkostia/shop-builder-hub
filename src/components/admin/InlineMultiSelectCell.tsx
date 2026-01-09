@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Check, X, Plus, ChevronDown, Tag } from "lucide-react";
+import { Check, X, Plus, ChevronDown, Tag, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,7 @@ interface InlineMultiSelectCellProps {
   options: SelectOption[];
   onSave: (newValues: string[]) => void;
   onAddOption?: (newOption: string) => void | string | null | Promise<string | null | void>;
+  onNavigate?: (optionValue: string) => void;
   allowAddNew?: boolean;
   addNewPlaceholder?: string;
   addNewButtonLabel?: string;
@@ -32,6 +33,7 @@ export function InlineMultiSelectCell({
   options,
   onSave,
   onAddOption,
+  onNavigate,
   allowAddNew = true,
   addNewPlaceholder = "Новая группа...",
   addNewButtonLabel = "Добавить группу",
@@ -129,18 +131,37 @@ export function InlineMultiSelectCell({
               return (
                 <div
                   key={option.value}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleToggle(option.value);
-                  }}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted text-sm group"
                 >
-                  <Checkbox
-                    checked={isSelected}
-                    className="pointer-events-none"
-                  />
-                  <span className="truncate">{option.label}</span>
+                  <div
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleToggle(option.value);
+                    }}
+                    className="flex items-center gap-2 flex-1 cursor-pointer min-w-0"
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      className="pointer-events-none flex-shrink-0"
+                    />
+                    <span className="truncate">{option.label}</span>
+                  </div>
+                  {onNavigate && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                      title="Открыть прайс-лист"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onNavigate(option.value);
+                      }}
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
               );
             })

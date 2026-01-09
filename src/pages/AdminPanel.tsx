@@ -3158,6 +3158,12 @@ export default function AdminPanel({
                                 }
                                 return null;
                               }}
+                              onNavigate={(catalogId) => {
+                                const supabaseCatalog = supabaseCatalogs.find(c => c.id === catalogId);
+                                if (supabaseCatalog?.access_code) {
+                                  window.open(`/catalog/${supabaseCatalog.access_code}`, '_blank');
+                                }
+                              }}
                               placeholder="Выбрать..."
                               addNewPlaceholder="Новый прайс-лист..."
                               addNewButtonLabel="Создать прайс-лист"
