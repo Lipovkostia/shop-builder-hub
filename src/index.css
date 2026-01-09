@@ -184,4 +184,10 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Workspace mode: sticky table headers need to account for MobileTabNav height */
+  .workspace-admin-panel thead.sticky,
+  .workspace-admin-panel thead[class*="sticky"] {
+    top: 2.75rem !important; /* ~44px - height of MobileTabNav */
+  }
 }
