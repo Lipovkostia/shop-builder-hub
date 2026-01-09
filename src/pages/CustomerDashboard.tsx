@@ -257,12 +257,12 @@ function ProductCard({
           <div className={`flex items-center gap-0.5 flex-wrap ${showImages ? 'mt-0.5' : ''}`}>
             {inStock ? (
               <>
-                {/* Кнопки вариантов - показываем если есть цены вариантов */}
-                {hasFullPrice && (() => {
-                  const qty = getCartQuantity(0);
+                {/* Кнопки вариантов в порядке: порция, 1/4, 1/2, целая */}
+                {hasPortionPrice && portionPrice && (() => {
+                  const qty = getCartQuantity(3);
                   return (
                     <button
-                      onClick={() => onAddToCart(product.id, 0, fullPrice)}
+                      onClick={() => onAddToCart(product.id, 3, portionPrice)}
                       className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
                     >
                       {qty > 0 && (
@@ -270,28 +270,9 @@ function ProductCard({
                           {qty}
                         </span>
                       )}
-                      <PortionIndicator type="full" />
+                      <PortionIndicator type="portion" />
                       <span className="text-[9px] font-medium text-foreground">
-                        {formatPriceSpaced(fullPrice)}
-                      </span>
-                    </button>
-                  );
-                })()}
-                {hasHalfPrice && (() => {
-                  const qty = getCartQuantity(1);
-                  return (
-                    <button
-                      onClick={() => onAddToCart(product.id, 1, halfPrice)}
-                      className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                    >
-                      {qty > 0 && (
-                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                          {qty}
-                        </span>
-                      )}
-                      <PortionIndicator type="half" />
-                      <span className="text-[9px] font-medium text-foreground">
-                        {formatPriceSpaced(halfPrice)}
+                        {formatPriceSpaced(portionPrice)}
                       </span>
                     </button>
                   );
@@ -315,11 +296,11 @@ function ProductCard({
                     </button>
                   );
                 })()}
-                {hasPortionPrice && portionPrice && (() => {
-                  const qty = getCartQuantity(3);
+                {hasHalfPrice && (() => {
+                  const qty = getCartQuantity(1);
                   return (
                     <button
-                      onClick={() => onAddToCart(product.id, 3, portionPrice)}
+                      onClick={() => onAddToCart(product.id, 1, halfPrice)}
                       className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
                     >
                       {qty > 0 && (
@@ -327,9 +308,28 @@ function ProductCard({
                           {qty}
                         </span>
                       )}
-                      <PortionIndicator type="portion" />
+                      <PortionIndicator type="half" />
                       <span className="text-[9px] font-medium text-foreground">
-                        {formatPriceSpaced(portionPrice)}
+                        {formatPriceSpaced(halfPrice)}
+                      </span>
+                    </button>
+                  );
+                })()}
+                {hasFullPrice && (() => {
+                  const qty = getCartQuantity(0);
+                  return (
+                    <button
+                      onClick={() => onAddToCart(product.id, 0, fullPrice)}
+                      className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                    >
+                      {qty > 0 && (
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                          {qty}
+                        </span>
+                      )}
+                      <PortionIndicator type="full" />
+                      <span className="text-[9px] font-medium text-foreground">
+                        {formatPriceSpaced(fullPrice)}
                       </span>
                     </button>
                   );
