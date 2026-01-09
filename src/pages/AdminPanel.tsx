@@ -632,7 +632,6 @@ export default function AdminPanel({
     cost: "",
     status: "all",
     sync: "all",
-    categories: [] as string[],
     groups: [] as string[],
   });
 
@@ -724,7 +723,6 @@ export default function AdminPanel({
     type: true,
     volume: true,
     cost: true,
-    categories: true,
     groups: true,
     catalogs: true,
   });
@@ -741,7 +739,6 @@ export default function AdminPanel({
     type: "Вид",
     volume: "Объем",
     cost: "Себест.",
-    categories: "Категории",
     groups: "Группа",
     catalogs: "Прайс-листы",
   };
@@ -2842,7 +2839,6 @@ export default function AdminPanel({
                     { id: "type", minWidth: 70, defaultWidth: 85 },
                     { id: "volume", minWidth: 70, defaultWidth: 80 },
                     { id: "cost", minWidth: 70, defaultWidth: 90 },
-                    { id: "categories", minWidth: 100, defaultWidth: 120 },
                     { id: "groups", minWidth: 100, defaultWidth: 120 },
                     { id: "catalogs", minWidth: 100, defaultWidth: 120 },
                     { id: "status", minWidth: 70, defaultWidth: 80 },
@@ -2894,9 +2890,6 @@ export default function AdminPanel({
                       )}
                       {visibleColumns.cost && (
                         <ResizableTableHead columnId="cost" minWidth={70}>Себест.</ResizableTableHead>
-                      )}
-                      {visibleColumns.categories && (
-                        <ResizableTableHead columnId="categories" minWidth={100}>Категории</ResizableTableHead>
                       )}
                       {visibleColumns.groups && (
                         <ResizableTableHead columnId="groups" minWidth={100}>Группа</ResizableTableHead>
@@ -3003,19 +2996,6 @@ export default function AdminPanel({
                             value={allProductsFilters.cost} 
                             onChange={(v) => setAllProductsFilters(f => ({...f, cost: v}))}
                             placeholder="Поиск..."
-                          />
-                        </ResizableTableHead>
-                      )}
-                      {visibleColumns.categories && (
-                        <ResizableTableHead columnId="categories" minWidth={100} resizable={false}>
-                          <MultiSelectFilter
-                            values={allProductsFilters.categories || []}
-                            onChange={(v) => setAllProductsFilters(f => ({...f, categories: v}))}
-                            options={[
-                              { value: "none", label: "Без категории" },
-                              ...categories.map(c => ({ value: c.id, label: c.name }))
-                            ]}
-                            placeholder="Все"
                           />
                         </ResizableTableHead>
                       )}
@@ -3163,22 +3143,6 @@ export default function AdminPanel({
                               value={product.buyPrice}
                               onSave={(newPrice) => updateProduct({ ...product, buyPrice: newPrice })}
                               placeholder="0"
-                            />
-                          </ResizableTableCell>
-                        ),
-                        categories: (
-                          <ResizableTableCell key="categories" columnId="categories">
-                            <InlineMultiSelectCell
-                              values={getProductCategoryIds(product.id)}
-                              options={categories.map(c => ({ value: c.id, label: c.name }))}
-                              onSave={(selectedIds) => {
-                                setProductCategoryAssignments(product.id, selectedIds);
-                              }}
-                              onAddOption={handleAddCategory}
-                              placeholder="Категории..."
-                              addNewPlaceholder="Новая категория..."
-                              addNewButtonLabel="Создать категорию"
-                              allowAddNew={true}
                             />
                           </ResizableTableCell>
                         ),
@@ -4089,6 +4053,7 @@ export default function AdminPanel({
                         { id: "photo", minWidth: 50, defaultWidth: 60 },
                         { id: "name", minWidth: 120, defaultWidth: 180 },
                         { id: "description", minWidth: 100, defaultWidth: 200 },
+                        { id: "categories", minWidth: 100, defaultWidth: 140 },
                         { id: "unit", minWidth: 60, defaultWidth: 80 },
                         { id: "volume", minWidth: 60, defaultWidth: 80 },
                         { id: "type", minWidth: 80, defaultWidth: 100 },
@@ -4124,6 +4089,7 @@ export default function AdminPanel({
                           <ResizableTableHead columnId="photo">Фото</ResizableTableHead>
                           <ResizableTableHead columnId="name">Название</ResizableTableHead>
                           <ResizableTableHead columnId="description">Описание</ResizableTableHead>
+                          <ResizableTableHead columnId="categories">Категории</ResizableTableHead>
                           <ResizableTableHead columnId="unit">Ед. изм.</ResizableTableHead>
                           <ResizableTableHead columnId="volume">Объем</ResizableTableHead>
                           <ResizableTableHead columnId="type">Вид</ResizableTableHead>
@@ -4221,6 +4187,23 @@ export default function AdminPanel({
                                     }}
                                     placeholder="Описание..."
                                     className="text-muted-foreground text-xs"
+                                  />
+                                </ResizableTableCell>
+                                {/* Категории - независимые для каждого каталога */}
+                                <ResizableTableCell columnId="categories">
+                                  <InlineMultiSelectCell
+                                    values={effectiveCategories || []}
+                                    options={categories.map(c => ({ value: c.id, label: c.name }))}
+                                    onSave={(selectedIds) => {
+                                      if (currentCatalog) {
+                                        updateCatalogProductPricing(currentCatalog.id, product.id, { categories: selectedIds });
+                                      }
+                                    }}
+                                    onAddOption={handleAddCategory}
+                                    placeholder="Категории..."
+                                    addNewPlaceholder="Новая категория..."
+                                    addNewButtonLabel="Создать категорию"
+                                    allowAddNew={true}
                                   />
                                 </ResizableTableCell>
                                 {/* Единица измерения - редактируемая, сохраняется в ассортимент */}
