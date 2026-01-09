@@ -3222,8 +3222,25 @@ export default function AdminPanel({
                               }}
                               onNavigate={(catalogId) => {
                                 const supabaseCatalog = supabaseCatalogs.find(c => c.id === catalogId);
-                                if (supabaseCatalog?.access_code) {
-                                  navigate(`/catalog/${supabaseCatalog.access_code}`);
+                                if (supabaseCatalog) {
+                                  // Navigate to catalogs section within admin panel
+                                  handleSectionChange("catalogs");
+                                  // Open this specific catalog
+                                  setTimeout(() => {
+                                    const legacyCatalog: Catalog = {
+                                      id: supabaseCatalog.id,
+                                      name: supabaseCatalog.name,
+                                      description: supabaseCatalog.description || undefined,
+                                      productIds: Object.entries(productCatalogVisibility)
+                                        .filter(([_, catalogs]) => catalogs.has(supabaseCatalog.id))
+                                        .map(([productId]) => productId),
+                                      categoryIds: [],
+                                      createdAt: supabaseCatalog.created_at,
+                                    };
+                                    setCurrentCatalog(legacyCatalog);
+                                    setSelectedCatalogProducts(new Set(legacyCatalog.productIds));
+                                    setCatalogView("detail");
+                                  }, 0);
                                 }
                               }}
                               placeholder="Выбрать..."
