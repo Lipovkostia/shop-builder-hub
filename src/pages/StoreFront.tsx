@@ -754,10 +754,12 @@ interface StoreFrontProps {
   workspaceMode?: boolean;
   storeData?: any;
   onSwitchToAdmin?: (section?: string) => void;
+  onboardingStep9Active?: boolean;
+  onOnboardingStep9Complete?: () => void;
 }
 
 // Main StoreFront Component
-export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }: StoreFrontProps = {}) {
+export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, onboardingStep9Active, onOnboardingStep9Complete }: StoreFrontProps = {}) {
   const { subdomain } = useParams<{ subdomain: string }>();
   const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
@@ -810,6 +812,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   }, [searchInputValue]);
   const [viewMode, setViewMode] = useState<'storefront' | 'admin'>('storefront');
   const [adminSection, setAdminSection] = useState<string | undefined>(undefined);
+  
+  // Onboarding step 9 sub-step: "catalog-trigger" -> "catalog-item" -> "done"
+  const [onboardingStep9SubStep, setOnboardingStep9SubStep] = useState<"catalog-trigger" | "catalog-item" | "done">("catalog-trigger");
 
   // Use products directly from hook - realtime handles sync
   const displayProducts = products;
@@ -1004,12 +1009,48 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
       {/* Упрощённый хедер в workspaceMode */}
       {workspaceMode && (
         <div className="sticky top-0 z-40 bg-background border-b border-border">
+          {/* Onboarding Step 9 */}
+          {onboardingStep9Active && onboardingStep9SubStep !== "done" && (
+            <div className="bg-primary/10 border-b border-primary/30 p-3">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                  <span className="text-primary font-bold text-sm">9</span>
+                </div>
+                <div className="flex-1">
+                  {onboardingStep9SubStep === "catalog-trigger" && (
+                    <>
+                      <p className="text-sm font-medium text-foreground">Шаг 9.1: Откройте список прайс-листов</p>
+                      <p className="text-xs text-muted-foreground">Нажмите на иконку папки, чтобы увидеть все ваши прайс-листы</p>
+                    </>
+                  )}
+                  {onboardingStep9SubStep === "catalog-item" && (
+                    <>
+                      <p className="text-sm font-medium text-foreground">Шаг 9.2: Выберите прайс-лист</p>
+                      <p className="text-xs text-muted-foreground">Нажмите на созданный прайс-лист, чтобы открыть его</p>
+                    </>
+                  )}
+                  <div className="flex gap-1 mt-2">
+                    <div className={`h-1.5 w-8 rounded-full ${onboardingStep9SubStep === "catalog-item" ? 'bg-primary' : 'bg-muted'}`} />
+                    <div className={`h-1.5 w-8 rounded-full bg-muted`} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Панель управления с иконками */}
           <div className="h-10 flex items-center justify-between px-3 bg-muted/30">
             <div className="flex items-center gap-1">
               {/* Селектор прайс-листа */}
-              <DropdownMenu>
-                <DropdownMenuTrigger className="p-2 rounded hover:bg-muted transition-colors">
+              <DropdownMenu onOpenChange={(open) => {
+                if (open && onboardingStep9Active && onboardingStep9SubStep === "catalog-trigger") {
+                  setOnboardingStep9SubStep("catalog-item");
+                }
+              }}>
+                <DropdownMenuTrigger 
+                  className={`p-2 rounded hover:bg-muted transition-colors ${onboardingStep9Active && onboardingStep9SubStep === "catalog-trigger" ? 'animate-pulse ring-2 ring-primary ring-offset-2 bg-primary/20' : ''}`}
+                  data-onboarding-catalog-trigger
+                >
                   <FolderOpen className="w-4 h-4 text-muted-foreground" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="min-w-[200px] bg-popover z-50">
@@ -1019,11 +1060,18 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                   >
                     <span className={!selectedCatalog ? "font-semibold" : ""}>Все товары</span>
                   </DropdownMenuItem>
-                  {catalogs.map((catalog) => (
+                  {catalogs.map((catalog, index) => (
                     <DropdownMenuItem
                       key={catalog.id}
-                      onClick={() => setSelectedCatalog(catalog.id)}
-                      className="cursor-pointer"
+                      onClick={() => {
+                        setSelectedCatalog(catalog.id);
+                        if (onboardingStep9Active && onboardingStep9SubStep === "catalog-item") {
+                          setOnboardingStep9SubStep("done");
+                          onOnboardingStep9Complete?.();
+                        }
+                      }}
+                      className={`cursor-pointer ${onboardingStep9Active && onboardingStep9SubStep === "catalog-item" && index === 0 ? 'animate-pulse bg-primary/20 ring-1 ring-primary' : ''}`}
+                      data-onboarding-catalog-item={index === 0 ? "first" : undefined}
                     >
                       <span className={selectedCatalog === catalog.id ? "font-semibold" : ""}>
                         {catalog.name}

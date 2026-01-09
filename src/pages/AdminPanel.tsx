@@ -413,6 +413,7 @@ interface AdminPanelProps {
   storeSubdomainOverride?: string;
   onSwitchToStorefront?: () => void;
   initialSection?: ActiveSection;
+  onTriggerOnboardingStep9?: () => void;
 }
 
 export default function AdminPanel({ 
@@ -420,7 +421,8 @@ export default function AdminPanel({
   storeIdOverride, 
   storeSubdomainOverride,
   onSwitchToStorefront,
-  initialSection 
+  initialSection,
+  onTriggerOnboardingStep9
 }: AdminPanelProps = {}) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -4486,6 +4488,11 @@ export default function AdminPanel({
                             storefrontButton.classList.remove('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2', 'bg-primary/20');
                           }, 3000);
                         }
+                        // Trigger step 9 and switch to storefront
+                        setOnboardingStep8Visible(false);
+                        if (onTriggerOnboardingStep9) {
+                          onTriggerOnboardingStep9();
+                        }
                       }}
                     >
                       <div className="flex items-center gap-3">
@@ -4498,7 +4505,7 @@ export default function AdminPanel({
                             <p className="text-sm font-medium text-foreground">Перейдите в раздел "Витрина"</p>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            В разделе "Витрина" можно просматривать свои прайс-листы и визуально ими управлять. Перейдите в раздел "Витрина" и откройте созданный прайс.
+                            В разделе "Витрина" можно просматривать свои прайс-листы и визуально ими управлять. Нажмите сюда, чтобы перейти.
                           </p>
                         </div>
                         <ChevronRight className="h-5 w-5 text-primary" />
