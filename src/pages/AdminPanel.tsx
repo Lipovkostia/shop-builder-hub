@@ -4472,18 +4472,18 @@ export default function AdminPanel({
                     );
                   })()}
 
-                  {/* Onboarding Step 8: Go to Visibility section */}
+                  {/* Onboarding Step 8: Go to Storefront */}
                   {onboardingStep8Visible && (
                     <div 
                       className="bg-primary/10 border border-primary/30 rounded-lg p-4 mb-3 cursor-pointer hover:bg-primary/15 transition-colors"
                       onClick={() => {
-                        // Highlight the visibility tab
-                        const visibilityTab = document.querySelector('[data-onboarding-tab="visibility"]');
-                        if (visibilityTab) {
-                          visibilityTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-                          visibilityTab.classList.add('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2');
+                        // Highlight the storefront button in WorkspaceHeader
+                        const storefrontButton = document.querySelector('[data-onboarding-storefront-button]');
+                        if (storefrontButton) {
+                          storefrontButton.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                          storefrontButton.classList.add('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2', 'bg-primary/20');
                           setTimeout(() => {
-                            visibilityTab.classList.remove('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2');
+                            storefrontButton.classList.remove('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2', 'bg-primary/20');
                           }, 3000);
                         }
                       }}
@@ -4494,11 +4494,11 @@ export default function AdminPanel({
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <Eye className="h-4 w-4 text-primary" />
-                            <p className="text-sm font-medium text-foreground">Перейдите в раздел "Видимость"</p>
+                            <Store className="h-4 w-4 text-primary" />
+                            <p className="text-sm font-medium text-foreground">Перейдите в раздел "Витрина"</p>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            В разделе "Видимость" можно просматривать свои прайс-листы и визуально ими управлять. Перейдите в раздел "Видимость" и откройте созданный прайс.
+                            В разделе "Витрина" можно просматривать свои прайс-листы и визуально ими управлять. Перейдите в раздел "Витрина" и откройте созданный прайс.
                           </p>
                         </div>
                         <ChevronRight className="h-5 w-5 text-primary" />
