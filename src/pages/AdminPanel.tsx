@@ -96,6 +96,7 @@ import { StoreCustomersTable } from "@/components/admin/StoreCustomersTable";
 import { useCatalogProductSettings } from "@/hooks/useCatalogProductSettings";
 import { useProductGroups } from "@/hooks/useProductGroups";
 import { useProductCategories } from "@/hooks/useProductCategories";
+import { useStoreCategories, StoreCategory } from "@/hooks/useStoreCategories";
 
 // Removed localStorage keys - now using Supabase
 
@@ -516,6 +517,9 @@ export default function AdminPanel({
     getProductCategoryIds,
     setProductCategoryAssignments,
   } = useProductCategories(effectiveStoreId);
+
+  // Store categories from Supabase
+  const { categories: storeCategories, loading: categoriesLoading } = useStoreCategories(effectiveStoreId);
   // ================ END SUPABASE DATA HOOKS ================
   
   const [activeSection, setActiveSection] = useState<ActiveSection>(() => {
@@ -751,33 +755,59 @@ export default function AdminPanel({
   // Custom options state (for units and packaging types added by user)
   const [customUnits, setCustomUnits] = useState<string[]>([]);
   const [customPackagingTypes, setCustomPackagingTypes] = useState<string[]>([]);
-  // Predefined categories - use names as both id and label for consistency with ProductEditPanel
-  const predefinedCategoryNames = [
-    "Сыры",
-    "Молочные продукты", 
-    "Мясо",
-    "Птица",
-    "Рыба",
-    "Морепродукты",
-    "Овощи",
-    "Фрукты",
-    "Напитки",
-    "Деликатесы",
-  ];
-  const [customCategories, setCustomCategories] = useState<string[]>([]);
-  const categories = [...predefinedCategoryNames, ...customCategories].map(name => ({ id: name, name }));
+  // Categories from Supabase - use storeCategories directly
+  const categories = storeCategories.map(c => ({ id: c.id, name: c.name }));
   const [newCategoryName, setNewCategoryName] = useState("");
   
-  // Add new category handler
-  const handleAddCategory = useCallback((categoryName: string) => {
-    if (!predefinedCategoryNames.includes(categoryName) && !customCategories.includes(categoryName)) {
-      setCustomCategories(prev => [...prev, categoryName]);
+  // Add new category handler - creates in Supabase
+  const handleAddCategory = useCallback(async (categoryName: string): Promise<string | null> => {
+    if (!effectiveStoreId) return null;
+    
+    // Check if category already exists
+    if (storeCategories.some(c => c.name.toLowerCase() === categoryName.toLowerCase())) {
+      toast({
+        title: "Категория уже существует",
+        description: `Категория "${categoryName}" уже есть в списке`,
+      });
+      return storeCategories.find(c => c.name.toLowerCase() === categoryName.toLowerCase())?.id || null;
+    }
+    
+    try {
+      // Create slug from name
+      const slug = categoryName.toLowerCase()
+        .replace(/[^a-zа-яё0-9\s-]/gi, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim();
+      
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({
+          store_id: effectiveStoreId,
+          name: categoryName,
+          slug: slug || `category-${Date.now()}`,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
       toast({
         title: "Категория создана",
         description: `Категория "${categoryName}" успешно добавлена`,
       });
+      
+      return data.id;
+    } catch (error) {
+      console.error('Error creating category:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось создать категорию",
+        variant: "destructive",
+      });
+      return null;
     }
-  }, [customCategories, toast]);
+  }, [effectiveStoreId, storeCategories, toast]);
 
   // Build combined options lists
   const allUnitOptions = [
