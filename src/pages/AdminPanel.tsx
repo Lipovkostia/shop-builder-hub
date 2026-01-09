@@ -4314,7 +4314,7 @@ export default function AdminPanel({
                         { id: "volume", minWidth: 60, defaultWidth: 80 },
                         { id: "type", minWidth: 80, defaultWidth: 100 },
                         { id: "buyPrice", minWidth: 70, defaultWidth: 90 },
-                        { id: "markup", minWidth: 70, defaultWidth: 90 },
+                        { id: "markup", minWidth: 110, defaultWidth: 120 },
                         { id: "price", minWidth: 80, defaultWidth: 100 },
                         { id: "priceFull", minWidth: 70, defaultWidth: 90 },
                         { id: "priceHalf", minWidth: 70, defaultWidth: 90 },
