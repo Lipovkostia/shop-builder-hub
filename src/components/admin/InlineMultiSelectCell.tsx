@@ -22,6 +22,7 @@ interface InlineMultiSelectCellProps {
   onAddOption?: (newOption: string) => void | string | null | Promise<string | null | void>;
   allowAddNew?: boolean;
   addNewPlaceholder?: string;
+  addNewButtonLabel?: string;
   className?: string;
   placeholder?: string;
 }
@@ -33,6 +34,7 @@ export function InlineMultiSelectCell({
   onAddOption,
   allowAddNew = true,
   addNewPlaceholder = "Новая группа...",
+  addNewButtonLabel = "Добавить группу",
   className = "",
   placeholder = "Без группы",
 }: InlineMultiSelectCellProps) {
@@ -183,7 +185,7 @@ export function InlineMultiSelectCell({
                 className="flex items-center gap-1 w-full px-2 py-1.5 text-xs text-primary hover:bg-muted rounded"
               >
                 <Plus className="h-3 w-3" />
-                Добавить группу
+                {addNewButtonLabel}
               </button>
             )}
           </div>
