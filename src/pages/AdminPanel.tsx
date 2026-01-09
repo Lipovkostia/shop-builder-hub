@@ -3929,6 +3929,20 @@ export default function AdminPanel({
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
+                      title="Открыть прайс-лист на витрине"
+                      onClick={() => {
+                        const supabaseCatalog = supabaseCatalogs.find(c => c.id === currentCatalog.id);
+                        if (supabaseCatalog?.access_code) {
+                          window.open(`/catalog/${supabaseCatalog.access_code}`, '_blank');
+                        }
+                      }}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
                       title="Скопировать ссылку для покупателя"
                       onClick={() => {
                         const supabaseCatalog = supabaseCatalogs.find(c => c.id === currentCatalog.id);
