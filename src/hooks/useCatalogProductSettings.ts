@@ -201,10 +201,10 @@ export function useCatalogProductSettings(storeId: string | null) {
 
         if (error) throw error;
       } else {
-        // Insert new
+        // Upsert new (handles race conditions when record already exists)
         const { data, error } = await supabase
           .from('catalog_product_settings')
-          .insert({
+          .upsert({
             catalog_id: catalogId,
             product_id: productId,
             categories: updates.categories || [],
@@ -212,7 +212,7 @@ export function useCatalogProductSettings(storeId: string | null) {
             markup_value: updates.markup_value || 0,
             status: updates.status || 'in_stock',
             portion_prices: updates.portion_prices || null,
-          })
+          }, { onConflict: 'catalog_id,product_id' })
           .select()
           .single();
 
