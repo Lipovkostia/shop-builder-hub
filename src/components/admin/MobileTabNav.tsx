@@ -98,6 +98,7 @@ export function MobileTabNav({ activeSection, onSectionChange, workspaceMode }: 
               aria-selected={isActive}
               aria-controls={`panel-${item.id}`}
               tabIndex={isActive ? 0 : -1}
+              data-onboarding-tab={item.id}
               onClick={() => onSectionChange(item.id)}
               onKeyDown={(e) => handleKeyDown(e, index)}
               className={cn(

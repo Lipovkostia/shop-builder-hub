@@ -687,6 +687,9 @@ export default function AdminPanel({
   
   // Onboarding step 7 visibility state
   const [onboardingStep7Visible, setOnboardingStep7Visible] = useState(true);
+  
+  // Onboarding step 8 visibility state
+  const [onboardingStep8Visible, setOnboardingStep8Visible] = useState(false);
 
   // Expanded product images state for import section
   const [expandedProductImages, setExpandedProductImages] = useState<string | null>(null);
@@ -4458,6 +4461,7 @@ export default function AdminPanel({
                                   }, 3000);
                                 }
                                 setOnboardingStep7Visible(false);
+                                setOnboardingStep8Visible(true);
                               }}
                             >
                               Я понял. Продолжить
@@ -4467,6 +4471,40 @@ export default function AdminPanel({
                       </div>
                     );
                   })()}
+
+                  {/* Onboarding Step 8: Go to Visibility section */}
+                  {onboardingStep8Visible && (
+                    <div 
+                      className="bg-primary/10 border border-primary/30 rounded-lg p-4 mb-3 cursor-pointer hover:bg-primary/15 transition-colors"
+                      onClick={() => {
+                        // Highlight the visibility tab
+                        const visibilityTab = document.querySelector('[data-onboarding-tab="visibility"]');
+                        if (visibilityTab) {
+                          visibilityTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                          visibilityTab.classList.add('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2');
+                          setTimeout(() => {
+                            visibilityTab.classList.remove('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2');
+                          }, 3000);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                          <span className="text-primary font-bold text-sm">8</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Eye className="h-4 w-4 text-primary" />
+                            <p className="text-sm font-medium text-foreground">Перейдите в раздел "Видимость"</p>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            В разделе "Видимость" можно просматривать свои прайс-листы и визуально ими управлять. Перейдите в раздел "Видимость" и откройте созданный прайс.
+                          </p>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-primary" />
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mb-4">
                     <Input
