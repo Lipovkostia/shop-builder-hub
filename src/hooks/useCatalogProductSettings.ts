@@ -128,7 +128,26 @@ export function useCatalogProductSettings(storeId: string | null) {
   }, [storeId, fetchSettings]);
 
   const getProductSettings = useCallback((catalogId: string, productId: string): CatalogProductSetting | undefined => {
-    return settings.find(s => s.catalog_id === catalogId && s.product_id === productId);
+    const setting = settings.find(s => s.catalog_id === catalogId && s.product_id === productId);
+    if (setting) return setting;
+    
+    // Fallback: if no setting for this catalog, return a partial setting with just the status
+    // from any other catalog (since status is synced across all catalogs)
+    const anySettingWithStatus = settings.find(s => s.product_id === productId);
+    if (anySettingWithStatus) {
+      return {
+        id: `fallback_${catalogId}_${productId}`,
+        catalog_id: catalogId,
+        product_id: productId,
+        categories: [], // Default - catalog-specific fields are not inherited
+        markup_type: 'percent',
+        markup_value: 0,
+        status: anySettingWithStatus.status, // Use synced status
+        portion_prices: null,
+      };
+    }
+    
+    return undefined;
   }, [settings]);
 
   const updateProductSettings = useCallback(async (
