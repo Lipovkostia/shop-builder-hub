@@ -263,12 +263,17 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
           catalog_status: settings?.status || null,
           catalog_markup_type: settings?.markup_type || null,
           catalog_markup_value: settings?.markup_value || null,
-          catalog_portion_prices: settings?.portion_prices as {
-            full?: number | null;
-            half?: number | null;
-            quarter?: number | null;
-            portion?: number | null;
-          } | null,
+          // Map portion_prices from DB format (halfPricePerKg, quarterPricePerKg, portionPrice) 
+          // to expected format (half, quarter, portion)
+          catalog_portion_prices: settings?.portion_prices ? (() => {
+            const pp = settings.portion_prices as Record<string, number | null>;
+            return {
+              full: pp.fullPrice ?? pp.full ?? null,
+              half: pp.halfPricePerKg ?? pp.half ?? null,
+              quarter: pp.quarterPricePerKg ?? pp.quarter ?? null,
+              portion: pp.portionPrice ?? pp.portion ?? null,
+            };
+          })() : null,
         };
       });
 
