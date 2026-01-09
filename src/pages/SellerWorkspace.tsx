@@ -25,6 +25,9 @@ export default function SellerWorkspace() {
 
   const [activeView, setActiveView] = useState<ActiveView>("storefront");
   
+  // Onboarding step 9 state - triggered when user completes step 8 and switches to storefront
+  const [onboardingStep9Active, setOnboardingStep9Active] = useState(false);
+  
   // Сохраняем позицию скролла при переключении
   const storefrontScrollRef = useRef(0);
   const adminScrollRef = useRef(0);
@@ -103,6 +106,8 @@ export default function SellerWorkspace() {
             workspaceMode={hasFullAccess}
             storeData={store}
             onSwitchToAdmin={handleSwitchToAdmin}
+            onboardingStep9Active={onboardingStep9Active}
+            onOnboardingStep9Complete={() => setOnboardingStep9Active(false)}
           />
         </div>
         <div className={activeView === "admin" ? "block" : "hidden"}>
@@ -111,6 +116,10 @@ export default function SellerWorkspace() {
             storeIdOverride={store.id}
             storeSubdomainOverride={store.subdomain}
             onSwitchToStorefront={handleSwitchToStorefront}
+            onTriggerOnboardingStep9={() => {
+              setOnboardingStep9Active(true);
+              handleViewChange("storefront");
+            }}
           />
         </div>
       </div>
