@@ -400,7 +400,10 @@ function CustomerHeader({
   onToggleImages,
   onOpenCart,
   onOpenProfile,
-  onOpenOrders
+  onOpenOrders,
+  categories,
+  selectedCategory,
+  onSelectCategory
 }: { 
   cart: LocalCartItem[];
   catalogs: CustomerCatalog[];
@@ -411,6 +414,9 @@ function CustomerHeader({
   onOpenCart: () => void;
   onOpenProfile: () => void;
   onOpenOrders: () => void;
+  categories: string[];
+  selectedCategory: string | null;
+  onSelectCategory: (category: string | null) => void;
 }) {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -480,10 +486,42 @@ function CustomerHeader({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Фильтр */}
-          <button className="p-2 rounded hover:bg-muted transition-colors">
-            <Filter className="w-4 h-4 text-muted-foreground" />
-          </button>
+          {/* Фильтр по категориям */}
+          <DropdownMenu>
+            <DropdownMenuTrigger className={`p-2 rounded transition-colors ${selectedCategory ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
+              <Filter className="w-4 h-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[160px] bg-popover z-50">
+              <DropdownMenuItem
+                onClick={() => onSelectCategory(null)}
+                className="cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  {!selectedCategory && <Check className="w-4 h-4 text-primary" />}
+                  <span className={!selectedCategory ? "font-semibold" : ""}>Все категории</span>
+                </div>
+              </DropdownMenuItem>
+              {categories.map((category) => (
+                <DropdownMenuItem
+                  key={category}
+                  onClick={() => onSelectCategory(category)}
+                  className="cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    {selectedCategory === category && <Check className="w-4 h-4 text-primary" />}
+                    <span className={selectedCategory === category ? "font-semibold" : ""}>
+                      {category}
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+              {categories.length === 0 && (
+                <DropdownMenuItem disabled>
+                  <span className="text-muted-foreground">Нет категорий</span>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Переключатель изображений */}
           <button 
@@ -540,6 +578,14 @@ const CustomerDashboard = () => {
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [expandedDescriptionId, setExpandedDescriptionId] = useState<string | null>(null);
   const [fullscreenImages, setFullscreenImages] = useState<{ images: string[]; index: number } | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  
+  // Extract unique categories from products
+  const availableCategories = [...new Set(
+    products
+      .flatMap(p => p.catalog_categories || [])
+      .filter(Boolean)
+  )].sort();
   
   // Profile data
   const [profileData, setProfileData] = useState<{ full_name: string | null; phone: string | null } | null>(null);
@@ -1285,6 +1331,9 @@ const CustomerDashboard = () => {
           refetchMyOrders();
           setIsOrdersOpen(true);
         }}
+        categories={availableCategories}
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
       />
       
       <main className="flex-1 overflow-auto">
@@ -1293,20 +1342,25 @@ const CustomerDashboard = () => {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : products.length > 0 ? (
-          products.map((product) => (
-            <ProductCard 
-              key={product.id} 
-              product={product} 
-              cart={cart}
-              onAddToCart={handleAddToCart}
-              showImages={showImages}
-              isExpanded={expandedProductId === product.id}
-              onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
-              onOpenFullscreen={(imageIndex) => product.images && setFullscreenImages({ images: product.images, index: imageIndex })}
-              isDescriptionExpanded={expandedDescriptionId === product.id}
-              onNameClick={() => product.description && setExpandedDescriptionId(expandedDescriptionId === product.id ? null : product.id)}
-            />
-          ))
+          products
+            .filter((product) => 
+              !selectedCategory || 
+              (product.catalog_categories && product.catalog_categories.includes(selectedCategory))
+            )
+            .map((product) => (
+              <ProductCard 
+                key={product.id} 
+                product={product} 
+                cart={cart}
+                onAddToCart={handleAddToCart}
+                showImages={showImages}
+                isExpanded={expandedProductId === product.id}
+                onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
+                onOpenFullscreen={(imageIndex) => product.images && setFullscreenImages({ images: product.images, index: imageIndex })}
+                isDescriptionExpanded={expandedDescriptionId === product.id}
+                onNameClick={() => product.description && setExpandedDescriptionId(expandedDescriptionId === product.id ? null : product.id)}
+              />
+            ))
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
             <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />

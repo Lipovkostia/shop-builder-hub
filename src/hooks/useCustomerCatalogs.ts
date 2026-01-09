@@ -43,6 +43,8 @@ export interface CatalogProduct {
     quarter?: number | null;
     portion?: number | null;
   } | null;
+  // Categories assigned in catalog
+  catalog_categories?: string[] | null;
 }
 
 export interface CartItem {
@@ -195,7 +197,7 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
       // Get catalog product settings for this catalog
       const { data: catalogSettings } = await supabase
         .from("catalog_product_settings")
-        .select("product_id, status, markup_type, markup_value, portion_prices")
+        .select("product_id, status, markup_type, markup_value, portion_prices, categories")
         .eq("catalog_id", catalogId);
 
       // Create a map for quick lookup
@@ -274,6 +276,8 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
               portion: pp.portionPrice ?? pp.portion ?? null,
             };
           })() : null,
+          // Categories assigned in catalog settings
+          catalog_categories: settings?.categories || null,
         };
       });
 
