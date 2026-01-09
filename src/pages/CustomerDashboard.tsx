@@ -1447,20 +1447,23 @@ const CustomerDashboard = () => {
                             <p className={`font-medium text-[11px] truncate leading-tight ${isUnavailable ? 'line-through' : ''}`}>
                               {displayName}
                             </p>
-                            {variantLabel && !isUnavailable && (
-                              <span className="flex-shrink-0 px-1.5 py-0.5 text-[9px] font-medium bg-primary/10 text-primary rounded">
-                                {variantLabel}
-                              </span>
-                            )}
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 flex-wrap">
                             {isUnavailable ? (
                               <span className="text-[9px] text-destructive">Нет в прайсе</span>
                             ) : (
-                              <span className="text-[10px] text-muted-foreground truncate">
-                                <span className="text-primary font-medium">{itemVolume}</span>
-                                {' · '}{formatPrice(item.price)}/шт
-                              </span>
+                              <>
+                                {/* Порция (если есть) */}
+                                {variantLabel && (
+                                  <span className="flex-shrink-0 px-1.5 py-0.5 text-[9px] font-medium bg-primary/10 text-primary rounded">
+                                    {variantLabel}
+                                  </span>
+                                )}
+                                {/* Объём/вес */}
+                                <span className="text-[10px] text-primary font-medium">{itemVolume}</span>
+                                <span className="text-[9px] text-muted-foreground">·</span>
+                                <span className="text-[9px] text-muted-foreground">{formatPrice(item.price)}/шт</span>
+                              </>
                             )}
                           </div>
                         </div>
