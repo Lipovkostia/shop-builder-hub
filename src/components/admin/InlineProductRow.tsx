@@ -27,6 +27,7 @@ interface InlineProductRowProps {
   onUpdate: (product: Product) => void;
   onOpenPricingDialog: (product: Product) => void;
   onToggleAutoSync?: (productId: string) => void;
+  customPackagingTypes?: string[]; // Custom packaging types from all products
 }
 
 export function InlineProductRow({
@@ -34,6 +35,7 @@ export function InlineProductRow({
   onUpdate,
   onOpenPricingDialog,
   onToggleAutoSync,
+  customPackagingTypes = [],
 }: InlineProductRowProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedProduct, setEditedProduct] = useState<Product>(product);
@@ -180,9 +182,18 @@ export function InlineProductRow({
                   {label}
                 </SelectItem>
               ))}
-              {/* Show current value if it's custom and not in predefined list */}
+              {/* Show custom packaging types from other products */}
+              {customPackagingTypes
+                .filter(type => !packagingOptions.find(o => o.value === type))
+                .map(type => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              {/* Show current value if it's custom and not in any list */}
               {editedProduct.packagingType && 
-               !packagingOptions.find(o => o.value === editedProduct.packagingType) && (
+               !packagingOptions.find(o => o.value === editedProduct.packagingType) &&
+               !customPackagingTypes.includes(editedProduct.packagingType) && (
                 <SelectItem key={editedProduct.packagingType} value={editedProduct.packagingType}>
                   {editedProduct.packagingType}
                 </SelectItem>

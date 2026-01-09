@@ -769,6 +769,39 @@ export default function AdminPanel({
   // Custom options state (for units and packaging types added by user)
   const [customUnits, setCustomUnits] = useState<string[]>([]);
   const [customPackagingTypes, setCustomPackagingTypes] = useState<string[]>([]);
+  
+  // Extract custom packaging types and units from products on load
+  const predefinedPackagingTypes = ["head", "package", "piece", "can", "box", "carcass", "half_carcass", "quarter_carcass"];
+  const predefinedUnits = ["кг", "шт", "л", "уп", "г", "мл"];
+  
+  useEffect(() => {
+    if (supabaseProducts.length > 0) {
+      // Extract custom packaging types from products
+      const productPackagingTypes = supabaseProducts
+        .map(p => p.packaging_type)
+        .filter((type): type is string => !!type && !predefinedPackagingTypes.includes(type));
+      const uniqueCustomTypes = [...new Set(productPackagingTypes)];
+      if (uniqueCustomTypes.length > 0) {
+        setCustomPackagingTypes(prev => {
+          const combined = [...new Set([...prev, ...uniqueCustomTypes])];
+          return combined;
+        });
+      }
+      
+      // Extract custom units from products
+      const productUnits = supabaseProducts
+        .map(p => p.unit)
+        .filter((unit): unit is string => !!unit && !predefinedUnits.includes(unit));
+      const uniqueCustomUnits = [...new Set(productUnits)];
+      if (uniqueCustomUnits.length > 0) {
+        setCustomUnits(prev => {
+          const combined = [...new Set([...prev, ...uniqueCustomUnits])];
+          return combined;
+        });
+      }
+    }
+  }, [supabaseProducts]);
+  
   // Categories from Supabase - use storeCategories directly
   const categories = storeCategories.map(c => ({ id: c.id, name: c.name }));
   const [newCategoryName, setNewCategoryName] = useState("");
