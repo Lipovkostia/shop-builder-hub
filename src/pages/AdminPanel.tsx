@@ -2631,7 +2631,7 @@ export default function AdminPanel({
   }
 
   return (
-    <div className={`bg-background ${workspaceMode ? 'h-full' : 'min-h-screen'}`}>
+    <div className={`bg-background ${workspaceMode ? 'h-full workspace-admin-panel' : 'min-h-screen'}`}>
 
       {/* Header - скрывается в workspaceMode, там свой общий хедер */}
       {!workspaceMode && (
