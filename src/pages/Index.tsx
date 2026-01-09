@@ -468,15 +468,14 @@ const Index = () => {
                       ? (isCustomerLogin ? "Вход..." : "Регистрация...") 
                       : (isCustomerLogin ? "Войти" : "Зарегистрироваться")}
                   </Button>
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      className="text-sm text-muted-foreground hover:text-primary underline"
-                      onClick={() => setIsCustomerLogin(!isCustomerLogin)}
-                    >
-                      {isCustomerLogin ? "Нет аккаунта? Зарегистрироваться" : "Уже есть аккаунт? Войти"}
-                    </button>
-                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setIsCustomerLogin(!isCustomerLogin)}
+                  >
+                    {isCustomerLogin ? "Нет аккаунта? Зарегистрироваться" : "Уже есть аккаунт? Войти"}
+                  </Button>
                 </form>
               </CardContent>
             </Card>
