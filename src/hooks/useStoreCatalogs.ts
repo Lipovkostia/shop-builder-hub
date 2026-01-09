@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useVisibilityRefetch } from "@/hooks/useVisibilityRefetch";
+
 export interface Catalog {
   id: string;
   store_id: string;
@@ -271,6 +272,7 @@ export function useStoreCatalogs(storeId: string | null) {
     fetchCatalogs();
     fetchProductVisibility();
   }, !!storeId);
+
   return {
     catalogs,
     productVisibility,
