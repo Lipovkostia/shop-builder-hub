@@ -69,13 +69,12 @@ export function InlineMultiSelectCell({
     const trimmed = newOptionValue.trim();
     if (trimmed && onAddOption) {
       const result = await onAddOption(trimmed);
-      // If the callback returns a new ID, automatically select it
+      // If the callback returns a new ID, automatically select it and add to current values
       if (typeof result === 'string') {
-        setDraftValues(prev => {
-          const next = [...prev, result];
-          onSave(next);
-          return next;
-        });
+        const nextValues = [...draftValues, result];
+        setDraftValues(nextValues);
+        // Call onSave to persist the change (adds product to new catalog)
+        onSave(nextValues);
       }
       setNewOptionValue("");
       setIsAddingNew(false);
