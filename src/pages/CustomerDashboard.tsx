@@ -693,7 +693,8 @@ const CustomerDashboard = () => {
         default: return '';
       }
     }
-    return '';
+    // Для штучных товаров показываем тип
+    return product.unit === 'kg' ? 'Весовой' : 'Штучный';
   };
 
   // Рассчитать объём/вес товара в корзине
