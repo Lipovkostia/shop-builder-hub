@@ -99,6 +99,7 @@ function ProductCard({
   isGalleryOpen = false,
   onToggleGallery,
   onImagesUpdate,
+  isOnboardingHighlighted = false,
 }: { 
   product: any;
   cart: CartItem[];
@@ -118,6 +119,7 @@ function ProductCard({
   isGalleryOpen?: boolean;
   onToggleGallery?: () => void;
   onImagesUpdate?: (productId: string, images: string[]) => void;
+  isOnboardingHighlighted?: boolean;
 }) {
   const { toast } = useToast();
   const [isUploadingImages, setIsUploadingImages] = useState(false);
@@ -279,9 +281,9 @@ function ProductCard({
       {/* Контент справа */}
       <div className={`flex-1 min-w-0 flex flex-col justify-center gap-0`}>
         {/* Название */}
-        <div className={`relative overflow-hidden`}>
+        <div className={`relative overflow-hidden ${isOnboardingHighlighted ? 'animate-pulse' : ''}`}>
           <h3 
-            className={`font-medium text-foreground leading-tight ${showImages ? 'text-lg pr-6 whitespace-nowrap' : 'text-base truncate pr-2'} ${isOwner ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+            className={`font-medium text-foreground leading-tight ${showImages ? 'text-lg pr-6 whitespace-nowrap' : 'text-base truncate pr-2'} ${isOwner ? 'cursor-pointer hover:text-primary transition-colors' : ''} ${isOnboardingHighlighted ? 'text-primary ring-2 ring-primary ring-offset-2 rounded px-1 bg-primary/10' : ''}`}
             onClick={isOwner && onToggleExpand ? () => onToggleExpand() : undefined}
           >
             {effectiveStatus === "out_of_stock" && (
@@ -304,7 +306,7 @@ function ProductCard({
             )}
             {product.name}
             {isOwner && (
-              <Pencil className="inline-block ml-1 w-3 h-3 text-muted-foreground" />
+              <Pencil className={`inline-block ml-1 w-3 h-3 ${isOnboardingHighlighted ? 'text-primary' : 'text-muted-foreground'}`} />
             )}
           </h3>
           {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />}
@@ -756,10 +758,12 @@ interface StoreFrontProps {
   onSwitchToAdmin?: (section?: string) => void;
   onboardingStep9Active?: boolean;
   onOnboardingStep9Complete?: () => void;
+  onboardingStep10Active?: boolean;
+  onOnboardingStep10Complete?: () => void;
 }
 
 // Main StoreFront Component
-export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, onboardingStep9Active, onOnboardingStep9Complete }: StoreFrontProps = {}) {
+export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, onboardingStep9Active, onOnboardingStep9Complete, onboardingStep10Active, onOnboardingStep10Complete }: StoreFrontProps = {}) {
   const { subdomain } = useParams<{ subdomain: string }>();
   const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
@@ -815,6 +819,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
   
   // Onboarding step 9 sub-step: "catalog-trigger" -> "catalog-item" -> "done"
   const [onboardingStep9SubStep, setOnboardingStep9SubStep] = useState<"catalog-trigger" | "catalog-item" | "done">("catalog-trigger");
+  
+  // Onboarding step 10: track if name was edited
+  const [onboardingStep10NameEdited, setOnboardingStep10NameEdited] = useState(false);
 
   // Use products directly from hook - realtime handles sync
   const displayProducts = products;
@@ -827,7 +834,17 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
 
   // Handle save product
   const handleSaveProduct = async (productId: string, updates: Partial<StoreProduct>) => {
-    return await updateProduct(productId, updates);
+    const result = await updateProduct(productId, updates);
+    
+    // If name was changed during onboarding step 10, complete it
+    if (onboardingStep10Active && updates.name && result) {
+      setOnboardingStep10NameEdited(true);
+      setTimeout(() => {
+        onOnboardingStep10Complete?.();
+      }, 500);
+    }
+    
+    return result;
   };
 
   // Handle catalogs change
@@ -1033,6 +1050,43 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                     <div className={`h-1.5 w-8 rounded-full ${onboardingStep9SubStep === "catalog-item" ? 'bg-primary' : 'bg-muted'}`} />
                     <div className={`h-1.5 w-8 rounded-full bg-muted`} />
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Onboarding Step 10 */}
+          {onboardingStep10Active && !onboardingStep10NameEdited && (
+            <div className="bg-green-500/10 border-b border-green-500/30 p-3">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <span className="text-green-600 dark:text-green-400 font-bold text-sm">10</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">Редактирование товаров</p>
+                  <p className="text-xs text-muted-foreground">
+                    Оперативно меняйте цены, статусы и другие данные о товаре в этом разделе.
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">
+                    Нажмите на название товара и измените его, чтобы завершить обучение.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Onboarding Complete */}
+          {onboardingStep10Active && onboardingStep10NameEdited && (
+            <div className="bg-green-500/20 border-b border-green-500/50 p-3">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">✓</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-700 dark:text-green-300">Поздравляем! Обучение завершено 🎉</p>
+                  <p className="text-xs text-muted-foreground">
+                    Теперь вы знаете основы работы с платформой
+                  </p>
                 </div>
               </div>
             </div>
@@ -1279,6 +1333,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                   }
                 }}
                 onImagesUpdate={handleImagesUpdate}
+                isOnboardingHighlighted={onboardingStep10Active && !onboardingStep10NameEdited && filteredProducts.indexOf(product) === 0}
               />
             );
           })
