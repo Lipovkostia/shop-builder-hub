@@ -260,14 +260,25 @@ function ProductCard({
           className={`relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-center ${isOwner ? 'cursor-pointer' : ''}`}
           onClick={isOwner && onToggleGallery ? onToggleGallery : undefined}
         >
-          <img
-            src={firstImage}
-            alt={product.name}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = "/placeholder.svg";
-            }}
-          />
+          {images.length > 0 ? (
+            <img
+              src={firstImage}
+              alt={product.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/placeholder.svg";
+              }}
+            />
+          ) : isOwner ? (
+            <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors">
+              <Plus className="w-5 h-5" />
+              <span className="text-[8px] mt-0.5">Фото</span>
+            </div>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Image className="w-6 h-6 text-muted-foreground/50" />
+            </div>
+          )}
           {/* Индикатор количества фото */}
           {isOwner && images.length > 0 && (
             <div className="absolute bottom-0 right-0 bg-black/70 text-white text-[8px] px-1 rounded-tl flex items-center gap-0.5">
