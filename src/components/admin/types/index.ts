@@ -30,7 +30,7 @@ export interface CustomVariantPrices {
   quarterPrice?: number;
 }
 
-export type ProductStatus = "in_stock" | "out_of_stock" | "hidden";
+export type ProductStatus = "in_stock" | "pre_order" | "out_of_stock" | "hidden";
 
 export interface Product {
   id: string;
