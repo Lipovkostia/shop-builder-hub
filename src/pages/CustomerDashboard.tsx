@@ -683,30 +683,30 @@ const CustomerDashboard = () => {
   const getProductById = (productId: string) => products.find(p => p.id === productId);
 
   const getVariantLabel = (product: CatalogProduct, variantIndex: number): string => {
-    const isHead = product.packaging_type === 'head' && (product.unit_weight || 0) > 0;
+    const isHead = product.packaging_type === 'head';
     if (isHead) {
       switch (variantIndex) {
         case 0: return 'Целая';
         case 1: return '½';
         case 2: return '¼';
         case 3: return 'Порция';
-        default: return '';
+        default: return 'Целая';
       }
     }
-    // Для штучных товаров показываем тип
-    return product.unit === 'kg' ? 'Весовой' : 'Штучный';
+    // Для штучных товаров не показываем бейдж
+    return '';
   };
 
   // Рассчитать объём/вес товара в корзине
   const getItemVolume = (product: CatalogProduct | undefined, variantIndex: number, quantity: number): string => {
     if (!product) return '';
     
-    const isHead = product.packaging_type === 'head' && (product.unit_weight || 0) > 0;
+    const isHead = product.packaging_type === 'head';
     const unitWeight = product.unit_weight || 1;
     const portionWeight = product.portion_weight || 0.1;
     
-    if (isHead) {
-      // Для весовых товаров (головы) показываем вес в кг
+    if (isHead && unitWeight > 0) {
+      // Для весовых товаров (головы) с указанным весом показываем вес в кг
       let weightPerItem: number;
       switch (variantIndex) {
         case 0: weightPerItem = unitWeight; break;
@@ -723,7 +723,7 @@ const CustomerDashboard = () => {
         return `≈ ${Math.round(totalWeight * 1000)} г`;
       }
     } else {
-      // Для штучных товаров показываем количество
+      // Для штучных товаров или head без указанного веса показываем количество
       const unit = product.unit === 'kg' ? 'кг' : 'шт';
       return `${quantity} ${unit}`;
     }
