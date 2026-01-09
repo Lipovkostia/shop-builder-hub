@@ -3968,7 +3968,7 @@ export default function AdminPanel({
                   />
 
                   <p className="text-xs text-muted-foreground mb-2">
-                    * Фото, название, описание, ед. изм., объём и вид синхронизируются из ассортимента. Категории, наценка, цены порций и статус — индивидуальны для каждого прайс-листа.
+                    * Фото, название, описание, ед. изм., объём и вид синхронизируются из ассортимента. Категории, наценка и цены порций — индивидуальны для каждого прайс-листа.
                   </p>
                   <div className="bg-card rounded-lg border border-border overflow-x-auto">
                     <ResizableTable
@@ -3989,7 +3989,6 @@ export default function AdminPanel({
                         { id: "priceHalf", minWidth: 70, defaultWidth: 90 },
                         { id: "priceQuarter", minWidth: 70, defaultWidth: 90 },
                         { id: "pricePortion", minWidth: 70, defaultWidth: 90 },
-                        { id: "status", minWidth: 80, defaultWidth: 100 },
                       ]}
                     >
                       <ResizableTableHeader>
@@ -4025,7 +4024,6 @@ export default function AdminPanel({
                           <ResizableTableHead columnId="priceHalf">½</ResizableTableHead>
                           <ResizableTableHead columnId="priceQuarter">¼</ResizableTableHead>
                           <ResizableTableHead columnId="pricePortion">Порция</ResizableTableHead>
-                          <ResizableTableHead columnId="status">Статус</ResizableTableHead>
                         </ResizableTableRow>
                       </ResizableTableHeader>
                       <ResizableTableBody>
@@ -4262,33 +4260,6 @@ export default function AdminPanel({
                                     placeholder="—"
                                     suffix=""
                                   />
-                                </ResizableTableCell>
-                                {/* Статус - независимый для каждого каталога */}
-                                <ResizableTableCell columnId="status">
-                                  <button
-                                    onClick={() => {
-                                      if (!currentCatalog) return;
-                                      const nextStatus: ProductStatus = 
-                                        effectiveStatus === "in_stock" ? "out_of_stock" :
-                                        effectiveStatus === "out_of_stock" ? "hidden" : "in_stock";
-                                      updateCatalogProductPricing(currentCatalog.id, product.id, { status: nextStatus });
-                                    }}
-                                    className="focus:outline-none"
-                                  >
-                                    <Badge
-                                      variant={effectiveStatus === "hidden" ? "outline" : effectiveStatus === "in_stock" ? "default" : "secondary"}
-                                      className={`text-xs cursor-pointer transition-colors ${
-                                        effectiveStatus === "hidden"
-                                          ? "bg-muted/50 text-muted-foreground border-dashed"
-                                          : effectiveStatus === "in_stock"
-                                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800"
-                                            : "bg-muted text-muted-foreground hover:bg-muted/80"
-                                      }`}
-                                    >
-                                      {effectiveStatus === "hidden" ? "Скрыт" : 
-                                       effectiveStatus === "in_stock" ? "В наличии" : "Нет"}
-                                    </Badge>
-                                  </button>
                                 </ResizableTableCell>
                               </ResizableTableRow>
                             );
