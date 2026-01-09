@@ -179,10 +179,17 @@ function ProductCard({
   const hasFullPrice = catalogPrices?.full != null || product.price_full != null || hasAnyVariantPrice;
   
   // Расчёт цен для вариантов
-  const fullPrice = catalogPrices?.full || product.price_full || basePrice * unitWeight;
-  const halfPrice = catalogPrices?.half || product.price_half || (isHead ? basePrice * (unitWeight / 2) : basePrice * 0.5);
-  const quarterPrice = catalogPrices?.quarter || product.price_quarter || (isHead ? basePrice * (unitWeight / 4) : basePrice * 0.25);
+  // Логика аналогична calculatePackagingPrices из seller: цена за кг * вес порции
+  // catalogPrices.half/quarter - это цена за кг, а не итоговая цена!
+  const fullPricePerKg = catalogPrices?.full || product.price_full || basePrice;
+  const halfPricePerKg = catalogPrices?.half || product.price_half || basePrice;
+  const quarterPricePerKg = catalogPrices?.quarter || product.price_quarter || basePrice;
   const portionPrice = catalogPrices?.portion || product.price_portion || null;
+  
+  // Итоговые цены = цена за кг * вес порции
+  const fullPrice = fullPricePerKg * unitWeight;
+  const halfPrice = halfPricePerKg * (unitWeight / 2);
+  const quarterPrice = quarterPricePerKg * (unitWeight / 4);
 
   // Use catalog_status if available, otherwise fall back to quantity check
   const inStock = product.catalog_status 
