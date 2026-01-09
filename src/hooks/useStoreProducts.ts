@@ -140,12 +140,15 @@ export function useStoreProducts(storeId: string | null) {
       }
 
       try {
-        const slug = product.name
+        // Generate unique slug with timestamp suffix to avoid duplicates
+        const baseSlug = product.name
           ? product.name
               .toLowerCase()
               .replace(/\s+/g, "-")
               .replace(/[^a-z0-9-а-яё]/gi, "")
-          : `product-${Date.now()}`;
+          : "product";
+        const uniqueSuffix = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        const slug = `${baseSlug}-${uniqueSuffix}`;
 
         const { data, error } = await supabase
           .from("products")
