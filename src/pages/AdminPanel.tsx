@@ -4288,6 +4288,61 @@ export default function AdminPanel({
                     </div>
                   )}
 
+                  {/* Onboarding Step 6: Set portion prices - show only when markup set but no portion prices set yet */}
+                  {(() => {
+                    const catalogProductIds = allProducts.filter(p => selectedCatalogProducts.has(p.id)).map(p => p.id);
+                    const hasBuyPrice = catalogProductIds.some(id => {
+                      const product = allProducts.find(p => p.id === id);
+                      return product?.buyPrice && product.buyPrice > 0;
+                    });
+                    const hasMarkup = currentCatalog && catalogProductIds.some(id => {
+                      const setting = catalogProductSettings.find(s => s.catalog_id === currentCatalog.id && s.product_id === id);
+                      return setting?.markup_value && setting.markup_value > 0;
+                    });
+                    const hasPortionPrices = currentCatalog && catalogProductIds.some(id => {
+                      const setting = catalogProductSettings.find(s => s.catalog_id === currentCatalog.id && s.product_id === id);
+                      const portionPrices = setting?.portion_prices as { halfPricePerKg?: number; quarterPricePerKg?: number } | null;
+                      return portionPrices && (portionPrices.halfPricePerKg || portionPrices.quarterPricePerKg);
+                    });
+                    return supabaseProducts.length > 0 && catalogs.length > 0 && 
+                      Object.values(productCatalogVisibility).some(cats => cats.size > 0) && 
+                      hasBuyPrice && hasMarkup && !hasPortionPrices;
+                  })() && (
+                    <div 
+                      className="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-3 cursor-pointer hover:bg-primary/15 transition-colors"
+                      onClick={() => {
+                        // Find and scroll to the priceHalf column header
+                        const priceHalfHeader = document.querySelector('[data-column-id="priceHalf"]');
+                        if (priceHalfHeader) {
+                          priceHalfHeader.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                          // Highlight the columns briefly
+                          const priceQuarterHeader = document.querySelector('[data-column-id="priceQuarter"]');
+                          priceHalfHeader.classList.add('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary');
+                          priceQuarterHeader?.classList.add('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary');
+                          setTimeout(() => {
+                            priceHalfHeader.classList.remove('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary');
+                            priceQuarterHeader?.classList.remove('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary');
+                          }, 3000);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                          <span className="text-primary font-bold text-sm">6</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">Установите объем и уникальные цены на половинки и четвертинки</p>
+                          <p className="text-xs text-muted-foreground">
+                            Вы можете установить уникальную цену за единицу товара если он продается частями. 
+                            Например, если целая Голова сыра весом 10кг стоит 2000₽/кг, то за ½ можно установить 2200₽/кг, а за ¼ — 2500₽/кг. 
+                            Система автоматически умножит цену на вес и верно посчитает сумму в заказе.
+                          </p>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-primary" />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="mb-4">
                     <Input
                       type="text"
