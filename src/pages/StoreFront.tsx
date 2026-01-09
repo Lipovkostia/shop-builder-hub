@@ -158,7 +158,8 @@ function ProductCard({
   
   // Determine stock status: use catalog settings if available, otherwise fall back to product is_active
   const effectiveStatus = catalogSettings?.status || (product.is_active !== false ? "in_stock" : "out_of_stock");
-  const inStock = effectiveStatus === "in_stock";
+  const inStock = effectiveStatus === "in_stock" || effectiveStatus === "pre_order";
+  const isPreOrder = effectiveStatus === "pre_order";
   const isHidden = effectiveStatus === "hidden";
 
   const getFullPrice = () => {
@@ -286,6 +287,12 @@ function ProductCard({
               <span className="inline-flex items-center gap-1 mr-1.5 text-muted-foreground text-xs align-middle">
                 <span className="w-2 h-2 rounded-full bg-muted-foreground/50" />
                 <span>нет в наличии</span>
+              </span>
+            )}
+            {isPreOrder && (
+              <span className="inline-flex items-center gap-1 mr-1.5 text-blue-600 dark:text-blue-400 text-xs align-middle">
+                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                <span>под заказ</span>
               </span>
             )}
             {isOwner && isHidden && (
@@ -678,6 +685,7 @@ function StoreHeader({
                   {[
                     { value: "all", label: "Все" },
                     { value: "in_stock", label: "В наличии" },
+                    { value: "pre_order", label: "Под заказ" },
                     { value: "out_of_stock", label: "Нет в наличии" },
                     { value: "hidden", label: "Скрытые" },
                   ].map((opt) => (
@@ -1097,6 +1105,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                       {[
                         { value: "all", label: "Все" },
                         { value: "in_stock", label: "В наличии" },
+                        { value: "pre_order", label: "Под заказ" },
                         { value: "out_of_stock", label: "Нет в наличии" },
                         { value: "hidden", label: "Скрытые" },
                       ].map((opt) => (
