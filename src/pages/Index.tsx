@@ -320,7 +320,12 @@ const Index = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold tracking-tight">Маркетплейс</h1>
-          <p className="text-muted-foreground mt-2">Создайте свой магазин за минуту</p>
+          <p className="text-lg font-bold text-foreground mt-3">Сохраняем время. Убираем хаос в работе.</p>
+          <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+            <p>Покупатель всегда видит индивидуальную актуальную цену и наличие.</p>
+            <p>Заказ упаковкой или штучно в 1 клик.</p>
+            <p>Повторить заказ в 1 клик.</p>
+          </div>
         </div>
 
         <Tabs defaultValue="register" className="w-full">
