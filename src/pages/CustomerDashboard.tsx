@@ -696,6 +696,38 @@ const CustomerDashboard = () => {
     return '';
   };
 
+  // Рассчитать объём/вес товара в корзине
+  const getItemVolume = (product: CatalogProduct | undefined, variantIndex: number, quantity: number): string => {
+    if (!product) return '';
+    
+    const isHead = product.packaging_type === 'head' && (product.unit_weight || 0) > 0;
+    const unitWeight = product.unit_weight || 1;
+    const portionWeight = product.portion_weight || 0.1;
+    
+    if (isHead) {
+      // Для весовых товаров (головы) показываем вес в кг
+      let weightPerItem: number;
+      switch (variantIndex) {
+        case 0: weightPerItem = unitWeight; break;
+        case 1: weightPerItem = unitWeight / 2; break;
+        case 2: weightPerItem = unitWeight / 4; break;
+        case 3: weightPerItem = portionWeight; break;
+        default: weightPerItem = unitWeight;
+      }
+      const totalWeight = weightPerItem * quantity;
+      // Форматируем вес
+      if (totalWeight >= 1) {
+        return `≈ ${totalWeight.toFixed(1).replace('.0', '')} кг`;
+      } else {
+        return `≈ ${Math.round(totalWeight * 1000)} г`;
+      }
+    } else {
+      // Для штучных товаров показываем количество
+      const unit = product.unit === 'kg' ? 'кг' : 'шт';
+      return `${quantity} ${unit}`;
+    }
+  };
+
   const handleAddToCart = (productId: string, variantIndex: number, price: number) => {
     setCart((prev) => {
       const existingIndex = prev.findIndex(
@@ -1308,6 +1340,7 @@ const CustomerDashboard = () => {
                   const isUnavailable = item.isAvailable === false;
                   const displayName = product?.name || item.originalProductName || 'Товар';
                   const variantLabel = product ? getVariantLabel(product, item.variantIndex) : '';
+                  const itemVolume = getItemVolume(product, item.variantIndex, item.quantity);
                   
                     return (
                       <div 
@@ -1343,7 +1376,7 @@ const CustomerDashboard = () => {
                           )}
                         </div>
                         
-                        {/* Название + вариант + цена за 1 + статус */}
+                        {/* Название + вариант + объём + цена за 1 + статус */}
                         <div className="min-w-0">
                           <p className={`font-medium text-[11px] truncate leading-tight ${isUnavailable ? 'line-through' : ''}`}>
                             {displayName}
@@ -1354,7 +1387,8 @@ const CustomerDashboard = () => {
                             ) : (
                               <span className="text-[10px] text-muted-foreground truncate">
                                 {variantLabel && <span>{variantLabel} · </span>}
-                                {formatPrice(item.price)}/шт
+                                <span className="text-primary font-medium">{itemVolume}</span>
+                                {' · '}{formatPrice(item.price)}/шт
                               </span>
                             )}
                           </div>
