@@ -39,6 +39,9 @@ export default function SellerWorkspace() {
   // Onboarding step 10 state - triggered when user completes step 9
   const [onboardingStep10Active, setOnboardingStep10Active] = useState(false);
   
+  // Trigger refetch in StoreFront when switching from admin
+  const [triggerStorefrontRefetch, setTriggerStorefrontRefetch] = useState(false);
+  
   // Сохраняем позицию скролла при переключении
   const storefrontScrollRef = useRef(0);
   const adminScrollRef = useRef(0);
@@ -155,6 +158,8 @@ export default function SellerWorkspace() {
               localStorage.setItem('seller_onboarding_completed', 'true');
               localStorage.removeItem('seller_onboarding_step1');
             }}
+            triggerRefetch={triggerStorefrontRefetch}
+            onRefetchComplete={() => setTriggerStorefrontRefetch(false)}
           />
         </div>
         <div className={activeView === "admin" ? "block" : "hidden"}>
@@ -165,6 +170,7 @@ export default function SellerWorkspace() {
             onSwitchToStorefront={handleSwitchToStorefront}
             onTriggerOnboardingStep9={() => {
               setOnboardingStep9Active(true);
+              setTriggerStorefrontRefetch(true);
               handleViewChange("storefront");
             }}
           />
