@@ -4274,7 +4274,9 @@ export default function AdminPanel({
                                 {/* Статус - синхронизируется с витриной */}
                                 <ResizableTableCell columnId="status">
                                   <button
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
                                       if (!currentCatalog) return;
                                       const nextStatus: ProductStatus = 
                                         effectiveStatus === "in_stock" ? "pre_order" :
@@ -4282,11 +4284,15 @@ export default function AdminPanel({
                                         effectiveStatus === "out_of_stock" ? "hidden" : "in_stock";
                                       updateCatalogProductPricing(currentCatalog.id, product.id, { status: nextStatus });
                                     }}
-                                    className="focus:outline-none"
+                                    onTouchEnd={(e) => {
+                                      e.stopPropagation();
+                                    }}
+                                    className="focus:outline-none touch-manipulation p-1"
+                                    style={{ touchAction: 'manipulation' }}
                                   >
                                     <Badge
                                       variant={effectiveStatus === "hidden" ? "outline" : effectiveStatus === "in_stock" ? "default" : "secondary"}
-                                      className={`text-xs cursor-pointer transition-colors ${
+                                      className={`text-xs cursor-pointer transition-colors select-none ${
                                         effectiveStatus === "hidden"
                                           ? "bg-muted/50 text-muted-foreground border-dashed"
                                           : effectiveStatus === "in_stock"
