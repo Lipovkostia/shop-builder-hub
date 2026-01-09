@@ -3161,7 +3161,7 @@ export default function AdminPanel({
                               onNavigate={(catalogId) => {
                                 const supabaseCatalog = supabaseCatalogs.find(c => c.id === catalogId);
                                 if (supabaseCatalog?.access_code) {
-                                  window.open(`/catalog/${supabaseCatalog.access_code}`, '_blank');
+                                  navigate(`/catalog/${supabaseCatalog.access_code}`);
                                 }
                               }}
                               placeholder="Выбрать..."
@@ -3939,7 +3939,7 @@ export default function AdminPanel({
                       onClick={() => {
                         const supabaseCatalog = supabaseCatalogs.find(c => c.id === currentCatalog.id);
                         if (supabaseCatalog?.access_code) {
-                          window.open(`/catalog/${supabaseCatalog.access_code}`, '_blank');
+                          navigate(`/catalog/${supabaseCatalog.access_code}`);
                         }
                       }}
                     >
