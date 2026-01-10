@@ -1483,15 +1483,23 @@ const CustomerDashboard = () => {
                   const unitLabel = product?.unit === 'kg' ? 'кг' : 'шт';
                   const unitWeight = product?.unit_weight || 1;
 
-                  // В корзине показываем:
-                  // 1) объём ОДНОЙ порции (упаковки/штуки)
-                  // 2) цену за 1 порцию
-                  const portionVolumeLabel = isHead
-                    ? ''
-                    : (unitLabel === 'шт' && unitWeight > 1 ? `${unitWeight} шт` : `1 ${unitLabel}`);
-
-                  const portionUnitLabel = isHead ? 'порц' : (unitLabel === 'шт' && unitWeight > 1 ? 'уп.' : unitLabel);
-                  const portionUnitPrice = item.price;
+                  // Рассчитываем объём порции в зависимости от variantIndex
+                  // 0: Целая = unit_weight, 1: 1/2 = unit_weight/2, 2: 1/4 = unit_weight/4, 3: Порция = 1
+                  const getPortionVolume = (vIdx: number, uWeight: number): number => {
+                    switch (vIdx) {
+                      case 0: return uWeight;
+                      case 1: return uWeight / 2;
+                      case 2: return uWeight / 4;
+                      case 3: return 1;
+                      default: return uWeight;
+                    }
+                  };
+                  const portionVolume = getPortionVolume(item.variantIndex, unitWeight);
+                  // Форматируем: если целое число — без десятичных, иначе с одним знаком
+                  const portionVolumeFormatted = Number.isInteger(portionVolume) 
+                    ? portionVolume.toString() 
+                    : portionVolume.toFixed(1).replace('.', ',');
+                  const portionVolumeDisplay = `${portionVolumeFormatted} ${unitLabel}`;
                   
                     return (
                       <div 
@@ -1539,11 +1547,14 @@ const CustomerDashboard = () => {
                               <span className="text-[9px] text-destructive">Нет в прайсе</span>
                             </div>
                           )}
-                          {/* Порция (Целая, 1/2, 1/4, Порция) */}
+                          {/* Порция (Целая, 1/2, 1/4, Порция) + объём */}
                           {!isUnavailable && variantLabel && (
-                            <div className="flex items-center gap-1 flex-wrap">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="flex-shrink-0 px-1.5 py-0.5 text-[9px] font-medium bg-primary/10 text-primary rounded">
                                 {variantLabel}
+                              </span>
+                              <span className="text-[9px] text-muted-foreground">
+                                {portionVolumeDisplay}
                               </span>
                             </div>
                           )}
