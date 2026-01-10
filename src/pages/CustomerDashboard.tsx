@@ -1538,7 +1538,7 @@ const CustomerDashboard = () => {
                             </div>
                           )}
                           {/* Порция (Целая, 1/2, 1/4, Порция) */}
-                          {!isUnavailable && isHead && variantLabel && (
+                          {!isUnavailable && variantLabel && (
                             <div className="flex items-center gap-1 flex-wrap">
                               <span className="flex-shrink-0 px-1.5 py-0.5 text-[9px] font-medium bg-primary/10 text-primary rounded">
                                 {variantLabel}
