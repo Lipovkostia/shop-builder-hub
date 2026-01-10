@@ -302,7 +302,7 @@ function ProductCard({
           </p>
 
           {/* Кнопки */}
-          <div className={`flex items-center gap-0.5 flex-wrap ${showImages ? 'mt-0.5' : ''}`}>
+          <div className={`flex items-center gap-0.5 flex-wrap ${showImages ? 'mt-0.5' : 'ml-auto'}`}>
             {canOrder ? (
               <>
                 {/* Кнопки вариантов в порядке: порция, 1/4, 1/2, целая */}
