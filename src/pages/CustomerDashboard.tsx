@@ -233,7 +233,7 @@ function ProductCard({
   return (
     <>
       {/* Основная карточка - высота адаптируется при раскрытии описания */}
-      <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border transition-all ${showImages ? (isDescriptionExpanded ? 'min-h-[72px]' : 'h-[calc((100vh-44px)/8)] min-h-[72px]') : 'h-9 min-h-[36px]'}`}>
+      <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border transition-all ${showImages ? (isDescriptionExpanded ? 'min-h-[72px]' : 'h-[calc((100vh-44px)/8)] min-h-[72px]') : (isDescriptionExpanded ? 'min-h-[36px] h-auto' : 'h-9 min-h-[36px]')}`}>
         {/* Изображение */}
         {showImages && (
           <button 
@@ -294,16 +294,18 @@ function ProductCard({
             </p>
           </div>
           
-          {/* Описание (раскрывается при клике на название) */}
-          <Collapsible open={isDescriptionExpanded}>
-            <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
-              {product.description && (
-                <p className="text-[10px] text-muted-foreground leading-relaxed py-1 pr-2">
-                  {product.description}
-                </p>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
+          {/* Описание (раскрывается при клике на название) - только в режиме с картинками */}
+          {showImages && (
+            <Collapsible open={isDescriptionExpanded}>
+              <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+                {product.description && (
+                  <p className="text-[10px] text-muted-foreground leading-relaxed py-1 pr-2">
+                    {product.description}
+                  </p>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
 
           {/* Кнопки */}
           <div className={`flex items-center gap-0.5 flex-wrap flex-shrink-0 ${showImages ? 'mt-0.5' : ''}`}>
@@ -415,6 +417,21 @@ function ProductCard({
           </div>
         </div>
       </div>
+
+      {/* Описание ВНЕ карточки для режима без картинок — сдвигает нижние элементы */}
+      {!showImages && (
+        <Collapsible open={isDescriptionExpanded}>
+          <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+            {product.description && (
+              <div className="px-3 py-2 bg-muted/30 border-b border-border">
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  {product.description}
+                </p>
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
       
       {/* Галерея ВНЕ карточки — сдвигает нижние элементы */}
       <Collapsible open={isExpanded}>
