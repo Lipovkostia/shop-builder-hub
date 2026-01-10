@@ -746,19 +746,21 @@ const CustomerDashboard = () => {
 
   const getProductById = (productId: string) => products.find(p => p.id === productId);
 
-  const getVariantLabel = (product: CatalogProduct, variantIndex: number): string => {
-    const isHead = product.packaging_type === 'head';
-    if (isHead) {
-      switch (variantIndex) {
-        case 0: return 'Целая';
-        case 1: return '½';
-        case 2: return '¼';
-        case 3: return 'Порция';
-        default: return 'Целая';
-      }
+  const getVariantLabel = (_product: CatalogProduct, variantIndex: number): string => {
+    // Показываем порцию в корзине для ЛЮБОГО товара, если позиция была добавлена как:
+    // 0: Целая, 1: 1/2, 2: 1/4, 3: Порция
+    switch (variantIndex) {
+      case 0:
+        return 'Целая';
+      case 1:
+        return '½';
+      case 2:
+        return '¼';
+      case 3:
+        return 'Порция';
+      default:
+        return 'Целая';
     }
-    // Для штучных товаров не показываем бейдж
-    return '';
   };
 
   // Рассчитать объём/вес товара в корзине
