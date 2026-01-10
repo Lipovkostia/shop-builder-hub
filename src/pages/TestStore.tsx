@@ -154,7 +154,7 @@ function ProductCard({
         </p>
 
         {/* Кнопки */}
-        <div className={`flex items-center gap-0.5 flex-wrap ${showImages ? 'mt-0.5' : ''}`}>
+        <div className={`flex items-center gap-0.5 flex-wrap ${showImages ? 'mt-0.5' : 'ml-auto'}`}>
           {product.inStock ? (
             <>
               {/* Если есть packagingPrices (голова) - показываем кнопки с расчётными ценами */}
