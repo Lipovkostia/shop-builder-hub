@@ -211,10 +211,21 @@ function ProductCard({
   const halfPrice = halfPricePerKg * (unitWeight / 2);
   const quarterPrice = quarterPricePerKg * (unitWeight / 4);
 
-  // Use catalog_status if available, otherwise fall back to quantity check
-  const inStock = product.catalog_status 
-    ? product.catalog_status === 'in_stock' 
+  // Get catalog status for display
+  const catalogStatus = product.catalog_status;
+  // Consider product available for ordering if it's in_stock or on_order
+  const canOrder = catalogStatus 
+    ? catalogStatus === 'in_stock' || catalogStatus === 'on_order'
     : product.quantity > 0;
+  
+  // Status labels mapping
+  const statusLabels: Record<string, string> = {
+    'in_stock': 'В наличии',
+    'out_of_stock': 'Нет в наличии',
+    'on_order': 'Под заказ',
+    'expected': 'Ожидается',
+  };
+  const statusLabel = catalogStatus ? (statusLabels[catalogStatus] || 'Нет в наличии') : null;
   const image = product.images?.[0] || "";
 
   return (
@@ -282,8 +293,12 @@ function ProductCard({
 
           {/* Кнопки */}
           <div className={`flex items-center gap-0.5 flex-wrap ${showImages ? 'mt-0.5' : ''}`}>
-            {inStock ? (
+            {canOrder ? (
               <>
+                {/* Статус "под заказ" если применимо */}
+                {catalogStatus === 'on_order' && (
+                  <span className="text-[9px] text-amber-600 font-medium mr-1">Под заказ:</span>
+                )}
                 {/* Кнопки вариантов в порядке: порция, 1/4, 1/2, целая */}
                 {hasPortionPrice && portionPrice && (() => {
                   const qty = getCartQuantity(3);
@@ -383,7 +398,9 @@ function ProductCard({
                 })()}
               </>
             ) : (
-              <span className="text-[10px] text-muted-foreground">Нет в наличии</span>
+              <span className={`text-[10px] ${catalogStatus === 'expected' ? 'text-blue-600' : 'text-muted-foreground'}`}>
+                {statusLabel || 'Нет в наличии'}
+              </span>
             )}
           </div>
         </div>
