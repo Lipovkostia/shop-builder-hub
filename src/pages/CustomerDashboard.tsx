@@ -1534,32 +1534,93 @@ const CustomerDashboard = () => {
           </div>
         ) : products.length > 0 ? (
           <>
-            {selectedCategory && (
-              <div className="px-3 py-2 bg-muted/50 border-b border-border">
-                <span className="text-sm font-medium text-foreground">
-                  {availableCategories.find(c => c.id === selectedCategory)?.name || 'Категория'}
-                </span>
-              </div>
+            {selectedCategory ? (
+              // Single category selected - show header and filtered products
+              <>
+                <div className="px-3 py-2 bg-muted/50 border-b border-border">
+                  <span className="text-sm font-medium text-foreground">
+                    {availableCategories.find(c => c.id === selectedCategory)?.name || 'Категория'}
+                  </span>
+                </div>
+                {products
+                  .filter((product) => 
+                    product.catalog_categories && product.catalog_categories.includes(selectedCategory)
+                  )
+                  .map((product) => (
+                    <ProductCard 
+                      key={product.id} 
+                      product={product} 
+                      cart={cart}
+                      onAddToCart={handleAddToCart}
+                      showImages={showImages}
+                      isExpanded={expandedProductId === product.id}
+                      onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
+                      onOpenFullscreen={(imageIndex) => product.images && setFullscreenImages({ images: product.images, index: imageIndex })}
+                      isDescriptionExpanded={expandedDescriptionId === product.id}
+                      onNameClick={() => product.description && setExpandedDescriptionId(expandedDescriptionId === product.id ? null : product.id)}
+                    />
+                  ))}
+              </>
+            ) : (
+              // All categories - group products by category
+              <>
+                {availableCategories.map((category) => {
+                  const categoryProducts = products.filter(
+                    (p) => p.catalog_categories && p.catalog_categories.includes(category.id)
+                  );
+                  if (categoryProducts.length === 0) return null;
+                  return (
+                    <div key={category.id}>
+                      <div className="px-3 py-2 bg-muted/50 border-b border-border sticky top-[88px] z-10">
+                        <span className="text-sm font-medium text-foreground">{category.name}</span>
+                      </div>
+                      {categoryProducts.map((product) => (
+                        <ProductCard 
+                          key={product.id} 
+                          product={product} 
+                          cart={cart}
+                          onAddToCart={handleAddToCart}
+                          showImages={showImages}
+                          isExpanded={expandedProductId === product.id}
+                          onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
+                          onOpenFullscreen={(imageIndex) => product.images && setFullscreenImages({ images: product.images, index: imageIndex })}
+                          isDescriptionExpanded={expandedDescriptionId === product.id}
+                          onNameClick={() => product.description && setExpandedDescriptionId(expandedDescriptionId === product.id ? null : product.id)}
+                        />
+                      ))}
+                    </div>
+                  );
+                })}
+                {/* Products without category */}
+                {(() => {
+                  const uncategorizedProducts = products.filter(
+                    (p) => !p.catalog_categories || p.catalog_categories.length === 0
+                  );
+                  if (uncategorizedProducts.length === 0) return null;
+                  return (
+                    <div>
+                      <div className="px-3 py-2 bg-muted/50 border-b border-border sticky top-[88px] z-10">
+                        <span className="text-sm font-medium text-muted-foreground">Без категории</span>
+                      </div>
+                      {uncategorizedProducts.map((product) => (
+                        <ProductCard 
+                          key={product.id} 
+                          product={product} 
+                          cart={cart}
+                          onAddToCart={handleAddToCart}
+                          showImages={showImages}
+                          isExpanded={expandedProductId === product.id}
+                          onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
+                          onOpenFullscreen={(imageIndex) => product.images && setFullscreenImages({ images: product.images, index: imageIndex })}
+                          isDescriptionExpanded={expandedDescriptionId === product.id}
+                          onNameClick={() => product.description && setExpandedDescriptionId(expandedDescriptionId === product.id ? null : product.id)}
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
+              </>
             )}
-            {products
-              .filter((product) => 
-                !selectedCategory || 
-                (product.catalog_categories && product.catalog_categories.includes(selectedCategory))
-              )
-              .map((product) => (
-                <ProductCard 
-                  key={product.id} 
-                  product={product} 
-                  cart={cart}
-                  onAddToCart={handleAddToCart}
-                  showImages={showImages}
-                  isExpanded={expandedProductId === product.id}
-                  onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
-                  onOpenFullscreen={(imageIndex) => product.images && setFullscreenImages({ images: product.images, index: imageIndex })}
-                  isDescriptionExpanded={expandedDescriptionId === product.id}
-                  onNameClick={() => product.description && setExpandedDescriptionId(expandedDescriptionId === product.id ? null : product.id)}
-                />
-              ))}
           </>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
