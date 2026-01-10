@@ -271,7 +271,7 @@ function ProductCard({
                 onClick={onNameClick}
                 className={`relative overflow-hidden text-left flex-1 min-w-0 ${product.description ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
               >
-                <h3 className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px] pr-4'} ${isDescriptionExpanded ? 'text-primary' : ''}`}>
+                <h3 className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-lg pr-6' : 'text-[11px] pr-4'} ${isDescriptionExpanded ? 'text-primary' : ''}`}>
                   {product.name}
                 </h3>
                 <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent pointer-events-none" />
@@ -279,7 +279,7 @@ function ProductCard({
             </div>
             
             {/* Цена - под названием в обоих режимах */}
-            <p className={`text-muted-foreground leading-tight ${showImages ? 'text-[10px]' : 'text-[8px]'}`}>
+            <p className={`text-muted-foreground leading-tight ${showImages ? 'text-[15px]' : 'text-[8px]'}`}>
               {formatPrice(basePrice)}/{product.unit}
               {showImages && hasVariantPrices && unitWeight > 0 && (
                 <span className="ml-1">
@@ -294,7 +294,7 @@ function ProductCard({
             <Collapsible open={isDescriptionExpanded}>
               <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
                 {product.description && (
-                  <p className="text-[10px] text-muted-foreground leading-relaxed py-1 pr-2">
+                  <p className="text-[15px] text-muted-foreground leading-relaxed py-1 pr-2">
                     {product.description}
                   </p>
                 )}
@@ -312,15 +312,15 @@ function ProductCard({
                   return (
                     <button
                       onClick={() => onAddToCart(product.id, 3, portionPrice)}
-                      className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                      className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all ${showImages ? 'h-9 px-3' : 'h-7 px-2'}`}
                     >
                       {qty > 0 && (
-                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                        <span className={`absolute -top-1 -right-1 bg-primary text-primary-foreground font-bold rounded-full flex items-center justify-center ${showImages ? 'w-5 h-5 text-sm' : 'w-3.5 h-3.5 text-[9px]'}`}>
                           {qty}
                         </span>
                       )}
                       <PortionIndicator type="portion" />
-                      <span className="text-[9px] font-medium text-foreground">
+                      <span className={`font-medium text-foreground ${showImages ? 'text-sm' : 'text-[9px]'}`}>
                         {formatPriceSpaced(portionPrice)}
                       </span>
                     </button>
@@ -331,15 +331,15 @@ function ProductCard({
                   return (
                     <button
                       onClick={() => onAddToCart(product.id, 2, quarterPrice)}
-                      className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                      className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all ${showImages ? 'h-9 px-3' : 'h-7 px-2'}`}
                     >
                       {qty > 0 && (
-                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                        <span className={`absolute -top-1 -right-1 bg-primary text-primary-foreground font-bold rounded-full flex items-center justify-center ${showImages ? 'w-5 h-5 text-sm' : 'w-3.5 h-3.5 text-[9px]'}`}>
                           {qty}
                         </span>
                       )}
                       <PortionIndicator type="quarter" />
-                      <span className="text-[9px] font-medium text-foreground">
+                      <span className={`font-medium text-foreground ${showImages ? 'text-sm' : 'text-[9px]'}`}>
                         {formatPriceSpaced(quarterPrice)}
                       </span>
                     </button>
@@ -350,15 +350,15 @@ function ProductCard({
                   return (
                     <button
                       onClick={() => onAddToCart(product.id, 1, halfPrice)}
-                      className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                      className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all ${showImages ? 'h-9 px-3' : 'h-7 px-2'}`}
                     >
                       {qty > 0 && (
-                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                        <span className={`absolute -top-1 -right-1 bg-primary text-primary-foreground font-bold rounded-full flex items-center justify-center ${showImages ? 'w-5 h-5 text-sm' : 'w-3.5 h-3.5 text-[9px]'}`}>
                           {qty}
                         </span>
                       )}
                       <PortionIndicator type="half" />
-                      <span className="text-[9px] font-medium text-foreground">
+                      <span className={`font-medium text-foreground ${showImages ? 'text-sm' : 'text-[9px]'}`}>
                         {formatPriceSpaced(halfPrice)}
                       </span>
                     </button>
@@ -369,15 +369,15 @@ function ProductCard({
                   return (
                     <button
                       onClick={() => onAddToCart(product.id, 0, fullPrice)}
-                      className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                      className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all ${showImages ? 'h-9 px-3' : 'h-7 px-2'}`}
                     >
                       {qty > 0 && (
-                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                        <span className={`absolute -top-1 -right-1 bg-primary text-primary-foreground font-bold rounded-full flex items-center justify-center ${showImages ? 'w-5 h-5 text-sm' : 'w-3.5 h-3.5 text-[9px]'}`}>
                           {qty}
                         </span>
                       )}
                       <PortionIndicator type="full" />
-                      <span className="text-[9px] font-medium text-foreground">
+                      <span className={`font-medium text-foreground ${showImages ? 'text-sm' : 'text-[9px]'}`}>
                         {formatPriceSpaced(fullPrice)}
                       </span>
                     </button>
@@ -389,15 +389,15 @@ function ProductCard({
                   return (
                     <button
                       onClick={() => onAddToCart(product.id, 0, basePrice)}
-                      className="relative flex items-center gap-1 h-7 px-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                      className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all ${showImages ? 'h-9 px-3' : 'h-7 px-2'}`}
                     >
                       {qty > 0 && (
-                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                        <span className={`absolute -top-1 -right-1 bg-primary text-primary-foreground font-bold rounded-full flex items-center justify-center ${showImages ? 'w-5 h-5 text-sm' : 'w-3.5 h-3.5 text-[9px]'}`}>
                           {qty}
                         </span>
                       )}
-                      <Plus className="w-3 h-3 text-primary" />
-                      <span className="text-[9px] font-medium text-foreground">
+                      <Plus className={`text-primary ${showImages ? 'w-4 h-4' : 'w-3 h-3'}`} />
+                      <span className={`font-medium text-foreground ${showImages ? 'text-sm' : 'text-[9px]'}`}>
                         {formatPriceSpaced(basePrice)}
                       </span>
                     </button>
@@ -405,7 +405,7 @@ function ProductCard({
                 })()}
               </>
             ) : (
-              <span className="text-[10px] text-muted-foreground">
+              <span className={`text-muted-foreground ${showImages ? 'text-[15px]' : 'text-[10px]'}`}>
                 {statusLabel || "Нет в наличии"}
               </span>
             )}
