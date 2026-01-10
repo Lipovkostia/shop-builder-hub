@@ -1150,7 +1150,7 @@ const CustomerDashboard = () => {
   const availableItemsCount = cart.filter(item => item.isAvailable !== false).length;
   const unavailableItemsCount = cart.filter(item => item.isAvailable === false).length;
 
-  const [orderSuccess, setOrderSuccess] = useState(false);
+  
 
   const handleCheckout = async () => {
     if (!currentCatalog || cart.length === 0) return;
@@ -1230,11 +1230,8 @@ const CustomerDashboard = () => {
       setCheckoutAddress("");
       setCheckoutComment("");
       
-      // Show success message for 1 second then redirect to catalog
-      setOrderSuccess(true);
-      setTimeout(() => {
-        setOrderSuccess(false);
-      }, 1000);
+      // Toast уже показывается в хуке createOrder
+      // Просто сбрасываем состояние и возвращаемся к каталогу
     }
   };
 
@@ -2210,23 +2207,6 @@ const CustomerDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Success Message Overlay */}
-      {orderSuccess && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
-          onClick={() => setOrderSuccess(false)}
-        >
-          <div className="flex flex-col items-center gap-3 p-6 bg-card rounded-lg shadow-lg border animate-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-              <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <p className="text-lg font-medium text-foreground">Заказ успешно отправлен!</p>
-            <p className="text-xs text-muted-foreground">Нажмите, чтобы продолжить</p>
-          </div>
-        </div>
-      )}
 
       {/* Orders History Drawer (slides from bottom on mobile) */}
       <Drawer open={isOrdersOpen} onOpenChange={setIsOrdersOpen}>
