@@ -137,14 +137,14 @@ function ProductCard({
       <div className={`flex-1 min-w-0 flex ${showImages ? 'flex-col justify-center gap-0' : 'flex-row items-center gap-2'}`}>
         {/* Название */}
         <div className={`relative overflow-hidden ${showImages ? '' : 'flex-1 min-w-0'}`}>
-          <h3 className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px]'}`}>
+          <h3 className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px] pr-4'}`}>
             {product.name}
           </h3>
-          {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />}
+          <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />
         </div>
 
         {/* Цена за кг */}
-        <p className={`text-muted-foreground leading-tight ${showImages ? 'text-[10px]' : 'text-[9px] whitespace-nowrap'}`}>
+        <p className={`text-muted-foreground leading-tight ${showImages ? 'text-[10px]' : 'text-[9px] whitespace-nowrap flex-shrink-0'}`}>
           {formatPrice(salePrice)}/{product.unit}
           {showImages && fullPrice && (
             <span className="ml-1">
@@ -154,7 +154,7 @@ function ProductCard({
         </p>
 
         {/* Кнопки */}
-        <div className={`flex items-center gap-0.5 flex-wrap ${showImages ? 'mt-0.5' : 'ml-auto'}`}>
+        <div className={`flex items-center gap-0.5 flex-wrap flex-shrink-0 ${showImages ? 'mt-0.5' : ''}`}>
           {product.inStock ? (
             <>
               {/* Если есть packagingPrices (голова) - показываем кнопки с расчётными ценами */}
