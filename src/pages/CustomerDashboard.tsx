@@ -169,13 +169,8 @@ function ProductCard({
       (c) => c.productId === product.id && c.variantIndex === variantIndex
     );
 
-    // Для упаковочных/штучных товаров показываем "объём" (шт), а не число кликов
+    // Показываем количество нажатий (добавлений в корзину), а НЕ объём
     if (!item) return 0;
-    const unitLabel = getUnitLabel(product.unit);
-    const unitWeight = product.unit_weight || 1;
-
-    if (unitLabel === 'шт' && unitWeight > 1) return item.quantity * unitWeight;
-
     return item.quantity;
   };
 
