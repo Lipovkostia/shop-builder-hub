@@ -1657,19 +1657,7 @@ const CustomerDashboard = () => {
 
   return (
     <div className="h-screen bg-background flex flex-col relative">
-      {/* Order Success Overlay */}
-      {orderSuccess && (
-        <div className="absolute inset-0 z-[100] bg-background/95 flex items-center justify-center">
-          <div className="text-center space-y-3 animate-in fade-in zoom-in duration-200">
-            <div className="w-16 h-16 mx-auto bg-green-500 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <p className="text-lg font-semibold text-foreground">Заказ успешно отправлен!</p>
-          </div>
-        </div>
-      )}
+      {/* Order Success Overlay - removed duplicate, using one at the bottom */}
       {/* Impersonation banner */}
       {isImpersonating && (
         <div className="bg-amber-500 text-amber-950 px-3 py-2 flex items-center justify-between">
@@ -2224,7 +2212,10 @@ const CustomerDashboard = () => {
 
       {/* Success Message Overlay */}
       {orderSuccess && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
+          onClick={() => setOrderSuccess(false)}
+        >
           <div className="flex flex-col items-center gap-3 p-6 bg-card rounded-lg shadow-lg border animate-in zoom-in-95 duration-200">
             <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
               <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2232,6 +2223,7 @@ const CustomerDashboard = () => {
               </svg>
             </div>
             <p className="text-lg font-medium text-foreground">Заказ успешно отправлен!</p>
+            <p className="text-xs text-muted-foreground">Нажмите, чтобы продолжить</p>
           </div>
         </div>
       )}
