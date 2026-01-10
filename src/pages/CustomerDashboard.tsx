@@ -2004,26 +2004,26 @@ const CustomerDashboard = () => {
                         {/* Название + вариант + объём + цена за 1 + статус */}
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <p className={`font-medium text-base truncate leading-tight ${isUnavailable ? 'line-through' : ''}`}>
+                            <p className={`font-medium text-xs truncate leading-tight ${isUnavailable ? 'line-through' : ''}`}>
                               {displayName}
                             </p>
                           </div>
                           {isUnavailable && (
                             <div className="flex items-center gap-1 flex-wrap">
-                              <span className="text-sm text-destructive">Нет в прайсе</span>
+                              <span className="text-[11px] text-destructive">Нет в прайсе</span>
                             </div>
                           )}
                           {/* Порция (Целая, 1/2, 1/4, Порция) + объём */}
                           {!isUnavailable && variantLabel && (
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="flex-shrink-0 px-1.5 py-0.5 text-sm font-medium bg-primary/10 text-primary rounded">
+                              <span className="flex-shrink-0 px-1.5 py-0.5 text-[11px] font-medium bg-primary/10 text-primary rounded">
                                 {variantLabel}
                               </span>
-                              <span className="text-sm text-muted-foreground">
+                              <span className="text-[11px] text-muted-foreground">
                                 {portionVolumeDisplay}
                               </span>
-                              <span className="text-sm text-muted-foreground">·</span>
-                              <span className="text-sm text-muted-foreground">
+                              <span className="text-[11px] text-muted-foreground">·</span>
+                              <span className="text-[11px] text-muted-foreground">
                                 {formatPriceSpaced(portionUnitPrice)} ₽
                               </span>
                             </div>
@@ -2040,7 +2040,7 @@ const CustomerDashboard = () => {
                               >
                                 <Minus className="h-2.5 w-2.5" />
                               </button>
-                              <span className="w-6 text-center text-base font-semibold tabular-nums">{item.quantity}</span>
+                              <span className="w-5 text-center text-xs font-semibold tabular-nums">{item.quantity}</span>
                               <button 
                                 className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-muted/80 transition-colors"
                                 onClick={() => updateCartQuantity(index, 1)}
@@ -2061,7 +2061,7 @@ const CustomerDashboard = () => {
                         {/* Общий объём позиции */}
                         <div className="text-right w-8">
                           {!isUnavailable && (
-                            <span className="text-sm text-muted-foreground tabular-nums">{itemTotalVolumeDisplay}</span>
+                            <span className="text-[11px] text-muted-foreground tabular-nums">{itemTotalVolumeDisplay}</span>
                           )}
                         </div>
                       </div>
