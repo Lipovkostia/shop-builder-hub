@@ -911,6 +911,44 @@ const CustomerDashboard = () => {
     .filter(item => item.isAvailable !== false)
     .reduce((sum, item) => sum + item.price * item.quantity, 0);
   
+  // Calculate total volume/weight for the cart
+  const cartTotalVolume = cart
+    .filter(item => item.isAvailable !== false)
+    .reduce((totals, item) => {
+      const product = getProductById(item.productId);
+      const unitLabel = getUnitLabel(product?.unit);
+      const unitWeight = product?.unit_weight || 1;
+      const portionWeightValue = product?.portion_weight || 0.1;
+      
+      // Calculate portion volume based on variant
+      let portionVolume: number;
+      switch (item.variantIndex) {
+        case 0: portionVolume = unitWeight; break;
+        case 1: portionVolume = unitWeight / 2; break;
+        case 2: portionVolume = unitWeight / 4; break;
+        case 3: portionVolume = unitLabel === 'кг' ? portionWeightValue : 1; break;
+        default: portionVolume = unitWeight;
+      }
+      
+      const totalForItem = portionVolume * item.quantity;
+      
+      if (unitLabel === 'кг') {
+        totals.kg += totalForItem;
+      } else {
+        totals.pcs += totalForItem;
+      }
+      return totals;
+    }, { kg: 0, pcs: 0 });
+
+  // Format total volume display
+  const formatVolume = (value: number): string => {
+    return Number.isInteger(value) ? value.toString() : value.toFixed(1).replace('.', ',');
+  };
+  const volumeParts: string[] = [];
+  if (cartTotalVolume.kg > 0) volumeParts.push(`${formatVolume(cartTotalVolume.kg)} кг`);
+  if (cartTotalVolume.pcs > 0) volumeParts.push(`${formatVolume(cartTotalVolume.pcs)} шт`);
+  const cartVolumeDisplay = volumeParts.join(' + ');
+  
   const availableItemsCount = cart.filter(item => item.isAvailable !== false).length;
   const unavailableItemsCount = cart.filter(item => item.isAvailable === false).length;
 
@@ -1482,6 +1520,9 @@ const CustomerDashboard = () => {
                 <Image className={`w-4 h-4 ${showCartImages ? 'text-primary' : 'text-muted-foreground'}`} />
               </button>
               <span className="text-sm font-bold text-primary">{formatPrice(cartTotal)}</span>
+              {cartVolumeDisplay && (
+                <span className="text-xs text-muted-foreground">{cartVolumeDisplay}</span>
+              )}
             </div>
           </div>
           
