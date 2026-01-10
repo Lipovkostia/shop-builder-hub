@@ -599,6 +599,7 @@ const CustomerDashboard = () => {
   const [showProfileView, setShowProfileView] = useState(false);
   const [profileSection, setProfileSection] = useState<'personal' | 'catalogs' | 'settings'>('personal');
   const [showImages, setShowImages] = useState(true);
+  const [showCartImages, setShowCartImages] = useState(true);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [expandedDescriptionId, setExpandedDescriptionId] = useState<string | null>(null);
   const [fullscreenImages, setFullscreenImages] = useState<{ images: string[]; index: number } | null>(null);
@@ -1472,7 +1473,16 @@ const CustomerDashboard = () => {
                 {cart.length}
               </Badge>
             </div>
-            <span className="text-sm font-bold text-primary">{formatPrice(cartTotal)}</span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowCartImages(!showCartImages)}
+                className="p-1 rounded hover:bg-muted transition-colors"
+                title={showCartImages ? "Скрыть изображения" : "Показать изображения"}
+              >
+                <Image className={`w-4 h-4 ${showCartImages ? 'text-primary' : 'text-muted-foreground'}`} />
+              </button>
+              <span className="text-sm font-bold text-primary">{formatPrice(cartTotal)}</span>
+            </div>
           </div>
           
           <div className="flex-1 overflow-y-auto px-3 py-1.5 max-h-[40vh]">
@@ -1528,7 +1538,7 @@ const CustomerDashboard = () => {
                     return (
                       <div 
                         key={`${item.productId}-${item.variantIndex}-${index}`} 
-                        className={`grid grid-cols-[20px_32px_1fr_auto_auto] gap-2 py-2 items-center ${isUnavailable ? 'opacity-60' : ''}`}
+                        className={`grid ${showCartImages ? 'grid-cols-[20px_32px_1fr_auto_auto]' : 'grid-cols-[20px_1fr_auto_auto]'} gap-2 py-2 items-center ${isUnavailable ? 'opacity-60' : ''}`}
                       >
                         {/* Кнопка удаления слева */}
                         <button 
@@ -1538,26 +1548,28 @@ const CustomerDashboard = () => {
                           <Trash2 className="h-2.5 w-2.5 text-destructive/70" />
                         </button>
                         
-                        {/* Изображение с индикатором доступности */}
-                        <div className="relative w-8 h-8 rounded bg-muted flex items-center justify-center overflow-hidden">
-                          {product?.images?.[0] ? (
-                            <img src={product.images[0]} alt={displayName} className="w-full h-full object-cover" />
-                          ) : (
-                            <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                          )}
-                          {/* Availability indicator */}
-                          {item.isAvailable !== undefined && (
-                            <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center ${
-                              item.isAvailable ? 'bg-green-500' : 'bg-destructive'
-                            }`}>
-                              {item.isAvailable ? (
-                                <CheckCircle2 className="w-2 h-2 text-white" />
-                              ) : (
-                                <AlertCircle className="w-2 h-2 text-white" />
-                              )}
-                            </div>
-                          )}
-                        </div>
+                        {/* Изображение с индикатором доступности (условно) */}
+                        {showCartImages && (
+                          <div className="relative w-8 h-8 rounded bg-muted flex items-center justify-center overflow-hidden">
+                            {product?.images?.[0] ? (
+                              <img src={product.images[0]} alt={displayName} className="w-full h-full object-cover" />
+                            ) : (
+                              <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                            )}
+                            {/* Availability indicator */}
+                            {item.isAvailable !== undefined && (
+                              <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center ${
+                                item.isAvailable ? 'bg-green-500' : 'bg-destructive'
+                              }`}>
+                                {item.isAvailable ? (
+                                  <CheckCircle2 className="w-2 h-2 text-white" />
+                                ) : (
+                                  <AlertCircle className="w-2 h-2 text-white" />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         
                         {/* Название + вариант + объём + цена за 1 + статус */}
                         <div className="min-w-0">
