@@ -225,15 +225,31 @@ function ProductCard({
   const statusLabel = catalogStatus ? (statusLabels[catalogStatus] || "Нет в наличии") : null;
   const image = product.images?.[0] || "";
 
+  const descInnerRef = useRef<HTMLDivElement>(null);
+  const [descHeight, setDescHeight] = useState(0);
+
+  useEffect(() => {
+    if (!showImages || !product.description) return;
+
+    if (isDescriptionExpanded) {
+      // Measure after render to avoid iOS layout glitches
+      requestAnimationFrame(() => {
+        setDescHeight(descInnerRef.current?.scrollHeight ?? 0);
+      });
+    } else {
+      setDescHeight(0);
+    }
+  }, [isDescriptionExpanded, showImages, product.description]);
+
   return (
     <>
       {/* Основная карточка - высота адаптируется при раскрытии описания */}
-      <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border transition-all ${showImages ? (isDescriptionExpanded ? 'min-h-[72px]' : 'h-[calc((100vh-44px)/8)] min-h-[72px]') : (isDescriptionExpanded ? 'min-h-[36px] h-auto' : 'h-9 min-h-[36px]')}`}>
+      <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border transition-all ${showImages ? 'min-h-[72px] h-auto' : (isDescriptionExpanded ? 'min-h-[36px] h-auto' : 'h-9 min-h-[36px]')}`}>
         {/* Изображение */}
         {showImages && (
           <button 
             onClick={onImageClick}
-            className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-center cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+            className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-start cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
           >
             {image ? (
               <img
@@ -256,7 +272,7 @@ function ProductCard({
         )}
 
         {/* Контент справа */}
-        <div className={`flex-1 min-w-0 flex ${showImages ? 'flex-col justify-center gap-0' : 'flex-row items-center gap-2'}`}>
+        <div className={`flex-1 min-w-0 flex ${showImages ? 'flex-col justify-start gap-0' : 'flex-row items-center gap-2'}`}>
           {/* Блок с названием и ценой */}
           <div className={`${showImages ? '' : 'flex-1 min-w-0 overflow-hidden flex flex-col justify-center'}`}>
             {/* Название с индикатором статуса */}
@@ -292,20 +308,16 @@ function ProductCard({
           
           {/* Описание (раскрывается при клике на название) - только в режиме с картинками */}
           {showImages && product.description && (
-            <div 
-              className="grid"
-              style={{ 
-                gridTemplateRows: isDescriptionExpanded ? '1fr' : '0fr',
-                transition: 'grid-template-rows 300ms ease-in-out'
+            <div
+              className="overflow-hidden"
+              style={{
+                maxHeight: isDescriptionExpanded ? descHeight : 0,
+                opacity: isDescriptionExpanded ? 1 : 0,
+                transition: "max-height 320ms ease-in-out, opacity 200ms ease-in-out",
+                willChange: "max-height",
               }}
             >
-              <div 
-                className="overflow-hidden"
-                style={{
-                  opacity: isDescriptionExpanded ? 1 : 0,
-                  transition: 'opacity 200ms ease-in-out'
-                }}
-              >
+              <div ref={descInnerRef}>
                 <p className="text-xs text-muted-foreground leading-relaxed py-1 pr-2 break-words whitespace-normal max-w-full">
                   {product.description}
                 </p>
