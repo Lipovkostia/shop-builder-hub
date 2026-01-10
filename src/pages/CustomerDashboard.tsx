@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useCustomerCatalogs, CartItem, CatalogProduct, CustomerCatalog } from "@/hooks/useCustomerCatalogs";
 import { useCustomerOrders, useCustomerOrdersHistory, Order } from "@/hooks/useOrders";
 import { useProfileSettings } from "@/hooks/useProfileSettings";
 import { useCustomerAddresses } from "@/hooks/useCustomerAddresses";
+import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -439,9 +440,9 @@ function CustomerHeader({
   onOpenCart: () => void;
   onOpenProfile: () => void;
   onOpenOrders: () => void;
-  categories: string[];
+  categories: { id: string; name: string }[];
   selectedCategory: string | null;
-  onSelectCategory: (category: string | null) => void;
+  onSelectCategory: (categoryId: string | null) => void;
 }) {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -483,14 +484,14 @@ function CustomerHeader({
               </DropdownMenuItem>
               {categories.map((category) => (
                 <DropdownMenuItem
-                  key={category}
-                  onClick={() => onSelectCategory(category)}
+                  key={category.id}
+                  onClick={() => onSelectCategory(category.id)}
                   className="cursor-pointer"
                 >
                   <div className="flex items-center gap-2">
-                    {selectedCategory === category && <Check className="w-4 h-4 text-primary" />}
-                    <span className={selectedCategory === category ? "font-semibold" : ""}>
-                      {category}
+                    {selectedCategory === category.id && <Check className="w-4 h-4 text-primary" />}
+                    <span className={selectedCategory === category.id ? "font-semibold" : ""}>
+                      {category.name}
                     </span>
                   </div>
                 </DropdownMenuItem>
@@ -598,6 +599,11 @@ const CustomerDashboard = () => {
   const { orders: myOrders, loading: myOrdersLoading, refetch: refetchMyOrders } = useCustomerOrdersHistory();
   const { toastEnabled, updateSettings, isUpdating: updatingSettings } = useProfileSettings();
   const { addresses, addAddress, lastUsedAddress, deleteAddress } = useCustomerAddresses();
+  
+  // Load store categories
+  const currentStoreId = currentCatalog?.store_id || null;
+  const { categories: storeCategories } = useStoreCategories(currentStoreId);
+  
   const [cart, setCart] = useState<LocalCartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -612,12 +618,23 @@ const CustomerDashboard = () => {
   const [fullscreenImages, setFullscreenImages] = useState<{ images: string[]; index: number } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   
-  // Extract unique categories from products
-  const availableCategories = [...new Set(
-    products
-      .flatMap(p => p.catalog_categories || [])
-      .filter(Boolean)
-  )].sort();
+  // Extract unique category IDs from products and map to names
+  const availableCategories = useMemo(() => {
+    const categoryIds = [...new Set(
+      products
+        .flatMap(p => p.catalog_categories || [])
+        .filter(Boolean)
+    )];
+    
+    // Map IDs to {id, name} objects using storeCategories
+    return categoryIds
+      .map(id => {
+        const cat = storeCategories.find(c => c.id === id);
+        return cat ? { id: cat.id, name: cat.name } : null;
+      })
+      .filter((c): c is { id: string; name: string } => c !== null)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [products, storeCategories]);
   
   // Profile data
   const [profileData, setProfileData] = useState<{ full_name: string | null; phone: string | null } | null>(null);
