@@ -1500,6 +1500,19 @@ const CustomerDashboard = () => {
                     ? portionVolume.toString() 
                     : portionVolume.toFixed(1).replace('.', ',');
                   const portionVolumeDisplay = `${portionVolumeFormatted} ${unitLabel}`;
+
+                  // Цена за 1 единицу порции из соответствующего столбика прайса
+                  const getPortionUnitPrice = (prod: CatalogProduct | undefined, vIdx: number): number => {
+                    if (!prod) return item.price;
+                    switch (vIdx) {
+                      case 0: return prod.price; // Целая → Цена
+                      case 1: return prod.price_half ?? prod.price; // 1/2 → price_half
+                      case 2: return prod.price_quarter ?? prod.price; // 1/4 → price_quarter
+                      case 3: return prod.price_portion ?? prod.price; // Порция → price_portion
+                      default: return prod.price;
+                    }
+                  };
+                  const portionUnitPrice = getPortionUnitPrice(product, item.variantIndex);
                   
                     return (
                       <div 
@@ -1555,6 +1568,10 @@ const CustomerDashboard = () => {
                               </span>
                               <span className="text-[9px] text-muted-foreground">
                                 {portionVolumeDisplay}
+                              </span>
+                              <span className="text-[9px] text-muted-foreground">·</span>
+                              <span className="text-[9px] text-muted-foreground">
+                                {formatPriceSpaced(portionUnitPrice)} ₽
                               </span>
                             </div>
                           )}
