@@ -83,6 +83,15 @@ function formatPrice(price: number): string {
   return `${formatPriceSpaced(price)} ₽`;
 }
 
+type NormalizedUnit = "кг" | "шт";
+
+function getUnitLabel(unit?: string | null): NormalizedUnit {
+  const u = (unit ?? "").toString().toLowerCase().trim();
+  if (u === "kg" || u === "кг" || u.includes("kg") || u.includes("кг")) return "кг";
+  if (u === "шт" || u === "pc" || u === "pcs" || u.includes("шт")) return "шт";
+  return "шт";
+}
+
 // Индикатор порции (SVG для чёткости)
 function PortionIndicator({ type }: { type: "full" | "half" | "quarter" | "portion" }) {
   const size = 14;
@@ -159,7 +168,7 @@ function ProductCard({
 
     // Для упаковочных/штучных товаров показываем "объём" (шт), а не число кликов
     if (!item) return 0;
-    const unitLabel = product.unit === 'kg' ? 'кг' : 'шт';
+    const unitLabel = getUnitLabel(product.unit);
     const unitWeight = product.unit_weight || 1;
 
     if (unitLabel === 'шт' && unitWeight > 1) return item.quantity * unitWeight;
@@ -792,7 +801,7 @@ const CustomerDashboard = () => {
 
     // Для штучных/упаковочных товаров показываем фактический объём (в штуках),
     // а не количество нажатий на кнопку.
-    const unitLabel = product.unit === 'kg' ? 'кг' : 'шт';
+    const unitLabel = getUnitLabel(product.unit);
 
     if (unitLabel === 'шт' && unitWeight > 1) {
       return `${quantity * unitWeight} шт`;
@@ -813,7 +822,7 @@ const CustomerDashboard = () => {
       return { pricePerUnit: formatPrice(basePrice), unitLabel: 'кг' };
     }
 
-    const unitLabel = product.unit === 'kg' ? 'кг' : 'шт';
+    const unitLabel = getUnitLabel(product.unit);
     const unitWeight = product.unit_weight || 1;
 
     // Если товар "упаковочный" (unit_weight > 1) и цена в корзине похожа на цену за упаковку,
@@ -1480,7 +1489,7 @@ const CustomerDashboard = () => {
                   const portionWeight = getPortionWeight(product, item.variantIndex);
                   const isHead = product?.packaging_type === 'head';
 
-                  const unitLabel = product?.unit === 'kg' ? 'кг' : 'шт';
+                  const unitLabel = getUnitLabel(product?.unit);
                   const unitWeight = product?.unit_weight || 1;
 
                   // Рассчитываем объём порции в зависимости от variantIndex
@@ -1495,7 +1504,7 @@ const CustomerDashboard = () => {
                       default: return uWeight;
                     }
                   };
-                  const isKgUnit = product?.unit === 'kg';
+                  const isKgUnit = unitLabel === 'кг';
                   const portionVolume = getPortionVolume(item.variantIndex, unitWeight, portionWeightValue, isKgUnit);
                   // Форматируем: если целое число — без десятичных, иначе с одним знаком
                   const portionVolumeFormatted = Number.isInteger(portionVolume) 
@@ -1846,7 +1855,7 @@ const CustomerDashboard = () => {
                             <span className="text-[9px] text-muted-foreground">
                               {order.items.reduce((sum, i) => {
                                 const product = i.product_id ? getProductById(i.product_id) : undefined;
-                                const unitLabel = product?.unit === 'kg' ? 'кг' : 'шт';
+                                const unitLabel = getUnitLabel(product?.unit);
                                 const unitWeight = product?.unit_weight || 1;
 
                                 const qty = unitLabel === 'шт' && unitWeight > 1 ? (i.quantity || 0) * unitWeight : (i.quantity || 0);
@@ -1890,7 +1899,7 @@ const CustomerDashboard = () => {
                               const product = item.product_id ? getProductById(item.product_id) : undefined;
                               const productAvailable = item.product_id ? !!product : false;
 
-                              const unitLabel = product?.unit === 'kg' ? 'кг' : 'шт';
+                              const unitLabel = getUnitLabel(product?.unit);
                               const unitWeight = product?.unit_weight || 1;
 
                               // Показываем "объём" (шт/кг), а не число кликов.
