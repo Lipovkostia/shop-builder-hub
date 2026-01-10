@@ -1150,7 +1150,7 @@ const CustomerDashboard = () => {
   const availableItemsCount = cart.filter(item => item.isAvailable !== false).length;
   const unavailableItemsCount = cart.filter(item => item.isAvailable === false).length;
 
-  
+  const [orderSuccess, setOrderSuccess] = useState(false);
 
   const handleCheckout = async () => {
     if (!currentCatalog || cart.length === 0) return;
@@ -1230,8 +1230,11 @@ const CustomerDashboard = () => {
       setCheckoutAddress("");
       setCheckoutComment("");
       
-      // Toast уже показывается в хуке createOrder
-      // Просто сбрасываем состояние и возвращаемся к каталогу
+      // Показываем зелёную галочку на 800мс
+      setOrderSuccess(true);
+      setTimeout(() => {
+        setOrderSuccess(false);
+      }, 800);
     }
   };
 
@@ -2208,7 +2211,23 @@ const CustomerDashboard = () => {
       </Dialog>
 
 
-      {/* Orders History Drawer (slides from bottom on mobile) */}
+      {/* Success Overlay - большая зелёная галочка */}
+      {orderSuccess && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none">
+          <div className="flex flex-col items-center gap-2 animate-in zoom-in-50 fade-in duration-200">
+            <div className="w-24 h-24 rounded-full bg-green-500/80 flex items-center justify-center shadow-2xl">
+              <svg className="w-14 h-14 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <span className="text-lg font-semibold text-green-600 dark:text-green-400 bg-background/80 px-3 py-1 rounded-full">
+              Успешно
+            </span>
+          </div>
+        </div>
+      )}
+
+
       <Drawer open={isOrdersOpen} onOpenChange={setIsOrdersOpen}>
         <DrawerContent className="max-h-[70vh]">
           <div className="flex items-center gap-2 px-4 py-1.5 border-b border-border">
