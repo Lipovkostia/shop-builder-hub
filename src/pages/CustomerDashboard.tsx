@@ -262,23 +262,36 @@ function ProductCard({
 
         {/* Контент справа */}
         <div className={`flex-1 min-w-0 flex ${showImages ? 'flex-col justify-center gap-0' : 'flex-row items-center gap-2'}`}>
-          {/* Название с индикатором статуса */}
-          <div className={`flex items-center gap-1 ${showImages ? '' : 'flex-1 min-w-0 overflow-hidden'}`}>
-            {/* Индикатор статуса перед названием */}
-            {catalogStatus === "pre_order" && (
-              <span className="flex items-center gap-1 text-[9px] text-blue-600 font-medium flex-shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-              </span>
-            )}
-            <button 
-              onClick={onNameClick}
-              className={`relative overflow-hidden text-left ${showImages ? 'flex-1 min-w-0' : 'flex-1 min-w-0'} ${product.description ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
-            >
-              <h3 className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px] pr-4'} ${isDescriptionExpanded ? 'text-primary' : ''}`}>
-                {product.name}
-              </h3>
-              <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent pointer-events-none" />
-            </button>
+          {/* Блок с названием и ценой */}
+          <div className={`${showImages ? '' : 'flex-1 min-w-0 overflow-hidden flex flex-col justify-center'}`}>
+            {/* Название с индикатором статуса */}
+            <div className="flex items-center gap-1">
+              {/* Индикатор статуса перед названием */}
+              {catalogStatus === "pre_order" && (
+                <span className="flex items-center gap-1 text-[9px] text-blue-600 font-medium flex-shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                </span>
+              )}
+              <button 
+                onClick={onNameClick}
+                className={`relative overflow-hidden text-left flex-1 min-w-0 ${product.description ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+              >
+                <h3 className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px] pr-4'} ${isDescriptionExpanded ? 'text-primary' : ''}`}>
+                  {product.name}
+                </h3>
+                <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+              </button>
+            </div>
+            
+            {/* Цена - под названием в обоих режимах */}
+            <p className={`text-muted-foreground leading-tight ${showImages ? 'text-[10px]' : 'text-[8px]'}`}>
+              {formatPrice(basePrice)}/{product.unit}
+              {showImages && hasVariantPrices && unitWeight > 0 && (
+                <span className="ml-1">
+                  · {unitWeight}{product.unit === 'шт' ? 'шт' : 'кг'} ~{formatPrice(fullPrice)}
+                </span>
+              )}
+            </p>
           </div>
           
           {/* Описание (раскрывается при клике на название) */}
@@ -291,15 +304,6 @@ function ProductCard({
               )}
             </CollapsibleContent>
           </Collapsible>
-
-          <p className={`text-muted-foreground leading-tight ${showImages ? 'text-[10px]' : 'text-[9px] whitespace-nowrap flex-shrink-0'}`}>
-            {formatPrice(basePrice)}/{product.unit}
-            {showImages && hasVariantPrices && unitWeight > 0 && (
-              <span className="ml-1">
-                · {unitWeight}{product.unit === 'шт' ? 'шт' : 'кг'} ~{formatPrice(fullPrice)}
-              </span>
-            )}
-          </p>
 
           {/* Кнопки */}
           <div className={`flex items-center gap-0.5 flex-wrap flex-shrink-0 ${showImages ? 'mt-0.5' : ''}`}>
