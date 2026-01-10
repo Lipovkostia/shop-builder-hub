@@ -1975,15 +1975,8 @@ const CustomerDashboard = () => {
                     return (
                       <div 
                         key={`${item.productId}-${item.variantIndex}-${index}`} 
-                        className={`grid ${showCartImages ? 'grid-cols-[18px_28px_1fr_auto_auto_auto]' : 'grid-cols-[18px_1fr_auto_auto_auto]'} gap-1 py-1.5 items-center ${isUnavailable ? 'opacity-60' : ''}`}
+                        className={`grid ${showCartImages ? 'grid-cols-[28px_1fr_auto_auto_auto]' : 'grid-cols-[1fr_auto_auto_auto]'} gap-1 py-1.5 items-center ${isUnavailable ? 'opacity-60' : ''}`}
                       >
-                        {/* Кнопка удаления слева */}
-                        <button 
-                          className="w-5 h-5 flex items-center justify-center rounded hover:bg-destructive/10 transition-colors"
-                          onClick={() => removeFromCart(index)}
-                        >
-                          <Trash2 className="h-2.5 w-2.5 text-destructive/70" />
-                        </button>
                         
                         {/* Изображение с индикатором доступности (условно) */}
                         {showCartImages && (
