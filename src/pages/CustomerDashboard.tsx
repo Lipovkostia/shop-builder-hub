@@ -291,16 +291,19 @@ function ProductCard({
           </div>
           
           {/* Описание (раскрывается при клике на название) - только в режиме с картинками */}
-          {showImages && (
-            <Collapsible open={isDescriptionExpanded}>
-              <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
-                {product.description && (
-                  <p className="text-xs text-muted-foreground leading-relaxed py-1 pr-2 break-words whitespace-normal max-w-full">
-                    {product.description}
-                  </p>
-                )}
-              </CollapsibleContent>
-            </Collapsible>
+          {showImages && product.description && (
+            <div 
+              className="grid transition-all duration-300 ease-in-out"
+              style={{ 
+                gridTemplateRows: isDescriptionExpanded ? '1fr' : '0fr'
+              }}
+            >
+              <div className="overflow-hidden">
+                <p className="text-xs text-muted-foreground leading-relaxed py-1 pr-2 break-words whitespace-normal max-w-full">
+                  {product.description}
+                </p>
+              </div>
+            </div>
           )}
 
           {/* Кнопки */}
