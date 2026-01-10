@@ -263,9 +263,9 @@ function ProductCard({
             <div className="flex items-center gap-1">
               {/* Индикатор статуса перед названием */}
               {catalogStatus === "pre_order" && (
-                <span className="inline-flex items-center gap-1 mr-1.5 text-blue-600 dark:text-blue-400 text-xs flex-shrink-0">
-                  <span className="w-2 h-2 rounded-full bg-blue-500" />
-                  <span>под заказ</span>
+                <span className={`inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 flex-shrink-0 ${showImages ? 'mr-1.5 text-xs' : 'mr-1'}`}>
+                  <span className={`rounded-full bg-blue-500 ${showImages ? 'w-2 h-2' : 'w-1.5 h-1.5'}`} />
+                  {showImages && <span>под заказ</span>}
                 </span>
               )}
               <button 
