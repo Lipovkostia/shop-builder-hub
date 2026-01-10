@@ -457,7 +457,9 @@ const Index = () => {
               <CardHeader>
                 <CardTitle>{isCustomerLogin ? "Вход для покупателя" : "Регистрация покупателя"}</CardTitle>
                 <CardDescription>
-                  {isCustomerLogin ? "Войдите в личный кабинет" : "Создайте аккаунт покупателя"}
+                  {catalogFromUrl && !isCustomerLogin 
+                    ? "Зарегистрируйтесь для просмотра каталога" 
+                    : (isCustomerLogin ? "Войдите в личный кабинет" : "Создайте аккаунт покупателя")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
