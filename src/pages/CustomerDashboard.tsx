@@ -295,7 +295,7 @@ function ProductCard({
             <Collapsible open={isDescriptionExpanded}>
               <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
                 {product.description && (
-                  <p className="text-xs text-muted-foreground leading-relaxed py-1 pr-2">
+                  <p className="text-xs text-muted-foreground leading-relaxed py-1 pr-2 break-words whitespace-normal max-w-full">
                     {product.description}
                   </p>
                 )}
