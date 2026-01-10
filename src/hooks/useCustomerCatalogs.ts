@@ -53,13 +53,25 @@ export interface CartItem {
   variant?: 'full' | 'half' | 'quarter' | 'portion';
 }
 
+const CATALOG_STORAGE_KEY = 'customer_selected_catalog_id';
+
 export function useCustomerCatalogs(impersonateUserId?: string) {
   const { toast } = useToast();
   const [catalogs, setCatalogs] = useState<CustomerCatalog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentCatalog, setCurrentCatalog] = useState<CustomerCatalog | null>(null);
+  const [currentCatalog, setCurrentCatalogState] = useState<CustomerCatalog | null>(null);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
+
+  // Wrapper to save selected catalog to localStorage
+  const setCurrentCatalog = useCallback((catalog: CustomerCatalog | null) => {
+    setCurrentCatalogState(catalog);
+    if (catalog) {
+      localStorage.setItem(CATALOG_STORAGE_KEY, catalog.catalog_id);
+    } else {
+      localStorage.removeItem(CATALOG_STORAGE_KEY);
+    }
+  }, []);
 
   // Fetch all catalogs the customer has access to
   const fetchCatalogs = useCallback(async () => {
@@ -151,9 +163,15 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
 
       setCatalogs(customerCatalogs);
       
-      // Set first catalog as current if none selected
+      // Try to restore previously selected catalog from localStorage
       if (customerCatalogs.length > 0 && !currentCatalog) {
-        setCurrentCatalog(customerCatalogs[0]);
+        const savedCatalogId = localStorage.getItem(CATALOG_STORAGE_KEY);
+        const savedCatalog = savedCatalogId 
+          ? customerCatalogs.find(c => c.catalog_id === savedCatalogId) 
+          : null;
+        
+        // Use saved catalog if found, otherwise use first catalog
+        setCurrentCatalog(savedCatalog || customerCatalogs[0]);
       }
     } catch (error: any) {
       console.error("Error fetching customer catalogs:", error);
