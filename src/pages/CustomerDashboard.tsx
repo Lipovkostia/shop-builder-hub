@@ -293,12 +293,19 @@ function ProductCard({
           {/* Описание (раскрывается при клике на название) - только в режиме с картинками */}
           {showImages && product.description && (
             <div 
-              className="grid transition-all duration-300 ease-in-out"
+              className="grid"
               style={{ 
-                gridTemplateRows: isDescriptionExpanded ? '1fr' : '0fr'
+                gridTemplateRows: isDescriptionExpanded ? '1fr' : '0fr',
+                transition: 'grid-template-rows 300ms ease-in-out'
               }}
             >
-              <div className="overflow-hidden">
+              <div 
+                className="overflow-hidden"
+                style={{
+                  opacity: isDescriptionExpanded ? 1 : 0,
+                  transition: 'opacity 200ms ease-in-out'
+                }}
+              >
                 <p className="text-xs text-muted-foreground leading-relaxed py-1 pr-2 break-words whitespace-normal max-w-full">
                   {product.description}
                 </p>
