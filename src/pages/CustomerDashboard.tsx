@@ -1533,25 +1533,34 @@ const CustomerDashboard = () => {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : products.length > 0 ? (
-          products
-            .filter((product) => 
-              !selectedCategory || 
-              (product.catalog_categories && product.catalog_categories.includes(selectedCategory))
-            )
-            .map((product) => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
-                cart={cart}
-                onAddToCart={handleAddToCart}
-                showImages={showImages}
-                isExpanded={expandedProductId === product.id}
-                onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
-                onOpenFullscreen={(imageIndex) => product.images && setFullscreenImages({ images: product.images, index: imageIndex })}
-                isDescriptionExpanded={expandedDescriptionId === product.id}
-                onNameClick={() => product.description && setExpandedDescriptionId(expandedDescriptionId === product.id ? null : product.id)}
-              />
-            ))
+          <>
+            {selectedCategory && (
+              <div className="px-3 py-2 bg-muted/50 border-b border-border">
+                <span className="text-sm font-medium text-foreground">
+                  {availableCategories.find(c => c.id === selectedCategory)?.name || 'Категория'}
+                </span>
+              </div>
+            )}
+            {products
+              .filter((product) => 
+                !selectedCategory || 
+                (product.catalog_categories && product.catalog_categories.includes(selectedCategory))
+              )
+              .map((product) => (
+                <ProductCard 
+                  key={product.id} 
+                  product={product} 
+                  cart={cart}
+                  onAddToCart={handleAddToCart}
+                  showImages={showImages}
+                  isExpanded={expandedProductId === product.id}
+                  onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
+                  onOpenFullscreen={(imageIndex) => product.images && setFullscreenImages({ images: product.images, index: imageIndex })}
+                  isDescriptionExpanded={expandedDescriptionId === product.id}
+                  onNameClick={() => product.description && setExpandedDescriptionId(expandedDescriptionId === product.id ? null : product.id)}
+                />
+              ))}
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
             <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
