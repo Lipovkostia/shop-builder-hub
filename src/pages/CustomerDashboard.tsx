@@ -621,15 +621,13 @@ function CustomerHeader({
             )}
           </div>
         </div>
-
-        {/* Правая часть - название каталога */}
-        <span 
-          className={`text-xs text-muted-foreground truncate transition-all duration-300 ease-in-out ${
-            isSearchFocused ? 'w-0 opacity-0 overflow-hidden' : 'max-w-[150px] opacity-100'
-          }`}
-        >
+      </div>
+      
+      {/* Название магазина и прайс-листа - под блоком с иконками */}
+      <div className="px-3 py-1 border-t border-border bg-background">
+        <p className="text-[10px] text-muted-foreground text-right truncate">
           {selectedCatalog ? `${selectedCatalog.store_name} — ${selectedCatalog.catalog_name}` : "Выберите прайс-лист"}
-        </span>
+        </p>
       </div>
     </header>
   );
