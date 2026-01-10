@@ -1537,11 +1537,11 @@ const CustomerDashboard = () => {
                               <span className="text-[9px] text-destructive">Нет в прайсе</span>
                             </div>
                           )}
-                          {/* Порция с весом (если весовой товар) */}
-                          {!isUnavailable && isHead && variantLabel && portionWeight && (
+                          {/* Порция (Целая, 1/2, 1/4, Порция) */}
+                          {!isUnavailable && isHead && variantLabel && (
                             <div className="flex items-center gap-1 flex-wrap">
                               <span className="flex-shrink-0 px-1.5 py-0.5 text-[9px] font-medium bg-primary/10 text-primary rounded">
-                                {variantLabel} {portionWeight}
+                                {variantLabel}
                               </span>
                             </div>
                           )}
