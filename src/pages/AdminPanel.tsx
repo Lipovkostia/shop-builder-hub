@@ -97,6 +97,7 @@ import { useCatalogProductSettings } from "@/hooks/useCatalogProductSettings";
 import { useProductGroups } from "@/hooks/useProductGroups";
 import { useProductCategories } from "@/hooks/useProductCategories";
 import { useStoreCategories, StoreCategory } from "@/hooks/useStoreCategories";
+import { CategoryOrderDialog } from "@/components/admin/CategoryOrderDialog";
 
 // Removed localStorage keys - now using Supabase
 
@@ -521,7 +522,8 @@ export default function AdminPanel({
   } = useProductCategories(effectiveStoreId);
 
   // Store categories from Supabase
-  const { categories: storeCategories, loading: categoriesLoading, createCategory, refetch: refetchCategories } = useStoreCategories(effectiveStoreId);
+  const { categories: storeCategories, loading: categoriesLoading, createCategory, updateCategoryOrder, refetch: refetchCategories } = useStoreCategories(effectiveStoreId);
+  const [categoryOrderDialogOpen, setCategoryOrderDialogOpen] = useState(false);
   // ================ END SUPABASE DATA HOOKS ================
   
   const [activeSection, setActiveSection] = useState<ActiveSection>(() => {
@@ -803,7 +805,7 @@ export default function AdminPanel({
   }, [supabaseProducts]);
   
   // Categories from Supabase - use storeCategories directly
-  const categories = storeCategories.map(c => ({ id: c.id, name: c.name }));
+  const categories = storeCategories.map(c => ({ id: c.id, name: c.name, sort_order: c.sort_order }));
   const [newCategoryName, setNewCategoryName] = useState("");
   
   // Add new category handler - creates in backend
@@ -4732,17 +4734,19 @@ export default function AdminPanel({
                                 <ResizableTableCell columnId="categories">
                                   <InlineMultiSelectCell
                                     values={effectiveCategories || []}
-                                    options={categories.map(c => ({ value: c.id, label: c.name }))}
+                                    options={categories.map(c => ({ value: c.id, label: c.name, sort_order: c.sort_order }))}
                                     onSave={(selectedIds) => {
                                       if (currentCatalog) {
                                         updateCatalogProductPricing(currentCatalog.id, product.id, { categories: selectedIds });
                                       }
                                     }}
                                     onAddOption={handleAddCategory}
+                                    onReorder={() => setCategoryOrderDialogOpen(true)}
                                     placeholder="Категории..."
                                     addNewPlaceholder="Новая категория..."
                                     addNewButtonLabel="Создать категорию"
                                     allowAddNew={true}
+                                    showReorderButton={true}
                                   />
                                 </ResizableTableCell>
                                 {/* Единица измерения - редактируемая, сохраняется в ассортимент */}
@@ -5301,6 +5305,20 @@ export default function AdminPanel({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Category Order Dialog */}
+      <CategoryOrderDialog
+        open={categoryOrderDialogOpen}
+        onOpenChange={setCategoryOrderDialogOpen}
+        categories={storeCategories}
+        onSave={async (orderedIds) => {
+          await updateCategoryOrder(orderedIds);
+          toast({
+            title: "Порядок сохранён",
+            description: "Порядок отображения категорий обновлён",
+          });
+        }}
+      />
     </div>
   );
 }

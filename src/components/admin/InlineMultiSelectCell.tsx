@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Check, X, Plus, ChevronDown, Tag, ExternalLink } from "lucide-react";
+import { Check, X, Plus, ChevronDown, Tag, ExternalLink, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import {
 interface SelectOption {
   value: string;
   label: string;
+  sort_order?: number | null;
 }
 
 interface InlineMultiSelectCellProps {
@@ -21,6 +22,7 @@ interface InlineMultiSelectCellProps {
   onSave: (newValues: string[]) => void;
   onAddOption?: (newOption: string) => void | string | null | Promise<string | null | void>;
   onNavigate?: (optionValue: string) => void;
+  onReorder?: () => void;
   allowAddNew?: boolean;
   addNewPlaceholder?: string;
   addNewButtonLabel?: string;
@@ -30,6 +32,7 @@ interface InlineMultiSelectCellProps {
   showOnboardingHint?: boolean;
   onboardingHintText?: string;
   showNavigateOnboardingHint?: boolean;
+  showReorderButton?: boolean;
 }
 
 export function InlineMultiSelectCell({
@@ -38,6 +41,7 @@ export function InlineMultiSelectCell({
   onSave,
   onAddOption,
   onNavigate,
+  onReorder,
   allowAddNew = true,
   addNewPlaceholder = "Новая группа...",
   addNewButtonLabel = "Добавить группу",
@@ -47,6 +51,7 @@ export function InlineMultiSelectCell({
   showOnboardingHint = false,
   onboardingHintText,
   showNavigateOnboardingHint = false,
+  showReorderButton = false,
 }: InlineMultiSelectCellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -196,46 +201,60 @@ export function InlineMultiSelectCell({
           )}
         </div>
         
-        {allowAddNew && !!onAddOption && (
-          <div className="border-t mt-2 pt-2">
-            {isAddingNew ? (
-              <div className="flex items-center gap-1">
-                <Input
-                  ref={inputRef}
-                  value={newOptionValue}
-                  onChange={(e) => setNewOptionValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="h-7 text-xs"
-                  placeholder={addNewPlaceholder}
-                />
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6 text-green-600 flex-shrink-0" 
-                  onClick={handleAddNew}
-                >
-                  <Check className="h-3 w-3" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6 text-destructive flex-shrink-0" 
-                  onClick={handleCancelAdd}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-            ) : (
+        {(allowAddNew && !!onAddOption) || (showReorderButton && onReorder && options.length > 1) ? (
+          <div className="border-t mt-2 pt-2 flex flex-col gap-1">
+            {showReorderButton && onReorder && options.length > 1 && (
               <button
-                onClick={() => setIsAddingNew(true)}
-                className="flex items-center gap-1 w-full px-2 py-1.5 text-xs text-primary hover:bg-muted rounded"
+                onClick={() => {
+                  setIsOpen(false);
+                  onReorder();
+                }}
+                className="flex items-center gap-1 w-full px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded"
               >
-                <Plus className="h-3 w-3" />
-                {addNewButtonLabel}
+                <ArrowUpDown className="h-3 w-3" />
+                Порядок отображения
               </button>
             )}
+            {allowAddNew && !!onAddOption && (
+              isAddingNew ? (
+                <div className="flex items-center gap-1">
+                  <Input
+                    ref={inputRef}
+                    value={newOptionValue}
+                    onChange={(e) => setNewOptionValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="h-7 text-xs"
+                    placeholder={addNewPlaceholder}
+                  />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 text-green-600 flex-shrink-0" 
+                    onClick={handleAddNew}
+                  >
+                    <Check className="h-3 w-3" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 text-destructive flex-shrink-0" 
+                    onClick={handleCancelAdd}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setIsAddingNew(true)}
+                  className="flex items-center gap-1 w-full px-2 py-1.5 text-xs text-primary hover:bg-muted rounded"
+                >
+                  <Plus className="h-3 w-3" />
+                  {addNewButtonLabel}
+                </button>
+              )
+            )}
           </div>
-        )}
+        ) : null}
       </PopoverContent>
     </Popover>
   );
