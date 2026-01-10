@@ -1571,7 +1571,7 @@ const CustomerDashboard = () => {
                   if (categoryProducts.length === 0) return null;
                   return (
                     <div key={category.id}>
-                      <div className="px-3 py-2 bg-muted/50 border-b border-border sticky top-[88px] z-10">
+                      <div className="px-3 py-2 bg-muted/50 border-b border-border">
                         <span className="text-sm font-medium text-foreground">{category.name}</span>
                       </div>
                       {categoryProducts.map((product) => (
@@ -1599,7 +1599,7 @@ const CustomerDashboard = () => {
                   if (uncategorizedProducts.length === 0) return null;
                   return (
                     <div>
-                      <div className="px-3 py-2 bg-muted/50 border-b border-border sticky top-[88px] z-10">
+                      <div className="px-3 py-2 bg-muted/50 border-b border-border">
                         <span className="text-sm font-medium text-muted-foreground">Без категории</span>
                       </div>
                       {uncategorizedProducts.map((product) => (
