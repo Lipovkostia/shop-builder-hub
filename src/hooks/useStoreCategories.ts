@@ -119,5 +119,34 @@ export function useStoreCategories(storeId: string | null) {
     }
   }, [storeId]);
 
-  return { categories, loading, refetch: fetchCategories, createCategory };
+  // Update sort order for categories
+  const updateCategoryOrder = useCallback(async (orderedIds: string[]) => {
+    try {
+      // Update each category with its new sort_order
+      const updates = orderedIds.map((id, index) => 
+        supabase
+          .from('categories')
+          .update({ sort_order: index })
+          .eq('id', id)
+      );
+      
+      await Promise.all(updates);
+      
+      // Update local state to reflect new order
+      setCategories(prev => {
+        const categoryMap = new Map(prev.map(c => [c.id, c]));
+        return orderedIds
+          .map((id, index) => {
+            const cat = categoryMap.get(id);
+            return cat ? { ...cat, sort_order: index } : null;
+          })
+          .filter((c): c is StoreCategory => c !== null);
+      });
+    } catch (error) {
+      console.error('Error updating category order:', error);
+      throw error;
+    }
+  }, []);
+
+  return { categories, loading, refetch: fetchCategories, createCategory, updateCategoryOrder };
 }
