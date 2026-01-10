@@ -1965,7 +1965,7 @@ const CustomerDashboard = () => {
                     return (
                       <div 
                         key={`${item.productId}-${item.variantIndex}-${index}`} 
-                        className={`grid ${showCartImages ? 'grid-cols-[20px_32px_1fr_auto_auto_auto]' : 'grid-cols-[20px_1fr_auto_auto_auto]'} gap-2 py-2 items-center ${isUnavailable ? 'opacity-60' : ''}`}
+                        className={`grid ${showCartImages ? 'grid-cols-[20px_32px_1fr_auto_auto_auto]' : 'grid-cols-[20px_1fr_auto_auto_auto]'} gap-1.5 py-2 items-center ${isUnavailable ? 'opacity-60' : ''}`}
                       >
                         {/* Кнопка удаления слева */}
                         <button 
@@ -2049,14 +2049,14 @@ const CustomerDashboard = () => {
                         </div>
                         
                         {/* Сумма */}
-                        <div className="text-right w-14">
+                        <div className="text-right w-12">
                           {!isUnavailable && (
                             <span className="text-[11px] font-bold text-primary tabular-nums">{formatPriceSpaced(item.price * item.quantity)}</span>
                           )}
                         </div>
                         
                         {/* Общий объём позиции */}
-                        <div className="text-right w-12">
+                        <div className="text-right w-10">
                           {!isUnavailable && (
                             <span className="text-[10px] text-muted-foreground tabular-nums">{itemTotalVolumeDisplay}</span>
                           )}
