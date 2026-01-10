@@ -1113,6 +1113,11 @@ const CustomerDashboard = () => {
   };
 
   const handleAddToCart = (productId: string, variantIndex: number, price: number) => {
+    // Краткая вибрация на мобильных устройствах
+    if (navigator.vibrate) {
+      navigator.vibrate(30);
+    }
+    
     setCart((prev) => {
       const existingIndex = prev.findIndex(
         (item) => item.productId === productId && item.variantIndex === variantIndex
