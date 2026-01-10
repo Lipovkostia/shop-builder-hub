@@ -262,16 +262,24 @@ function ProductCard({
 
         {/* Контент справа */}
         <div className={`flex-1 min-w-0 flex ${showImages ? 'flex-col justify-center gap-0' : 'flex-row items-center gap-2'}`}>
-          {/* Название */}
-          <button 
-            onClick={onNameClick}
-            className={`relative overflow-hidden text-left ${showImages ? '' : 'flex-1 min-w-0'} ${product.description ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
-          >
-            <h3 className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px]'} ${isDescriptionExpanded ? 'text-primary' : ''}`}>
-              {product.name}
-            </h3>
-            {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent pointer-events-none" />}
-          </button>
+          {/* Название с индикатором статуса */}
+          <div className="flex items-center gap-1">
+            {/* Индикатор статуса перед названием */}
+            {catalogStatus === "pre_order" && (
+              <span className="flex items-center gap-1 text-[9px] text-blue-600 font-medium flex-shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              </span>
+            )}
+            <button 
+              onClick={onNameClick}
+              className={`relative overflow-hidden text-left flex-1 min-w-0 ${product.description ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+            >
+              <h3 className={`font-medium text-foreground leading-tight whitespace-nowrap ${showImages ? 'text-xs pr-6' : 'text-[11px]'} ${isDescriptionExpanded ? 'text-primary' : ''}`}>
+                {product.name}
+              </h3>
+              {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent pointer-events-none" />}
+            </button>
+          </div>
           
           {/* Описание (раскрывается при клике на название) */}
           <Collapsible open={isDescriptionExpanded}>
@@ -297,13 +305,6 @@ function ProductCard({
           <div className={`flex items-center gap-0.5 flex-wrap ${showImages ? 'mt-0.5' : ''}`}>
             {canOrder ? (
               <>
-                {/* Статус "под заказ" если применимо */}
-                {catalogStatus === "pre_order" && (
-                  <span className="flex items-center gap-1 text-[9px] text-blue-600 font-medium mr-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                    Под заказ:
-                  </span>
-                )}
                 {/* Кнопки вариантов в порядке: порция, 1/4, 1/2, целая */}
                 {hasPortionPrice && portionPrice && (() => {
                   const qty = getCartQuantity(3);
