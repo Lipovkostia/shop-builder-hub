@@ -70,7 +70,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Tag
+  LayoutGrid
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -469,7 +469,7 @@ function CustomerHeader({
               className={`p-1.5 transition-colors rounded-full ${selectedCategory ? 'bg-primary/20 text-primary' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}
               title="Категории"
             >
-              <Tag className="w-4 h-4" />
+              <LayoutGrid className="w-4 h-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="center" className="min-w-[160px] bg-popover z-50">
               <DropdownMenuItem
