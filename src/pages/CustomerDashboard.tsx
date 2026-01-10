@@ -1523,13 +1523,19 @@ const CustomerDashboard = () => {
                   const portionVolumeDisplay = `${portionVolumeFormatted} ${unitLabel}`;
 
                   // Цена за 1 единицу порции из соответствующего столбика прайса
+                  // Приоритет: каталоговые цены (catalog_portion_prices) → цены товара → базовая цена
                   const getPortionUnitPrice = (prod: CatalogProduct | undefined, vIdx: number): number => {
                     if (!prod) return item.price;
+                    const catalogPrices = prod.catalog_portion_prices;
                     switch (vIdx) {
-                      case 0: return prod.price; // Целая → Цена
-                      case 1: return prod.price_half ?? prod.price; // 1/2 → price_half
-                      case 2: return prod.price_quarter ?? prod.price; // 1/4 → price_quarter
-                      case 3: return prod.price_portion ?? prod.price; // Порция → price_portion
+                      case 0: // Целая → full или price
+                        return catalogPrices?.full ?? prod.price_full ?? prod.price;
+                      case 1: // 1/2 → half или price_half
+                        return catalogPrices?.half ?? prod.price_half ?? prod.price;
+                      case 2: // 1/4 → quarter или price_quarter
+                        return catalogPrices?.quarter ?? prod.price_quarter ?? prod.price;
+                      case 3: // Порция → portion или price_portion
+                        return catalogPrices?.portion ?? prod.price_portion ?? prod.price;
                       default: return prod.price;
                     }
                   };
