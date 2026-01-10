@@ -1787,8 +1787,8 @@ const CustomerDashboard = () => {
                   if (categoryProducts.length === 0) return null;
                   return (
                     <div key={category.id}>
-                      <div className="px-3 py-1 bg-muted/50 border-b border-border">
-                        <span className="text-xs font-medium text-foreground">{category.name}</span>
+                      <div className="px-3 py-0 bg-muted/50 border-b border-border">
+                        <span className="text-xs font-medium text-foreground leading-tight">{category.name}</span>
                       </div>
                       {categoryProducts.map((product) => (
                         <ProductCard 
