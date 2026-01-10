@@ -75,11 +75,11 @@ export function PhoneInput({
         value={selectedCountry.iso}
         onValueChange={handleCountryChange}
       >
-        <SelectTrigger className="w-[120px] shrink-0">
+        <SelectTrigger className="w-[100px] sm:w-[120px] shrink-0">
           <SelectValue>
-            <span className="flex items-center gap-1.5">
-              <span className="text-base">{selectedCountry.flag}</span>
-              <span className="text-sm">{selectedCountry.code}</span>
+            <span className="flex items-center gap-1 overflow-hidden">
+              <span className="text-base shrink-0">{selectedCountry.flag}</span>
+              <span className="text-sm shrink-0">{selectedCountry.code}</span>
             </span>
           </SelectValue>
         </SelectTrigger>
