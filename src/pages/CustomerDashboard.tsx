@@ -424,7 +424,7 @@ function ProductCard({
           <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
             {product.description && (
               <div className="px-3 py-2 bg-muted/30 border-b border-border">
-                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                <p className="text-[10px] text-muted-foreground leading-relaxed whitespace-normal break-words">
                   {product.description}
                 </p>
               </div>
