@@ -76,6 +76,29 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+// Функция для воспроизведения звука успеха
+function playSuccessSound() {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 880; // Нота A5
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.3);
+  } catch (e) {
+    // Игнорируем ошибки если Audio API недоступен
+  }
+}
+
 // Форматирование цены с пробелом
 function formatPriceSpaced(price: number): string {
   return Math.round(price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
@@ -1252,11 +1275,20 @@ const CustomerDashboard = () => {
       setCheckoutAddress("");
       setCheckoutComment("");
       
-      // Показываем зелёную галочку на 800мс
+      // Показываем зелёную галочку на 1 секунду
       setOrderSuccess(true);
+      
+      // Воспроизводим звук успеха
+      playSuccessSound();
+      
+      // Вибрация на мобильных устройствах
+      if (navigator.vibrate) {
+        navigator.vibrate(100);
+      }
+      
       setTimeout(() => {
         setOrderSuccess(false);
-      }, 800);
+      }, 1000);
     }
   };
 
@@ -2215,15 +2247,20 @@ const CustomerDashboard = () => {
       {/* Success Overlay - большая зелёная галочка */}
       {orderSuccess && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none">
-          <div className="flex flex-col items-center gap-2 animate-in zoom-in-50 fade-in duration-200">
+          <div className="flex flex-col items-center gap-3 animate-in zoom-in-50 fade-in duration-200">
             <div className="w-24 h-24 rounded-full bg-green-500/80 flex items-center justify-center shadow-2xl">
               <svg className="w-14 h-14 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <span className="text-lg font-semibold text-green-600 dark:text-green-400 bg-background/80 px-3 py-1 rounded-full">
-              Успешно
-            </span>
+            <div className="text-center bg-background/90 px-4 py-2 rounded-xl shadow-lg">
+              <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                Успешно!
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Заказ отправлен в {currentCatalog?.store_name || "магазин"}
+              </p>
+            </div>
           </div>
         </div>
       )}
