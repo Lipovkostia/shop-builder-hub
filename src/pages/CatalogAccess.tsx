@@ -91,8 +91,8 @@ const CatalogAccess = () => {
 
     const handleAuthState = async () => {
       if (!user || !session) {
-        // User not logged in - redirect to customer auth
-        navigate(`/customer-auth?catalog=${accessCode}&store=${catalogInfo.store_id}`);
+        // User not logged in - redirect to main page with customer tab and catalog info
+        navigate(`/?tab=customer&catalog=${accessCode}&store=${catalogInfo.store_id}`);
         return;
       }
 
@@ -104,7 +104,7 @@ const CatalogAccess = () => {
         .single();
 
       if (!profile) {
-        navigate(`/customer-auth?catalog=${accessCode}&store=${catalogInfo.store_id}`);
+        navigate(`/?tab=customer&catalog=${accessCode}&store=${catalogInfo.store_id}`);
         return;
       }
 

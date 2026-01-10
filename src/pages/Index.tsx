@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,8 +12,16 @@ import { PhoneInput } from "@/components/ui/phone-input";
 
 const Index = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   
+  // Check if coming from catalog link
+  const tabFromUrl = searchParams.get("tab");
+  const catalogFromUrl = searchParams.get("catalog");
+  const storeFromUrl = searchParams.get("store");
+  
+  // Active tab state
+  const [activeTab, setActiveTab] = useState(tabFromUrl === "customer" ? "customer" : "register");
   // Registration form state
   const [regStoreName, setRegStoreName] = useState("");
   const [regPhone, setRegPhone] = useState("");
@@ -35,8 +43,14 @@ const Index = () => {
   const [customerPassword, setCustomerPassword] = useState("");
   const [customerFullName, setCustomerFullName] = useState("");
   const [customerLoading, setCustomerLoading] = useState(false);
-  const [isCustomerLogin, setIsCustomerLogin] = useState(true);
+  const [isCustomerLogin, setIsCustomerLogin] = useState(tabFromUrl !== "customer"); // Start in register mode if coming from catalog link
 
+  // Switch to registration mode when coming from catalog link
+  useEffect(() => {
+    if (tabFromUrl === "customer" && catalogFromUrl) {
+      setIsCustomerLogin(false); // Show registration form
+    }
+  }, [tabFromUrl, catalogFromUrl]);
   // Format phone to email for Supabase auth
   const phoneToEmail = (phone: string) => {
     const cleanPhone = phone.replace(/\D/g, "");
@@ -237,7 +251,12 @@ const Index = () => {
         if (error) throw error;
 
         toast({ title: "Вход выполнен" });
-        navigate('/customer-dashboard');
+        // If coming from catalog link, redirect to catalog access page
+        if (catalogFromUrl) {
+          navigate(`/catalog/${catalogFromUrl}`);
+        } else {
+          navigate('/customer-dashboard');
+        }
       } else {
         // Registration
         const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -273,7 +292,12 @@ const Index = () => {
             }
             
             toast({ title: "Вход выполнен", description: "Вы уже были зарегистрированы" });
-            navigate('/customer-dashboard');
+            // If coming from catalog link, redirect to catalog access page
+            if (catalogFromUrl) {
+              navigate(`/catalog/${catalogFromUrl}`);
+            } else {
+              navigate('/customer-dashboard');
+            }
             setCustomerLoading(false);
             return;
           }
@@ -301,7 +325,12 @@ const Index = () => {
           title: "Регистрация успешна!", 
           description: "Теперь вы можете войти в личный кабинет" 
         });
-        navigate('/customer-dashboard');
+        // If coming from catalog link, redirect to catalog access page to grant access
+        if (catalogFromUrl) {
+          navigate(`/catalog/${catalogFromUrl}`);
+        } else {
+          navigate('/customer-dashboard');
+        }
       }
     } catch (error: any) {
       console.error('Customer auth error:', error);
@@ -327,7 +356,7 @@ const Index = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="register" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="register" className="text-xs sm:text-sm">
               <Store className="h-4 w-4 mr-1 hidden sm:inline" />
