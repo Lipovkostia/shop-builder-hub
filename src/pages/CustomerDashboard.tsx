@@ -284,7 +284,7 @@ function ProductCard({
               {formatPrice(basePrice)}/{product.unit}
               {showImages && hasVariantPrices && unitWeight > 0 && (
                 <span className="ml-1">
-                  · {unitWeight}{product.unit === 'шт' ? 'шт' : 'кг'} ~{formatPrice(fullPrice)}
+                  · {unitWeight}{product.unit === 'шт' ? 'шт' : 'кг'} ~{formatPrice(fullPrice)}{product.packaging_type ? `/${product.packaging_type}` : ''}
                 </span>
               )}
             </p>
