@@ -462,8 +462,8 @@ function CustomerHeader({
           )}
         </button>
 
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-          {/* Фильтр по категориям */}
+        {/* Фильтр по категориям - по центру */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
           <DropdownMenu>
             <DropdownMenuTrigger 
               className={`p-1.5 transition-colors rounded-full ${selectedCategory ? 'bg-primary/20 text-primary' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}
@@ -471,7 +471,7 @@ function CustomerHeader({
             >
               <Tag className="w-4 h-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[160px] bg-popover z-50">
+            <DropdownMenuContent align="center" className="min-w-[160px] bg-popover z-50">
               <DropdownMenuItem
                 onClick={() => onSelectCategory(null)}
                 className="cursor-pointer"
@@ -502,6 +502,9 @@ function CustomerHeader({
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
+
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
           <button
             onClick={onOpenOrders}
             className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
