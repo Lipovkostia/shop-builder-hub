@@ -69,7 +69,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  Tag
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -462,6 +463,45 @@ function CustomerHeader({
         </button>
 
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          {/* Фильтр по категориям */}
+          <DropdownMenu>
+            <DropdownMenuTrigger 
+              className={`p-1.5 transition-colors rounded-full ${selectedCategory ? 'bg-primary/20 text-primary' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}
+              title="Категории"
+            >
+              <Tag className="w-4 h-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[160px] bg-popover z-50">
+              <DropdownMenuItem
+                onClick={() => onSelectCategory(null)}
+                className="cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  {!selectedCategory && <Check className="w-4 h-4 text-primary" />}
+                  <span className={!selectedCategory ? "font-semibold" : ""}>Все категории</span>
+                </div>
+              </DropdownMenuItem>
+              {categories.map((category) => (
+                <DropdownMenuItem
+                  key={category}
+                  onClick={() => onSelectCategory(category)}
+                  className="cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    {selectedCategory === category && <Check className="w-4 h-4 text-primary" />}
+                    <span className={selectedCategory === category ? "font-semibold" : ""}>
+                      {category}
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+              {categories.length === 0 && (
+                <DropdownMenuItem disabled>
+                  <span className="text-muted-foreground">Нет категорий</span>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <button
             onClick={onOpenOrders}
             className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
@@ -510,42 +550,6 @@ function CustomerHeader({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Фильтр по категориям */}
-          <DropdownMenu>
-            <DropdownMenuTrigger className={`p-2 rounded transition-colors ${selectedCategory ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
-              <Filter className="w-4 h-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-[160px] bg-popover z-50">
-              <DropdownMenuItem
-                onClick={() => onSelectCategory(null)}
-                className="cursor-pointer"
-              >
-                <div className="flex items-center gap-2">
-                  {!selectedCategory && <Check className="w-4 h-4 text-primary" />}
-                  <span className={!selectedCategory ? "font-semibold" : ""}>Все категории</span>
-                </div>
-              </DropdownMenuItem>
-              {categories.map((category) => (
-                <DropdownMenuItem
-                  key={category}
-                  onClick={() => onSelectCategory(category)}
-                  className="cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    {selectedCategory === category && <Check className="w-4 h-4 text-primary" />}
-                    <span className={selectedCategory === category ? "font-semibold" : ""}>
-                      {category}
-                    </span>
-                  </div>
-                </DropdownMenuItem>
-              ))}
-              {categories.length === 0 && (
-                <DropdownMenuItem disabled>
-                  <span className="text-muted-foreground">Нет категорий</span>
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
 
           {/* Переключатель изображений */}
           <button 
