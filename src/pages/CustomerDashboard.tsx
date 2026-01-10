@@ -959,11 +959,51 @@ const CustomerDashboard = () => {
 
     const items = cart.map(item => {
       const product = getProductById(item.productId);
+      const unitLabel = getUnitLabel(product?.unit);
+      const unitWeight = product?.unit_weight || 1;
+      const portionWeightValue = product?.portion_weight || 0.1;
+      
+      // Рассчитываем объём порции в зависимости от variantIndex
+      const getPortionVolume = (vIdx: number, uWeight: number, pWeight: number, isKg: boolean): number => {
+        switch (vIdx) {
+          case 0: return uWeight;
+          case 1: return uWeight / 2;
+          case 2: return uWeight / 4;
+          case 3: return isKg ? pWeight : 1;
+          default: return uWeight;
+        }
+      };
+      const isKgUnit = unitLabel === 'кг';
+      const portionVolume = getPortionVolume(item.variantIndex, unitWeight, portionWeightValue, isKgUnit);
+      
+      // Общий объём/количество для позиции
+      const totalVolume = portionVolume * item.quantity;
+      
+      // Получаем правильную цену за единицу (за порцию) из каталога
+      const getPortionUnitPrice = (prod: CatalogProduct | undefined, vIdx: number): number => {
+        if (!prod) return item.price;
+        const catalogPrices = prod.catalog_portion_prices;
+        switch (vIdx) {
+          case 0: return catalogPrices?.full ?? prod.price_full ?? prod.price;
+          case 1: return catalogPrices?.half ?? prod.price_half ?? prod.price;
+          case 2: return catalogPrices?.quarter ?? prod.price_quarter ?? prod.price;
+          case 3: return catalogPrices?.portion ?? prod.price_portion ?? prod.price;
+          default: return prod.price;
+        }
+      };
+      const pricePerUnit = getPortionUnitPrice(product, item.variantIndex);
+      
+      // Формируем название с указанием порции
+      const variantLabel = product ? getVariantLabel(product, item.variantIndex) : '';
+      const productName = product 
+        ? product.name + (variantLabel ? ` (${variantLabel})` : '')
+        : 'Товар';
+      
       return {
         productId: item.productId,
-        productName: product ? product.name + (getVariantLabel(product, item.variantIndex) ? ` (${getVariantLabel(product, item.variantIndex)})` : '') : 'Товар',
-        quantity: item.quantity,
-        price: item.price,
+        productName,
+        quantity: totalVolume, // Сохраняем реальный объём/количество
+        price: pricePerUnit, // Цена за единицу объёма (кг или шт)
       };
     });
 
@@ -1926,14 +1966,25 @@ const CustomerDashboard = () => {
                         <div className="flex items-center gap-1.5">
                           {order.items && order.items.length > 0 && (
                             <span className="text-[9px] text-muted-foreground">
-                              {order.items.reduce((sum, i) => {
-                                const product = i.product_id ? getProductById(i.product_id) : undefined;
-                                const unitLabel = getUnitLabel(product?.unit);
-                                const unitWeight = product?.unit_weight || 1;
-
-                                const qty = unitLabel === 'шт' && unitWeight > 1 ? (i.quantity || 0) * unitWeight : (i.quantity || 0);
-                                return sum + qty;
-                              }, 0)} ед.
+                              {(() => {
+                                // Суммируем объёмы по единицам измерения
+                                const totals = order.items!.reduce((acc, i) => {
+                                  const product = i.product_id ? getProductById(i.product_id) : undefined;
+                                  const unitLabel = getUnitLabel(product?.unit);
+                                  // quantity уже хранит реальный объём
+                                  if (unitLabel === 'кг') {
+                                    acc.kg += i.quantity || 0;
+                                  } else {
+                                    acc.pcs += i.quantity || 0;
+                                  }
+                                  return acc;
+                                }, { kg: 0, pcs: 0 });
+                                
+                                const parts: string[] = [];
+                                if (totals.kg > 0) parts.push(`${Number.isInteger(totals.kg) ? totals.kg : totals.kg.toFixed(1).replace('.', ',')} кг`);
+                                if (totals.pcs > 0) parts.push(`${Math.round(totals.pcs)} шт`);
+                                return parts.join(' + ') || '0 ед.';
+                              })()}
                             </span>
                           )}
                           <span className="text-[10px] font-bold text-primary">{formatPriceSpaced(order.total)}</span>
@@ -1973,16 +2024,12 @@ const CustomerDashboard = () => {
                               const productAvailable = item.product_id ? !!product : false;
 
                               const unitLabel = getUnitLabel(product?.unit);
-                              const unitWeight = product?.unit_weight || 1;
 
-                              // Показываем "объём" (шт/кг), а не число кликов.
-                              const shownQty = unitLabel === 'шт' && unitWeight > 1
-                                ? item.quantity * unitWeight
-                                : item.quantity;
+                              // quantity уже хранит реальный объём (кг или шт)
+                              const shownQty = item.quantity;
 
-                              // Цена за 1 единицу считаем от total, чтобы не зависеть от того,
-                              // что именно лежит в item.price (за штуку или за упаковку).
-                              const shownUnitPrice = shownQty > 0 ? item.total / shownQty : item.price;
+                              // price хранит цену за единицу объёма
+                              const shownUnitPrice = item.price;
 
                               return (
                                 <div key={idx} className="flex items-center justify-between text-[10px]">
@@ -1994,7 +2041,7 @@ const CustomerDashboard = () => {
                                   </div>
                                   <span className="flex-shrink-0 ml-2 text-foreground tabular-nums">
                                     <span className="text-muted-foreground">
-                                      {formatPriceSpaced(shownUnitPrice)} ₽/{unitLabel} · {shownQty} {unitLabel}
+                                      {formatPriceSpaced(shownUnitPrice)} ₽/{unitLabel} · {Number.isInteger(shownQty) ? shownQty : shownQty.toFixed(1).replace('.', ',')} {unitLabel}
                                     </span>
                                     <span className="ml-1.5 font-medium">{formatPriceSpaced(item.total)} ₽</span>
                                   </span>
