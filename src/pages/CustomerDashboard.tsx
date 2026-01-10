@@ -299,7 +299,10 @@ function ProductCard({
               <>
                 {/* Статус "под заказ" если применимо */}
                 {catalogStatus === "pre_order" && (
-                  <span className="text-[9px] text-muted-foreground font-medium mr-1">Под заказ:</span>
+                  <span className="flex items-center gap-1 text-[9px] text-blue-600 font-medium mr-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    Под заказ:
+                  </span>
                 )}
                 {/* Кнопки вариантов в порядке: порция, 1/4, 1/2, целая */}
                 {hasPortionPrice && portionPrice && (() => {
