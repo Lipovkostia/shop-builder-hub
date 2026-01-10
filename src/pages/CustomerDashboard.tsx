@@ -1975,93 +1975,79 @@ const CustomerDashboard = () => {
                     return (
                       <div 
                         key={`${item.productId}-${item.variantIndex}-${index}`} 
-                        className={`grid ${showCartImages ? 'grid-cols-[28px_1fr_auto_auto_auto]' : 'grid-cols-[1fr_auto_auto_auto]'} gap-1 py-1.5 items-center ${isUnavailable ? 'opacity-60' : ''}`}
+                        className={`flex gap-1.5 py-1.5 items-start ${isUnavailable ? 'opacity-60' : ''}`}
                       >
-                        
                         {/* Изображение с индикатором доступности (условно) */}
                         {showCartImages && (
-                          <div className="relative w-8 h-8 rounded bg-muted flex items-center justify-center overflow-hidden">
+                          <div className="relative w-7 h-7 rounded bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
                             {product?.images?.[0] ? (
                               <img src={product.images[0]} alt={displayName} className="w-full h-full object-cover" />
                             ) : (
-                              <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                              <Package className="h-3 w-3 text-muted-foreground" />
                             )}
-                            {/* Availability indicator */}
                             {item.isAvailable !== undefined && (
-                              <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center ${
+                              <div className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full flex items-center justify-center ${
                                 item.isAvailable ? 'bg-green-500' : 'bg-destructive'
                               }`}>
                                 {item.isAvailable ? (
-                                  <CheckCircle2 className="w-2 h-2 text-white" />
+                                  <CheckCircle2 className="w-1.5 h-1.5 text-white" />
                                 ) : (
-                                  <AlertCircle className="w-2 h-2 text-white" />
+                                  <AlertCircle className="w-1.5 h-1.5 text-white" />
                                 )}
                               </div>
                             )}
                           </div>
                         )}
                         
-                        {/* Название + вариант + объём + цена за 1 + статус */}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className={`font-medium text-xs truncate leading-tight ${isUnavailable ? 'line-through' : ''}`}>
-                              {displayName}
-                            </p>
-                          </div>
+                        {/* Название + вариант - занимает всё доступное место */}
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <p className={`font-medium text-xs truncate leading-tight ${isUnavailable ? 'line-through' : ''}`}>
+                            {displayName}
+                          </p>
                           {isUnavailable && (
-                            <div className="flex items-center gap-1 flex-wrap">
-                              <span className="text-[11px] text-destructive">Нет в прайсе</span>
-                            </div>
+                            <span className="text-[10px] text-destructive">Нет в прайсе</span>
                           )}
-                          {/* Порция (Целая, 1/2, 1/4, Порция) + объём */}
                           {!isUnavailable && variantLabel && (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="flex-shrink-0 px-1.5 py-0.5 text-[11px] font-medium bg-primary/10 text-primary rounded">
+                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground truncate">
+                              <span className="px-1 py-0.5 font-medium bg-primary/10 text-primary rounded flex-shrink-0">
                                 {variantLabel}
                               </span>
-                              <span className="text-[11px] text-muted-foreground">
-                                {portionVolumeDisplay}
-                              </span>
-                              <span className="text-[11px] text-muted-foreground">·</span>
-                              <span className="text-[11px] text-muted-foreground">
-                                {formatPriceSpaced(portionUnitPrice)} ₽
-                              </span>
+                              <span className="truncate">{portionVolumeDisplay} · {formatPriceSpaced(portionUnitPrice)}₽</span>
                             </div>
                           )}
                         </div>
                         
-                        {/* Кнопки +/- с количеством */}
-                        <div className="flex items-center gap-0.5">
+                        {/* Правая часть - фиксированная ширина, не переносится */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {/* Кнопки +/- с количеством */}
                           {!isUnavailable && (
-                            <>
+                            <div className="flex items-center">
                               <button 
                                 className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-muted/80 transition-colors"
                                 onClick={() => updateCartQuantity(index, -1)}
                               >
                                 <Minus className="h-2.5 w-2.5" />
                               </button>
-                              <span className="w-5 text-center text-xs font-semibold tabular-nums">{item.quantity}</span>
+                              <span className="w-4 text-center text-xs font-semibold tabular-nums">{item.quantity}</span>
                               <button 
                                 className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-muted/80 transition-colors"
                                 onClick={() => updateCartQuantity(index, 1)}
                               >
                                 <Plus className="h-2.5 w-2.5" />
                               </button>
-                            </>
+                            </div>
                           )}
-                        </div>
-                        
-                        {/* Сумма */}
-                        <div className="text-right w-10">
+                          
+                          {/* Сумма + объём в одну колонку */}
                           {!isUnavailable && (
-                            <span className="text-[11px] font-bold text-primary tabular-nums">{formatPriceSpaced(item.price * item.quantity)}</span>
-                          )}
-                        </div>
-                        
-                        {/* Общий объём позиции */}
-                        <div className="text-right w-8">
-                          {!isUnavailable && (
-                            <span className="text-[11px] text-muted-foreground tabular-nums">{itemTotalVolumeDisplay}</span>
+                            <div className="text-right min-w-[52px]">
+                              <div className="text-[11px] font-bold text-primary tabular-nums whitespace-nowrap">
+                                {formatPriceSpaced(item.price * item.quantity)}₽
+                              </div>
+                              <div className="text-[9px] text-muted-foreground tabular-nums whitespace-nowrap">
+                                {itemTotalVolumeDisplay}
+                              </div>
+                            </div>
                           )}
                         </div>
                       </div>
