@@ -1484,17 +1484,19 @@ const CustomerDashboard = () => {
                   const unitWeight = product?.unit_weight || 1;
 
                   // Рассчитываем объём порции в зависимости от variantIndex
-                  // 0: Целая = unit_weight, 1: 1/2 = unit_weight/2, 2: 1/4 = unit_weight/4, 3: Порция = 1
-                  const getPortionVolume = (vIdx: number, uWeight: number): number => {
+                  // 0: Целая = unit_weight, 1: 1/2 = unit_weight/2, 2: 1/4 = unit_weight/4, 3: Порция = portion_weight (для кг) или 1 (для шт)
+                  const portionWeightValue = product?.portion_weight || 0.1;
+                  const getPortionVolume = (vIdx: number, uWeight: number, pWeight: number, isKg: boolean): number => {
                     switch (vIdx) {
                       case 0: return uWeight;
                       case 1: return uWeight / 2;
                       case 2: return uWeight / 4;
-                      case 3: return 1;
+                      case 3: return isKg ? pWeight : 1; // Для кг используем portion_weight, для шт — 1
                       default: return uWeight;
                     }
                   };
-                  const portionVolume = getPortionVolume(item.variantIndex, unitWeight);
+                  const isKgUnit = product?.unit === 'kg';
+                  const portionVolume = getPortionVolume(item.variantIndex, unitWeight, portionWeightValue, isKgUnit);
                   // Форматируем: если целое число — без десятичных, иначе с одним знаком
                   const portionVolumeFormatted = Number.isInteger(portionVolume) 
                     ? portionVolume.toString() 
