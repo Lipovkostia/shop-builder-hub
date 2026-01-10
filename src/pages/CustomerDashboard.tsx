@@ -432,7 +432,10 @@ function CustomerHeader({
   selectedCategory,
   onSelectCategory,
   searchQuery,
-  onSearchChange
+  onSearchChange,
+  availableStatuses,
+  selectedStatus,
+  onSelectStatus
 }: { 
   cart: LocalCartItem[];
   catalogs: CustomerCatalog[];
@@ -448,6 +451,9 @@ function CustomerHeader({
   onSelectCategory: (categoryId: string | null) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  availableStatuses: { value: string; label: string }[];
+  selectedStatus: string | null;
+  onSelectStatus: (status: string | null) => void;
 }) {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -621,6 +627,51 @@ function CustomerHeader({
             )}
           </div>
         </div>
+
+        {/* Правая часть - иконка фильтра по статусам */}
+        <div 
+          className={`flex items-center transition-all duration-300 ease-in-out ${
+            isSearchFocused ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'
+          }`}
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger 
+              className={`p-2 rounded transition-colors ${selectedStatus ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+            >
+              <Filter className="w-4 h-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[160px] bg-popover z-50">
+              <DropdownMenuItem
+                onClick={() => onSelectStatus(null)}
+                className="cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  {!selectedStatus && <Check className="w-4 h-4 text-primary" />}
+                  <span className={!selectedStatus ? "font-semibold" : ""}>Все статусы</span>
+                </div>
+              </DropdownMenuItem>
+              {availableStatuses.map((status) => (
+                <DropdownMenuItem
+                  key={status.value}
+                  onClick={() => onSelectStatus(status.value)}
+                  className="cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    {selectedStatus === status.value && <Check className="w-4 h-4 text-primary" />}
+                    <span className={selectedStatus === status.value ? "font-semibold" : ""}>
+                      {status.label}
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+              {availableStatuses.length === 0 && (
+                <DropdownMenuItem disabled>
+                  <span className="text-muted-foreground">Нет статусов</span>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       
       {/* Название магазина и прайс-листа - под блоком с иконками */}
@@ -678,6 +729,7 @@ const CustomerDashboard = () => {
   const [fullscreenImages, setFullscreenImages] = useState<{ images: string[]; index: number } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   
   // Extract unique category IDs from products and map to names
   const availableCategories = useMemo(() => {
@@ -696,6 +748,27 @@ const CustomerDashboard = () => {
       .filter((c): c is { id: string; name: string } => c !== null)
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [products, storeCategories]);
+  
+  // Extract unique statuses from products
+  const availableStatuses = useMemo(() => {
+    const statusLabels: Record<string, string> = {
+      'in_stock': 'В наличии',
+      'out_of_stock': 'Нет в наличии',
+      'pre_order': 'Под заказ',
+      'coming_soon': 'Ожидается',
+    };
+    
+    const statuses = [...new Set(
+      products
+        .map(p => p.catalog_status)
+        .filter((s): s is string => !!s)
+    )];
+    
+    return statuses.map(s => ({
+      value: s,
+      label: statusLabels[s] || s
+    }));
+  }, [products]);
   
   // Profile data
   const [profileData, setProfileData] = useState<{ full_name: string | null; phone: string | null } | null>(null);
@@ -1588,6 +1661,9 @@ const CustomerDashboard = () => {
         onSelectCategory={setSelectedCategory}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        availableStatuses={availableStatuses}
+        selectedStatus={selectedStatus}
+        onSelectStatus={setSelectedStatus}
       />
       
       <main className="flex-1 overflow-auto">
@@ -1596,64 +1672,46 @@ const CustomerDashboard = () => {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : products.length > 0 ? (
-          <>
-            {/* Search results mode */}
-            {searchQuery ? (
-              <>
-                {(() => {
-                  const searchLower = searchQuery.toLowerCase();
-                  const filteredProducts = products.filter(p => 
-                    p.name.toLowerCase().includes(searchLower) ||
-                    (p.description && p.description.toLowerCase().includes(searchLower))
-                  );
-                  
-                  if (filteredProducts.length === 0) {
-                    return (
-                      <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <Search className="w-10 h-10 text-muted-foreground mb-3" />
-                        <p className="text-muted-foreground">Ничего не найдено по запросу "{searchQuery}"</p>
-                      </div>
-                    );
-                  }
-                  
-                  return (
-                    <>
-                      <div className="px-3 py-2 bg-muted/50 border-b border-border">
-                        <span className="text-sm text-muted-foreground">
-                          Найдено: {filteredProducts.length} {filteredProducts.length === 1 ? 'товар' : filteredProducts.length < 5 ? 'товара' : 'товаров'}
-                        </span>
-                      </div>
-                      {filteredProducts.map((product) => (
-                        <ProductCard 
-                          key={product.id} 
-                          product={product} 
-                          cart={cart}
-                          onAddToCart={handleAddToCart}
-                          showImages={showImages}
-                          isExpanded={expandedProductId === product.id}
-                          onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
-                          onOpenFullscreen={(imageIndex) => product.images && setFullscreenImages({ images: product.images, index: imageIndex })}
-                          isDescriptionExpanded={expandedDescriptionId === product.id}
-                          onNameClick={() => product.description && setExpandedDescriptionId(expandedDescriptionId === product.id ? null : product.id)}
-                        />
-                      ))}
-                    </>
-                  );
-                })()}
-              </>
-            ) : selectedCategory ? (
-              // Single category selected - show header and filtered products
-              <>
-                <div className="px-3 py-2 bg-muted/50 border-b border-border">
-                  <span className="text-sm font-medium text-foreground">
-                    {availableCategories.find(c => c.id === selectedCategory)?.name || 'Категория'}
-                  </span>
+          (() => {
+            // Filter products by status first
+            const statusFilteredProducts = selectedStatus 
+              ? products.filter(p => p.catalog_status === selectedStatus)
+              : products;
+            
+            if (statusFilteredProducts.length === 0) {
+              return (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Filter className="w-10 h-10 text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">Нет товаров с выбранным статусом</p>
                 </div>
-                {products
-                  .filter((product) => 
-                    product.catalog_categories && product.catalog_categories.includes(selectedCategory)
-                  )
-                  .map((product) => (
+              );
+            }
+            
+            // Search mode
+            if (searchQuery) {
+              const searchLower = searchQuery.toLowerCase();
+              const filteredProducts = statusFilteredProducts.filter(p => 
+                p.name.toLowerCase().includes(searchLower) ||
+                (p.description && p.description.toLowerCase().includes(searchLower))
+              );
+              
+              if (filteredProducts.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Search className="w-10 h-10 text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">Ничего не найдено по запросу "{searchQuery}"</p>
+                  </div>
+                );
+              }
+              
+              return (
+                <>
+                  <div className="px-3 py-2 bg-muted/50 border-b border-border">
+                    <span className="text-sm text-muted-foreground">
+                      Найдено: {filteredProducts.length} {filteredProducts.length === 1 ? 'товар' : filteredProducts.length < 5 ? 'товара' : 'товаров'}
+                    </span>
+                  </div>
+                  {filteredProducts.map((product) => (
                     <ProductCard 
                       key={product.id} 
                       product={product} 
@@ -1667,12 +1725,46 @@ const CustomerDashboard = () => {
                       onNameClick={() => product.description && setExpandedDescriptionId(expandedDescriptionId === product.id ? null : product.id)}
                     />
                   ))}
-              </>
-            ) : (
-              // All categories - group products by category
+                </>
+              );
+            }
+            
+            // Single category selected
+            if (selectedCategory) {
+              const categoryProducts = statusFilteredProducts.filter(
+                (product) => product.catalog_categories && product.catalog_categories.includes(selectedCategory)
+              );
+              
+              return (
+                <>
+                  <div className="px-3 py-2 bg-muted/50 border-b border-border">
+                    <span className="text-sm font-medium text-foreground">
+                      {availableCategories.find(c => c.id === selectedCategory)?.name || 'Категория'}
+                    </span>
+                  </div>
+                  {categoryProducts.map((product) => (
+                    <ProductCard 
+                      key={product.id} 
+                      product={product} 
+                      cart={cart}
+                      onAddToCart={handleAddToCart}
+                      showImages={showImages}
+                      isExpanded={expandedProductId === product.id}
+                      onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
+                      onOpenFullscreen={(imageIndex) => product.images && setFullscreenImages({ images: product.images, index: imageIndex })}
+                      isDescriptionExpanded={expandedDescriptionId === product.id}
+                      onNameClick={() => product.description && setExpandedDescriptionId(expandedDescriptionId === product.id ? null : product.id)}
+                    />
+                  ))}
+                </>
+              );
+            }
+            
+            // All categories - group products by category
+            return (
               <>
                 {availableCategories.map((category) => {
-                  const categoryProducts = products.filter(
+                  const categoryProducts = statusFilteredProducts.filter(
                     (p) => p.catalog_categories && p.catalog_categories.includes(category.id)
                   );
                   if (categoryProducts.length === 0) return null;
@@ -1700,7 +1792,7 @@ const CustomerDashboard = () => {
                 })}
                 {/* Products without category */}
                 {(() => {
-                  const uncategorizedProducts = products.filter(
+                  const uncategorizedProducts = statusFilteredProducts.filter(
                     (p) => !p.catalog_categories || p.catalog_categories.length === 0
                   );
                   if (uncategorizedProducts.length === 0) return null;
@@ -1727,8 +1819,8 @@ const CustomerDashboard = () => {
                   );
                 })()}
               </>
-            )}
-          </>
+            );
+          })()
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
             <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
