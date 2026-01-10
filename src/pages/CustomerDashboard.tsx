@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useCustomerCatalogs, CartItem, CatalogProduct, CustomerCatalog } from "@/hooks/useCustomerCatalogs";
@@ -71,7 +71,8 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  LayoutGrid
+  LayoutGrid,
+  Search
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -429,7 +430,9 @@ function CustomerHeader({
   onOpenOrders,
   categories,
   selectedCategory,
-  onSelectCategory
+  onSelectCategory,
+  searchQuery,
+  onSearchChange
 }: { 
   cart: LocalCartItem[];
   catalogs: CustomerCatalog[];
@@ -443,9 +446,13 @@ function CustomerHeader({
   categories: { id: string; name: string }[];
   selectedCategory: string | null;
   onSelectCategory: (categoryId: string | null) => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }) {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
@@ -523,9 +530,14 @@ function CustomerHeader({
         </div>
       </div>
 
-      {/* Панель управления с иконками */}
-      <div className="h-10 flex items-center justify-between px-3 border-t border-border bg-muted/30">
-        <div className="flex items-center gap-1">
+      {/* Панель управления с иконками и поиском */}
+      <div className="h-10 flex items-center px-3 border-t border-border bg-muted/30 overflow-hidden">
+        {/* Левая часть - иконки */}
+        <div 
+          className={`flex items-center gap-1 transition-all duration-300 ease-in-out ${
+            isSearchFocused ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'
+          }`}
+        >
           {/* Селектор прайс-листа */}
           <DropdownMenu>
             <DropdownMenuTrigger className="p-2 rounded hover:bg-muted transition-colors">
@@ -554,7 +566,6 @@ function CustomerHeader({
             </DropdownMenuContent>
           </DropdownMenu>
 
-
           {/* Переключатель изображений */}
           <button 
             onClick={onToggleImages}
@@ -564,8 +575,59 @@ function CustomerHeader({
           </button>
         </div>
 
-        {/* Название выбранного каталога */}
-        <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+        {/* Центральная часть - поиск */}
+        <div 
+          className={`flex items-center transition-all duration-300 ease-in-out ${
+            isSearchFocused ? 'flex-1 mx-0' : 'flex-1 mx-2'
+          }`}
+        >
+          <div 
+            className={`flex items-center gap-2 bg-background border border-border rounded-full transition-all duration-300 ease-in-out cursor-text ${
+              isSearchFocused ? 'w-full px-3 py-1.5' : 'w-8 h-8 justify-center px-0'
+            }`}
+            onClick={() => {
+              setIsSearchFocused(true);
+              setTimeout(() => searchInputRef.current?.focus(), 50);
+            }}
+          >
+            <Search className={`w-4 h-4 text-muted-foreground flex-shrink-0 transition-all duration-300 ${isSearchFocused ? '' : ''}`} />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Поиск товара..."
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => {
+                if (!searchQuery) {
+                  setIsSearchFocused(false);
+                }
+              }}
+              className={`bg-transparent outline-none text-sm transition-all duration-300 ease-in-out ${
+                isSearchFocused ? 'w-full opacity-100' : 'w-0 opacity-0'
+              }`}
+            />
+            {isSearchFocused && searchQuery && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSearchChange('');
+                  searchInputRef.current?.focus();
+                }}
+                className="p-0.5 hover:bg-muted rounded-full"
+              >
+                <X className="w-3 h-3 text-muted-foreground" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Правая часть - название каталога */}
+        <span 
+          className={`text-xs text-muted-foreground truncate transition-all duration-300 ease-in-out ${
+            isSearchFocused ? 'w-0 opacity-0 overflow-hidden' : 'max-w-[150px] opacity-100'
+          }`}
+        >
           {selectedCatalog ? `${selectedCatalog.store_name} — ${selectedCatalog.catalog_name}` : "Выберите прайс-лист"}
         </span>
       </div>
@@ -617,6 +679,7 @@ const CustomerDashboard = () => {
   const [expandedDescriptionId, setExpandedDescriptionId] = useState<string | null>(null);
   const [fullscreenImages, setFullscreenImages] = useState<{ images: string[]; index: number } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Extract unique category IDs from products and map to names
   const availableCategories = useMemo(() => {
@@ -1525,6 +1588,8 @@ const CustomerDashboard = () => {
         categories={availableCategories}
         selectedCategory={selectedCategory}
         onSelectCategory={setSelectedCategory}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
       />
       
       <main className="flex-1 overflow-auto">
@@ -1534,7 +1599,51 @@ const CustomerDashboard = () => {
           </div>
         ) : products.length > 0 ? (
           <>
-            {selectedCategory ? (
+            {/* Search results mode */}
+            {searchQuery ? (
+              <>
+                {(() => {
+                  const searchLower = searchQuery.toLowerCase();
+                  const filteredProducts = products.filter(p => 
+                    p.name.toLowerCase().includes(searchLower) ||
+                    (p.description && p.description.toLowerCase().includes(searchLower))
+                  );
+                  
+                  if (filteredProducts.length === 0) {
+                    return (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <Search className="w-10 h-10 text-muted-foreground mb-3" />
+                        <p className="text-muted-foreground">Ничего не найдено по запросу "{searchQuery}"</p>
+                      </div>
+                    );
+                  }
+                  
+                  return (
+                    <>
+                      <div className="px-3 py-2 bg-muted/50 border-b border-border">
+                        <span className="text-sm text-muted-foreground">
+                          Найдено: {filteredProducts.length} {filteredProducts.length === 1 ? 'товар' : filteredProducts.length < 5 ? 'товара' : 'товаров'}
+                        </span>
+                      </div>
+                      {filteredProducts.map((product) => (
+                        <ProductCard 
+                          key={product.id} 
+                          product={product} 
+                          cart={cart}
+                          onAddToCart={handleAddToCart}
+                          showImages={showImages}
+                          isExpanded={expandedProductId === product.id}
+                          onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
+                          onOpenFullscreen={(imageIndex) => product.images && setFullscreenImages({ images: product.images, index: imageIndex })}
+                          isDescriptionExpanded={expandedDescriptionId === product.id}
+                          onNameClick={() => product.description && setExpandedDescriptionId(expandedDescriptionId === product.id ? null : product.id)}
+                        />
+                      ))}
+                    </>
+                  );
+                })()}
+              </>
+            ) : selectedCategory ? (
               // Single category selected - show header and filtered products
               <>
                 <div className="px-3 py-2 bg-muted/50 border-b border-border">
