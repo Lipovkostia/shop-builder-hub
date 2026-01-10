@@ -2001,7 +2001,7 @@ const CustomerDashboard = () => {
                         
                         {/* Название + вариант - занимает всё доступное место */}
                         <div className="flex-1 min-w-0 overflow-hidden">
-                          <p className={`font-medium text-xs truncate leading-tight ${isUnavailable ? 'line-through' : ''}`}>
+                          <p className={`font-medium text-sm truncate leading-tight ${isUnavailable ? 'line-through' : ''}`}>
                             {displayName}
                           </p>
                           {isUnavailable && (
