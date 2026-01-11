@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock, ChevronsUpDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -694,6 +695,9 @@ export default function AdminPanel({
   
   // Onboarding step 8 visibility state
   const [onboardingStep8Visible, setOnboardingStep8Visible] = useState(false);
+
+  // Collapsed orders state - to hide/show order items
+  const [collapsedOrders, setCollapsedOrders] = useState<Set<string>>(new Set());
 
   // Expanded product images state for import section
   const [expandedProductImages, setExpandedProductImages] = useState<string | null>(null);
@@ -5031,101 +5035,132 @@ export default function AdminPanel({
               ) : (
                 <div className="space-y-4">
                   {orders.map((order) => (
-                    <div key={order.id} className="bg-card rounded-lg border border-border p-4">
-                      <div className="flex items-start justify-between gap-4 mb-3">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-semibold">{order.order_number}</span>
-                            <Badge 
-                              variant={
-                                order.status === 'delivered' ? 'default' :
-                                order.status === 'cancelled' ? 'destructive' :
-                                order.status === 'shipped' ? 'secondary' :
-                                'outline'
-                              }
-                            >
-                              {order.status === 'pending' && 'Новый'}
-                              {order.status === 'processing' && 'В обработке'}
-                              {order.status === 'shipped' && 'Отправлен'}
-                              {order.status === 'delivered' && 'Доставлен'}
-                              {order.status === 'cancelled' && 'Отменён'}
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-2">
-                            <Clock className="h-3 w-3" />
-                            {new Date(order.created_at).toLocaleString('ru-RU', { 
-                              day: 'numeric', 
-                              month: 'short', 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
-                            })}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold text-lg">{order.total.toLocaleString()} ₽</div>
-                          {order.customer_name && (
-                            <div className="text-sm text-muted-foreground">{order.customer_name}</div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Order items */}
-                      {order.items && order.items.length > 0 && (
-                        <div className="border-t border-border pt-3 mb-3">
-                          <div className="space-y-1">
-                            {order.items.map((item) => (
-                              <div key={item.id} className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                  {item.product_name} × {item.quantity}
+                    <Collapsible 
+                      key={order.id} 
+                      open={!collapsedOrders.has(order.id)}
+                      onOpenChange={(open) => {
+                        setCollapsedOrders(prev => {
+                          const next = new Set(prev);
+                          if (open) {
+                            next.delete(order.id);
+                          } else {
+                            next.add(order.id);
+                          }
+                          return next;
+                        });
+                      }}
+                      className="bg-card rounded-lg border border-border"
+                    >
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <CollapsibleTrigger asChild>
+                                <button className="flex items-center gap-2 hover:text-primary transition-colors">
+                                  <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+                                  <span className="font-semibold">{order.order_number}</span>
+                                </button>
+                              </CollapsibleTrigger>
+                              <Badge 
+                                variant={
+                                  order.status === 'delivered' ? 'default' :
+                                  order.status === 'cancelled' ? 'destructive' :
+                                  order.status === 'shipped' ? 'secondary' :
+                                  'outline'
+                                }
+                              >
+                                {order.status === 'pending' && 'Новый'}
+                                {order.status === 'processing' && 'В обработке'}
+                                {order.status === 'shipped' && 'Отправлен'}
+                                {order.status === 'delivered' && 'Доставлен'}
+                                {order.status === 'cancelled' && 'Отменён'}
+                              </Badge>
+                              {order.items && order.items.length > 0 && collapsedOrders.has(order.id) && (
+                                <span className="text-xs text-muted-foreground">
+                                  ({order.items.length} {order.items.length === 1 ? 'позиция' : order.items.length < 5 ? 'позиции' : 'позиций'})
                                 </span>
-                                <span>{item.total.toLocaleString()} ₽</span>
-                              </div>
-                            ))}
+                              )}
+                            </div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-2">
+                              <Clock className="h-3 w-3" />
+                              {new Date(order.created_at).toLocaleString('ru-RU', { 
+                                day: 'numeric', 
+                                month: 'short', 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold text-lg">{order.total.toLocaleString()} ₽</div>
+                            {order.customer_name && (
+                              <div className="text-sm text-muted-foreground">{order.customer_name}</div>
+                            )}
                           </div>
                         </div>
-                      )}
-                      
-                      {/* Shipping address */}
-                      {order.shipping_address && (
-                        <div className="border-t border-border pt-3 mb-3 text-sm text-muted-foreground">
-                          <p><span className="font-medium text-foreground">Адрес:</span> {order.shipping_address.address}</p>
-                          {order.shipping_address.phone && (
-                            <p><span className="font-medium text-foreground">Телефон:</span> {order.shipping_address.phone}</p>
-                          )}
-                          {order.shipping_address.comment && (
-                            <p><span className="font-medium text-foreground">Комментарий:</span> {order.shipping_address.comment}</p>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* Status change buttons */}
-                      <div className="flex flex-wrap gap-2">
-                        {order.status === 'pending' && (
-                          <>
-                            <Button size="sm" onClick={() => updateOrderStatus(order.id, 'processing')}>
-                              <Check className="h-3 w-3 mr-1" />
-                              Принять
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={() => updateOrderStatus(order.id, 'cancelled')}>
-                              <X className="h-3 w-3 mr-1" />
-                              Отменить
-                            </Button>
-                          </>
-                        )}
-                        {order.status === 'processing' && (
-                          <Button size="sm" onClick={() => updateOrderStatus(order.id, 'shipped')}>
-                            <Package className="h-3 w-3 mr-1" />
-                            Отправить
-                          </Button>
-                        )}
-                        {order.status === 'shipped' && (
-                          <Button size="sm" onClick={() => updateOrderStatus(order.id, 'delivered')}>
-                            <Check className="h-3 w-3 mr-1" />
-                            Доставлен
-                          </Button>
-                        )}
                       </div>
-                    </div>
+                      
+                      <CollapsibleContent>
+                        <div className="px-4 pb-4">
+                          {/* Order items */}
+                          {order.items && order.items.length > 0 && (
+                            <div className="border-t border-border pt-3 mb-3">
+                              <div className="space-y-1">
+                                {order.items.map((item) => (
+                                  <div key={item.id} className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">
+                                      {item.product_name} × {item.quantity}
+                                    </span>
+                                    <span>{item.total.toLocaleString()} ₽</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Shipping address */}
+                          {order.shipping_address && (
+                            <div className="border-t border-border pt-3 mb-3 text-sm text-muted-foreground">
+                              <p><span className="font-medium text-foreground">Адрес:</span> {order.shipping_address.address}</p>
+                              {order.shipping_address.phone && (
+                                <p><span className="font-medium text-foreground">Телефон:</span> {order.shipping_address.phone}</p>
+                              )}
+                              {order.shipping_address.comment && (
+                                <p><span className="font-medium text-foreground">Комментарий:</span> {order.shipping_address.comment}</p>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* Status change buttons */}
+                          <div className="flex flex-wrap gap-2">
+                            {order.status === 'pending' && (
+                              <>
+                                <Button size="sm" onClick={() => updateOrderStatus(order.id, 'processing')}>
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Принять
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => updateOrderStatus(order.id, 'cancelled')}>
+                                  <X className="h-3 w-3 mr-1" />
+                                  Отменить
+                                </Button>
+                              </>
+                            )}
+                            {order.status === 'processing' && (
+                              <Button size="sm" onClick={() => updateOrderStatus(order.id, 'shipped')}>
+                                <Package className="h-3 w-3 mr-1" />
+                                Отправить
+                              </Button>
+                            )}
+                            {order.status === 'shipped' && (
+                              <Button size="sm" onClick={() => updateOrderStatus(order.id, 'delivered')}>
+                                <Check className="h-3 w-3 mr-1" />
+                                Доставлен
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   ))}
                 </div>
               )}
