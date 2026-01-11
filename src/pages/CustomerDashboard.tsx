@@ -73,9 +73,11 @@ import {
   X,
   LayoutGrid,
   Search,
-  Copy
+  Copy,
+  MessageCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { openWhatsAppWithOrder, WhatsAppOrderData } from "@/lib/whatsappUtils";
 
 // Функция для воспроизведения звука успеха
 function playSuccessSound() {
@@ -2485,6 +2487,41 @@ const CustomerDashboard = () => {
                             </div>
                             {/* Order action buttons */}
                             <div className="flex items-center gap-1.5">
+                              {/* WhatsApp button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const shippingAddr = order.shipping_address as { address?: string } | null;
+                                  const whatsAppData: WhatsAppOrderData = {
+                                    orderNumber: order.order_number,
+                                    createdAt: order.created_at,
+                                    items: order.items?.map(item => {
+                                      const product = item.product_id ? getProductById(item.product_id) : undefined;
+                                      return {
+                                        product_name: item.product_name,
+                                        quantity: item.quantity,
+                                        price: item.price,
+                                        total: item.total,
+                                        unit: product?.unit || 'шт'
+                                      };
+                                    }) || [],
+                                    total: order.total,
+                                    shippingAddress: shippingAddr?.address,
+                                    storeName: currentCatalog?.store_name
+                                  };
+                                  // Use customer's phone from profile
+                                  const phone = profileData?.phone || checkoutPhone || '';
+                                  if (!phone) {
+                                    toast({ title: "Укажите телефон", description: "Добавьте номер телефона в профиле", variant: "destructive" });
+                                    return;
+                                  }
+                                  openWhatsAppWithOrder(phone, whatsAppData);
+                                }}
+                                className="flex items-center gap-1 px-2 py-0.5 text-[9px] font-medium bg-green-500/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 rounded-full transition-colors"
+                              >
+                                <MessageCircle className="w-2.5 h-2.5" />
+                                WhatsApp
+                              </button>
                               {/* Copy order button */}
                               <button
                                 onClick={(e) => {
