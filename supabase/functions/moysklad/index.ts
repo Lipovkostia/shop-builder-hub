@@ -304,9 +304,10 @@ serve(async (req) => {
       console.log('Creating customer order in MoySklad:', order.name);
 
       // Build positions array
+      // IMPORTANT: `pos.price` is expected to be in kopecks already.
       const positions = order.positions?.map((pos: any) => ({
         quantity: pos.quantity,
-        price: pos.price * 100, // Convert to kopecks for MoySklad
+        price: pos.price,
         assortment: {
           meta: {
             href: `${MOYSKLAD_API_URL}/entity/product/${pos.moysklad_id}`,

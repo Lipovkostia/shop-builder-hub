@@ -4,6 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
 
+const MOYSKLAD_API_URL = "https://api.moysklad.ru/api/remap/1.2";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -81,7 +83,7 @@ function formatOrderText(order: any, items: any[], customerName: string | null):
 
   text += `─────────────────────\n`;
   text += `📊 ИТОГО: ${items.length} поз.\n`;
-  text += `💰 СУММА: ${Number(order.total).toLocaleString("ru-RU")} ₽\n`;
+  text += `💰 СУММA: ${Number(order.total).toLocaleString("ru-RU")} ₽\n`;
 
   // Shipping address if present
   const shippingAddress = order.shipping_address;
@@ -95,6 +97,175 @@ function formatOrderText(order: any, items: any[], customerName: string | null):
   }
 
   return text;
+}
+
+function buildMoyskladOrderComment(order: any): string {
+  const shippingAddress = order.shipping_address;
+  if (!shippingAddress || typeof shippingAddress !== "object") return "";
+
+  let comment = "";
+  if (shippingAddress.name) comment += `Клиент: ${shippingAddress.name}\n`;
+  if (shippingAddress.phone) comment += `Телефон: ${shippingAddress.phone}\n`;
+  if (shippingAddress.address) comment += `Адрес: ${shippingAddress.address}\n`;
+  if (shippingAddress.comment) comment += `Комментарий: ${shippingAddress.comment}`;
+  return comment.trim();
+}
+
+async function trySyncOrderToMoysklad(supabase: any, order: any, items: any[]) {
+  // Avoid duplicate sync
+  if (order.moysklad_order_id) {
+    console.log("MoySklad sync: already synced, skipping", order.order_number);
+    return;
+  }
+
+  console.log("MoySklad sync: start", {
+    orderId: order.id,
+    orderNumber: order.order_number,
+    storeId: order.store_id,
+    itemsCount: items?.length || 0,
+  });
+
+  const { data: syncSettings, error: syncError } = await supabase
+    .from("store_sync_settings")
+    .select("sync_orders_enabled, moysklad_organization_id, moysklad_counterparty_id")
+    .eq("store_id", order.store_id)
+    .maybeSingle();
+
+  if (syncError) {
+    console.error("Failed to fetch store_sync_settings:", syncError);
+    return;
+  }
+
+  if (
+    !syncSettings?.sync_orders_enabled ||
+    !syncSettings?.moysklad_organization_id ||
+    !syncSettings?.moysklad_counterparty_id
+  ) {
+    console.log("MoySklad sync: disabled or not configured", syncSettings);
+    return;
+  }
+
+  const { data: moyskladAccount, error: accountError } = await supabase
+    .from("moysklad_accounts")
+    .select("login, password")
+    .eq("store_id", order.store_id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (accountError) {
+    console.error("Failed to fetch moysklad_accounts:", accountError);
+    return;
+  }
+
+  if (!moyskladAccount?.login || !moyskladAccount?.password) {
+    console.log("MoySklad sync: missing login/password in moysklad_accounts");
+    return;
+  }
+
+  // Load MoySklad IDs for items
+  const productIds = Array.from(new Set((items || []).map((i) => i.product_id).filter(Boolean)));
+
+  if (productIds.length === 0) {
+    console.log("MoySklad sync: no product_id in order_items");
+    return;
+  }
+
+  const { data: products, error: productsError } = await supabase
+    .from("products")
+    .select("id, moysklad_id")
+    .in("id", productIds);
+
+  if (productsError) {
+    console.error("Failed to fetch products for MoySklad sync:", productsError);
+    return;
+  }
+
+  const moyskladIdByProductId = new Map<string, string>();
+  (products || []).forEach((p: any) => {
+    if (p?.id && p?.moysklad_id) moyskladIdByProductId.set(p.id, p.moysklad_id);
+  });
+
+  const positions = (items || [])
+    .map((item: any) => {
+      const msId = item.product_id ? moyskladIdByProductId.get(item.product_id) : null;
+      if (!msId) return null;
+
+      // In DB item.price is in rubles; MoySklad expects integer kopecks
+      const priceKopecks = Math.round(Number(item.price) * 100);
+
+      return {
+        quantity: Number(item.quantity),
+        price: priceKopecks,
+        assortment: {
+          meta: {
+            href: `${MOYSKLAD_API_URL}/entity/product/${msId}`,
+            type: "product",
+            mediaType: "application/json",
+          },
+        },
+      };
+    })
+    .filter(Boolean);
+
+  if (positions.length === 0) {
+    console.log(
+      `MoySklad sync skipped: none of the ${items.length} items have moysklad_id`
+    );
+    return;
+  }
+
+  const credentials = btoa(`${moyskladAccount.login}:${moyskladAccount.password}`);
+  const authHeader = `Basic ${credentials}`;
+
+  const payload: any = {
+    name: order.order_number,
+    organization: {
+      meta: {
+        href: `${MOYSKLAD_API_URL}/entity/organization/${syncSettings.moysklad_organization_id}`,
+        type: "organization",
+        mediaType: "application/json",
+      },
+    },
+    agent: {
+      meta: {
+        href: `${MOYSKLAD_API_URL}/entity/counterparty/${syncSettings.moysklad_counterparty_id}`,
+        type: "counterparty",
+        mediaType: "application/json",
+      },
+    },
+    positions,
+  };
+
+  const comment = buildMoyskladOrderComment(order);
+  if (comment) payload.description = comment;
+
+  console.log(`Creating customerorder in MoySklad for order ${order.order_number}...`);
+
+  const response = await fetch(`${MOYSKLAD_API_URL}/entity/customerorder`, {
+    method: "POST",
+    headers: {
+      Authorization: authHeader,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("MoySklad create order API error:", response.status, errorText);
+    return;
+  }
+
+  const created = await response.json();
+  if (created?.id) {
+    await supabase
+      .from("orders")
+      .update({ moysklad_order_id: created.id })
+      .eq("id", order.id);
+
+    console.log("Order synced to MoySklad:", created.id);
+  }
 }
 
 serve(async (req) => {
@@ -137,6 +308,13 @@ serve(async (req) => {
 
     if (itemsError) {
       throw new Error(`Failed to fetch order items: ${itemsError.message}`);
+    }
+
+    // Try sync to MoySklad (should not affect notifications)
+    try {
+      await trySyncOrderToMoysklad(supabase, order, items || []);
+    } catch (syncErr) {
+      console.error("Failed to sync order to MoySklad:", syncErr);
     }
 
     // Fetch notification settings for the store
@@ -224,10 +402,10 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        emailId, 
-        telegramSent 
+      JSON.stringify({
+        success: true,
+        emailId,
+        telegramSent,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
