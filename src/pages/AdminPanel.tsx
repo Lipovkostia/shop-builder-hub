@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock, ChevronsUpDown } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock, ChevronsUpDown, Send, MessageCircle, Mail } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -778,6 +778,15 @@ export default function AdminPanel({
 
   // Collapsed orders state - to hide/show order items
   const [collapsedOrders, setCollapsedOrders] = useState<Set<string>>(new Set());
+  
+  // Order notifications settings panel state
+  const [showOrderNotificationsPanel, setShowOrderNotificationsPanel] = useState(false);
+  const [selectedNotificationChannel, setSelectedNotificationChannel] = useState<'telegram' | 'whatsapp' | 'email' | null>(null);
+  const [notificationContacts, setNotificationContacts] = useState({
+    telegram: '',
+    whatsapp: '',
+    email: '',
+  });
 
   // Expanded product images state for import section
   const [expandedProductImages, setExpandedProductImages] = useState<string | null>(null);
@@ -5094,10 +5103,111 @@ export default function AdminPanel({
           {effectiveStoreId && activeSection === "orders" && (
             <>
               <div className="mb-4">
-                <h2 className="text-xl font-semibold text-foreground">Заказы</h2>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <h2 className="text-xl font-semibold text-foreground">Заказы</h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowOrderNotificationsPanel(!showOrderNotificationsPanel)}
+                    className={`gap-1.5 ${showOrderNotificationsPanel ? 'bg-primary/10 border-primary' : ''}`}
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Отправлять заказы</span>
+                  </Button>
+                </div>
                 <p className="text-sm text-muted-foreground">
                   Управляйте заказами от ваших покупателей
                 </p>
+                
+                {/* Notifications settings panel */}
+                {showOrderNotificationsPanel && (
+                  <div className="mt-3 p-4 bg-muted/30 rounded-lg border border-border animate-in slide-in-from-top-2 duration-200">
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      {/* Messenger icons */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground mr-2">Канал:</span>
+                        <button
+                          onClick={() => setSelectedNotificationChannel(selectedNotificationChannel === 'telegram' ? null : 'telegram')}
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
+                            selectedNotificationChannel === 'telegram' 
+                              ? 'bg-[#0088cc] text-white shadow-md' 
+                              : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                          }`}
+                          title="Telegram"
+                        >
+                          <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+                            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setSelectedNotificationChannel(selectedNotificationChannel === 'whatsapp' ? null : 'whatsapp')}
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
+                            selectedNotificationChannel === 'whatsapp' 
+                              ? 'bg-[#25D366] text-white shadow-md' 
+                              : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                          }`}
+                          title="WhatsApp"
+                        >
+                          <MessageCircle className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => setSelectedNotificationChannel(selectedNotificationChannel === 'email' ? null : 'email')}
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
+                            selectedNotificationChannel === 'email' 
+                              ? 'bg-primary text-primary-foreground shadow-md' 
+                              : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                          }`}
+                          title="Email"
+                        >
+                          <Mail className="w-5 h-5" />
+                        </button>
+                      </div>
+                      
+                      {/* Contact input based on selected channel */}
+                      <div className="flex-1">
+                        {selectedNotificationChannel === 'telegram' && (
+                          <div className="space-y-1">
+                            <Label className="text-xs">Telegram (username или chat_id)</Label>
+                            <Input
+                              placeholder="@username или ID чата"
+                              value={notificationContacts.telegram}
+                              onChange={(e) => setNotificationContacts(prev => ({ ...prev, telegram: e.target.value }))}
+                              className="h-9"
+                            />
+                          </div>
+                        )}
+                        {selectedNotificationChannel === 'whatsapp' && (
+                          <div className="space-y-1">
+                            <Label className="text-xs">WhatsApp (номер телефона)</Label>
+                            <Input
+                              placeholder="+7 999 123-45-67"
+                              value={notificationContacts.whatsapp}
+                              onChange={(e) => setNotificationContacts(prev => ({ ...prev, whatsapp: e.target.value }))}
+                              className="h-9"
+                            />
+                          </div>
+                        )}
+                        {selectedNotificationChannel === 'email' && (
+                          <div className="space-y-1">
+                            <Label className="text-xs">Email адрес</Label>
+                            <Input
+                              type="email"
+                              placeholder="example@mail.ru"
+                              value={notificationContacts.email}
+                              onChange={(e) => setNotificationContacts(prev => ({ ...prev, email: e.target.value }))}
+                              className="h-9"
+                            />
+                          </div>
+                        )}
+                        {!selectedNotificationChannel && (
+                          <p className="text-xs text-muted-foreground py-2">
+                            Выберите канал для получения уведомлений о новых заказах
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {ordersLoading ? (
