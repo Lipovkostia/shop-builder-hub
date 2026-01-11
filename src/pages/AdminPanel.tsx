@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut, FileSpreadsheet, Sheet, Upload } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SpotlightOverlay } from "@/components/onboarding/SpotlightOverlay";
 import { useOnboardingSpotlight } from "@/components/onboarding/useOnboardingSpotlight";
@@ -105,6 +105,7 @@ import { CategoryOrderDialog } from "@/components/admin/CategoryOrderDialog";
 import { useStoreNotificationSettings } from "@/hooks/useStoreNotificationSettings";
 import { useMoyskladOrders } from "@/hooks/useMoyskladOrders";
 import { Textarea } from "@/components/ui/textarea";
+import { ImportSourceCard } from "@/components/admin/ImportSourceCard";
 
 // Removed localStorage keys - now using Supabase
 
@@ -290,6 +291,7 @@ const formatVariants = (product: Product) => {
 
 type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "help";
 type ImportView = "accounts" | "catalog";
+type ImportSource = "select" | "moysklad" | "excel" | "google-sheets";
 type CatalogView = "list" | "detail";
 
 const CATALOGS_KEY = "admin_catalogs";
@@ -683,6 +685,7 @@ export default function AdminPanel({
   }, []);
   
   const [importView, setImportView] = useState<ImportView>("accounts");
+  const [importSource, setImportSource] = useState<ImportSource>("select");
   
   // MoySklad import state
   const [isLoading, setIsLoading] = useState(false);
@@ -3746,7 +3749,119 @@ export default function AdminPanel({
 
           {effectiveStoreId && activeSection === "import" && (
             <>
-              {importView === "accounts" && (
+              {/* Source selection screen */}
+              {importSource === "select" && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-semibold text-foreground">Импорт товаров</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Выберите источник для импорта товаров
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <ImportSourceCard
+                      icon={<Package className="h-7 w-7 text-primary" />}
+                      title="МойСклад"
+                      description="Синхронизация товаров с учётной системой"
+                      onClick={() => setImportSource("moysklad")}
+                    />
+                    
+                    <ImportSourceCard
+                      icon={<FileSpreadsheet className="h-7 w-7 text-green-600" />}
+                      title="Импорт из Excel"
+                      description="Загрузка товаров из .xlsx файла"
+                      onClick={() => setImportSource("excel")}
+                      badge="Новое"
+                    />
+                    
+                    <ImportSourceCard
+                      icon={<Sheet className="h-7 w-7 text-blue-600" />}
+                      title="Google Таблицы"
+                      description="Импорт из таблиц Google Sheets"
+                      onClick={() => setImportSource("google-sheets")}
+                      badge="Скоро"
+                      disabled={true}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Excel import screen */}
+              {importSource === "excel" && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="sm" onClick={() => setImportSource("select")}>
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Назад
+                    </Button>
+                    <div>
+                      <h2 className="text-xl font-semibold text-foreground">Импорт из Excel</h2>
+                      <p className="text-sm text-muted-foreground">Загрузите .xlsx файл с товарами</p>
+                    </div>
+                  </div>
+                  
+                  <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors">
+                    <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-foreground font-medium mb-2">Перетащите файл сюда</p>
+                    <p className="text-sm text-muted-foreground mb-4">или нажмите для выбора</p>
+                    <Input 
+                      type="file" 
+                      accept=".xlsx,.xls" 
+                      className="max-w-[200px] mx-auto cursor-pointer" 
+                    />
+                  </div>
+                  
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <h4 className="font-medium mb-2">Формат файла</h4>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Таблица должна содержать колонки: Название, Цена, Единица измерения, Описание (опционально)
+                    </p>
+                    <Button variant="link" className="p-0 h-auto text-sm">
+                      Скачать шаблон
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Google Sheets import screen */}
+              {importSource === "google-sheets" && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="sm" onClick={() => setImportSource("select")}>
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Назад
+                    </Button>
+                    <div>
+                      <h2 className="text-xl font-semibold text-foreground">Google Таблицы</h2>
+                      <p className="text-sm text-muted-foreground">Подключите Google Sheet для импорта</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4 max-w-md">
+                    <div className="space-y-2">
+                      <Label>Ссылка на таблицу</Label>
+                      <Input placeholder="https://docs.google.com/spreadsheets/d/..." />
+                    </div>
+                    <Button>
+                      <Link2 className="h-4 w-4 mr-2" />
+                      Подключить таблицу
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* MoySklad import - existing logic */}
+              {importSource === "moysklad" && (
+                <>
+                  <div className="mb-4">
+                    <Button variant="ghost" size="sm" onClick={() => setImportSource("select")} className="mb-2">
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Назад к источникам
+                    </Button>
+                  </div>
+                  
+                  {importView === "accounts" && (
                 <>
                   <div className="mb-4">
                     <h2 className="text-xl font-semibold text-foreground">Импорт из МойСклад</h2>
@@ -4299,6 +4414,8 @@ export default function AdminPanel({
                       </div>
                     </>
                   )}
+                </>
+              )}
                 </>
               )}
             </>
