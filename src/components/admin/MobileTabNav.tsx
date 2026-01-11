@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
-import { Package, Download, FolderOpen, Users, Eye, ShoppingCart, HelpCircle } from "lucide-react";
+import { Package, Download, FolderOpen, Users, Eye, ShoppingCart, HelpCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "orders" | "clients" | "help";
+type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "help";
 
 interface NavItem {
   id: ActiveSection;
@@ -17,6 +17,7 @@ const navItems: NavItem[] = [
   { id: "import", label: "Импорт", icon: Download },
   { id: "clients", label: "Клиенты", icon: Users },
   { id: "visibility", label: "Видимость", icon: Eye },
+  { id: "profile", label: "Профиль", icon: User },
   { id: "help", label: "Помощь", icon: HelpCircle },
 ];
 
