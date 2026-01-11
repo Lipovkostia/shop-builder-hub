@@ -1203,12 +1203,6 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                   )}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="min-w-[200px] bg-popover z-50">
-                  <DropdownMenuItem 
-                    onClick={() => setSelectedCatalog(null)}
-                    className="cursor-pointer"
-                  >
-                    <span className={!selectedCatalog ? "font-semibold" : ""}>Все товары</span>
-                  </DropdownMenuItem>
                   {catalogs.map((catalog, index) => (
                     <DropdownMenuItem
                       key={catalog.id}
