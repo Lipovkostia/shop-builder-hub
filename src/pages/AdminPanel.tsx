@@ -3,6 +3,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { SpotlightOverlay } from "@/components/onboarding/SpotlightOverlay";
+import { useOnboardingSpotlight } from "@/components/onboarding/useOnboardingSpotlight";
+import { adminPanelSpotlightSteps } from "@/components/onboarding/onboardingSteps";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -807,6 +810,25 @@ export default function AdminPanel({
 
   // Collapsed orders state - to hide/show order items
   const [collapsedOrders, setCollapsedOrders] = useState<Set<string>>(new Set());
+  
+  // Spotlight onboarding for guided tour
+  // Активируем когда есть товары но нет прайс-листов (шаг 2 старого онбординга)
+  const spotlightCondition = supabaseProducts.length > 0 && supabaseCatalogs.length === 0 && !productsLoading && !catalogsLoading;
+  const {
+    currentStep: spotlightStep,
+    isSpotlightActive,
+    nextStep: nextSpotlightStep,
+    skipSpotlight,
+    closeSpotlight,
+    startSpotlightFromStep
+  } = useOnboardingSpotlight({
+    storageKey: 'admin_panel_spotlight_v2_completed',
+    steps: adminPanelSpotlightSteps,
+    isOnboardingActive: spotlightCondition,
+    onComplete: () => {
+      console.log('Spotlight onboarding completed');
+    }
+  });
   
   // Order notifications settings panel state
   const [showOrderNotificationsPanel, setShowOrderNotificationsPanel] = useState(false);
@@ -3077,7 +3099,7 @@ export default function AdminPanel({
                       МС: {importedProducts.length}
                     </Badge>
                   )}
-                  <div className="relative">
+                  <div className="relative" data-onboarding="add-product-button">
                     <Button
                       variant="outline"
                       size="icon"
@@ -3311,7 +3333,7 @@ export default function AdminPanel({
                         <ResizableTableHead columnId="groups" minWidth={100}>Группа</ResizableTableHead>
                       )}
                       {visibleColumns.catalogs && (
-                        <ResizableTableHead columnId="catalogs" minWidth={120}>Прайс-листы</ResizableTableHead>
+                        <ResizableTableHead columnId="catalogs" minWidth={120} data-onboarding="catalog-column-header">Прайс-листы</ResizableTableHead>
                       )}
                       {visibleColumns.sync && (
                         <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
@@ -6474,6 +6496,16 @@ export default function AdminPanel({
             description: "Порядок отображения категорий обновлён",
           });
         }}
+      />
+
+      {/* Spotlight Onboarding Overlay */}
+      <SpotlightOverlay
+        steps={adminPanelSpotlightSteps}
+        currentStep={spotlightStep}
+        onStepComplete={nextSpotlightStep}
+        onSkip={skipSpotlight}
+        onClose={closeSpotlight}
+        isActive={isSpotlightActive}
       />
     </div>
   );
