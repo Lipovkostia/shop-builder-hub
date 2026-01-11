@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut, FileSpreadsheet, Sheet, Upload, Globe } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut, FileSpreadsheet, Sheet, Upload } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SpotlightOverlay } from "@/components/onboarding/SpotlightOverlay";
 import { useOnboardingSpotlight } from "@/components/onboarding/useOnboardingSpotlight";
@@ -108,7 +108,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ImportSourceCard } from "@/components/admin/ImportSourceCard";
 import { downloadExcelTemplate, importProductsFromExcel, ImportProgress } from "@/lib/excelImport";
 import { ExcelImportSection } from "@/components/admin/ExcelImportSection";
-import { MoyskladPublicImportSection } from "@/components/admin/MoyskladPublicImportSection";
 
 // Removed localStorage keys - now using Supabase
 
@@ -294,7 +293,7 @@ const formatVariants = (product: Product) => {
 
 type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "help";
 type ImportView = "accounts" | "catalog";
-type ImportSource = "select" | "moysklad" | "excel" | "google-sheets" | "moysklad-public";
+type ImportSource = "select" | "moysklad" | "excel" | "google-sheets";
 type CatalogView = "list" | "detail";
 
 const CATALOGS_KEY = "admin_catalogs";
@@ -3780,14 +3779,6 @@ export default function AdminPanel({
                     />
                     
                     <ImportSourceCard
-                      icon={<Globe className="h-7 w-7 text-orange-500" />}
-                      title="Публичный каталог МС"
-                      description="Импорт по ссылке b2b.moysklad.ru"
-                      onClick={() => setImportSource("moysklad-public")}
-                      badge="Новое"
-                    />
-                    
-                    <ImportSourceCard
                       icon={<Sheet className="h-7 w-7 text-blue-600" />}
                       title="Google Таблицы"
                       description="Импорт из таблиц Google Sheets"
@@ -3815,21 +3806,7 @@ export default function AdminPanel({
                 />
               )}
 
-              {/* MoySklad Public Catalog import */}
-              {importSource === "moysklad-public" && (
-                <MoyskladPublicImportSection
-                  storeId={effectiveStoreId || ''}
-                  onBack={() => setImportSource("select")}
-                  onComplete={() => {
-                    refetchProducts();
-                    refetchProductGroups();
-                    toast({
-                      title: "Импорт завершён",
-                      description: "Товары успешно импортированы из публичного каталога"
-                    });
-                  }}
-                />
-              )}
+              {/* Google Sheets import screen */}
               {importSource === "google-sheets" && (
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
