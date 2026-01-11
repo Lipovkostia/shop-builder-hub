@@ -815,6 +815,8 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInputValue, setSearchInputValue] = useState("");
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Debounced search - update searchQuery 400ms after user stops typing
   useEffect(() => {
@@ -1155,8 +1157,13 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
           )}
           
           {/* Панель управления с иконками */}
-          <div className="h-10 flex items-center justify-between px-3 bg-muted/30">
-            <div className="flex items-center gap-1">
+          <div className="h-10 flex items-center px-3 bg-muted/30 overflow-hidden">
+            {/* Левая часть - иконки (сворачивается при поиске) */}
+            <div 
+              className={`flex items-center gap-1 transition-all duration-300 ease-in-out ${
+                isSearchFocused ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'
+              }`}
+            >
               {/* Селектор прайс-листа */}
               <DropdownMenu onOpenChange={(open) => {
                 if (open && onboardingStep9Active && onboardingStep9SubStep === "catalog-trigger") {
@@ -1214,39 +1221,91 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
               </button>
             </div>
 
-            {/* Категории - центральная иконка */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button 
-                  className={`p-2 rounded transition-colors ${categoryFilter ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
-                  title="Категории"
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="min-w-[160px] max-h-[300px] overflow-y-auto">
-                <DropdownMenuItem
-                  onClick={() => setCategoryFilter(null)}
-                  className={`cursor-pointer ${categoryFilter === null ? 'font-semibold bg-primary/10' : ''}`}
-                >
-                  Все товары
-                </DropdownMenuItem>
-                {catalogCategories.length > 0 && (
-                  <>
-                    <DropdownMenuSeparator />
-                    {catalogCategories.map((cat) => (
-                      <DropdownMenuItem
-                        key={cat.id}
-                        onClick={() => setCategoryFilter(cat.id)}
-                        className={`cursor-pointer ${categoryFilter === cat.id ? 'font-semibold bg-primary/10' : ''}`}
-                      >
-                        {cat.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </>
+            {/* Центральная часть - анимированный поиск */}
+            <div className={`flex items-center transition-all duration-300 ease-in-out ${
+              isSearchFocused ? 'flex-1 mx-0' : 'flex-1 mx-2'
+            }`}>
+              <div 
+                className={`flex items-center gap-2 bg-background border border-border rounded-full transition-all duration-300 ease-in-out cursor-text ${
+                  isSearchFocused ? 'w-full px-3 py-1.5' : 'w-8 h-8 justify-center px-0'
+                }`}
+                onClick={() => {
+                  setIsSearchFocused(true);
+                  setTimeout(() => searchInputRef.current?.focus(), 50);
+                }}
+              >
+                <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Поиск товара..."
+                  value={searchInputValue}
+                  onChange={(e) => setSearchInputValue(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => {
+                    if (!searchInputValue) {
+                      setIsSearchFocused(false);
+                    }
+                  }}
+                  className={`bg-transparent outline-none text-sm transition-all duration-300 ease-in-out ${
+                    isSearchFocused ? 'w-full opacity-100' : 'w-0 opacity-0'
+                  }`}
+                />
+                {isSearchFocused && searchInputValue && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSearchInputValue('');
+                      setSearchQuery('');
+                      searchInputRef.current?.focus();
+                    }}
+                    className="p-0.5 hover:bg-muted rounded-full"
+                  >
+                    <X className="w-3 h-3 text-muted-foreground" />
+                  </button>
                 )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </div>
+            </div>
+
+            {/* Правая часть - категории (сворачивается при поиске) */}
+            <div 
+              className={`flex items-center transition-all duration-300 ease-in-out ${
+                isSearchFocused ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'
+              }`}
+            >
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button 
+                    className={`p-2 rounded transition-colors ${categoryFilter ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+                    title="Категории"
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-[160px] max-h-[300px] overflow-y-auto">
+                  <DropdownMenuItem
+                    onClick={() => setCategoryFilter(null)}
+                    className={`cursor-pointer ${categoryFilter === null ? 'font-semibold bg-primary/10' : ''}`}
+                  >
+                    Все товары
+                  </DropdownMenuItem>
+                  {catalogCategories.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      {catalogCategories.map((cat) => (
+                        <DropdownMenuItem
+                          key={cat.id}
+                          onClick={() => setCategoryFilter(cat.id)}
+                          className={`cursor-pointer ${categoryFilter === cat.id ? 'font-semibold bg-primary/10' : ''}`}
+                        >
+                          {cat.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           {/* Название магазина и прайс-листа - под блоком с иконками */}
