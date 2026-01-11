@@ -5123,63 +5123,104 @@ export default function AdminPanel({
                       </CollapsibleTrigger>
                       
                       <CollapsibleContent>
-                        <div className="px-4 pb-4">
-                          {/* Order items */}
+                        <div className="px-3 sm:px-4 pb-3 sm:pb-4">
+                          {/* Order items - styled like cart */}
                           {order.items && order.items.length > 0 && (
                             <div className="border-t border-border pt-3 mb-3">
-                              <div className="space-y-1">
+                              <div className="space-y-2.5">
                                 {order.items.map((item) => (
-                                  <div key={item.id} className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">
-                                      {item.product_name} × {item.quantity}
-                                    </span>
-                                    <span>{item.total.toLocaleString()} ₽</span>
+                                  <div key={item.id} className="flex items-center gap-3">
+                                    {/* Product icon placeholder */}
+                                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-muted/50 flex items-center justify-center flex-shrink-0">
+                                      <Package className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                                    </div>
+                                    
+                                    {/* Product info */}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-medium text-sm truncate">{item.product_name}</div>
+                                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                        <span>{item.quantity} шт</span>
+                                        <span>·</span>
+                                        <span>{item.price.toLocaleString()} ₽</span>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Total price */}
+                                    <div className="text-right flex-shrink-0">
+                                      <div className="font-bold text-sm sm:text-base text-primary tabular-nums">
+                                        {item.total.toLocaleString()} ₽
+                                      </div>
+                                      <div className="text-[10px] sm:text-xs text-muted-foreground">
+                                        {item.quantity} шт
+                                      </div>
+                                    </div>
                                   </div>
                                 ))}
+                              </div>
+                              
+                              {/* Order summary */}
+                              <div className="flex items-center justify-between mt-3 pt-3 border-t border-dashed border-border">
+                                <span className="text-sm text-muted-foreground">
+                                  Итого ({order.items.length} {order.items.length === 1 ? 'товар' : order.items.length < 5 ? 'товара' : 'товаров'})
+                                </span>
+                                <span className="font-bold text-base sm:text-lg">{order.total.toLocaleString()} ₽</span>
                               </div>
                             </div>
                           )}
                           
                           {/* Shipping address */}
                           {order.shipping_address && (
-                            <div className="border-t border-border pt-3 mb-3 text-sm text-muted-foreground">
-                              <p><span className="font-medium text-foreground">Адрес:</span> {order.shipping_address.address}</p>
+                            <div className="bg-muted/30 rounded-lg p-3 mb-3 text-sm">
+                              <div className="flex items-start gap-2 mb-1.5">
+                                <span className="text-muted-foreground">📍</span>
+                                <span className="text-foreground">{order.shipping_address.address}</span>
+                              </div>
                               {order.shipping_address.phone && (
-                                <p><span className="font-medium text-foreground">Телефон:</span> {order.shipping_address.phone}</p>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-muted-foreground">📱</span>
+                                  <a href={`tel:${order.shipping_address.phone}`} className="text-primary hover:underline">
+                                    {order.shipping_address.phone}
+                                  </a>
+                                </div>
                               )}
                               {order.shipping_address.comment && (
-                                <p><span className="font-medium text-foreground">Комментарий:</span> {order.shipping_address.comment}</p>
+                                <div className="flex items-start gap-2 text-muted-foreground">
+                                  <span>💬</span>
+                                  <span className="italic">{order.shipping_address.comment}</span>
+                                </div>
                               )}
                             </div>
                           )}
                           
                           {/* Status change buttons */}
-                          <div className="flex flex-wrap gap-2">
-                            {order.status === 'pending' && (
-                              <>
-                                <Button size="sm" onClick={() => updateOrderStatus(order.id, 'processing')}>
+                          {(order.status === 'pending' || order.status === 'processing' || order.status === 'shipped') && (
+                            <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
+                              {order.status === 'pending' && (
+                                <>
+                                  <Button size="sm" className="flex-1 sm:flex-none" onClick={() => updateOrderStatus(order.id, 'processing')}>
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Принять
+                                  </Button>
+                                  <Button size="sm" variant="destructive" className="flex-1 sm:flex-none" onClick={() => updateOrderStatus(order.id, 'cancelled')}>
+                                    <X className="h-3 w-3 mr-1" />
+                                    Отменить
+                                  </Button>
+                                </>
+                              )}
+                              {order.status === 'processing' && (
+                                <Button size="sm" className="flex-1 sm:flex-none" onClick={() => updateOrderStatus(order.id, 'shipped')}>
+                                  <Package className="h-3 w-3 mr-1" />
+                                  Отправить
+                                </Button>
+                              )}
+                              {order.status === 'shipped' && (
+                                <Button size="sm" className="flex-1 sm:flex-none" onClick={() => updateOrderStatus(order.id, 'delivered')}>
                                   <Check className="h-3 w-3 mr-1" />
-                                  Принять
+                                  Доставлен
                                 </Button>
-                                <Button size="sm" variant="destructive" onClick={() => updateOrderStatus(order.id, 'cancelled')}>
-                                  <X className="h-3 w-3 mr-1" />
-                                  Отменить
-                                </Button>
-                              </>
-                            )}
-                            {order.status === 'processing' && (
-                              <Button size="sm" onClick={() => updateOrderStatus(order.id, 'shipped')}>
-                                <Package className="h-3 w-3 mr-1" />
-                                Отправить
-                              </Button>
-                            )}
-                            {order.status === 'shipped' && (
-                              <Button size="sm" onClick={() => updateOrderStatus(order.id, 'delivered')}>
-                                <Check className="h-3 w-3 mr-1" />
-                                Доставлен
-                              </Button>
-                            )}
-                          </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </CollapsibleContent>
                     </Collapsible>
