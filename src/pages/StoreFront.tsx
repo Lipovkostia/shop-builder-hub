@@ -1075,8 +1075,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
 
   // Обработчик клика на кнопку админки — теперь переключает режим внутри страницы
   const handleAdminClick = (section?: string) => {
-    if (workspaceMode && onSwitchToAdmin) {
-      onSwitchToAdmin(section);
+    if (workspaceMode) {
+      // В workspaceMode переключение происходит через родительский компонент
+      onSwitchToAdmin?.(section);
     } else {
       setViewMode('admin');
       setAdminSection(section);
