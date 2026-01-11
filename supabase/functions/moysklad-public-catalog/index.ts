@@ -21,105 +21,112 @@ interface CatalogResponse {
   catalogName?: string;
 }
 
-// Extract catalog ID from URL like https://b2b.moysklad.ru/public/ws6WnM9cfbCt/catalog
-function extractCatalogId(url: string): string | null {
-  const match = url.match(/\/public\/([^\/]+)/);
-  return match ? match[1] : null;
+interface FirecrawlProduct {
+  name?: string;
+  article?: string;
+  code?: string;
+  price?: number | string;
+  unit?: string;
+  category?: string;
+  imageUrl?: string;
+  image?: string;
 }
 
-async function fetchCatalogPage(catalogId: string, offset: number, limit: number): Promise<any> {
-  const apiUrl = `https://b2b.moysklad.ru/api/public/${catalogId}/products?offset=${offset}&limit=${limit}`;
+interface FirecrawlExtractedData {
+  products?: FirecrawlProduct[];
+  catalogName?: string;
+}
+
+async function scrapeWithFirecrawl(catalogUrl: string, apiKey: string): Promise<CatalogResponse> {
+  console.log(`Scraping catalog with Firecrawl: ${catalogUrl}`);
   
-  const response = await fetch(apiUrl, {
+  const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+    method: 'POST',
     headers: {
-      'Accept': 'application/json',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
     },
+    body: JSON.stringify({
+      url: catalogUrl,
+      formats: ['extract'],
+      extract: {
+        schema: {
+          type: 'object',
+          properties: {
+            catalogName: { type: 'string' },
+            products: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', description: 'Product name' },
+                  article: { type: 'string', description: 'Product article/SKU code' },
+                  price: { type: 'number', description: 'Product price in rubles' },
+                  unit: { type: 'string', description: 'Unit of measurement (шт, кг, л, etc.)' },
+                  category: { type: 'string', description: 'Product category or group name' },
+                  imageUrl: { type: 'string', description: 'Product image URL' }
+                },
+                required: ['name']
+              }
+            }
+          },
+          required: ['products']
+        },
+        prompt: 'Extract all products from this B2B catalog page. For each product extract: name, article/SKU code, price (as number in rubles), unit of measurement, category/group, and image URL. The page is a product catalog from MoySklad B2B system.'
+      },
+      waitFor: 5000, // Wait for SPA to render
+      timeout: 30000,
+    }),
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch catalog: ${response.status} ${response.statusText}`);
+    const errorText = await response.text();
+    console.error('Firecrawl error response:', errorText);
+    throw new Error(`Firecrawl API error: ${response.status} ${response.statusText}`);
   }
 
-  return response.json();
-}
+  const result = await response.json();
+  console.log('Firecrawl response:', JSON.stringify(result, null, 2));
 
-async function fetchAllProducts(catalogId: string): Promise<CatalogResponse> {
-  const limit = 100;
-  let offset = 0;
-  let allProducts: PublicCatalogProduct[] = [];
-  let totalCount = 0;
-  let catalogName: string | undefined;
-
-  // First request to get total count
-  const firstPage = await fetchCatalogPage(catalogId, 0, limit);
-  totalCount = firstPage.meta?.size || firstPage.rows?.length || 0;
-  
-  // Process rows
-  const processRows = (rows: any[]) => {
-    return rows.map((item: any) => {
-      // Extract price - structure may vary
-      let price = 0;
-      if (item.salePrices && item.salePrices.length > 0) {
-        price = (item.salePrices[0].value || 0) / 100; // MoySklad stores prices in kopecks
-      } else if (item.price) {
-        price = typeof item.price === 'number' ? item.price / 100 : 0;
-      }
-
-      // Extract unit
-      let unit = 'шт';
-      if (item.uom?.name) {
-        unit = item.uom.name;
-      }
-
-      // Extract category/group
-      let category: string | undefined;
-      if (item.productFolder?.name) {
-        category = item.productFolder.name;
-      } else if (item.pathName) {
-        category = item.pathName;
-      }
-
-      // Extract thumbnail
-      let thumbnailUrl: string | undefined;
-      if (item.images && item.images.length > 0) {
-        thumbnailUrl = item.images[0].miniature?.href || item.images[0].tiny?.href || item.images[0].meta?.href;
-      } else if (item.image) {
-        thumbnailUrl = item.image.miniature?.href || item.image.tiny?.href;
-      }
-
-      return {
-        id: item.id || crypto.randomUUID(),
-        name: item.name || 'Без названия',
-        code: item.article || item.code,
-        price,
-        unit,
-        category,
-        thumbnailUrl,
-      };
-    });
-  };
-
-  if (firstPage.rows) {
-    allProducts = processRows(firstPage.rows);
+  if (!result.success) {
+    throw new Error(result.error || 'Firecrawl scraping failed');
   }
 
-  // Fetch remaining pages
-  offset = limit;
-  while (offset < totalCount) {
-    const page = await fetchCatalogPage(catalogId, offset, limit);
-    if (page.rows && page.rows.length > 0) {
-      allProducts = [...allProducts, ...processRows(page.rows)];
-    } else {
-      break;
+  // Extract data from Firecrawl response
+  const extractedData: FirecrawlExtractedData = result.data?.extract || {};
+  const rawProducts = extractedData.products || [];
+
+  console.log(`Extracted ${rawProducts.length} products from Firecrawl`);
+
+  // Transform to our format
+  const products: PublicCatalogProduct[] = rawProducts.map((item: FirecrawlProduct, index: number) => {
+    // Parse price - handle string or number
+    let price = 0;
+    if (item.price !== undefined && item.price !== null) {
+      if (typeof item.price === 'number') {
+        price = item.price;
+      } else if (typeof item.price === 'string') {
+        // Remove currency symbols and spaces, replace comma with dot
+        const cleanPrice = item.price.replace(/[^\d.,]/g, '').replace(',', '.');
+        price = parseFloat(cleanPrice) || 0;
+      }
     }
-    offset += limit;
-  }
+
+    return {
+      id: crypto.randomUUID(),
+      name: item.name || 'Без названия',
+      code: item.article || item.code,
+      price,
+      unit: item.unit || 'шт',
+      category: item.category,
+      thumbnailUrl: item.imageUrl || item.image,
+    };
+  });
 
   return {
-    products: allProducts,
-    totalCount: allProducts.length,
-    catalogName,
+    products,
+    totalCount: products.length,
+    catalogName: extractedData.catalogName,
   };
 }
 
@@ -130,6 +137,14 @@ serve(async (req) => {
   }
 
   try {
+    const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: 'FIRECRAWL_API_KEY is not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { catalogUrl } = await req.json();
 
     if (!catalogUrl) {
@@ -139,25 +154,25 @@ serve(async (req) => {
       );
     }
 
-    const catalogId = extractCatalogId(catalogUrl);
-    if (!catalogId) {
+    // Validate URL format
+    if (!catalogUrl.includes('b2b.moysklad.ru/public/')) {
       return new Response(
         JSON.stringify({ error: 'Invalid catalog URL. Expected format: https://b2b.moysklad.ru/public/XXXXX/catalog' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Fetching catalog: ${catalogId}`);
-    const result = await fetchAllProducts(catalogId);
-    console.log(`Fetched ${result.products.length} products`);
+    console.log(`Processing catalog URL: ${catalogUrl}`);
+    const result = await scrapeWithFirecrawl(catalogUrl, apiKey);
+    console.log(`Successfully extracted ${result.products.length} products`);
 
     return new Response(
       JSON.stringify(result),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: unknown) {
-    console.error('Error fetching catalog:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch catalog';
+    console.error('Error scraping catalog:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to scrape catalog';
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
