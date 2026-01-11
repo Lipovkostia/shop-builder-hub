@@ -5210,11 +5210,11 @@ export default function AdminPanel({
                                 Нажмите кнопку ниже, чтобы открыть бота в Telegram. 
                                 После нажатия «Start» вы начнете получать уведомления о новых заказах.
                               </p>
-                              <div className="flex gap-2">
+                              <div className="flex flex-col gap-2">
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="flex-1"
+                                  className="w-full"
                                   onClick={async () => {
                                     try {
                                       const response = await fetch(
@@ -5244,7 +5244,7 @@ export default function AdminPanel({
                                 <Button
                                   variant="default"
                                   size="sm"
-                                  className="flex-1 bg-[#0088cc] hover:bg-[#0077b5]"
+                                  className="w-full bg-[#0088cc] hover:bg-[#0077b5]"
                                   onClick={() => {
                                     const storeId = effectiveStoreId;
                                     if (storeId) {
