@@ -51,6 +51,11 @@ export default function SellerWorkspace() {
   // Trigger refetch in StoreFront when switching from admin
   const [triggerStorefrontRefetch, setTriggerStorefrontRefetch] = useState(false);
   
+  // Прокручиваем страницу вверх при первом входе
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+  
   // Сохраняем позицию скролла при переключении
   const storefrontScrollRef = useRef(0);
   const adminScrollRef = useRef(0);
