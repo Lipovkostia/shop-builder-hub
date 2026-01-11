@@ -9,9 +9,6 @@ export const EXCEL_TEMPLATE_HEADERS = [
   'Единица измерения',
   'Количество',
   'Тип фасовки',
-  'Наценка (%)',
-  'Наценка (₽)',
-  'Активен',
   'Фото (ссылки через ;)'
 ];
 
@@ -23,9 +20,6 @@ const EXAMPLE_ROW = [
   'кг',
   100,
   'head',
-  20,
-  '',
-  'да',
   'https://example.com/photo1.jpg; https://example.com/photo2.jpg'
 ];
 
@@ -37,9 +31,6 @@ const INSTRUCTIONS = [
   'кг/шт/л/уп/г/мл/м',
   'Опционально (число)',
   'head/package/piece/can/box/carcass',
-  'Если указано - игнорируется наценка в рублях',
-  'Используется если не указана % наценка',
-  'да/нет (по умолчанию: да)',
   'Несколько ссылок разделяйте через точку с запятой (;)'
 ];
 
@@ -68,9 +59,6 @@ export function downloadExcelTemplate(): void {
     { wch: 18 }, // Единица измерения
     { wch: 12 }, // Количество
     { wch: 15 }, // Тип фасовки
-    { wch: 12 }, // Наценка %
-    { wch: 12 }, // Наценка ₽
-    { wch: 10 }, // Активен
     { wch: 50 }, // Фото
   ];
 
@@ -139,9 +127,6 @@ export interface ExcelRow {
   'Единица измерения'?: string;
   'Количество'?: number | string;
   'Тип фасовки'?: string;
-  'Наценка (%)'?: number | string;
-  'Наценка (₽)'?: number | string;
-  'Активен'?: string;
   'Фото (ссылки через ;)'?: string;
 }
 
@@ -215,20 +200,6 @@ export async function importProductsFromExcel(
         // Parse optional fields
         const buyPrice = parseFloat(row['Закупочная цена']?.toString() || '0') || null;
         const quantity = parseFloat(row['Количество']?.toString() || '0') || 0;
-        const markupPercent = parseFloat(row['Наценка (%)']?.toString() || '0') || null;
-        const markupFixed = parseFloat(row['Наценка (₽)']?.toString() || '0') || null;
-        const isActive = row['Активен']?.toString().toLowerCase() !== 'нет';
-
-        // Determine markup type
-        let markupType: string | null = null;
-        let markupValue: number | null = null;
-        if (markupPercent && markupPercent > 0) {
-          markupType = 'percent';
-          markupValue = markupPercent;
-        } else if (markupFixed && markupFixed > 0) {
-          markupType = 'fixed';
-          markupValue = markupFixed;
-        }
 
         // Create product in database (without images first)
         const { data: product, error: insertError } = await supabase
@@ -242,9 +213,9 @@ export async function importProductsFromExcel(
             unit: mapUnit(row['Единица измерения']),
             quantity,
             packaging_type: mapPackagingType(row['Тип фасовки']),
-            markup_type: markupType,
-            markup_value: markupValue,
-            is_active: isActive,
+            markup_type: null,
+            markup_value: null,
+            is_active: true,
             slug: generateSlug(name),
             source: 'excel'
           })
