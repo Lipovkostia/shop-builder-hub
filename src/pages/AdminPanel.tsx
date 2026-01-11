@@ -106,6 +106,8 @@ import { useStoreNotificationSettings } from "@/hooks/useStoreNotificationSettin
 import { useMoyskladOrders } from "@/hooks/useMoyskladOrders";
 import { Textarea } from "@/components/ui/textarea";
 import { ImportSourceCard } from "@/components/admin/ImportSourceCard";
+import { downloadExcelTemplate, importProductsFromExcel, ImportProgress } from "@/lib/excelImport";
+import { ExcelImportSection } from "@/components/admin/ExcelImportSection";
 
 // Removed localStorage keys - now using Supabase
 
@@ -3789,39 +3791,17 @@ export default function AdminPanel({
 
               {/* Excel import screen */}
               {importSource === "excel" && (
-                <div className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="sm" onClick={() => setImportSource("select")}>
-                      <ArrowLeft className="h-4 w-4 mr-2" />
-                      Назад
-                    </Button>
-                    <div>
-                      <h2 className="text-xl font-semibold text-foreground">Импорт из Excel</h2>
-                      <p className="text-sm text-muted-foreground">Загрузите .xlsx файл с товарами</p>
-                    </div>
-                  </div>
-                  
-                  <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors">
-                    <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-foreground font-medium mb-2">Перетащите файл сюда</p>
-                    <p className="text-sm text-muted-foreground mb-4">или нажмите для выбора</p>
-                    <Input 
-                      type="file" 
-                      accept=".xlsx,.xls" 
-                      className="max-w-[200px] mx-auto cursor-pointer" 
-                    />
-                  </div>
-                  
-                  <div className="bg-muted/50 rounded-lg p-4">
-                    <h4 className="font-medium mb-2">Формат файла</h4>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Таблица должна содержать колонки: Название, Цена, Единица измерения, Описание (опционально)
-                    </p>
-                    <Button variant="link" className="p-0 h-auto text-sm">
-                      Скачать шаблон
-                    </Button>
-                  </div>
-                </div>
+                <ExcelImportSection 
+                  storeId={effectiveStoreId || ''}
+                  onBack={() => setImportSource("select")}
+                  onComplete={() => {
+                    refetchProducts();
+                    toast({
+                      title: "Импорт завершён",
+                      description: "Товары успешно импортированы"
+                    });
+                  }}
+                />
               )}
 
               {/* Google Sheets import screen */}
