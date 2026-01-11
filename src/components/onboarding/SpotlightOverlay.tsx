@@ -12,6 +12,7 @@ export interface SpotlightStep {
   action?: () => void;
   waitForSelector?: string;
   highlightPadding?: number;
+  hideActions?: boolean;
 }
 
 interface SpotlightOverlayProps {
@@ -149,6 +150,20 @@ export const SpotlightOverlay: React.FC<SpotlightOverlayProps> = ({
       window.removeEventListener('scroll', handleResize, true);
     };
   }, [isActive, step, calculatePositions]);
+
+  // Handle click on target element when hideActions is true
+  useEffect(() => {
+    if (!isActive || !step || !isVisible || !step.hideActions) return;
+
+    const target = document.querySelector(step.targetSelector) as HTMLElement;
+    if (target) {
+      const handleClick = () => {
+        onStepComplete();
+      };
+      target.addEventListener('click', handleClick);
+      return () => target.removeEventListener('click', handleClick);
+    }
+  }, [isActive, step, isVisible, onStepComplete]);
 
   if (!isActive || !step || !isVisible) return null;
 
@@ -295,25 +310,31 @@ export const SpotlightOverlay: React.FC<SpotlightOverlayProps> = ({
         </p>
 
         {/* Actions */}
-        <div className="flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onSkip}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <SkipForward className="h-4 w-4 mr-1" />
-            Пропустить
-          </Button>
-          <Button
-            size="sm"
-            onClick={onStepComplete}
-            className="bg-primary hover:bg-primary/90"
-          >
-            Понятно
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
+        {step.hideActions ? (
+          <p className="text-xs text-primary font-medium">
+            Нажмите на выделенную кнопку →
+          </p>
+        ) : (
+          <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onSkip}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <SkipForward className="h-4 w-4 mr-1" />
+              Пропустить
+            </Button>
+            <Button
+              size="sm"
+              onClick={onStepComplete}
+              className="bg-primary hover:bg-primary/90"
+            >
+              Понятно
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
