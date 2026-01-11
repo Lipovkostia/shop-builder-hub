@@ -99,6 +99,7 @@ import { useProductGroups } from "@/hooks/useProductGroups";
 import { useProductCategories } from "@/hooks/useProductCategories";
 import { useStoreCategories, StoreCategory } from "@/hooks/useStoreCategories";
 import { CategoryOrderDialog } from "@/components/admin/CategoryOrderDialog";
+import { useStoreNotificationSettings } from "@/hooks/useStoreNotificationSettings";
 
 // Removed localStorage keys - now using Supabase
 
@@ -498,6 +499,14 @@ export default function AdminPanel({
     updateOrderStatus,
     refetch: refetchOrders
   } = useStoreOrders(effectiveStoreId);
+  
+  // Notification settings from Supabase
+  const {
+    settings: notificationSettings,
+    loading: notificationSettingsLoading,
+    saving: savingNotificationSettings,
+    saveSettings: saveNotificationSettings,
+  } = useStoreNotificationSettings(effectiveStoreId);
 
   // Copy order to clipboard for messenger
   const handleCopySellerOrder = async (order: Order) => {
@@ -787,6 +796,25 @@ export default function AdminPanel({
     whatsapp: '',
     email: '',
   });
+  
+  // Load notification settings from Supabase when they become available
+  useEffect(() => {
+    if (notificationSettings) {
+      setNotificationContacts({
+        telegram: notificationSettings.notification_telegram || '',
+        whatsapp: notificationSettings.notification_whatsapp || '',
+        email: notificationSettings.notification_email || '',
+      });
+      // Auto-select channel if enabled
+      if (notificationSettings.email_enabled && notificationSettings.notification_email) {
+        setSelectedNotificationChannel('email');
+      } else if (notificationSettings.telegram_enabled && notificationSettings.notification_telegram) {
+        setSelectedNotificationChannel('telegram');
+      } else if (notificationSettings.whatsapp_enabled && notificationSettings.notification_whatsapp) {
+        setSelectedNotificationChannel('whatsapp');
+      }
+    }
+  }, [notificationSettings]);
 
   // Expanded product images state for import section
   const [expandedProductImages, setExpandedProductImages] = useState<string | null>(null);
@@ -5205,7 +5233,51 @@ export default function AdminPanel({
                           </p>
                         )}
                       </div>
+                      
+                      {/* Save button */}
+                      {selectedNotificationChannel && (
+                        <div className="flex items-end">
+                          <Button
+                            size="sm"
+                            onClick={async () => {
+                              if (selectedNotificationChannel === 'email') {
+                                await saveNotificationSettings({
+                                  notification_email: notificationContacts.email || null,
+                                  email_enabled: !!notificationContacts.email,
+                                });
+                              } else if (selectedNotificationChannel === 'telegram') {
+                                await saveNotificationSettings({
+                                  notification_telegram: notificationContacts.telegram || null,
+                                  telegram_enabled: !!notificationContacts.telegram,
+                                });
+                              } else if (selectedNotificationChannel === 'whatsapp') {
+                                await saveNotificationSettings({
+                                  notification_whatsapp: notificationContacts.whatsapp || null,
+                                  whatsapp_enabled: !!notificationContacts.whatsapp,
+                                });
+                              }
+                            }}
+                            disabled={savingNotificationSettings}
+                            className="gap-1.5"
+                          >
+                            {savingNotificationSettings ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Check className="h-3.5 w-3.5" />
+                            )}
+                            Сохранить
+                          </Button>
+                        </div>
+                      )}
                     </div>
+                    
+                    {/* Status indicator */}
+                    {notificationSettings?.email_enabled && notificationSettings?.notification_email && (
+                      <div className="mt-3 flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                        <Check className="h-3.5 w-3.5" />
+                        <span>Email уведомления активны: {notificationSettings.notification_email}</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

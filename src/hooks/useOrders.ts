@@ -364,6 +364,13 @@ export function useCustomerOrders() {
 
       if (itemsError) throw itemsError;
 
+      // Send order notification (email, etc.) - fire and forget
+      supabase.functions.invoke("send-order-notification", {
+        body: { orderId: order.id }
+      }).catch((err) => {
+        console.error("Failed to send order notification:", err);
+      });
+
       toast({
         title: "Заказ оформлен!",
         description: `Номер заказа: ${orderNumber}`,
