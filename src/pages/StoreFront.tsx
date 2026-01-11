@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store, Package, LayoutGrid, Plus } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store as StoreIcon, Package, LayoutGrid, Plus, LogIn } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -578,7 +579,7 @@ function StoreHeader({
           {store.logo_url ? (
             <img src={store.logo_url} alt={store.name} className="w-6 h-6 rounded object-cover" />
           ) : (
-            <Store className={`w-5 h-5 ${viewMode === 'storefront' ? 'text-primary' : 'text-muted-foreground'}`} />
+            <StoreIcon className={`w-5 h-5 ${viewMode === 'storefront' ? 'text-primary' : 'text-muted-foreground'}`} />
           )}
         </button>
 
@@ -783,7 +784,7 @@ interface StoreFrontProps {
 export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, onboardingStep1Active, onOnboardingStep1Complete, onboardingStep9Active, onOnboardingStep9Complete, onboardingStep10Active, onOnboardingStep10Complete, triggerRefetch, onRefetchComplete }: StoreFrontProps = {}) {
   const { subdomain } = useParams<{ subdomain: string }>();
   const navigate = useNavigate();
-  const { isSuperAdmin } = useAuth();
+  const { user, profile, isSuperAdmin, loading: authLoading } = useAuth();
   
   // В режиме workspace используем переданные данные магазина
   const { store: fetchedStore, loading: storeLoading, error: storeError } = useStoreBySubdomain(workspaceMode ? undefined : subdomain);
@@ -800,6 +801,70 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
   
   // Super admin or store owner can manage the store
   const isOwner = isStoreOwner || isSuperAdmin || isTempSuperAdmin;
+  
+  // Customer access state - check if user is a registered customer of this store
+  const [customerAccess, setCustomerAccess] = useState<{
+    isCustomer: boolean;
+    accessibleCatalogIds: string[];
+    loading: boolean;
+  }>({ isCustomer: false, accessibleCatalogIds: [], loading: true });
+
+  // Check customer access when user/store changes
+  useEffect(() => {
+    const checkCustomerAccess = async () => {
+      // In workspace mode, skip customer access check (owner is viewing)
+      if (workspaceMode) {
+        setCustomerAccess({ isCustomer: true, accessibleCatalogIds: [], loading: false });
+        return;
+      }
+      
+      // If already an owner/admin, grant full access
+      if (isOwner) {
+        setCustomerAccess({ isCustomer: true, accessibleCatalogIds: [], loading: false });
+        return;
+      }
+      
+      // If not logged in, no access
+      if (!user || !profile?.id || !store?.id) {
+        setCustomerAccess({ isCustomer: false, accessibleCatalogIds: [], loading: false });
+        return;
+      }
+
+      try {
+        // Check if user is a customer of this store and get their catalog access
+        const { data: storeCustomer, error } = await supabase
+          .from('store_customers')
+          .select(`
+            id,
+            customer_catalog_access(catalog_id)
+          `)
+          .eq('store_id', store.id)
+          .eq('profile_id', profile.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Error checking customer access:", error);
+          setCustomerAccess({ isCustomer: false, accessibleCatalogIds: [], loading: false });
+          return;
+        }
+
+        if (storeCustomer) {
+          const catalogIds = storeCustomer.customer_catalog_access?.map((a: any) => a.catalog_id) || [];
+          setCustomerAccess({ isCustomer: true, accessibleCatalogIds: catalogIds, loading: false });
+        } else {
+          setCustomerAccess({ isCustomer: false, accessibleCatalogIds: [], loading: false });
+        }
+      } catch (err) {
+        console.error("Error checking customer access:", err);
+        setCustomerAccess({ isCustomer: false, accessibleCatalogIds: [], loading: false });
+      }
+    };
+
+    // Only check after auth and owner loading are complete
+    if (!authLoading && !ownerLoading) {
+      checkCustomerAccess();
+    }
+  }, [user, profile?.id, store?.id, isOwner, workspaceMode, authLoading, ownerLoading]);
   
   // Fetch orders count for owner
   const { orders } = useStoreOrders(isOwner ? store?.id : null);
@@ -854,8 +919,22 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
   // Use products directly from hook - realtime handles sync
   const displayProducts = products;
   
+  // Filter catalogs for customers - they only see catalogs they have access to
+  // Owners/admins see all catalogs
+  const accessibleCatalogs = useMemo(() => {
+    if (isOwner || workspaceMode) {
+      return catalogs;
+    }
+    // For customers, filter to only their accessible catalogs
+    if (customerAccess.accessibleCatalogIds.length > 0) {
+      return catalogs.filter(c => customerAccess.accessibleCatalogIds.includes(c.id));
+    }
+    // If customer has no specific catalog access, show default catalogs only
+    return catalogs.filter(c => c.is_default);
+  }, [catalogs, isOwner, workspaceMode, customerAccess.accessibleCatalogIds]);
+  
   // Calculate selected catalog name for display
-  const selectedCatalogName = catalogs.find((c) => c.id === selectedCatalog)?.name || "Все товары";
+  const selectedCatalogName = accessibleCatalogs.find((c) => c.id === selectedCatalog)?.name || "Все товары";
 
   // Get product catalog IDs for a specific product
   const getProductCatalogIds = (productId: string): string[] => {
@@ -946,7 +1025,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
   }, [displayProducts, selectedCatalog, productVisibility, getProductSettings, isOwner, statusFilter, categoryFilter, searchQuery]);
 
   // Show catalog hint when no catalog selected and there are catalogs to choose from
-  const showCatalogHint = !selectedCatalog && catalogs.length > 0 && displayProducts.length > 0;
+  const showCatalogHint = !selectedCatalog && accessibleCatalogs.length > 0 && displayProducts.length > 0;
 
   // Get categories that exist in the current catalog (from products visible in this catalog)
   const catalogCategories = useMemo(() => {
@@ -1004,7 +1083,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
 
   // Loading state - в workspaceMode данные магазина уже есть, показываем скелетон только при загрузке товаров
   // при этом избегаем двойного мигания, показывая скелетон только если нет товаров
-  if (!workspaceMode && (storeLoading || productsLoading)) {
+  if (!workspaceMode && (storeLoading || productsLoading || customerAccess.loading || authLoading)) {
     return <StoreSkeleton />;
   }
   
@@ -1030,6 +1109,50 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
     );
   }
 
+  // Access denied - show login prompt for non-authorized users (not in workspaceMode)
+  if (!workspaceMode && !isOwner && !customerAccess.isCustomer) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
+            {store.logo_url ? (
+              <img src={store.logo_url} alt={store.name} className="w-16 h-16 rounded-full object-cover" />
+            ) : (
+              <StoreIcon className="w-10 h-10 text-muted-foreground" />
+            )}
+          </div>
+          <h1 className="text-2xl font-bold mb-2">{store.name}</h1>
+          {store.description && (
+            <p className="text-muted-foreground mb-6">{store.description}</p>
+          )}
+          <div className="bg-muted/50 rounded-lg p-4 mb-6">
+            <p className="text-sm text-muted-foreground">
+              Для просмотра каталога товаров необходимо войти в систему как покупатель этого магазина.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <Button 
+              onClick={() => navigate('/customer-auth', { 
+                state: { 
+                  storeId: store.id, 
+                  storeName: store.name,
+                  returnUrl: `/store/${subdomain}`
+                } 
+              })}
+              className="w-full gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              Войти как покупатель
+            </Button>
+            <Button variant="outline" asChild className="w-full">
+              <Link to="/">На главную</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full bg-background flex flex-col">
       {/* Шапка скрывается в workspaceMode - там свой общий хедер */}
@@ -1037,7 +1160,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
         <StoreHeader
           store={store}
           cart={cart}
-          catalogs={catalogs}
+          catalogs={accessibleCatalogs}
           selectedCatalog={selectedCatalog}
           onSelectCatalog={setSelectedCatalog}
           showImages={showImages}
@@ -1203,7 +1326,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                   )}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="min-w-[200px] bg-popover z-50">
-                  {catalogs.map((catalog, index) => (
+                  {accessibleCatalogs.map((catalog, index) => (
                     <DropdownMenuItem
                       key={catalog.id}
                       onClick={() => {
