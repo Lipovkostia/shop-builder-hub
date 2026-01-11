@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Clock, Settings, RefreshCw, Check, X, Loader2, Play, Pause } from "lucide-react";
+import { Clock, Settings, RefreshCw, Check, X, Loader2, Play, Pause, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -50,6 +50,8 @@ interface SyncSettingsPanelProps {
   onSyncNow: () => void;
   isSyncing: boolean;
   syncedProductsCount: number;
+  syncOrdersEnabled?: boolean;
+  onNavigateToOrderSettings?: () => void;
 }
 
 const intervalOptions = [
@@ -104,6 +106,8 @@ export function SyncSettingsPanel({
   onSyncNow,
   isSyncing,
   syncedProductsCount,
+  syncOrdersEnabled,
+  onNavigateToOrderSettings,
 }: SyncSettingsPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [countdown, setCountdown] = useState<string>("");
@@ -191,6 +195,24 @@ export function SyncSettingsPanel({
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
                   {syncedProductsCount}
                 </Badge>
+              )}
+              {/* Order sync indicator button */}
+              {onNavigateToOrderSettings && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNavigateToOrderSettings();
+                  }}
+                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors ${
+                    syncOrdersEnabled
+                      ? 'bg-green-500/10 text-green-600 hover:bg-green-500/20'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                  title={syncOrdersEnabled ? 'Заказы → МойСклад: ВКЛ' : 'Заказы → МойСклад: ВЫКЛ'}
+                >
+                  <ShoppingCart className="h-3 w-3" />
+                  {syncOrdersEnabled ? 'ВКЛ' : 'ВЫКЛ'}
+                </button>
               )}
             </div>
             <div className="flex items-center gap-1">
