@@ -3705,6 +3705,12 @@ export default function AdminPanel({
                     onSyncNow={handleSyncNow}
                     isSyncing={isSyncing}
                     syncedProductsCount={importedProducts.filter(p => p.autoSync).length}
+                    syncOrdersEnabled={supabaseSyncSettings?.sync_orders_enabled}
+                    onNavigateToOrderSettings={() => {
+                      setActiveSection('orders');
+                      setShowOrderNotificationsPanel(true);
+                      setSelectedNotificationChannel('moysklad');
+                    }}
                   />
 
                   {isLoading && moyskladProducts.length === 0 ? (
