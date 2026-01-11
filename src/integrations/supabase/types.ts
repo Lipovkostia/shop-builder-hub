@@ -1074,11 +1074,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_catalog_store_id: { Args: { _catalog_id: string }; Returns: string }
+      has_catalog_access: {
+        Args: { _catalog_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_platform_role: {
         Args: {
           _role: Database["public"]["Enums"]["platform_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_store_customer: {
+        Args: { _store_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_store_owner: {
+        Args: { _store_id: string; _user_id: string }
         Returns: boolean
       }
       is_store_owner_of_customer: {
