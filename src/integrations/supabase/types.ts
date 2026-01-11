@@ -898,6 +898,53 @@ export type Database = {
           },
         ]
       }
+      store_notification_settings: {
+        Row: {
+          created_at: string | null
+          email_enabled: boolean | null
+          id: string
+          notification_email: string | null
+          notification_telegram: string | null
+          notification_whatsapp: string | null
+          store_id: string
+          telegram_enabled: boolean | null
+          updated_at: string | null
+          whatsapp_enabled: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          id?: string
+          notification_email?: string | null
+          notification_telegram?: string | null
+          notification_whatsapp?: string | null
+          store_id: string
+          telegram_enabled?: boolean | null
+          updated_at?: string | null
+          whatsapp_enabled?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          id?: string
+          notification_email?: string | null
+          notification_telegram?: string | null
+          notification_whatsapp?: string | null
+          store_id?: string
+          telegram_enabled?: boolean | null
+          updated_at?: string | null
+          whatsapp_enabled?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_notification_settings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_sync_settings: {
         Row: {
           created_at: string
