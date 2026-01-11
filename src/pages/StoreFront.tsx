@@ -851,6 +851,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
 
   // Use products directly from hook - realtime handles sync
   const displayProducts = products;
+  
+  // Calculate selected catalog name for display
+  const selectedCatalogName = catalogs.find((c) => c.id === selectedCatalog)?.name || "Все товары";
 
   // Get product catalog IDs for a specific product
   const getProductCatalogIds = (productId: string): string[] => {
@@ -1244,6 +1247,13 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+          </div>
+
+          {/* Название магазина и прайс-листа - под блоком с иконками */}
+          <div className="px-3 py-1 border-t border-border bg-background">
+            <p className="text-[10px] text-muted-foreground text-right truncate">
+              {store.name} — {selectedCatalogName}
+            </p>
           </div>
 
           {/* Выезжающий блок фильтров */}
