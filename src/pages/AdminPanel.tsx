@@ -5364,160 +5364,163 @@ export default function AdminPanel({
                         <span>Email уведомления активны: {notificationSettings.notification_email}</span>
                       </div>
                     )}
+                  </div>
+                )}
+              </div>
 
-                    {/* MoySklad Order Integration Section */}
-                    <div className="mt-4 pt-4 border-t border-border">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                          <Package className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                        </div>
-                        <div>
-                          <h5 className="text-sm font-medium">Интеграция с МойСклад</h5>
-                          <p className="text-xs text-muted-foreground">Автоматическая отправка заказов</p>
-                        </div>
-                      </div>
+              {/* MoySklad Order Integration - Separate Section */}
+              {showOrderNotificationsPanel && (
+                <div className="mt-3 p-4 bg-muted/30 rounded-lg border border-border animate-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                      <Package className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium">Интеграция с МойСклад</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Автоматическая отправка заказов в МойСклад
+                      </p>
+                    </div>
+                  </div>
 
-                      {!firstMoyskladAccount ? (
-                        <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
-                          <p className="text-sm text-amber-800 dark:text-amber-200">
-                            ⚠️ Для отправки заказов в МойСклад сначала настройте подключение в разделе «Импорт товаров»
+                  {!firstMoyskladAccount ? (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                      <p className="text-sm text-amber-800 dark:text-amber-200">
+                        ⚠️ Для отправки заказов в МойСклад сначала настройте подключение в разделе «Импорт товаров»
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Enable toggle */}
+                      <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">Отправлять заказы в МойСклад</p>
+                          <p className="text-xs text-muted-foreground">
+                            Заказы будут автоматически появляться в разделе «Заказы покупателей»
                           </p>
                         </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {/* Enable toggle */}
-                          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">Отправлять заказы в МойСклад</p>
-                              <p className="text-xs text-muted-foreground">
-                                Заказы будут автоматически появляться в разделе «Заказы покупателей»
-                              </p>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={supabaseSyncSettings?.sync_orders_enabled || false}
-                                onChange={async (e) => {
-                                  const enabled = e.target.checked;
-                                  await updateSyncSettings({ sync_orders_enabled: enabled });
-                                  if (enabled && !supabaseSyncSettings?.moysklad_organization_id) {
-                                    // Load organizations when enabling
-                                    fetchOrganizations();
-                                    fetchCounterparties();
-                                  }
-                                  toast({
-                                    title: enabled ? "Синхронизация включена" : "Синхронизация отключена",
-                                  });
-                                }}
-                                className="sr-only peer"
-                              />
-                              <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                            </label>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={supabaseSyncSettings?.sync_orders_enabled || false}
+                            onChange={async (e) => {
+                              const enabled = e.target.checked;
+                              await updateSyncSettings({ sync_orders_enabled: enabled });
+                              if (enabled && !supabaseSyncSettings?.moysklad_organization_id) {
+                                fetchOrganizations();
+                                fetchCounterparties();
+                              }
+                              toast({
+                                title: enabled ? "Синхронизация включена" : "Синхронизация отключена",
+                              });
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        </label>
+                      </div>
+
+                      {/* Settings (shown when enabled) */}
+                      {supabaseSyncSettings?.sync_orders_enabled && (
+                        <div className="space-y-3">
+                          {/* Organization select */}
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-medium">Организация</Label>
+                            <Select
+                              value={supabaseSyncSettings?.moysklad_organization_id || ""}
+                              onValueChange={async (value) => {
+                                await updateSyncSettings({ moysklad_organization_id: value });
+                                toast({ title: "Организация сохранена" });
+                              }}
+                            >
+                              <SelectTrigger className="w-full h-9">
+                                <SelectValue placeholder={moyskladOrdersLoading ? "Загрузка..." : "Выберите организацию"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {moyskladOrganizations.map((org) => (
+                                  <SelectItem key={org.id} value={org.id}>
+                                    {org.name}
+                                  </SelectItem>
+                                ))}
+                                {moyskladOrganizations.length === 0 && !moyskladOrdersLoading && (
+                                  <SelectItem value="_empty" disabled>
+                                    Нет организаций
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+                            {moyskladOrganizations.length === 0 && !moyskladOrdersLoading && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => fetchOrganizations()}
+                              >
+                                <RefreshCw className="h-3 w-3 mr-1" />
+                                Загрузить организации
+                              </Button>
+                            )}
                           </div>
 
-                          {/* Settings (shown when enabled) */}
-                          {supabaseSyncSettings?.sync_orders_enabled && (
-                            <div className="space-y-3">
-                              {/* Organization select */}
-                              <div className="space-y-1.5">
-                                <Label className="text-xs font-medium">Организация</Label>
-                                <Select
-                                  value={supabaseSyncSettings?.moysklad_organization_id || ""}
-                                  onValueChange={async (value) => {
-                                    await updateSyncSettings({ moysklad_organization_id: value });
-                                    toast({ title: "Организация сохранена" });
-                                  }}
-                                >
-                                  <SelectTrigger className="w-full h-9">
-                                    <SelectValue placeholder={moyskladOrdersLoading ? "Загрузка..." : "Выберите организацию"} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {moyskladOrganizations.map((org) => (
-                                      <SelectItem key={org.id} value={org.id}>
-                                        {org.name}
-                                      </SelectItem>
-                                    ))}
-                                    {moyskladOrganizations.length === 0 && !moyskladOrdersLoading && (
-                                      <SelectItem value="_empty" disabled>
-                                        Нет организаций
-                                      </SelectItem>
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                                {moyskladOrganizations.length === 0 && !moyskladOrdersLoading && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 text-xs"
-                                    onClick={() => fetchOrganizations()}
-                                  >
-                                    <RefreshCw className="h-3 w-3 mr-1" />
-                                    Загрузить организации
-                                  </Button>
-                                )}
-                              </div>
-
-                              {/* Counterparty select */}
-                              <div className="space-y-1.5">
-                                <Label className="text-xs font-medium">Контрагент по умолчанию</Label>
-                                <Select
-                                  value={supabaseSyncSettings?.moysklad_counterparty_id || ""}
-                                  onValueChange={async (value) => {
-                                    await updateSyncSettings({ moysklad_counterparty_id: value });
-                                    toast({ title: "Контрагент сохранён" });
-                                  }}
-                                >
-                                  <SelectTrigger className="w-full h-9">
-                                    <SelectValue placeholder={moyskladOrdersLoading ? "Загрузка..." : "Выберите контрагента"} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {moyskladCounterparties.map((cp) => (
-                                      <SelectItem key={cp.id} value={cp.id}>
-                                        {cp.name}
-                                      </SelectItem>
-                                    ))}
-                                    {moyskladCounterparties.length === 0 && !moyskladOrdersLoading && (
-                                      <SelectItem value="_empty" disabled>
-                                        Нет контрагентов
-                                      </SelectItem>
-                                    )}
-                                  </SelectContent>
-                                </Select>
+                          {/* Counterparty select */}
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-medium">Контрагент по умолчанию</Label>
+                            <Select
+                              value={supabaseSyncSettings?.moysklad_counterparty_id || ""}
+                              onValueChange={async (value) => {
+                                await updateSyncSettings({ moysklad_counterparty_id: value });
+                                toast({ title: "Контрагент сохранён" });
+                              }}
+                            >
+                              <SelectTrigger className="w-full h-9">
+                                <SelectValue placeholder={moyskladOrdersLoading ? "Загрузка..." : "Выберите контрагента"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {moyskladCounterparties.map((cp) => (
+                                  <SelectItem key={cp.id} value={cp.id}>
+                                    {cp.name}
+                                  </SelectItem>
+                                ))}
                                 {moyskladCounterparties.length === 0 && !moyskladOrdersLoading && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 text-xs"
-                                    onClick={() => fetchCounterparties()}
-                                  >
-                                    <RefreshCw className="h-3 w-3 mr-1" />
-                                    Загрузить контрагентов
-                                  </Button>
+                                  <SelectItem value="_empty" disabled>
+                                    Нет контрагентов
+                                  </SelectItem>
                                 )}
-                              </div>
+                              </SelectContent>
+                            </Select>
+                            {moyskladCounterparties.length === 0 && !moyskladOrdersLoading && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => fetchCounterparties()}
+                              >
+                                <RefreshCw className="h-3 w-3 mr-1" />
+                                Загрузить контрагентов
+                              </Button>
+                            )}
+                          </div>
 
-                              {/* Status indicator */}
-                              {supabaseSyncSettings?.moysklad_organization_id && supabaseSyncSettings?.moysklad_counterparty_id && (
-                                <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400 p-2 bg-green-50 dark:bg-green-950/30 rounded-lg">
-                                  <Check className="h-3.5 w-3.5" />
-                                  <span>Интеграция настроена. Заказы будут отправляться в МойСклад.</span>
-                                </div>
-                              )}
-                              
-                              {(!supabaseSyncSettings?.moysklad_organization_id || !supabaseSyncSettings?.moysklad_counterparty_id) && (
-                                <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 p-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
-                                  <Settings className="h-3.5 w-3.5" />
-                                  <span>Выберите организацию и контрагента для активации синхронизации</span>
-                                </div>
-                              )}
+                          {/* Status indicator */}
+                          {supabaseSyncSettings?.moysklad_organization_id && supabaseSyncSettings?.moysklad_counterparty_id && (
+                            <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400 p-2 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                              <Check className="h-3.5 w-3.5" />
+                              <span>Интеграция настроена. Заказы будут отправляться в МойСклад.</span>
+                            </div>
+                          )}
+                          
+                          {(!supabaseSyncSettings?.moysklad_organization_id || !supabaseSyncSettings?.moysklad_counterparty_id) && (
+                            <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 p-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
+                              <Settings className="h-3.5 w-3.5" />
+                              <span>Выберите организацию и контрагента для активации синхронизации</span>
                             </div>
                           )}
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {ordersLoading ? (
                 <div className="flex items-center justify-center py-12">
