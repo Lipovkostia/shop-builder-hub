@@ -1184,37 +1184,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
       {/* Упрощённый хедер в workspaceMode */}
       {workspaceMode && (
         <div className="sticky top-0 z-40 bg-background border-b border-border">
-          {/* Onboarding Step 1: Go to Admin Panel */}
-          {onboardingStep1Active && (
-            <div 
-              className="bg-primary/10 border-b border-primary/30 p-3 cursor-pointer hover:bg-primary/15 transition-colors"
-              onClick={() => {
-                const adminButton = document.querySelector('[data-onboarding-admin-button]');
-                if (adminButton) {
-                  adminButton.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-                  adminButton.classList.add('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2', 'bg-primary/20');
-                  setTimeout(() => {
-                    adminButton.classList.remove('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2', 'bg-primary/20');
-                  }, 3000);
-                }
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                  <span className="text-primary font-bold text-sm">1</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">Добавьте товары в ассортимент</p>
-                  <p className="text-xs text-muted-foreground">
-                    Ассортимент — это общий список товаров. Отсюда вы выбираете, какие показать в каждом прайс-листе.
-                  </p>
-                  <p className="text-xs text-primary mt-1 font-medium">
-                    👆 Нажмите «Управление» → раздел «Ассортимент»
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Onboarding Step 1 now handled by SpotlightOverlay in SellerWorkspace */}
           
           {/* Onboarding Step 9: View storefront with price list */}
           {onboardingStep9Active && onboardingStep9SubStep !== "done" && (
