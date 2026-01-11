@@ -5225,6 +5225,11 @@ export default function AdminPanel({
                               onChange={(e) => setNotificationContacts(prev => ({ ...prev, email: e.target.value }))}
                               className="h-9"
                             />
+                            <p className="text-xs text-muted-foreground mt-2">
+                              ⚠️ Первое сообщение о новом заказе может прийти в папку «Спам». 
+                              Достаньте его оттуда и нажмите «Это не спам». 
+                              Следующие сообщения будут приходить на почту с оповещением.
+                            </p>
                           </div>
                         )}
                         {!selectedNotificationChannel && (
