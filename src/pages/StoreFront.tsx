@@ -621,12 +621,19 @@ function StoreHeader({
               <FolderOpen className="w-4 h-4 text-muted-foreground" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-[200px] bg-popover z-50">
-              <DropdownMenuItem 
-                onClick={() => onSelectCatalog(null)}
-                className="cursor-pointer"
-              >
-                <span className={!selectedCatalog ? "font-semibold" : ""}>Все товары</span>
-              </DropdownMenuItem>
+              {/* Кнопка создания прайс-листа - только для владельца */}
+              {isOwner && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => onAdminClick?.('catalogs')}
+                    className="cursor-pointer text-primary"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    <span>Создать прайс-лист</span>
+                  </DropdownMenuItem>
+                  {catalogs.length > 0 && <DropdownMenuSeparator />}
+                </>
+              )}
               {catalogs.map((catalog) => (
                 <DropdownMenuItem
                   key={catalog.id}
@@ -638,9 +645,9 @@ function StoreHeader({
                   </span>
                 </DropdownMenuItem>
               ))}
-              {catalogs.length === 0 && (
+              {catalogs.length === 0 && !isOwner && (
                 <DropdownMenuItem disabled>
-                  <span className="text-muted-foreground">Нет прайс-листов</span>
+                  <span className="text-muted-foreground">Нет доступных прайс-листов</span>
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -1323,6 +1330,19 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                   )}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="min-w-[200px] bg-popover z-50">
+                  {/* Кнопка создания прайс-листа - только для владельца */}
+                  {isOwner && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => handleAdminClick('catalogs')}
+                        className="cursor-pointer text-primary"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        <span>Создать прайс-лист</span>
+                      </DropdownMenuItem>
+                      {accessibleCatalogs.length > 0 && <DropdownMenuSeparator />}
+                    </>
+                  )}
                   {accessibleCatalogs.map((catalog, index) => (
                     <DropdownMenuItem
                       key={catalog.id}
@@ -1341,6 +1361,11 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                       </span>
                     </DropdownMenuItem>
                   ))}
+                  {accessibleCatalogs.length === 0 && !isOwner && (
+                    <DropdownMenuItem disabled>
+                      <span className="text-muted-foreground">Нет доступных прайс-листов</span>
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
 
