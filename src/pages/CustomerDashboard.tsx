@@ -919,8 +919,7 @@ const CustomerDashboard = () => {
       const { error } = await supabase
         .from('profiles')
         .update({ 
-          full_name: editName.trim() || null, 
-          phone: editPhone.trim() || null 
+          full_name: editName.trim() || null
         })
         .eq('user_id', userId);
       
@@ -1603,13 +1602,14 @@ const CustomerDashboard = () => {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="edit-phone" className="text-xs text-muted-foreground">Телефон</Label>
+                        <Label htmlFor="edit-phone" className="text-xs text-muted-foreground">Телефон (для входа)</Label>
                         <Input
                           id="edit-phone"
                           value={editPhone}
-                          onChange={(e) => setEditPhone(e.target.value)}
-                          placeholder="+7 (999) 123-45-67"
+                          disabled
+                          className="bg-muted"
                         />
+                        <p className="text-xs text-muted-foreground">Телефон нельзя изменить — он используется для входа</p>
                       </div>
                       <Button 
                         onClick={handleSaveProfile} 

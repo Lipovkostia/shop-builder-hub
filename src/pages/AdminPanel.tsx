@@ -1206,7 +1206,6 @@ export default function AdminPanel({
         .from('profiles')
         .update({
           full_name: profileName.trim() || null,
-          phone: profilePhone.trim() || null,
         })
         .eq('user_id', user.id);
       
@@ -5448,13 +5447,14 @@ export default function AdminPanel({
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="profile-phone">Телефон</Label>
+                      <Label htmlFor="profile-phone">Телефон (для входа)</Label>
                       <Input
                         id="profile-phone"
                         value={profilePhone}
-                        onChange={(e) => setProfilePhone(e.target.value)}
-                        placeholder="+7 (999) 123-45-67"
+                        disabled
+                        className="bg-muted"
                       />
+                      <p className="text-xs text-muted-foreground">Телефон нельзя изменить — он используется для входа</p>
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-muted-foreground">Email</Label>
