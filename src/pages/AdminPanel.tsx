@@ -4770,22 +4770,36 @@ export default function AdminPanel({
 
               {catalogView === "detail" && currentCatalog && (
                 <>
-                  <div className="mb-4 flex items-center justify-between">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setCatalogView("list");
-                        setCurrentCatalog(null);
-                        setSelectedCatalogProducts(new Set());
-                        setCatalogProductSearch("");
+                  <div className="mb-4 space-y-2">
+                    {/* Название прайс-листа над кнопками */}
+                    <div 
+                      className="relative max-w-full overflow-hidden"
+                      style={{ 
+                        maskImage: 'linear-gradient(to right, black 85%, transparent 100%)',
+                        WebkitMaskImage: 'linear-gradient(to right, black 85%, transparent 100%)'
                       }}
                     >
-                      <ArrowLeft className="h-4 w-4 mr-2" />
-                      Назад
-                    </Button>
-                    <span className="text-sm font-medium text-muted-foreground">{currentCatalog.name}</span>
-                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap block">
+                        {currentCatalog.name}
+                      </span>
+                    </div>
+                    
+                    {/* Строка с кнопками */}
+                    <div className="flex items-center justify-between">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setCatalogView("list");
+                          setCurrentCatalog(null);
+                          setSelectedCatalogProducts(new Set());
+                          setCatalogProductSearch("");
+                        }}
+                      >
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Назад
+                      </Button>
+                      <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -4844,6 +4858,7 @@ export default function AdminPanel({
                           ))}
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      </div>
                     </div>
                   </div>
 
