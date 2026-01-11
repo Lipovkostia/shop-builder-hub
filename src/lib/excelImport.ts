@@ -654,3 +654,92 @@ export async function exportProductsToExcel(
   const date = new Date().toISOString().split('T')[0];
   XLSX.writeFile(wb, `ассортимент_${date}.xlsx`);
 }
+
+// Status labels for export
+const STATUS_LABELS: Record<string, string> = {
+  'in_stock': 'В наличии',
+  'out_of_stock': 'Нет в наличии',
+  'on_order': 'Под заказ',
+  'coming_soon': 'Ожидается',
+};
+
+// Catalog export product interface
+export interface CatalogExportProduct {
+  name: string;
+  description: string | null;
+  categories: string[] | null;
+  unit: string | null;
+  unitWeight: number | null;
+  packagingType: string | null;
+  buyPrice: number | null;
+  markup: string;
+  price: number;
+  priceFull: number | null;
+  priceHalf: number | null;
+  priceQuarter: number | null;
+  pricePortion: number | null;
+  status: string;
+  images: string[] | null;
+}
+
+/**
+ * Export catalog products to Excel file with selected columns
+ */
+export function exportCatalogToExcel(
+  catalogName: string,
+  products: CatalogExportProduct[],
+  enabledColumns: string[]
+): void {
+  // Define column mappings
+  const columnMappings: { id: string; header: string; getValue: (p: CatalogExportProduct) => string | number }[] = [
+    { id: 'photo', header: 'Фото', getValue: p => (p.images || []).join('; ') },
+    { id: 'name', header: 'Название', getValue: p => p.name || '' },
+    { id: 'description', header: 'Описание', getValue: p => p.description || '' },
+    { id: 'categories', header: 'Категории', getValue: p => (p.categories || []).join(', ') },
+    { id: 'unit', header: 'Ед. изм.', getValue: p => p.unit || '' },
+    { id: 'volume', header: 'Объем', getValue: p => p.unitWeight ?? '' },
+    { id: 'type', header: 'Вид (тип фасовки)', getValue: p => p.packagingType || '' },
+    { id: 'buyPrice', header: 'Себестоимость', getValue: p => p.buyPrice ?? '' },
+    { id: 'markup', header: 'Наценка', getValue: p => p.markup || '' },
+    { id: 'price', header: 'Цена', getValue: p => p.price ?? '' },
+    { id: 'priceFull', header: 'Целая', getValue: p => p.priceFull ?? '' },
+    { id: 'priceHalf', header: '½', getValue: p => p.priceHalf ?? '' },
+    { id: 'priceQuarter', header: '¼', getValue: p => p.priceQuarter ?? '' },
+    { id: 'pricePortion', header: 'Порция', getValue: p => p.pricePortion ?? '' },
+    { id: 'status', header: 'Статус', getValue: p => STATUS_LABELS[p.status] || p.status || '' },
+  ];
+
+  // Filter to only enabled columns
+  const activeColumns = columnMappings.filter(col => enabledColumns.includes(col.id));
+
+  // Build headers
+  const headers = activeColumns.map(col => col.header);
+
+  // Build data rows
+  const rows = products.map(product => 
+    activeColumns.map(col => col.getValue(product))
+  );
+
+  // Create workbook
+  const wb = XLSX.utils.book_new();
+  const data = [headers, ...rows];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  // Set column widths based on content
+  ws['!cols'] = activeColumns.map(col => {
+    switch (col.id) {
+      case 'photo': return { wch: 60 };
+      case 'name': return { wch: 30 };
+      case 'description': return { wch: 50 };
+      case 'categories': return { wch: 30 };
+      default: return { wch: 15 };
+    }
+  });
+
+  // Sanitize catalog name for filename
+  const safeCatalogName = catalogName.replace(/[^a-zA-Zа-яА-Я0-9\s-]/g, '').trim() || 'прайс-лист';
+  const date = new Date().toISOString().split('T')[0];
+  
+  XLSX.utils.book_append_sheet(wb, ws, 'Прайс-лист');
+  XLSX.writeFile(wb, `${safeCatalogName}_${date}.xlsx`);
+}
