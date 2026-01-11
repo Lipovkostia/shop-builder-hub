@@ -212,6 +212,170 @@ serve(async (req) => {
       );
     }
 
+    if (action === 'get_organizations') {
+      // Fetch organizations list
+      console.log('Fetching organizations from MoySklad...');
+      
+      const response = await fetch(
+        `${MOYSKLAD_API_URL}/entity/organization?limit=100`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': authHeader,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('MoySklad organizations API error:', response.status, errorText);
+        return new Response(
+          JSON.stringify({ error: `Failed to fetch organizations: ${response.status}` }),
+          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const data = await response.json();
+      console.log(`Found ${data.rows?.length || 0} organizations`);
+
+      const organizations = data.rows?.map((org: any) => ({
+        id: org.id,
+        name: org.name,
+      })) || [];
+
+      return new Response(
+        JSON.stringify({ organizations }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'get_counterparties') {
+      // Fetch counterparties list
+      console.log('Fetching counterparties from MoySklad...');
+      
+      const response = await fetch(
+        `${MOYSKLAD_API_URL}/entity/counterparty?limit=100`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': authHeader,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('MoySklad counterparties API error:', response.status, errorText);
+        return new Response(
+          JSON.stringify({ error: `Failed to fetch counterparties: ${response.status}` }),
+          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const data = await response.json();
+      console.log(`Found ${data.rows?.length || 0} counterparties`);
+
+      const counterparties = data.rows?.map((cp: any) => ({
+        id: cp.id,
+        name: cp.name,
+        phone: cp.phone || null,
+        email: cp.email || null,
+      })) || [];
+
+      return new Response(
+        JSON.stringify({ counterparties }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'create_customerorder') {
+      // Create a customer order
+      const { order } = body;
+      
+      if (!order) {
+        return new Response(
+          JSON.stringify({ error: 'order data is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Creating customer order in MoySklad:', order.name);
+
+      // Build positions array
+      const positions = order.positions?.map((pos: any) => ({
+        quantity: pos.quantity,
+        price: pos.price * 100, // Convert to kopecks for MoySklad
+        assortment: {
+          meta: {
+            href: `${MOYSKLAD_API_URL}/entity/product/${pos.moysklad_id}`,
+            type: 'product',
+            mediaType: 'application/json',
+          },
+        },
+      })) || [];
+
+      // Build order payload
+      const orderPayload: any = {
+        name: order.name,
+        organization: {
+          meta: {
+            href: `${MOYSKLAD_API_URL}/entity/organization/${order.organization_id}`,
+            type: 'organization',
+            mediaType: 'application/json',
+          },
+        },
+        agent: {
+          meta: {
+            href: `${MOYSKLAD_API_URL}/entity/counterparty/${order.counterparty_id}`,
+            type: 'counterparty',
+            mediaType: 'application/json',
+          },
+        },
+        positions,
+      };
+
+      if (order.description) {
+        orderPayload.description = order.description;
+      }
+
+      const response = await fetch(
+        `${MOYSKLAD_API_URL}/entity/customerorder`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': authHeader,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(orderPayload),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('MoySklad create order API error:', response.status, errorText);
+        return new Response(
+          JSON.stringify({ error: `Failed to create order: ${response.status}`, details: errorText }),
+          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const data = await response.json();
+      console.log('Order created successfully:', data.id);
+
+      return new Response(
+        JSON.stringify({ 
+          order: {
+            id: data.id,
+            name: data.name,
+          },
+          success: true,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: 'Unknown action' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -400,6 +400,7 @@ export type Database = {
           customer_id: string | null
           discount: number | null
           id: string
+          moysklad_order_id: string | null
           notes: string | null
           order_number: string
           shipping_address: Json | null
@@ -415,6 +416,7 @@ export type Database = {
           customer_id?: string | null
           discount?: number | null
           id?: string
+          moysklad_order_id?: string | null
           notes?: string | null
           order_number: string
           shipping_address?: Json | null
@@ -430,6 +432,7 @@ export type Database = {
           customer_id?: string | null
           discount?: number | null
           id?: string
+          moysklad_order_id?: string | null
           notes?: string | null
           order_number?: string
           shipping_address?: Json | null
@@ -953,8 +956,11 @@ export type Database = {
           id: string
           interval_minutes: number
           last_sync_time: string | null
+          moysklad_counterparty_id: string | null
+          moysklad_organization_id: string | null
           next_sync_time: string | null
           store_id: string
+          sync_orders_enabled: boolean | null
           updated_at: string
         }
         Insert: {
@@ -964,8 +970,11 @@ export type Database = {
           id?: string
           interval_minutes?: number
           last_sync_time?: string | null
+          moysklad_counterparty_id?: string | null
+          moysklad_organization_id?: string | null
           next_sync_time?: string | null
           store_id: string
+          sync_orders_enabled?: boolean | null
           updated_at?: string
         }
         Update: {
@@ -975,8 +984,11 @@ export type Database = {
           id?: string
           interval_minutes?: number
           last_sync_time?: string | null
+          moysklad_counterparty_id?: string | null
+          moysklad_organization_id?: string | null
           next_sync_time?: string | null
           store_id?: string
+          sync_orders_enabled?: boolean | null
           updated_at?: string
         }
         Relationships: [

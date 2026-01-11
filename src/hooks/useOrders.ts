@@ -43,6 +43,7 @@ export interface CreateOrderData {
     productName: string;
     quantity: number;
     price: number;
+    moyskladId?: string; // MoySklad product ID for order sync
   }>;
   shippingAddress: {
     name: string;
@@ -370,6 +371,78 @@ export function useCustomerOrders() {
       }).catch((err) => {
         console.error("Failed to send order notification:", err);
       });
+
+      // Check if MoySklad order sync is enabled and send order
+      try {
+        const { data: syncSettings } = await supabase
+          .from("store_sync_settings")
+          .select("sync_orders_enabled, moysklad_organization_id, moysklad_counterparty_id")
+          .eq("store_id", data.storeId)
+          .maybeSingle();
+
+        if (
+          syncSettings?.sync_orders_enabled &&
+          syncSettings?.moysklad_organization_id &&
+          syncSettings?.moysklad_counterparty_id
+        ) {
+          // Get MoySklad account credentials
+          const { data: moyskladAccount } = await supabase
+            .from("moysklad_accounts")
+            .select("login, password")
+            .eq("store_id", data.storeId)
+            .limit(1)
+            .maybeSingle();
+
+          if (moyskladAccount) {
+            // Filter items with moysklad_id and prepare positions
+            const moyskladPositions = data.items
+              .filter(item => item.moyskladId)
+              .map(item => ({
+                moysklad_id: item.moyskladId!,
+                product_name: item.productName,
+                quantity: item.quantity,
+                price: item.price * 100, // Convert to kopecks
+              }));
+
+            if (moyskladPositions.length > 0) {
+              // Build order comment from shipping address
+              let orderComment = "";
+              if (data.shippingAddress.name) orderComment += `Клиент: ${data.shippingAddress.name}\n`;
+              if (data.shippingAddress.phone) orderComment += `Телефон: ${data.shippingAddress.phone}\n`;
+              if (data.shippingAddress.address) orderComment += `Адрес: ${data.shippingAddress.address}\n`;
+              if (data.shippingAddress.comment) orderComment += `Комментарий: ${data.shippingAddress.comment}`;
+
+              const moyskladOrderResult = await supabase.functions.invoke("moysklad", {
+                body: {
+                  action: "create_customerorder",
+                  login: moyskladAccount.login,
+                  password: moyskladAccount.password,
+                  order: {
+                    name: orderNumber,
+                    description: orderComment.trim(),
+                    organization_id: syncSettings.moysklad_organization_id,
+                    counterparty_id: syncSettings.moysklad_counterparty_id,
+                    positions: moyskladPositions,
+                  },
+                },
+              });
+
+              if (moyskladOrderResult.data?.order?.id) {
+                // Save MoySklad order ID
+                await supabase
+                  .from("orders")
+                  .update({ moysklad_order_id: moyskladOrderResult.data.order.id })
+                  .eq("id", order.id);
+                
+                console.log("Order synced to MoySklad:", moyskladOrderResult.data.order.id);
+              }
+            }
+          }
+        }
+      } catch (moyskladError) {
+        console.error("Failed to sync order to MoySklad:", moyskladError);
+        // Don't fail the order creation if MoySklad sync fails
+      }
 
       toast({
         title: "Заказ оформлен!",
