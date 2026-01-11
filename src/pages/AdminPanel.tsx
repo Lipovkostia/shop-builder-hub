@@ -5150,6 +5150,13 @@ export default function AdminPanel({
                 {/* Notifications settings panel */}
                 {showOrderNotificationsPanel && (
                   <div className="mt-3 p-4 bg-muted/30 rounded-lg border border-border animate-in slide-in-from-top-2 duration-200">
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium mb-1">Настройка уведомлений</h4>
+                      <p className="text-xs text-muted-foreground">
+                        В этом разделе вы можете настроить оповещения о новых заказах. 
+                        Выберите удобный канал связи и укажите контактные данные.
+                      </p>
+                    </div>
                     <div className="flex flex-col sm:flex-row gap-4">
                       {/* Messenger icons */}
                       <div className="flex items-center gap-2">
