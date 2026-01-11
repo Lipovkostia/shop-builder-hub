@@ -6068,10 +6068,19 @@ export default function AdminPanel({
                         {selectedNotificationChannel === 'moysklad' && (
                           <div className="space-y-4">
                             {!firstMoyskladAccount ? (
-                              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
-                                <p className="text-sm text-amber-800 dark:text-amber-200">
+                              <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                                <p className="text-sm text-amber-800 dark:text-amber-200 mb-3">
                                   ⚠️ Для отправки заказов в МойСклад сначала настройте подключение в разделе «Импорт товаров»
                                 </p>
+                                <Button 
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-amber-400 text-amber-800 hover:bg-amber-100 dark:border-amber-600 dark:text-amber-200 dark:hover:bg-amber-900/50"
+                                  onClick={() => handleSectionChange("import")}
+                                >
+                                  <Settings className="h-4 w-4 mr-2" />
+                                  Настроить подключение
+                                </Button>
                               </div>
                             ) : (
                               <div className="space-y-4">
