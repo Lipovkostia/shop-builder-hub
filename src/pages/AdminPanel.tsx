@@ -5051,54 +5051,76 @@ export default function AdminPanel({
                       }}
                       className="bg-card rounded-lg border border-border"
                     >
-                      <div className="p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <CollapsibleTrigger asChild>
-                                <button className="flex items-center gap-2 hover:text-primary transition-colors">
-                                  <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
-                                  <span className="font-semibold">{order.order_number}</span>
-                                </button>
-                              </CollapsibleTrigger>
-                              <Badge 
-                                variant={
-                                  order.status === 'delivered' ? 'default' :
-                                  order.status === 'cancelled' ? 'destructive' :
-                                  order.status === 'shipped' ? 'secondary' :
-                                  'outline'
-                                }
-                              >
-                                {order.status === 'pending' && 'Новый'}
-                                {order.status === 'processing' && 'В обработке'}
-                                {order.status === 'shipped' && 'Отправлен'}
-                                {order.status === 'delivered' && 'Доставлен'}
-                                {order.status === 'cancelled' && 'Отменён'}
-                              </Badge>
-                              {order.items && order.items.length > 0 && collapsedOrders.has(order.id) && (
-                                <span className="text-xs text-muted-foreground">
-                                  ({order.items.length} {order.items.length === 1 ? 'позиция' : order.items.length < 5 ? 'позиции' : 'позиций'})
+                      <CollapsibleTrigger asChild>
+                        <button className="w-full p-3 sm:p-4 text-left hover:bg-muted/30 transition-colors">
+                          {/* Mobile-first compact layout */}
+                          <div className="flex items-center gap-3">
+                            {/* Toggle icon */}
+                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-muted/50 flex items-center justify-center">
+                              <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+                            </div>
+                            
+                            {/* Main content */}
+                            <div className="flex-1 min-w-0">
+                              {/* Top row: status + price */}
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <Badge 
+                                  variant={
+                                    order.status === 'delivered' ? 'default' :
+                                    order.status === 'cancelled' ? 'destructive' :
+                                    order.status === 'shipped' ? 'secondary' :
+                                    'outline'
+                                  }
+                                  className={`text-[10px] px-1.5 py-0 h-5 ${
+                                    order.status === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 border-amber-200' : ''
+                                  }`}
+                                >
+                                  {order.status === 'pending' && 'Новый'}
+                                  {order.status === 'processing' && 'В обработке'}
+                                  {order.status === 'shipped' && 'Отправлен'}
+                                  {order.status === 'delivered' && 'Доставлен'}
+                                  {order.status === 'cancelled' && 'Отменён'}
+                                </Badge>
+                                <span className="font-bold text-base sm:text-lg tabular-nums whitespace-nowrap">
+                                  {order.total.toLocaleString()} ₽
                                 </span>
-                              )}
-                            </div>
-                            <div className="text-sm text-muted-foreground flex items-center gap-2">
-                              <Clock className="h-3 w-3" />
-                              {new Date(order.created_at).toLocaleString('ru-RU', { 
-                                day: 'numeric', 
-                                month: 'short', 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}
+                              </div>
+                              
+                              {/* Middle row: order number + items count */}
+                              <div className="flex items-center gap-2 text-xs sm:text-sm">
+                                <span className="font-medium text-foreground truncate">
+                                  {order.order_number}
+                                </span>
+                                {order.items && order.items.length > 0 && collapsedOrders.has(order.id) && (
+                                  <span className="text-muted-foreground whitespace-nowrap">
+                                    • {order.items.length} поз.
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {/* Bottom row: date + customer */}
+                              <div className="flex items-center justify-between gap-2 mt-1 text-[11px] sm:text-xs text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3 flex-shrink-0" />
+                                  <span>
+                                    {new Date(order.created_at).toLocaleString('ru-RU', { 
+                                      day: 'numeric', 
+                                      month: 'short', 
+                                      hour: '2-digit', 
+                                      minute: '2-digit' 
+                                    })}
+                                  </span>
+                                </div>
+                                {order.customer_name && (
+                                  <span className="truncate max-w-[120px] sm:max-w-[180px]">
+                                    {order.customer_name}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="font-bold text-lg">{order.total.toLocaleString()} ₽</div>
-                            {order.customer_name && (
-                              <div className="text-sm text-muted-foreground">{order.customer_name}</div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                        </button>
+                      </CollapsibleTrigger>
                       
                       <CollapsibleContent>
                         <div className="px-4 pb-4">
