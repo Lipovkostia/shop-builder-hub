@@ -9,6 +9,7 @@ export const EXCEL_TEMPLATE_HEADERS = [
   'Единица измерения',
   'Объём',
   'Тип фасовки',
+  'Группа',
   'Фото (ссылки через ;)'
 ];
 
@@ -20,31 +21,50 @@ const EXAMPLE_ROW = [
   'кг',
   10,
   'head',
+  'Молочные продукты',
   'https://example.com/photo1.jpg; https://example.com/photo2.jpg'
 ];
 
-// Instructions row
-const INSTRUCTIONS = [
+// Default instructions (will be dynamically updated for groups)
+const DEFAULT_INSTRUCTIONS = [
   'Обязательное поле',
   'Опционально',
   'Опционально (число)',
   'кг/шт/л/уп/г/мл/м',
   'Вес целого товара или кол-во в упаковке (цена × объём = цена за упаковку)',
   'head/package/piece/can/box/carcass',
+  'Опционально. Если группы нет — она будет создана',
   'Несколько ссылок разделяйте через точку с запятой (;)'
 ];
 
 /**
- * Generate and download Excel template file
+ * Generate and download Excel template file with dynamic group hints
  */
-export function downloadExcelTemplate(): void {
+export async function downloadExcelTemplate(storeId: string): Promise<void> {
+  // Fetch existing groups for this store
+  const { data: groups } = await supabase
+    .from('product_groups')
+    .select('name')
+    .eq('store_id', storeId)
+    .order('sort_order');
+
+  // Build dynamic instruction for groups column
+  const groupNames = groups?.map(g => g.name).join(', ') || '';
+  const groupInstruction = groupNames 
+    ? `Существующие: ${groupNames}. Или введите новую`
+    : 'Введите название группы. Если её нет — она будет создана';
+
+  // Create dynamic instructions array
+  const instructions = [...DEFAULT_INSTRUCTIONS];
+  instructions[6] = groupInstruction;
+
   // Create workbook
   const wb = XLSX.utils.book_new();
 
   // Create data array with headers, instructions, and example
   const data = [
     EXCEL_TEMPLATE_HEADERS,
-    INSTRUCTIONS,
+    instructions,
     EXAMPLE_ROW
   ];
 
@@ -59,6 +79,7 @@ export function downloadExcelTemplate(): void {
     { wch: 18 }, // Единица измерения
     { wch: 12 }, // Объём
     { wch: 15 }, // Тип фасовки
+    { wch: 30 }, // Группа
     { wch: 50 }, // Фото
   ];
 
@@ -128,6 +149,7 @@ export interface ExcelRow {
   'Единица измерения'?: string;
   'Объём'?: number | string;
   'Тип фасовки'?: string;
+  'Группа'?: string;
   'Фото (ссылки через ;)'?: string;
 }
 
@@ -226,6 +248,71 @@ export async function checkForDuplicates(
 /**
  * Parse Excel file and import products to database
  */
+/**
+ * Get or create a product group, using cache for performance
+ */
+async function getOrCreateGroup(
+  groupName: string,
+  storeId: string,
+  groupCache: Map<string, string>
+): Promise<string | null> {
+  if (!groupName || !groupName.trim()) return null;
+  
+  const normalizedName = groupName.trim();
+  const normalizedLower = normalizedName.toLowerCase();
+  
+  // Check cache first
+  if (groupCache.has(normalizedLower)) {
+    return groupCache.get(normalizedLower)!;
+  }
+  
+  // Create new group
+  const { data, error } = await supabase
+    .from('product_groups')
+    .insert({
+      store_id: storeId,
+      name: normalizedName,
+      sort_order: groupCache.size
+    })
+    .select('id')
+    .single();
+    
+  if (error) {
+    console.error('Error creating group:', error);
+    return null;
+  }
+  
+  // Add to cache
+  groupCache.set(normalizedLower, data.id);
+  return data.id;
+}
+
+/**
+ * Assign product to group
+ */
+async function assignProductToGroup(productId: string, groupId: string): Promise<void> {
+  // First remove existing assignments for this product
+  await supabase
+    .from('product_group_assignments')
+    .delete()
+    .eq('product_id', productId);
+
+  // Then create new assignment
+  const { error } = await supabase
+    .from('product_group_assignments')
+    .insert({
+      product_id: productId,
+      group_id: groupId
+    });
+    
+  if (error) {
+    console.error('Error assigning product to group:', error);
+  }
+}
+
+/**
+ * Parse Excel file and import products to database
+ */
 export async function importProductsFromExcel(
   file: File,
   storeId: string,
@@ -275,6 +362,18 @@ export async function importProductsFromExcel(
       onProgress(progress);
       return;
     }
+
+    // Load existing groups for this store
+    const { data: existingGroupsData } = await supabase
+      .from('product_groups')
+      .select('id, name')
+      .eq('store_id', storeId);
+    
+    // Create group cache (name -> id)
+    const groupCache = new Map<string, string>();
+    existingGroupsData?.forEach(g => {
+      groupCache.set(g.name.toLowerCase(), g.id);
+    });
 
     // Create a map of duplicates to update for quick lookup
     const duplicateMap = new Map<string, DuplicateProduct>();
@@ -327,6 +426,15 @@ export async function importProductsFromExcel(
             continue;
           }
 
+          // Process group assignment
+          const groupName = row['Группа']?.toString().trim();
+          if (groupName) {
+            const groupId = await getOrCreateGroup(groupName, storeId, groupCache);
+            if (groupId) {
+              await assignProductToGroup(duplicateInfo.existingProduct.id, groupId);
+            }
+          }
+
           // Process images if provided
           const photoUrls = row['Фото (ссылки через ;)']?.toString().trim();
           if (photoUrls) {
@@ -374,6 +482,15 @@ export async function importProductsFromExcel(
             console.error('Insert error:', insertError);
             progress.errors.push(`Строка ${i + 3}: Ошибка создания товара - ${insertError.message}`);
             continue;
+          }
+
+          // Process group assignment
+          const groupName = row['Группа']?.toString().trim();
+          if (groupName && product) {
+            const groupId = await getOrCreateGroup(groupName, storeId, groupCache);
+            if (groupId) {
+              await assignProductToGroup(product.id, groupId);
+            }
           }
 
           // Process images if provided
