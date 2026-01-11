@@ -19,6 +19,10 @@ export interface SyncSettings {
   last_sync_time: string | null;
   next_sync_time: string | null;
   field_mapping: SyncFieldMapping;
+  // MoySklad order sync fields
+  moysklad_organization_id: string | null;
+  moysklad_counterparty_id: string | null;
+  sync_orders_enabled: boolean;
 }
 
 export const defaultSyncSettings: Omit<SyncSettings, "store_id"> = {
@@ -34,6 +38,10 @@ export const defaultSyncSettings: Omit<SyncSettings, "store_id"> = {
     description: false,
     unit: false,
   },
+  // MoySklad order sync defaults
+  moysklad_organization_id: null,
+  moysklad_counterparty_id: null,
+  sync_orders_enabled: false,
 };
 
 function parseFieldMapping(json: Json | null): SyncFieldMapping {
@@ -91,6 +99,9 @@ export function useStoreSyncSettings(storeId: string | null) {
           last_sync_time: data.last_sync_time,
           next_sync_time: data.next_sync_time,
           field_mapping: parseFieldMapping(data.field_mapping),
+          moysklad_organization_id: data.moysklad_organization_id ?? null,
+          moysklad_counterparty_id: data.moysklad_counterparty_id ?? null,
+          sync_orders_enabled: data.sync_orders_enabled ?? false,
         });
       } else {
         // No settings yet, use defaults
@@ -134,6 +145,9 @@ export function useStoreSyncSettings(storeId: string | null) {
           if (updates.last_sync_time !== undefined) updateData.last_sync_time = updates.last_sync_time;
           if (updates.next_sync_time !== undefined) updateData.next_sync_time = updates.next_sync_time;
           if (updates.field_mapping !== undefined) updateData.field_mapping = toJson(updates.field_mapping);
+          if (updates.moysklad_organization_id !== undefined) updateData.moysklad_organization_id = updates.moysklad_organization_id;
+          if (updates.moysklad_counterparty_id !== undefined) updateData.moysklad_counterparty_id = updates.moysklad_counterparty_id;
+          if (updates.sync_orders_enabled !== undefined) updateData.sync_orders_enabled = updates.sync_orders_enabled;
 
           const { data, error } = await supabase
             .from("store_sync_settings")
@@ -152,6 +166,9 @@ export function useStoreSyncSettings(storeId: string | null) {
             last_sync_time: data.last_sync_time,
             next_sync_time: data.next_sync_time,
             field_mapping: parseFieldMapping(data.field_mapping),
+            moysklad_organization_id: data.moysklad_organization_id ?? null,
+            moysklad_counterparty_id: data.moysklad_counterparty_id ?? null,
+            sync_orders_enabled: data.sync_orders_enabled ?? false,
           });
           return data;
         } else {
@@ -166,6 +183,9 @@ export function useStoreSyncSettings(storeId: string | null) {
             field_mapping: toJson(
               updates.field_mapping ?? defaultSyncSettings.field_mapping
             ),
+            moysklad_organization_id: updates.moysklad_organization_id ?? null,
+            moysklad_counterparty_id: updates.moysklad_counterparty_id ?? null,
+            sync_orders_enabled: updates.sync_orders_enabled ?? false,
           };
 
           const { data, error } = await supabase
@@ -184,6 +204,9 @@ export function useStoreSyncSettings(storeId: string | null) {
             last_sync_time: data.last_sync_time,
             next_sync_time: data.next_sync_time,
             field_mapping: parseFieldMapping(data.field_mapping),
+            moysklad_organization_id: data.moysklad_organization_id ?? null,
+            moysklad_counterparty_id: data.moysklad_counterparty_id ?? null,
+            sync_orders_enabled: data.sync_orders_enabled ?? false,
           });
           return data;
         }
