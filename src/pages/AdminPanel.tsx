@@ -907,6 +907,49 @@ export default function AdminPanel({
     setVisibleColumns(prev => ({ ...prev, [columnId]: !prev[columnId] }));
   };
 
+  // Column visibility state for catalog detail table
+  const [catalogVisibleColumns, setCatalogVisibleColumns] = useState<Record<string, boolean>>({
+    bulkCheckbox: true,
+    photo: true,
+    name: true,
+    description: true,
+    categories: true,
+    unit: true,
+    volume: true,
+    type: true,
+    buyPrice: true,
+    markup: true,
+    price: true,
+    priceFull: true,
+    priceHalf: true,
+    priceQuarter: true,
+    pricePortion: true,
+    status: true,
+  });
+
+  const catalogColumnLabels: Record<string, string> = {
+    bulkCheckbox: "Выбор",
+    photo: "Фото",
+    name: "Название",
+    description: "Описание",
+    categories: "Категории",
+    unit: "Ед. изм.",
+    volume: "Объем",
+    type: "Вид",
+    buyPrice: "Себест-ть",
+    markup: "Наценка",
+    price: "Цена",
+    priceFull: "Целая",
+    priceHalf: "½",
+    priceQuarter: "¼",
+    pricePortion: "Порция",
+    status: "Статус",
+  };
+
+  const toggleCatalogColumnVisibility = (columnId: string) => {
+    setCatalogVisibleColumns(prev => ({ ...prev, [columnId]: !prev[columnId] }));
+  };
+
 
   // Custom options state (for units and packaging types added by user)
   const [customUnits, setCustomUnits] = useState<string[]>([]);
@@ -4393,6 +4436,25 @@ export default function AdminPanel({
                       >
                         <Link2 className="h-4 w-4" />
                       </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Настройка столбцов">
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          {Object.entries(catalogColumnLabels).map(([id, label]) => (
+                            <DropdownMenuCheckboxItem
+                              key={id}
+                              checked={catalogVisibleColumns[id]}
+                              onCheckedChange={() => toggleCatalogColumnVisibility(id)}
+                              className="text-xs"
+                            >
+                              {label}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
 
@@ -4736,58 +4798,60 @@ export default function AdminPanel({
                     <ResizableTable
                       storageKey="catalog-products-table"
                       columns={[
-                        { id: "bulkCheckbox", minWidth: 40, defaultWidth: 40 },
-                        { id: "photo", minWidth: 50, defaultWidth: 60 },
-                        { id: "name", minWidth: 120, defaultWidth: 180 },
-                        { id: "description", minWidth: 100, defaultWidth: 200 },
-                        { id: "categories", minWidth: 100, defaultWidth: 140 },
-                        { id: "unit", minWidth: 60, defaultWidth: 80 },
-                        { id: "volume", minWidth: 60, defaultWidth: 80 },
-                        { id: "type", minWidth: 80, defaultWidth: 100 },
-                        { id: "buyPrice", minWidth: 70, defaultWidth: 90 },
-                        { id: "markup", minWidth: 110, defaultWidth: 120 },
-                        { id: "price", minWidth: 80, defaultWidth: 100 },
-                        { id: "priceFull", minWidth: 70, defaultWidth: 90 },
-                        { id: "priceHalf", minWidth: 70, defaultWidth: 90 },
-                        { id: "priceQuarter", minWidth: 70, defaultWidth: 90 },
-                        { id: "pricePortion", minWidth: 70, defaultWidth: 90 },
-                        { id: "status", minWidth: 80, defaultWidth: 100 },
+                        ...(catalogVisibleColumns.bulkCheckbox ? [{ id: "bulkCheckbox", minWidth: 40, defaultWidth: 40 }] : []),
+                        ...(catalogVisibleColumns.photo ? [{ id: "photo", minWidth: 50, defaultWidth: 60 }] : []),
+                        ...(catalogVisibleColumns.name ? [{ id: "name", minWidth: 120, defaultWidth: 180 }] : []),
+                        ...(catalogVisibleColumns.description ? [{ id: "description", minWidth: 100, defaultWidth: 200 }] : []),
+                        ...(catalogVisibleColumns.categories ? [{ id: "categories", minWidth: 100, defaultWidth: 140 }] : []),
+                        ...(catalogVisibleColumns.unit ? [{ id: "unit", minWidth: 60, defaultWidth: 80 }] : []),
+                        ...(catalogVisibleColumns.volume ? [{ id: "volume", minWidth: 60, defaultWidth: 80 }] : []),
+                        ...(catalogVisibleColumns.type ? [{ id: "type", minWidth: 80, defaultWidth: 100 }] : []),
+                        ...(catalogVisibleColumns.buyPrice ? [{ id: "buyPrice", minWidth: 70, defaultWidth: 90 }] : []),
+                        ...(catalogVisibleColumns.markup ? [{ id: "markup", minWidth: 110, defaultWidth: 120 }] : []),
+                        ...(catalogVisibleColumns.price ? [{ id: "price", minWidth: 80, defaultWidth: 100 }] : []),
+                        ...(catalogVisibleColumns.priceFull ? [{ id: "priceFull", minWidth: 70, defaultWidth: 90 }] : []),
+                        ...(catalogVisibleColumns.priceHalf ? [{ id: "priceHalf", minWidth: 70, defaultWidth: 90 }] : []),
+                        ...(catalogVisibleColumns.priceQuarter ? [{ id: "priceQuarter", minWidth: 70, defaultWidth: 90 }] : []),
+                        ...(catalogVisibleColumns.pricePortion ? [{ id: "pricePortion", minWidth: 70, defaultWidth: 90 }] : []),
+                        ...(catalogVisibleColumns.status ? [{ id: "status", minWidth: 80, defaultWidth: 100 }] : []),
                       ]}
                     >
                       <ResizableTableHeader>
                         <ResizableTableRow>
-                          <ResizableTableHead columnId="bulkCheckbox">
-                            <Checkbox
-                              checked={(() => {
-                                const catalogProducts = allProducts.filter(p => selectedCatalogProducts.has(p.id));
-                                return catalogProducts.length > 0 && catalogProducts.every(p => selectedCatalogBulkProducts.has(p.id));
-                              })()}
-                              onCheckedChange={() => {
-                                const catalogProductIds = allProducts.filter(p => selectedCatalogProducts.has(p.id)).map(p => p.id);
-                                const allSelected = catalogProductIds.every(id => selectedCatalogBulkProducts.has(id));
-                                if (allSelected) {
-                                  setSelectedCatalogBulkProducts(new Set());
-                                } else {
-                                  setSelectedCatalogBulkProducts(new Set(catalogProductIds));
-                                }
-                              }}
-                            />
-                          </ResizableTableHead>
-                          <ResizableTableHead columnId="photo">Фото</ResizableTableHead>
-                          <ResizableTableHead columnId="name">Название</ResizableTableHead>
-                          <ResizableTableHead columnId="description">Описание</ResizableTableHead>
-                          <ResizableTableHead columnId="categories">Категории</ResizableTableHead>
-                          <ResizableTableHead columnId="unit">Ед. изм.</ResizableTableHead>
-                          <ResizableTableHead columnId="volume">Объем</ResizableTableHead>
-                          <ResizableTableHead columnId="type">Вид</ResizableTableHead>
-                          <ResizableTableHead columnId="buyPrice">Себест-ть</ResizableTableHead>
-                          <ResizableTableHead columnId="markup">Наценка</ResizableTableHead>
-                          <ResizableTableHead columnId="price">Цена</ResizableTableHead>
-                          <ResizableTableHead columnId="priceFull">Целая</ResizableTableHead>
-                          <ResizableTableHead columnId="priceHalf">½</ResizableTableHead>
-                          <ResizableTableHead columnId="priceQuarter">¼</ResizableTableHead>
-                          <ResizableTableHead columnId="pricePortion">Порция</ResizableTableHead>
-                          <ResizableTableHead columnId="status">Статус</ResizableTableHead>
+                          {catalogVisibleColumns.bulkCheckbox && (
+                            <ResizableTableHead columnId="bulkCheckbox">
+                              <Checkbox
+                                checked={(() => {
+                                  const catalogProducts = allProducts.filter(p => selectedCatalogProducts.has(p.id));
+                                  return catalogProducts.length > 0 && catalogProducts.every(p => selectedCatalogBulkProducts.has(p.id));
+                                })()}
+                                onCheckedChange={() => {
+                                  const catalogProductIds = allProducts.filter(p => selectedCatalogProducts.has(p.id)).map(p => p.id);
+                                  const allSelected = catalogProductIds.every(id => selectedCatalogBulkProducts.has(id));
+                                  if (allSelected) {
+                                    setSelectedCatalogBulkProducts(new Set());
+                                  } else {
+                                    setSelectedCatalogBulkProducts(new Set(catalogProductIds));
+                                  }
+                                }}
+                              />
+                            </ResizableTableHead>
+                          )}
+                          {catalogVisibleColumns.photo && <ResizableTableHead columnId="photo">Фото</ResizableTableHead>}
+                          {catalogVisibleColumns.name && <ResizableTableHead columnId="name">Название</ResizableTableHead>}
+                          {catalogVisibleColumns.description && <ResizableTableHead columnId="description">Описание</ResizableTableHead>}
+                          {catalogVisibleColumns.categories && <ResizableTableHead columnId="categories">Категории</ResizableTableHead>}
+                          {catalogVisibleColumns.unit && <ResizableTableHead columnId="unit">Ед. изм.</ResizableTableHead>}
+                          {catalogVisibleColumns.volume && <ResizableTableHead columnId="volume">Объем</ResizableTableHead>}
+                          {catalogVisibleColumns.type && <ResizableTableHead columnId="type">Вид</ResizableTableHead>}
+                          {catalogVisibleColumns.buyPrice && <ResizableTableHead columnId="buyPrice">Себест-ть</ResizableTableHead>}
+                          {catalogVisibleColumns.markup && <ResizableTableHead columnId="markup">Наценка</ResizableTableHead>}
+                          {catalogVisibleColumns.price && <ResizableTableHead columnId="price">Цена</ResizableTableHead>}
+                          {catalogVisibleColumns.priceFull && <ResizableTableHead columnId="priceFull">Целая</ResizableTableHead>}
+                          {catalogVisibleColumns.priceHalf && <ResizableTableHead columnId="priceHalf">½</ResizableTableHead>}
+                          {catalogVisibleColumns.priceQuarter && <ResizableTableHead columnId="priceQuarter">¼</ResizableTableHead>}
+                          {catalogVisibleColumns.pricePortion && <ResizableTableHead columnId="pricePortion">Порция</ResizableTableHead>}
+                          {catalogVisibleColumns.status && <ResizableTableHead columnId="status">Статус</ResizableTableHead>}
                         </ResizableTableRow>
                       </ResizableTableHeader>
                       <ResizableTableBody>
@@ -4827,244 +4891,276 @@ export default function AdminPanel({
                                 key={product.id}
                                 className={`${selectedCatalogProducts.has(product.id) ? "bg-primary/5" : ""} ${selectedCatalogBulkProducts.has(product.id) ? "bg-primary/10" : ""}`}
                               >
-                                <ResizableTableCell columnId="bulkCheckbox">
-                                  <Checkbox
-                                    checked={selectedCatalogBulkProducts.has(product.id)}
-                                    onCheckedChange={() => {
-                                      setSelectedCatalogBulkProducts(prev => {
-                                        const newSet = new Set(prev);
-                                        if (newSet.has(product.id)) {
-                                          newSet.delete(product.id);
-                                        } else {
-                                          newSet.add(product.id);
-                                        }
-                                        return newSet;
-                                      });
-                                    }}
-                                  />
-                                </ResizableTableCell>
-                                {/* Фото - из ассортимента (только чтение) */}
-                                <ResizableTableCell columnId="photo">
-                                  <img
-                                    src={product.image}
-                                    alt={baseName}
-                                    className="w-10 h-10 rounded object-cover"
-                                  />
-                                </ResizableTableCell>
-                                {/* Название - редактируемое, сохраняется в ассортимент */}
-                                <ResizableTableCell columnId="name" className="font-medium">
-                                  <InlineEditableCell
-                                    value={baseName}
-                                    onSave={(newName) => {
-                                      if (newName && newName !== baseName) {
-                                        updateProduct({ ...product, name: newName });
-                                      }
-                                    }}
-                                    placeholder="Название"
-                                  />
-                                </ResizableTableCell>
-                                {/* Описание - редактируемое, сохраняется в ассортимент */}
-                                <ResizableTableCell columnId="description">
-                                  <InlineEditableCell
-                                    value={baseDescription || ""}
-                                    onSave={(newDesc) => {
-                                      if (newDesc !== baseDescription) {
-                                        updateProduct({ ...product, description: newDesc });
-                                      }
-                                    }}
-                                    placeholder="Описание..."
-                                    className="text-muted-foreground text-xs"
-                                  />
-                                </ResizableTableCell>
-                                {/* Категории - независимые для каждого каталога */}
-                                <ResizableTableCell columnId="categories">
-                                  <InlineMultiSelectCell
-                                    values={effectiveCategories || []}
-                                    options={categories.map(c => ({ value: c.id, label: c.name, sort_order: c.sort_order }))}
-                                    onSave={(selectedIds) => {
-                                      if (currentCatalog) {
-                                        updateCatalogProductPricing(currentCatalog.id, product.id, { categories: selectedIds });
-                                      }
-                                    }}
-                                    onAddOption={handleAddCategory}
-                                    onReorder={() => setCategoryOrderDialogOpen(true)}
-                                    placeholder="Категории..."
-                                    addNewPlaceholder="Новая категория..."
-                                    addNewButtonLabel="Создать категорию"
-                                    allowAddNew={true}
-                                    showReorderButton={true}
-                                  />
-                                </ResizableTableCell>
-                                {/* Единица измерения - редактируемая, сохраняется в ассортимент */}
-                                <ResizableTableCell columnId="unit">
-                                  <InlineSelectCell
-                                    value={baseUnit}
-                                    options={allUnitOptions}
-                                    onSave={(newUnit) => {
-                                      if (newUnit !== baseUnit) {
-                                        updateProduct({ ...product, unit: newUnit });
-                                      }
-                                    }}
-                                    onAddOption={(newUnit) => setCustomUnits(prev => [...prev, newUnit])}
-                                    addNewPlaceholder="Ед..."
-                                    allowAddNew={true}
-                                  />
-                                </ResizableTableCell>
-                                {/* Объём - редактируемый, сохраняется в ассортимент */}
-                                <ResizableTableCell columnId="volume">
-                                  <InlinePriceCell
-                                    value={baseUnitWeight}
-                                    onSave={(newVolume) => {
-                                      if (newVolume !== baseUnitWeight) {
-                                        updateProduct({ ...product, unitWeight: newVolume });
-                                      }
-                                    }}
-                                    placeholder="0"
-                                    suffix={baseUnit}
-                                  />
-                                </ResizableTableCell>
-                                {/* Вид упаковки - редактируемый, сохраняется в ассортимент */}
-                                <ResizableTableCell columnId="type">
-                                  <InlineSelectCell
-                                    value={basePackagingType || "piece"}
-                                    options={allPackagingOptions}
-                                    onSave={(newType) => {
-                                      if (newType !== basePackagingType) {
-                                        updateProduct({ ...product, packagingType: newType as PackagingType });
-                                      }
-                                    }}
-                                    onAddOption={(newType) => setCustomPackagingTypes(prev => [...prev, newType])}
-                                    addNewPlaceholder="Вид..."
-                                    allowAddNew={true}
-                                  />
-                                </ResizableTableCell>
-                                {/* Себестоимость - редактируемая, сохраняется в ассортимент */}
-                                <ResizableTableCell columnId="buyPrice">
-                                  <InlinePriceCell
-                                    value={product.buyPrice}
-                                    onSave={(newBuyPrice) => {
-                                      if (newBuyPrice !== product.buyPrice) {
-                                        updateProduct({ ...product, buyPrice: newBuyPrice });
-                                      }
-                                    }}
-                                    placeholder="—"
-                                    suffix="₽"
-                                  />
-                                </ResizableTableCell>
-                                {/* Наценка - независимая для каждого каталога */}
-                                <ResizableTableCell columnId="markup">
-                                  <InlineMarkupCell
-                                    value={effectiveMarkup}
-                                    onSave={(markup) => {
-                                      if (currentCatalog) {
-                                        updateCatalogProductPricing(currentCatalog.id, product.id, { markup });
-                                      }
-                                    }}
-                                  />
-                                </ResizableTableCell>
-                                <ResizableTableCell columnId="price" className="font-medium">
-                                  <span className="text-xs">{formatPrice(salePrice)}/{baseUnit}</span>
-                                </ResizableTableCell>
-                                <ResizableTableCell columnId="priceFull">
-                                  {packagingPrices ? (
-                                    <span className="text-xs font-medium">{formatPrice(packagingPrices.full)}</span>
-                                  ) : "-"}
-                                </ResizableTableCell>
-                                {/* Цена за ½ - независимая для каждого каталога */}
-                                <ResizableTableCell columnId="priceHalf">
-                                  <div className="flex flex-col gap-0.5">
-                                    <InlinePriceCell
-                                      value={effectivePortionPrices?.halfPricePerKg}
-                                      onSave={(value) => {
-                                        if (currentCatalog) {
-                                          updateCatalogProductPricing(currentCatalog.id, product.id, { 
-                                            portionPrices: { 
-                                              ...effectivePortionPrices, 
-                                              halfPricePerKg: value 
-                                            } 
-                                          });
-                                        }
-                                      }}
-                                      placeholder="—"
-                                      suffix=""
-                                    />
-                                  </div>
-                                </ResizableTableCell>
-                                {/* Цена за ¼ - независимая для каждого каталога */}
-                                <ResizableTableCell columnId="priceQuarter">
-                                  <div className="flex flex-col gap-0.5">
-                                    <InlinePriceCell
-                                      value={effectivePortionPrices?.quarterPricePerKg}
-                                      onSave={(value) => {
-                                        if (currentCatalog) {
-                                          updateCatalogProductPricing(currentCatalog.id, product.id, { 
-                                            portionPrices: { 
-                                              ...effectivePortionPrices, 
-                                              quarterPricePerKg: value 
-                                            } 
-                                          });
-                                        }
-                                      }}
-                                      placeholder="—"
-                                      suffix=""
-                                    />
-                                  </div>
-                                </ResizableTableCell>
-                                {/* Цена за порцию - независимая для каждого каталога */}
-                                <ResizableTableCell columnId="pricePortion">
-                                  <InlinePriceCell
-                                    value={effectivePortionPrices?.portionPrice}
-                                    onSave={(value) => {
-                                      if (currentCatalog) {
-                                        updateCatalogProductPricing(currentCatalog.id, product.id, { 
-                                          portionPrices: { 
-                                            ...effectivePortionPrices, 
-                                            portionPrice: value 
-                                          } 
+                                {catalogVisibleColumns.bulkCheckbox && (
+                                  <ResizableTableCell columnId="bulkCheckbox">
+                                    <Checkbox
+                                      checked={selectedCatalogBulkProducts.has(product.id)}
+                                      onCheckedChange={() => {
+                                        setSelectedCatalogBulkProducts(prev => {
+                                          const newSet = new Set(prev);
+                                          if (newSet.has(product.id)) {
+                                            newSet.delete(product.id);
+                                          } else {
+                                            newSet.add(product.id);
+                                          }
+                                          return newSet;
                                         });
-                                      }
-                                    }}
-                                    placeholder="—"
-                                    suffix=""
-                                  />
-                                </ResizableTableCell>
+                                      }}
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Фото - из ассортимента (только чтение) */}
+                                {catalogVisibleColumns.photo && (
+                                  <ResizableTableCell columnId="photo">
+                                    <img
+                                      src={product.image}
+                                      alt={baseName}
+                                      className="w-10 h-10 rounded object-cover"
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Название - редактируемое, сохраняется в ассортимент */}
+                                {catalogVisibleColumns.name && (
+                                  <ResizableTableCell columnId="name" className="font-medium">
+                                    <InlineEditableCell
+                                      value={baseName}
+                                      onSave={(newName) => {
+                                        if (newName && newName !== baseName) {
+                                          updateProduct({ ...product, name: newName });
+                                        }
+                                      }}
+                                      placeholder="Название"
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Описание - редактируемое, сохраняется в ассортимент */}
+                                {catalogVisibleColumns.description && (
+                                  <ResizableTableCell columnId="description">
+                                    <InlineEditableCell
+                                      value={baseDescription || ""}
+                                      onSave={(newDesc) => {
+                                        if (newDesc !== baseDescription) {
+                                          updateProduct({ ...product, description: newDesc });
+                                        }
+                                      }}
+                                      placeholder="Описание..."
+                                      className="text-muted-foreground text-xs"
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Категории - независимые для каждого каталога */}
+                                {catalogVisibleColumns.categories && (
+                                  <ResizableTableCell columnId="categories">
+                                    <InlineMultiSelectCell
+                                      values={effectiveCategories || []}
+                                      options={categories.map(c => ({ value: c.id, label: c.name, sort_order: c.sort_order }))}
+                                      onSave={(selectedIds) => {
+                                        if (currentCatalog) {
+                                          updateCatalogProductPricing(currentCatalog.id, product.id, { categories: selectedIds });
+                                        }
+                                      }}
+                                      onAddOption={handleAddCategory}
+                                      onReorder={() => setCategoryOrderDialogOpen(true)}
+                                      placeholder="Категории..."
+                                      addNewPlaceholder="Новая категория..."
+                                      addNewButtonLabel="Создать категорию"
+                                      allowAddNew={true}
+                                      showReorderButton={true}
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Единица измерения - редактируемая, сохраняется в ассортимент */}
+                                {catalogVisibleColumns.unit && (
+                                  <ResizableTableCell columnId="unit">
+                                    <InlineSelectCell
+                                      value={baseUnit}
+                                      options={allUnitOptions}
+                                      onSave={(newUnit) => {
+                                        if (newUnit !== baseUnit) {
+                                          updateProduct({ ...product, unit: newUnit });
+                                        }
+                                      }}
+                                      onAddOption={(newUnit) => setCustomUnits(prev => [...prev, newUnit])}
+                                      addNewPlaceholder="Ед..."
+                                      allowAddNew={true}
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Объём - редактируемый, сохраняется в ассортимент */}
+                                {catalogVisibleColumns.volume && (
+                                  <ResizableTableCell columnId="volume">
+                                    <InlinePriceCell
+                                      value={baseUnitWeight}
+                                      onSave={(newVolume) => {
+                                        if (newVolume !== baseUnitWeight) {
+                                          updateProduct({ ...product, unitWeight: newVolume });
+                                        }
+                                      }}
+                                      placeholder="0"
+                                      suffix={baseUnit}
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Вид упаковки - редактируемый, сохраняется в ассортимент */}
+                                {catalogVisibleColumns.type && (
+                                  <ResizableTableCell columnId="type">
+                                    <InlineSelectCell
+                                      value={basePackagingType || "piece"}
+                                      options={allPackagingOptions}
+                                      onSave={(newType) => {
+                                        if (newType !== basePackagingType) {
+                                          updateProduct({ ...product, packagingType: newType as PackagingType });
+                                        }
+                                      }}
+                                      onAddOption={(newType) => setCustomPackagingTypes(prev => [...prev, newType])}
+                                      addNewPlaceholder="Вид..."
+                                      allowAddNew={true}
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Себестоимость - редактируемая, сохраняется в ассортимент */}
+                                {catalogVisibleColumns.buyPrice && (
+                                  <ResizableTableCell columnId="buyPrice">
+                                    <InlinePriceCell
+                                      value={product.buyPrice}
+                                      onSave={(newBuyPrice) => {
+                                        if (newBuyPrice !== product.buyPrice) {
+                                          updateProduct({ ...product, buyPrice: newBuyPrice });
+                                        }
+                                      }}
+                                      placeholder="—"
+                                      suffix="₽"
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Наценка - независимая для каждого каталога */}
+                                {catalogVisibleColumns.markup && (
+                                  <ResizableTableCell columnId="markup">
+                                    <InlineMarkupCell
+                                      value={effectiveMarkup}
+                                      onSave={(markup) => {
+                                        if (currentCatalog) {
+                                          updateCatalogProductPricing(currentCatalog.id, product.id, { markup });
+                                        }
+                                      }}
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {catalogVisibleColumns.price && (
+                                  <ResizableTableCell columnId="price" className="font-medium">
+                                    <span className="text-xs">{formatPrice(salePrice)}/{baseUnit}</span>
+                                  </ResizableTableCell>
+                                )}
+                                {catalogVisibleColumns.priceFull && (
+                                  <ResizableTableCell columnId="priceFull">
+                                    {packagingPrices ? (
+                                      <span className="text-xs font-medium">{formatPrice(packagingPrices.full)}</span>
+                                    ) : "-"}
+                                  </ResizableTableCell>
+                                )}
+                                {/* Цена за ½ - независимая для каждого каталога */}
+                                {catalogVisibleColumns.priceHalf && (
+                                  <ResizableTableCell columnId="priceHalf">
+                                    <div className="flex flex-col gap-0.5">
+                                      <InlinePriceCell
+                                        value={effectivePortionPrices?.halfPricePerKg}
+                                        onSave={(value) => {
+                                          if (currentCatalog) {
+                                            updateCatalogProductPricing(currentCatalog.id, product.id, { 
+                                              portionPrices: { 
+                                                ...effectivePortionPrices, 
+                                                halfPricePerKg: value 
+                                              } 
+                                            });
+                                          }
+                                        }}
+                                        placeholder="—"
+                                        suffix=""
+                                      />
+                                    </div>
+                                  </ResizableTableCell>
+                                )}
+                                {/* Цена за ¼ - независимая для каждого каталога */}
+                                {catalogVisibleColumns.priceQuarter && (
+                                  <ResizableTableCell columnId="priceQuarter">
+                                    <div className="flex flex-col gap-0.5">
+                                      <InlinePriceCell
+                                        value={effectivePortionPrices?.quarterPricePerKg}
+                                        onSave={(value) => {
+                                          if (currentCatalog) {
+                                            updateCatalogProductPricing(currentCatalog.id, product.id, { 
+                                              portionPrices: { 
+                                                ...effectivePortionPrices, 
+                                                quarterPricePerKg: value 
+                                              } 
+                                            });
+                                          }
+                                        }}
+                                        placeholder="—"
+                                        suffix=""
+                                      />
+                                    </div>
+                                  </ResizableTableCell>
+                                )}
+                                {/* Цена за порцию - независимая для каждого каталога */}
+                                {catalogVisibleColumns.pricePortion && (
+                                  <ResizableTableCell columnId="pricePortion">
+                                    <InlinePriceCell
+                                      value={effectivePortionPrices?.portionPrice}
+                                      onSave={(value) => {
+                                        if (currentCatalog) {
+                                          updateCatalogProductPricing(currentCatalog.id, product.id, { 
+                                            portionPrices: { 
+                                              ...effectivePortionPrices, 
+                                              portionPrice: value 
+                                            } 
+                                          });
+                                        }
+                                      }}
+                                      placeholder="—"
+                                      suffix=""
+                                    />
+                                  </ResizableTableCell>
+                                )}
                                 {/* Статус - синхронизируется с витриной */}
-                                <ResizableTableCell columnId="status">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      e.preventDefault();
-                                      if (!currentCatalog) return;
-                                      const nextStatus: ProductStatus = 
-                                        effectiveStatus === "in_stock" ? "pre_order" :
-                                        effectiveStatus === "pre_order" ? "out_of_stock" :
-                                        effectiveStatus === "out_of_stock" ? "hidden" : "in_stock";
-                                      updateCatalogProductPricing(currentCatalog.id, product.id, { status: nextStatus });
-                                    }}
-                                    onTouchEnd={(e) => {
-                                      e.stopPropagation();
-                                    }}
-                                    className="focus:outline-none touch-manipulation p-1"
-                                    style={{ touchAction: 'manipulation' }}
-                                  >
-                                    <Badge
-                                      variant={effectiveStatus === "hidden" ? "outline" : effectiveStatus === "in_stock" ? "default" : "secondary"}
-                                      className={`text-xs cursor-pointer transition-colors select-none ${
-                                        effectiveStatus === "hidden"
-                                          ? "bg-muted/50 text-muted-foreground border-dashed"
-                                          : effectiveStatus === "in_stock"
-                                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800"
-                                            : effectiveStatus === "pre_order"
-                                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 hover:bg-blue-200 dark:hover:bg-blue-800"
-                                              : "bg-muted text-muted-foreground hover:bg-muted/80"
-                                      }`}
+                                {catalogVisibleColumns.status && (
+                                  <ResizableTableCell columnId="status">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        if (!currentCatalog) return;
+                                        const nextStatus: ProductStatus = 
+                                          effectiveStatus === "in_stock" ? "pre_order" :
+                                          effectiveStatus === "pre_order" ? "out_of_stock" :
+                                          effectiveStatus === "out_of_stock" ? "hidden" : "in_stock";
+                                        updateCatalogProductPricing(currentCatalog.id, product.id, { status: nextStatus });
+                                      }}
+                                      onTouchEnd={(e) => {
+                                        e.stopPropagation();
+                                      }}
+                                      className="focus:outline-none touch-manipulation p-1"
+                                      style={{ touchAction: 'manipulation' }}
                                     >
-                                      {effectiveStatus === "hidden" ? "Скрыт" : 
-                                       effectiveStatus === "in_stock" ? "В наличии" : 
-                                       effectiveStatus === "pre_order" ? "Под заказ" : "Нет"}
-                                    </Badge>
-                                  </button>
-                                </ResizableTableCell>
+                                      <Badge
+                                        variant={effectiveStatus === "hidden" ? "outline" : effectiveStatus === "in_stock" ? "default" : "secondary"}
+                                        className={`text-xs cursor-pointer transition-colors select-none ${
+                                          effectiveStatus === "hidden"
+                                            ? "bg-muted/50 text-muted-foreground border-dashed"
+                                            : effectiveStatus === "in_stock"
+                                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800"
+                                              : effectiveStatus === "pre_order"
+                                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 hover:bg-blue-200 dark:hover:bg-blue-800"
+                                                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                        }`}
+                                      >
+                                        {effectiveStatus === "hidden" ? "Скрыт" : 
+                                         effectiveStatus === "in_stock" ? "В наличии" : 
+                                         effectiveStatus === "pre_order" ? "Под заказ" : "Нет"}
+                                      </Badge>
+                                    </button>
+                                  </ResizableTableCell>
+                                )}
                               </ResizableTableRow>
                             );
                           })}
