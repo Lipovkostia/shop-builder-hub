@@ -5129,29 +5129,21 @@ export default function AdminPanel({
                             <div className="border-t border-border pt-3 mb-3">
                               <div className="space-y-2.5">
                                 {order.items.map((item) => (
-                                  <div key={item.id} className="flex items-center gap-3">
-                                    {/* Product icon placeholder */}
-                                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-muted/50 flex items-center justify-center flex-shrink-0">
-                                      <Package className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-                                    </div>
-                                    
+                                  <div key={item.id} className="flex items-center gap-2">
                                     {/* Product info */}
                                     <div className="flex-1 min-w-0">
-                                      <div className="font-medium text-sm truncate">{item.product_name}</div>
+                                      <div className="font-medium text-sm">{item.product_name}</div>
                                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                         <span>{item.quantity} шт</span>
                                         <span>·</span>
-                                        <span>{item.price.toLocaleString()} ₽</span>
+                                        <span>{item.price.toLocaleString()} ₽/шт</span>
                                       </div>
                                     </div>
                                     
                                     {/* Total price */}
                                     <div className="text-right flex-shrink-0">
-                                      <div className="font-bold text-sm sm:text-base text-primary tabular-nums">
+                                      <div className="font-bold text-sm text-primary tabular-nums">
                                         {item.total.toLocaleString()} ₽
-                                      </div>
-                                      <div className="text-[10px] sm:text-xs text-muted-foreground">
-                                        {item.quantity} шт
                                       </div>
                                     </div>
                                   </div>
