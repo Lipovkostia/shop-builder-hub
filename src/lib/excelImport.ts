@@ -167,15 +167,16 @@ export async function checkForDuplicates(
   const sheet = workbook.Sheets[sheetName];
   const allRows: ExcelRow[] = XLSX.utils.sheet_to_json(sheet, { range: 0 });
 
-  // Filter valid rows (skip instruction row and empty rows)
+  // Filter valid rows (skip header, instruction row and empty rows)
   const validRows: { row: ExcelRow; rowIndex: number }[] = [];
   allRows.forEach((row, index) => {
-    // Skip instruction row (second row)
-    if (index === 1) return;
     const name = row['Название*'];
-    if (name && typeof name === 'string' && name.trim() !== '' && !name.startsWith('Обязательное')) {
-      validRows.push({ row, rowIndex: index + 2 }); // +2 for Excel 1-based and header
-    }
+    // Skip if no name, empty name, or instruction row
+    if (!name || typeof name !== 'string') return;
+    const trimmedName = name.trim();
+    if (trimmedName === '' || trimmedName.startsWith('Обязательное')) return;
+    
+    validRows.push({ row, rowIndex: index + 2 }); // +2 for Excel 1-based and header
   });
 
   if (validRows.length === 0) {
