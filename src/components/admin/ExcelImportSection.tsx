@@ -149,8 +149,8 @@ export function ExcelImportSection({ storeId, onBack, onComplete }: ExcelImportS
     }
   };
 
-  const handleDownloadTemplate = () => {
-    downloadExcelTemplate();
+  const handleDownloadTemplate = async () => {
+    await downloadExcelTemplate(storeId);
   };
 
   const getProgressPercent = () => {
