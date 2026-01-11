@@ -1355,45 +1355,117 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
       {viewMode === 'storefront' && (
         <main className="flex-1 overflow-auto">
         {filteredProducts.length > 0 ? (
-          filteredProducts.map((product) => {
-            const catalogSettings = selectedCatalog ? getProductSettings(selectedCatalog, product.id) : undefined;
+          (() => {
+            // Helper function to render a product card
+            const renderProductCard = (product: StoreProduct) => {
+              const catalogSettings = selectedCatalog ? getProductSettings(selectedCatalog, product.id) : undefined;
+              return (
+                <ProductCard 
+                  key={product.id} 
+                  product={product} 
+                  cart={cart}
+                  onAddToCart={handleAddToCart}
+                  showImages={showImages}
+                  catalogSettings={catalogSettings}
+                  isOwner={isOwner}
+                  isExpanded={expandedProductId === product.id}
+                  onToggleExpand={() => {
+                    setExpandedProductId(expandedProductId === product.id ? null : product.id);
+                    if (expandedProductId !== product.id) {
+                      setGalleryOpenProductId(null);
+                    }
+                  }}
+                  onSave={handleSaveProduct}
+                  catalogs={catalogs}
+                  productCatalogIds={getProductCatalogIds(product.id)}
+                  onCatalogsChange={handleCatalogsChange}
+                  selectedCatalog={selectedCatalog}
+                  onStatusChange={handleStatusChange}
+                  onCatalogSettingsChange={updateProductSettings}
+                  isGalleryOpen={galleryOpenProductId === product.id}
+                  onToggleGallery={() => {
+                    setGalleryOpenProductId(galleryOpenProductId === product.id ? null : product.id);
+                    if (galleryOpenProductId !== product.id) {
+                      setExpandedProductId(null);
+                    }
+                  }}
+                  onImagesUpdate={handleImagesUpdate}
+                  isOnboardingHighlighted={onboardingStep10Active && !onboardingStep10NameEdited && filteredProducts.indexOf(product) === 0}
+                />
+              );
+            };
+
+            // If search is active or category filter is selected - show flat list
+            if (searchQuery.trim() || categoryFilter !== null) {
+              return (
+                <>
+                  {searchQuery.trim() && (
+                    <div className="px-3 py-2 bg-muted/50 border-b border-border">
+                      <span className="text-sm text-muted-foreground">
+                        Найдено: {filteredProducts.length} {filteredProducts.length === 1 ? 'товар' : filteredProducts.length < 5 ? 'товара' : 'товаров'}
+                      </span>
+                    </div>
+                  )}
+                  {categoryFilter !== null && !searchQuery.trim() && (
+                    <div className="px-3 py-2 bg-muted/50 border-b border-border">
+                      <span className="text-sm font-medium text-foreground">
+                        {catalogCategories.find(c => c.id === categoryFilter)?.name || 'Категория'}
+                      </span>
+                    </div>
+                  )}
+                  {filteredProducts.map(renderProductCard)}
+                </>
+              );
+            }
+
+            // Group products by category (sorted by category sort_order)
+            const sortedCategories = [...catalogCategories].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+            
             return (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
-                cart={cart}
-                onAddToCart={handleAddToCart}
-                showImages={showImages}
-                catalogSettings={catalogSettings}
-                isOwner={isOwner}
-                isExpanded={expandedProductId === product.id}
-                onToggleExpand={() => {
-                  setExpandedProductId(expandedProductId === product.id ? null : product.id);
-                  // Close gallery when opening edit panel
-                  if (expandedProductId !== product.id) {
-                    setGalleryOpenProductId(null);
-                  }
-                }}
-                onSave={handleSaveProduct}
-                catalogs={catalogs}
-                productCatalogIds={getProductCatalogIds(product.id)}
-                onCatalogsChange={handleCatalogsChange}
-                selectedCatalog={selectedCatalog}
-                onStatusChange={handleStatusChange}
-                onCatalogSettingsChange={updateProductSettings}
-                isGalleryOpen={galleryOpenProductId === product.id}
-                onToggleGallery={() => {
-                  setGalleryOpenProductId(galleryOpenProductId === product.id ? null : product.id);
-                  // Close edit panel when opening gallery
-                  if (galleryOpenProductId !== product.id) {
-                    setExpandedProductId(null);
-                  }
-                }}
-                onImagesUpdate={handleImagesUpdate}
-                isOnboardingHighlighted={onboardingStep10Active && !onboardingStep10NameEdited && filteredProducts.indexOf(product) === 0}
-              />
+              <>
+                {sortedCategories.map((category) => {
+                  const categoryProducts = filteredProducts.filter((p) => {
+                    const catalogSettings = selectedCatalog ? getProductSettings(selectedCatalog, p.id) : undefined;
+                    const productCategories = catalogSettings?.categories || [];
+                    return productCategories.includes(category.id);
+                  });
+                  
+                  if (categoryProducts.length === 0) return null;
+                  
+                  return (
+                    <div key={category.id}>
+                      <div className="px-3 py-1 bg-muted/50 border-b border-border sticky top-0 z-10">
+                        <span className="text-xs font-medium text-foreground">{category.name}</span>
+                      </div>
+                      {categoryProducts.map(renderProductCard)}
+                    </div>
+                  );
+                })}
+                
+                {/* Products without category */}
+                {(() => {
+                  const uncategorizedProducts = filteredProducts.filter((p) => {
+                    const catalogSettings = selectedCatalog ? getProductSettings(selectedCatalog, p.id) : undefined;
+                    const productCategories = catalogSettings?.categories || [];
+                    return productCategories.length === 0;
+                  });
+                  
+                  if (uncategorizedProducts.length === 0) return null;
+                  
+                  return (
+                    <div>
+                      {sortedCategories.length > 0 && (
+                        <div className="px-3 py-1 bg-muted/50 border-b border-border sticky top-0 z-10">
+                          <span className="text-xs font-medium text-muted-foreground">Без категории</span>
+                        </div>
+                      )}
+                      {uncategorizedProducts.map(renderProductCard)}
+                    </div>
+                  );
+                })()}
+              </>
             );
-          })
+          })()
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
             {/* Empty state for owner with no products at all */}
