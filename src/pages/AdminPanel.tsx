@@ -5210,20 +5210,52 @@ export default function AdminPanel({
                                 Нажмите кнопку ниже, чтобы открыть бота в Telegram. 
                                 После нажатия «Start» вы начнете получать уведомления о новых заказах.
                               </p>
-                              <Button
-                                variant="default"
-                                size="sm"
-                                className="w-full bg-[#0088cc] hover:bg-[#0077b5]"
-                                onClick={() => {
-                                  const storeId = effectiveStoreId;
-                                  if (storeId) {
-                                    window.open(`https://t.me/zakaz9999999999_bot?start=${storeId}`, '_blank');
-                                  }
-                                }}
-                              >
-                                <Send className="h-4 w-4 mr-2" />
-                                Открыть бота в Telegram
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1"
+                                  onClick={async () => {
+                                    try {
+                                      const response = await fetch(
+                                        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-webhook?setup=true`
+                                      );
+                                      const result = await response.json();
+                                      if (result.ok) {
+                                        toast({
+                                          title: "Telegram бот настроен",
+                                          description: "Webhook успешно зарегистрирован. Теперь нажмите 'Открыть бота'.",
+                                        });
+                                      } else {
+                                        throw new Error(result.description || "Ошибка настройки");
+                                      }
+                                    } catch (error: any) {
+                                      toast({
+                                        title: "Ошибка настройки",
+                                        description: error.message,
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <Settings className="h-4 w-4 mr-2" />
+                                  Настроить бота
+                                </Button>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="flex-1 bg-[#0088cc] hover:bg-[#0077b5]"
+                                  onClick={() => {
+                                    const storeId = effectiveStoreId;
+                                    if (storeId) {
+                                      window.open(`https://t.me/zakaz9999999999_bot?start=${storeId}`, '_blank');
+                                    }
+                                  }}
+                                >
+                                  <Send className="h-4 w-4 mr-2" />
+                                  Открыть бота
+                                </Button>
+                              </div>
                             </div>
                             
                             {notificationContacts.telegram && (
