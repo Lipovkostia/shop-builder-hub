@@ -579,3 +579,78 @@ async function processProductImages(
 
   progress.status = 'importing';
 }
+
+/**
+ * Export all products to Excel file in the same format as import template
+ */
+export async function exportProductsToExcel(
+  storeId: string,
+  products: { 
+    id: string; 
+    name: string; 
+    description: string | null; 
+    buy_price: number | null; 
+    unit: string | null; 
+    unit_weight: number | null; 
+    packaging_type: string | null; 
+    images: string[] | null;
+  }[],
+  getProductGroupIds: (productId: string) => string[]
+): Promise<void> {
+  // Fetch existing groups for this store
+  const { data: groups } = await supabase
+    .from('product_groups')
+    .select('id, name')
+    .eq('store_id', storeId);
+
+  // Create map of group id -> name
+  const groupMap = new Map<string, string>();
+  groups?.forEach(g => groupMap.set(g.id, g.name));
+
+  // Build data rows from products
+  const rows = products.map(product => {
+    // Get group name for this product
+    const groupIds = getProductGroupIds(product.id);
+    const groupName = groupIds.length > 0 
+      ? groupMap.get(groupIds[0]) || '' 
+      : '';
+
+    return [
+      product.name || '',                              // Название*
+      product.description || '',                       // Описание
+      product.buy_price ?? '',                         // Закупочная цена
+      product.unit || 'шт',                           // Единица измерения
+      product.unit_weight ?? '',                       // Объём
+      product.packaging_type || '',                    // Тип фасовки
+      groupName,                                       // Группа
+      (product.images || []).join('; ')               // Фото (ссылки через ;)
+    ];
+  });
+
+  // Create workbook with headers and data
+  const wb = XLSX.utils.book_new();
+  const data = [
+    EXCEL_TEMPLATE_HEADERS,
+    ...rows
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 30 }, // Название
+    { wch: 50 }, // Описание
+    { wch: 15 }, // Закупочная цена
+    { wch: 18 }, // Единица измерения
+    { wch: 12 }, // Объём
+    { wch: 15 }, // Тип фасовки
+    { wch: 25 }, // Группа
+    { wch: 60 }, // Фото
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Ассортимент');
+
+  // Download file with date in name
+  const date = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `ассортимент_${date}.xlsx`);
+}

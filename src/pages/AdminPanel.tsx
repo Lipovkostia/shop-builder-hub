@@ -106,7 +106,7 @@ import { useStoreNotificationSettings } from "@/hooks/useStoreNotificationSettin
 import { useMoyskladOrders } from "@/hooks/useMoyskladOrders";
 import { Textarea } from "@/components/ui/textarea";
 import { ImportSourceCard } from "@/components/admin/ImportSourceCard";
-import { downloadExcelTemplate, importProductsFromExcel, ImportProgress } from "@/lib/excelImport";
+import { downloadExcelTemplate, importProductsFromExcel, ImportProgress, exportProductsToExcel } from "@/lib/excelImport";
 import { ExcelImportSection } from "@/components/admin/ExcelImportSection";
 
 // Removed localStorage keys - now using Supabase
@@ -912,6 +912,7 @@ export default function AdminPanel({
   const [savingStore, setSavingStore] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [profileSubSection, setProfileSubSection] = useState<'personal' | 'store' | 'settings'>('personal');
+  const [isExportingProducts, setIsExportingProducts] = useState(false);
 
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
     drag: true,
@@ -1652,6 +1653,33 @@ export default function AdminPanel({
   // Manual sync now handler
   const handleSyncNow = () => {
     syncAutoSyncProducts(syncSettings.fieldMapping);
+  };
+
+  // Export products to Excel
+  const handleExportProducts = async () => {
+    if (!effectiveStoreId) return;
+    
+    setIsExportingProducts(true);
+    try {
+      await exportProductsToExcel(
+        effectiveStoreId,
+        supabaseProducts,
+        getProductGroupIds
+      );
+      toast({
+        title: "Экспорт завершён",
+        description: `Экспортировано ${supabaseProducts.length} товаров`
+      });
+    } catch (error: any) {
+      console.error('Export error:', error);
+      toast({
+        title: "Ошибка экспорта",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsExportingProducts(false);
+    }
   };
 
   // Toggle auto-sync for a product
@@ -3141,6 +3169,20 @@ export default function AdminPanel({
                       <span className="hidden sm:inline ml-1">Синхр.</span>
                     </Button>
                   )}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={handleExportProducts}
+                    disabled={isExportingProducts || supabaseProducts.length === 0}
+                    title="Скачать ассортимент в Excel"
+                  >
+                    {isExportingProducts ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1">
