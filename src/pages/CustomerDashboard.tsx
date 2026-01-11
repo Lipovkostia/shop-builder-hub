@@ -990,7 +990,7 @@ const CustomerDashboard = () => {
   // Redirect if not authenticated (unless impersonating)
   useEffect(() => {
     if (!authLoading && !user && !isImpersonating) {
-      navigate("/customer-auth");
+      navigate("/?tab=customer");
     }
   }, [user, authLoading, navigate, isImpersonating]);
 

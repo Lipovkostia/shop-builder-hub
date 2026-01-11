@@ -1132,13 +1132,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
           </div>
           <div className="flex flex-col gap-3">
             <Button 
-              onClick={() => navigate('/customer-auth', { 
-                state: { 
-                  storeId: store.id, 
-                  storeName: store.name,
-                  returnUrl: `/store/${subdomain}`
-                } 
-              })}
+              onClick={() => navigate('/?tab=customer')}
               className="w-full gap-2"
             >
               <LogIn className="w-4 h-4" />
