@@ -36,6 +36,12 @@ export default function SellerWorkspace() {
     return isTriggered && !isCompleted;
   });
   
+  // Track if welcome modal was completed - spotlight only shows after this
+  const [welcomeCompleted, setWelcomeCompleted] = useState(() => {
+    // If welcome was already shown before, consider it completed
+    return localStorage.getItem('seller_onboarding_welcome_shown') === 'true';
+  });
+  
   // Onboarding step 9 state - triggered when user completes step 8 and switches to storefront
   const [onboardingStep9Active, setOnboardingStep9Active] = useState(false);
   
@@ -129,18 +135,19 @@ export default function SellerWorkspace() {
       {/* Welcome modal for first-time sellers */}
       {hasFullAccess && (
         <OnboardingWelcomeModal onComplete={() => {
-          // Modal completed, onboarding continues with step 1
+          // Modal completed, now show spotlight
+          setWelcomeCompleted(true);
         }} />
       )}
       
-      {/* Spotlight overlay for step 1 - go to admin panel */}
+      {/* Spotlight overlay for step 1 - go to admin panel (only after welcome modal) */}
       <SpotlightOverlay
         steps={sellerOnboardingStep1}
         currentStep={0}
         onStepComplete={handleSpotlightStepComplete}
         onSkip={handleSpotlightSkip}
         onClose={handleSpotlightClose}
-        isActive={onboardingStep1Active && hasFullAccess && activeView === "storefront"}
+        isActive={onboardingStep1Active && hasFullAccess && activeView === "storefront" && welcomeCompleted}
       />
       
       {/* Общая шапка с вкладками - для владельца или супер-админа */}
