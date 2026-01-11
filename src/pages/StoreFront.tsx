@@ -660,12 +660,14 @@ function StoreHeader({
           >
             <Image className="w-4 h-4" />
           </button>
-        </div>
+      </div>
+      </div>
 
-        {/* Название выбранного каталога */}
-        <span className="text-xs text-muted-foreground">
-          {selectedCatalogName}
-        </span>
+      {/* Название магазина и прайс-листа - под блоком с иконками */}
+      <div className="px-3 py-1 border-t border-border bg-background">
+        <p className="text-[10px] text-muted-foreground text-right truncate">
+          {store.name} — {selectedCatalogName}
+        </p>
       </div>
 
       {/* Выезжающий блок фильтров */}
