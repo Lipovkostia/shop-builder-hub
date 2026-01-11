@@ -33,6 +33,7 @@ export interface CatalogProduct {
   price_portion: number | null;
   portion_weight: number | null;
   quantity: number;
+  moysklad_id?: string | null; // For MoySklad order sync
   // Catalog-specific settings
   catalog_status?: string | null;
   catalog_markup_type?: string | null;
@@ -296,6 +297,8 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
           })() : null,
           // Categories assigned in catalog settings
           catalog_categories: settings?.categories || null,
+          // MoySklad ID for order sync
+          moysklad_id: p.moysklad_id || null,
         };
       });
 

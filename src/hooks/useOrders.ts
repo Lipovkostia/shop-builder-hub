@@ -394,14 +394,15 @@ export function useCustomerOrders() {
             .maybeSingle();
 
           if (moyskladAccount) {
-            // Filter items with moysklad_id and prepare positions
+            // Prepare positions - include all items, use moysklad_id if available
+            // For items without moysklad_id, we'll skip them in the order
             const moyskladPositions = data.items
-              .filter(item => item.moyskladId)
+              .filter(item => item.moyskladId) // Only include items with moysklad_id
               .map(item => ({
                 moysklad_id: item.moyskladId!,
                 product_name: item.productName,
                 quantity: item.quantity,
-                price: item.price * 100, // Convert to kopecks
+                price: Math.round(item.price * 100), // Convert to kopecks (must be integer)
               }));
 
             if (moyskladPositions.length > 0) {
