@@ -72,7 +72,8 @@ import {
   ChevronRight,
   X,
   LayoutGrid,
-  Search
+  Search,
+  Copy
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -1375,6 +1376,112 @@ const CustomerDashboard = () => {
     }
   };
 
+  // Copy order to clipboard in text format for messenger
+  const handleCopyOrder = async (order: Order) => {
+    if (!order.items || order.items.length === 0) return;
+
+    const statusText = 
+      order.status === 'pending' ? 'Ожидает подтверждения' :
+      order.status === 'processing' ? 'В обработке' :
+      order.status === 'shipped' ? 'Отправлен' :
+      order.status === 'delivered' ? 'Доставлен' :
+      'Отменён';
+
+    const orderDate = new Date(order.created_at);
+    const dateStr = orderDate.toLocaleDateString('ru-RU', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+    const timeStr = orderDate.toLocaleTimeString('ru-RU', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+
+    // Header
+    let text = `📦 ЗАКАЗ ${order.order_number}\n`;
+    text += `📅 ${dateStr} в ${timeStr}\n`;
+    text += `📍 Статус: ${statusText}\n`;
+    text += `─────────────────────\n\n`;
+
+    // Items
+    text += `🛒 ТОВАРЫ:\n\n`;
+    order.items.forEach((item, idx) => {
+      const product = item.product_id ? getProductById(item.product_id) : undefined;
+      const unitLabel = getUnitLabel(product?.unit);
+      const qtyFormatted = Number.isInteger(item.quantity) 
+        ? item.quantity.toString() 
+        : item.quantity.toFixed(1).replace('.', ',');
+      
+      text += `${idx + 1}. ${item.product_name}\n`;
+      text += `   ${qtyFormatted} ${unitLabel} × ${formatPriceSpaced(item.price)} ₽ = ${formatPriceSpaced(item.total)} ₽\n`;
+    });
+
+    text += `\n─────────────────────\n`;
+    
+    // Calculate total volume
+    const totals = order.items.reduce((acc, i) => {
+      const product = i.product_id ? getProductById(i.product_id) : undefined;
+      const unitLabel = getUnitLabel(product?.unit);
+      if (unitLabel === 'кг') {
+        acc.kg += i.quantity || 0;
+      } else {
+        acc.pcs += i.quantity || 0;
+      }
+      return acc;
+    }, { kg: 0, pcs: 0 });
+
+    const volumeParts: string[] = [];
+    if (totals.kg > 0) volumeParts.push(`${Number.isInteger(totals.kg) ? totals.kg : totals.kg.toFixed(1).replace('.', ',')} кг`);
+    if (totals.pcs > 0) volumeParts.push(`${Math.round(totals.pcs)} шт`);
+    const volumeStr = volumeParts.join(' + ') || '';
+
+    text += `📊 ИТОГО: ${order.items.length} поз.`;
+    if (volumeStr) text += ` (${volumeStr})`;
+    text += `\n`;
+    text += `💰 СУММА: ${formatPriceSpaced(order.total)} ₽\n`;
+
+    // Shipping address
+    if (order.shipping_address) {
+      text += `\n─────────────────────\n`;
+      text += `📬 ДОСТАВКА:\n`;
+      if (order.shipping_address.name) text += `👤 ${order.shipping_address.name}\n`;
+      if (order.shipping_address.phone) text += `📱 ${order.shipping_address.phone}\n`;
+      if (order.shipping_address.address) text += `🏠 ${order.shipping_address.address}\n`;
+      if (order.shipping_address.comment) text += `💬 ${order.shipping_address.comment}\n`;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Заказ скопирован",
+        description: "Можно вставить в мессенджер",
+      });
+    } catch (err) {
+      // Fallback для старых браузеров
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        toast({
+          title: "Заказ скопирован",
+          description: "Можно вставить в мессенджер",
+        });
+      } catch (e) {
+        toast({
+          title: "Ошибка",
+          description: "Не удалось скопировать",
+          variant: "destructive",
+        });
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
@@ -2375,17 +2482,31 @@ const CustomerDashboard = () => {
                                 {new Date(order.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
-                            {/* Repeat order button */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRepeatOrder(order);
-                              }}
-                              className="flex items-center gap-1 px-2 py-0.5 text-[9px] font-medium bg-primary/10 hover:bg-primary/20 text-primary rounded-full transition-colors"
-                            >
-                              <RotateCcw className="w-2.5 h-2.5" />
-                              Повторить
-                            </button>
+                            {/* Order action buttons */}
+                            <div className="flex items-center gap-1.5">
+                              {/* Copy order button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCopyOrder(order);
+                                }}
+                                className="flex items-center gap-1 px-2 py-0.5 text-[9px] font-medium bg-muted hover:bg-muted/80 text-muted-foreground rounded-full transition-colors"
+                              >
+                                <Copy className="w-2.5 h-2.5" />
+                                Скопировать
+                              </button>
+                              {/* Repeat order button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRepeatOrder(order);
+                                }}
+                                className="flex items-center gap-1 px-2 py-0.5 text-[9px] font-medium bg-primary/10 hover:bg-primary/20 text-primary rounded-full transition-colors"
+                              >
+                                <RotateCcw className="w-2.5 h-2.5" />
+                                Повторить
+                              </button>
+                            </div>
                           </div>
                           <div className="space-y-0.5 border-t border-border/50 pt-1.5">
                             {order.items.map((item, idx) => {
