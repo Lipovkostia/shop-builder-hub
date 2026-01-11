@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { AlertTriangle, Package } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { DuplicateProduct } from '@/lib/excelImport';
 
 interface DuplicateReviewDialogProps {
@@ -30,9 +30,14 @@ export function DuplicateReviewDialog({
   onConfirm,
   onSkipDuplicates,
 }: DuplicateReviewDialogProps) {
-  const [selectedDuplicates, setSelectedDuplicates] = useState<Set<string>>(
-    new Set(duplicates.map(d => d.existingProduct.id))
-  );
+  const [selectedDuplicates, setSelectedDuplicates] = useState<Set<string>>(new Set());
+
+  // Reset selection when dialog opens with new duplicates
+  useEffect(() => {
+    if (open) {
+      setSelectedDuplicates(new Set(duplicates.map(d => d.existingProduct.id)));
+    }
+  }, [open, duplicates]);
 
   const toggleDuplicate = (id: string) => {
     const newSelected = new Set(selectedDuplicates);
@@ -67,84 +72,71 @@ export function DuplicateReviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-yellow-500" />
-            Найдены дубликаты
+      <DialogContent className="max-w-md sm:max-w-lg p-4 sm:p-6 gap-3">
+        <DialogHeader className="space-y-1.5">
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />
+            Найдены дубликаты ({duplicates.length})
           </DialogTitle>
-          <DialogDescription>
-            В файле найдено {duplicates.length} товар(ов) с названиями, которые уже существуют в вашем магазине.
-            {newProductsCount > 0 && (
-              <span className="block mt-1">
-                Новых товаров для создания: {newProductsCount}
-              </span>
-            )}
+          <DialogDescription className="text-xs">
+            {newProductsCount > 0 && `Новых: ${newProductsCount} • `}
+            Выберите товары для обновления
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center justify-between py-2 border-b">
-          <span className="text-sm text-muted-foreground">
-            Выбрано: {selectedDuplicates.size} из {duplicates.length}
+        <div className="flex items-center justify-between py-1.5 border-b text-xs">
+          <span className="text-muted-foreground">
+            Выбрано: {selectedDuplicates.size}/{duplicates.length}
           </span>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={selectAll}>
-              Выбрать все
+          <div className="flex gap-1">
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={selectAll}>
+              Все
             </Button>
-            <Button variant="ghost" size="sm" onClick={deselectAll}>
-              Снять все
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={deselectAll}>
+              Сбросить
             </Button>
           </div>
         </div>
 
-        <ScrollArea className="flex-1 min-h-0 max-h-[40vh]">
-          <div className="space-y-2 pr-4">
+        <ScrollArea className="h-[200px] sm:h-[280px] -mx-1 px-1">
+          <div className="space-y-1.5">
             {duplicates.map((duplicate) => (
-              <div
+              <label
                 key={duplicate.existingProduct.id}
-                className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                htmlFor={duplicate.existingProduct.id}
+                className="flex items-center gap-2.5 p-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
               >
                 <Checkbox
                   id={duplicate.existingProduct.id}
                   checked={selectedDuplicates.has(duplicate.existingProduct.id)}
                   onCheckedChange={() => toggleDuplicate(duplicate.existingProduct.id)}
-                  className="mt-1"
+                  className="shrink-0"
                 />
                 <div className="flex-1 min-w-0">
-                  <label
-                    htmlFor={duplicate.existingProduct.id}
-                    className="font-medium text-foreground cursor-pointer block"
-                  >
+                  <div className="font-medium text-sm truncate">
                     {duplicate.excelName}
-                  </label>
-                  <div className="text-sm text-muted-foreground mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                    <span className="flex items-center gap-1">
-                      <Package className="h-3 w-3" />
-                      Строка Excel: {duplicate.excelRowIndex}
-                    </span>
-                    <span>
-                      В базе: кол-во {duplicate.existingProduct.quantity}, 
-                      закупка {formatPrice(duplicate.existingProduct.buy_price)}
-                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Стр. {duplicate.excelRowIndex} • {duplicate.existingProduct.quantity} шт • {formatPrice(duplicate.existingProduct.buy_price)}
                   </div>
                 </div>
-              </div>
+              </label>
             ))}
           </div>
         </ScrollArea>
 
-        <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
-          Отмеченные товары будут обновлены данными из Excel. Неотмеченные будут пропущены.
-        </div>
+        <p className="text-xs text-muted-foreground py-1">
+          Отмеченные будут обновлены из Excel
+        </p>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={onSkipDuplicates} className="w-full sm:w-auto">
-            Пропустить дубликаты
+        <DialogFooter className="flex-col sm:flex-row gap-2 pt-1">
+          <Button variant="outline" size="sm" onClick={onSkipDuplicates} className="w-full sm:w-auto">
+            Пропустить
           </Button>
-          <Button onClick={handleConfirm} className="w-full sm:w-auto">
+          <Button size="sm" onClick={handleConfirm} className="w-full sm:w-auto">
             {selectedDuplicates.size > 0 
-              ? `Обновить выбранные (${selectedDuplicates.size})`
-              : 'Только новые товары'}
+              ? `Обновить (${selectedDuplicates.size})`
+              : 'Только новые'}
           </Button>
         </DialogFooter>
       </DialogContent>

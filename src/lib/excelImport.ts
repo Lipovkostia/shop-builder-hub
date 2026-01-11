@@ -165,18 +165,26 @@ export async function checkForDuplicates(
   const workbook = XLSX.read(arrayBuffer, { type: 'array' });
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
-  const allRows: ExcelRow[] = XLSX.utils.sheet_to_json(sheet, { range: 0 });
+  
+  // Parse with header row (first row contains column names)
+  const allRows: ExcelRow[] = XLSX.utils.sheet_to_json(sheet, { 
+    header: undefined, // use first row as headers
+    defval: '',
+    raw: false 
+  });
 
-  // Filter valid rows (skip header, instruction row and empty rows)
+  // Filter valid rows - check each row for valid product name
   const validRows: { row: ExcelRow; rowIndex: number }[] = [];
   allRows.forEach((row, index) => {
     const name = row['Название*'];
-    // Skip if no name, empty name, or instruction row
-    if (!name || typeof name !== 'string') return;
-    const trimmedName = name.trim();
-    if (trimmedName === '' || trimmedName.startsWith('Обязательное')) return;
+    // Skip if no name column or empty
+    if (name === undefined || name === null) return;
+    const nameStr = String(name).trim();
+    // Skip empty names and instruction rows
+    if (nameStr === '' || nameStr.startsWith('Обязательное') || nameStr === 'Название*') return;
     
-    validRows.push({ row, rowIndex: index + 2 }); // +2 for Excel 1-based and header
+    // index is 0-based from data rows (after header), so Excel row = index + 2
+    validRows.push({ row, rowIndex: index + 2 });
   });
 
   if (validRows.length === 0) {
