@@ -17,7 +17,30 @@ serve(async (req) => {
   try {
     if (!TELEGRAM_BOT_TOKEN) {
       console.error("TELEGRAM_BOT_TOKEN is not configured");
-      return new Response("Bot token not configured", { status: 500 });
+      return new Response(JSON.stringify({ ok: false, error: "Bot token not configured" }), { 
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    // Handle webhook setup request
+    const url = new URL(req.url);
+    if (req.method === "GET" && url.searchParams.get("setup") === "true") {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const webhookUrl = `${supabaseUrl}/functions/v1/telegram-webhook`;
+      
+      console.log("Setting up Telegram webhook:", webhookUrl);
+      
+      const response = await fetch(
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook?url=${encodeURIComponent(webhookUrl)}`
+      );
+      const result = await response.json();
+      
+      console.log("Telegram webhook setup result:", result);
+      
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
     const update = await req.json();
