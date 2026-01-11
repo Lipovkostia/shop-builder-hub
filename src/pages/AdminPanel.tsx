@@ -106,8 +106,9 @@ import { useStoreNotificationSettings } from "@/hooks/useStoreNotificationSettin
 import { useMoyskladOrders } from "@/hooks/useMoyskladOrders";
 import { Textarea } from "@/components/ui/textarea";
 import { ImportSourceCard } from "@/components/admin/ImportSourceCard";
-import { downloadExcelTemplate, importProductsFromExcel, ImportProgress, exportProductsToExcel } from "@/lib/excelImport";
+import { downloadExcelTemplate, importProductsFromExcel, ImportProgress, exportProductsToExcel, exportCatalogToExcel, CatalogExportProduct } from "@/lib/excelImport";
 import { ExcelImportSection } from "@/components/admin/ExcelImportSection";
+import { CatalogExportDialog } from "@/components/admin/CatalogExportDialog";
 
 // Removed localStorage keys - now using Supabase
 
@@ -913,6 +914,8 @@ export default function AdminPanel({
   const [changingPassword, setChangingPassword] = useState(false);
   const [profileSubSection, setProfileSubSection] = useState<'personal' | 'store' | 'settings'>('personal');
   const [isExportingProducts, setIsExportingProducts] = useState(false);
+  const [catalogExportDialogOpen, setCatalogExportDialogOpen] = useState(false);
+  const [isExportingCatalog, setIsExportingCatalog] = useState(false);
 
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
     drag: true,
@@ -1679,6 +1682,82 @@ export default function AdminPanel({
       });
     } finally {
       setIsExportingProducts(false);
+    }
+  };
+
+  // Export catalog to Excel with selected columns
+  const handleExportCatalog = async (enabledColumns: string[]) => {
+    if (!currentCatalog || !effectiveStoreId) return;
+    
+    setIsExportingCatalog(true);
+    try {
+      // Get products that are in the current catalog
+      const catalogProducts = allProducts
+        .filter(p => selectedCatalogProducts.has(p.id))
+        .map(product => {
+          const catalogPricing = getCatalogProductPricing(currentCatalog.id, product.id);
+          
+          // Calculate effective price
+          const buyPrice = product.buyPrice || 0;
+          const markup = catalogPricing?.markup || product.markup;
+          const price = calculateSalePrice(buyPrice, markup);
+          
+          // Calculate packaging prices
+          const packagingPrices = calculatePackagingPrices(
+            price,
+            product.unitWeight,
+            product.packagingType as PackagingType | undefined
+          );
+          
+          // Format markup string
+          let markupStr = '';
+          if (markup) {
+            markupStr = markup.type === 'percent' 
+              ? `${markup.value}%` 
+              : `${markup.value} ₽`;
+          }
+          
+          // Get status
+          const status = catalogPricing?.status || product.status || (product.inStock ? 'in_stock' : 'out_of_stock');
+          
+          // Get portion prices from catalog settings or calculate
+          const portionPrices = catalogPricing?.portionPrices;
+          
+          return {
+            name: product.name,
+            description: product.description,
+            categories: catalogPricing?.categories || null,
+            unit: product.unit,
+            unitWeight: product.unitWeight,
+            packagingType: product.packagingType,
+            buyPrice: product.buyPrice,
+            markup: markupStr,
+            price,
+            priceFull: packagingPrices?.full ?? null,
+            priceHalf: packagingPrices?.half ?? null,
+            priceQuarter: packagingPrices?.quarter ?? null,
+            pricePortion: portionPrices?.portionPrice ?? null,
+            status,
+            images: product.images,
+          } as CatalogExportProduct;
+        });
+
+      exportCatalogToExcel(currentCatalog.name, catalogProducts, enabledColumns);
+      
+      toast({
+        title: "Экспорт завершён",
+        description: `Экспортировано ${catalogProducts.length} товаров`
+      });
+    } catch (error: any) {
+      console.error('Catalog export error:', error);
+      toast({
+        title: "Ошибка экспорта",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsExportingCatalog(false);
+      setCatalogExportDialogOpen(false);
     }
   };
 
@@ -4720,6 +4799,16 @@ export default function AdminPanel({
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
+                        title="Скачать прайс-лист в Excel"
+                        onClick={() => setCatalogExportDialogOpen(true)}
+                        disabled={selectedCatalogProducts.size === 0}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
                         title="Скопировать ссылку для покупателя"
                         data-onboarding-link-button
                         onClick={() => {
@@ -6637,6 +6726,16 @@ export default function AdminPanel({
             description: "Порядок отображения категорий обновлён",
           });
         }}
+      />
+
+      {/* Catalog Export Dialog */}
+      <CatalogExportDialog
+        open={catalogExportDialogOpen}
+        onOpenChange={setCatalogExportDialogOpen}
+        catalogName={currentCatalog?.name || ""}
+        onExport={handleExportCatalog}
+        isExporting={isExportingCatalog}
+        productCount={selectedCatalogProducts.size}
       />
 
       {/* Spotlight Onboarding Overlay */}
