@@ -7,7 +7,7 @@ export const EXCEL_TEMPLATE_HEADERS = [
   'Описание',
   'Закупочная цена',
   'Единица измерения',
-  'Количество',
+  'Объём',
   'Тип фасовки',
   'Фото (ссылки через ;)'
 ];
@@ -18,7 +18,7 @@ const EXAMPLE_ROW = [
   'Твёрдый сыр высокого качества, выдержка 12 месяцев',
   300,
   'кг',
-  100,
+  10,
   'head',
   'https://example.com/photo1.jpg; https://example.com/photo2.jpg'
 ];
@@ -29,7 +29,7 @@ const INSTRUCTIONS = [
   'Опционально',
   'Опционально (число)',
   'кг/шт/л/уп/г/мл/м',
-  'Опционально (число)',
+  'Вес целого товара или кол-во в упаковке (цена × объём = цена за упаковку)',
   'head/package/piece/can/box/carcass',
   'Несколько ссылок разделяйте через точку с запятой (;)'
 ];
@@ -57,7 +57,7 @@ export function downloadExcelTemplate(): void {
     { wch: 40 }, // Описание
     { wch: 15 }, // Закупочная цена
     { wch: 18 }, // Единица измерения
-    { wch: 12 }, // Количество
+    { wch: 12 }, // Объём
     { wch: 15 }, // Тип фасовки
     { wch: 50 }, // Фото
   ];
@@ -126,7 +126,7 @@ export interface ExcelRow {
   'Описание'?: string;
   'Закупочная цена'?: number | string;
   'Единица измерения'?: string;
-  'Количество'?: number | string;
+  'Объём'?: number | string;
   'Тип фасовки'?: string;
   'Фото (ссылки через ;)'?: string;
 }
@@ -302,7 +302,7 @@ export async function importProductsFromExcel(
 
         // Parse optional fields
         const buyPrice = parseFloat(row['Закупочная цена']?.toString() || '0') || null;
-        const quantity = parseFloat(row['Количество']?.toString() || '0') || 0;
+        const unitWeight = parseFloat(row['Объём']?.toString() || '0') || null;
 
         // Check if this is a duplicate to update
         const duplicateInfo = duplicateMap.get(name.toLowerCase());
@@ -315,7 +315,7 @@ export async function importProductsFromExcel(
               description: row['Описание']?.toString().trim() || null,
               buy_price: buyPrice,
               unit: mapUnit(row['Единица измерения']),
-              quantity,
+              unit_weight: unitWeight,
               packaging_type: mapPackagingType(row['Тип фасовки']),
               updated_at: new Date().toISOString()
             })
@@ -358,7 +358,8 @@ export async function importProductsFromExcel(
               price: 0,
               buy_price: buyPrice,
               unit: mapUnit(row['Единица измерения']),
-              quantity,
+              quantity: 0,
+              unit_weight: unitWeight,
               packaging_type: mapPackagingType(row['Тип фасовки']),
               markup_type: null,
               markup_value: null,
