@@ -5201,14 +5201,37 @@ export default function AdminPanel({
                       {/* Contact input based on selected channel */}
                       <div className="flex-1">
                         {selectedNotificationChannel === 'telegram' && (
-                          <div className="space-y-1">
-                            <Label className="text-xs">Telegram (username или chat_id)</Label>
-                            <Input
-                              placeholder="@username или ID чата"
-                              value={notificationContacts.telegram}
-                              onChange={(e) => setNotificationContacts(prev => ({ ...prev, telegram: e.target.value }))}
-                              className="h-9"
-                            />
+                          <div className="space-y-3">
+                            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                              <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+                                Подключение Telegram-уведомлений
+                              </p>
+                              <p className="text-xs text-muted-foreground mb-3">
+                                Нажмите кнопку ниже, чтобы открыть бота в Telegram. 
+                                После нажатия «Start» вы начнете получать уведомления о новых заказах.
+                              </p>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="w-full bg-[#0088cc] hover:bg-[#0077b5]"
+                                onClick={() => {
+                                  const storeId = effectiveStoreId;
+                                  if (storeId) {
+                                    window.open(`https://t.me/zakaz9999999999_bot?start=${storeId}`, '_blank');
+                                  }
+                                }}
+                              >
+                                <Send className="h-4 w-4 mr-2" />
+                                Открыть бота в Telegram
+                              </Button>
+                            </div>
+                            
+                            {notificationContacts.telegram && (
+                              <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                                <Check className="h-4 w-4" />
+                                <span>Telegram подключен (ID: {notificationContacts.telegram})</span>
+                              </div>
+                            )}
                           </div>
                         )}
                         {selectedNotificationChannel === 'whatsapp' && (

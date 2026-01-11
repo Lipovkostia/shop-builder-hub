@@ -2,11 +2,45 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Send Telegram notification
+async function sendTelegramNotification(chatId: string, text: string): Promise<boolean> {
+  if (!TELEGRAM_BOT_TOKEN) {
+    console.log("TELEGRAM_BOT_TOKEN is not configured, skipping Telegram notification");
+    return false;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: text,
+        }),
+      }
+    );
+
+    const result = await response.json();
+    if (!result.ok) {
+      console.error("Telegram API error:", result);
+      return false;
+    }
+    console.log("Telegram notification sent successfully");
+    return true;
+  } catch (error) {
+    console.error("Error sending Telegram notification:", error);
+    return false;
+  }
+}
 
 // Format order text (identical to copy order TXT format)
 function formatOrderText(order: any, items: any[], customerName: string | null): string {
@@ -116,11 +150,14 @@ serve(async (req) => {
       console.error("Error fetching notification settings:", settingsError);
     }
 
-    // Check if email notifications are enabled
-    if (!settings?.email_enabled || !settings?.notification_email) {
-      console.log("Email notifications are not enabled for this store");
+    // Check if any notifications are enabled
+    const emailEnabled = settings?.email_enabled && settings?.notification_email;
+    const telegramEnabled = settings?.telegram_enabled && settings?.notification_telegram;
+
+    if (!emailEnabled && !telegramEnabled) {
+      console.log("No notifications are enabled for this store");
       return new Response(
-        JSON.stringify({ success: true, message: "Email notifications not enabled" }),
+        JSON.stringify({ success: true, message: "No notifications enabled" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -148,33 +185,50 @@ serve(async (req) => {
     // Format the order text
     const orderText = formatOrderText(order, items || [], customerName);
 
-    // Send email via Resend REST API
-    const emailResponse = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: "Заказы <onboarding@resend.dev>",
-        to: [settings.notification_email],
-        subject: `📦 Новый заказ ${order.order_number}`,
-        text: orderText,
-        html: `<pre style="font-family: 'SF Mono', Monaco, 'Courier New', monospace; font-size: 14px; line-height: 1.6; white-space: pre-wrap; background-color: #f8f9fa; padding: 20px; border-radius: 8px;">${orderText}</pre>`,
-      }),
-    });
+    let emailId = null;
+    let telegramSent = false;
 
-    const emailResult = await emailResponse.json();
+    // Send email via Resend REST API (if enabled)
+    if (emailEnabled && RESEND_API_KEY) {
+      const emailResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+        },
+        body: JSON.stringify({
+          from: "Заказы <onboarding@resend.dev>",
+          to: [settings.notification_email],
+          subject: `📦 Новый заказ ${order.order_number}`,
+          text: orderText,
+          html: `<pre style="font-family: 'SF Mono', Monaco, 'Courier New', monospace; font-size: 14px; line-height: 1.6; white-space: pre-wrap; background-color: #f8f9fa; padding: 20px; border-radius: 8px;">${orderText}</pre>`,
+        }),
+      });
 
-    if (!emailResponse.ok) {
-      console.error("Resend error:", emailResult);
-      throw new Error(`Failed to send email: ${emailResult.message || "Unknown error"}`);
+      const emailResult = await emailResponse.json();
+
+      if (!emailResponse.ok) {
+        console.error("Resend error:", emailResult);
+      } else {
+        console.log("Email sent successfully:", emailResult);
+        emailId = emailResult.id;
+      }
     }
 
-    console.log("Email sent successfully:", emailResult);
+    // Send Telegram notification (if enabled)
+    if (telegramEnabled) {
+      telegramSent = await sendTelegramNotification(
+        settings.notification_telegram,
+        orderText
+      );
+    }
 
     return new Response(
-      JSON.stringify({ success: true, emailId: emailResult.id }),
+      JSON.stringify({ 
+        success: true, 
+        emailId, 
+        telegramSent 
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
