@@ -2507,7 +2507,8 @@ const CustomerDashboard = () => {
                                     }) || [],
                                     total: order.total,
                                     shippingAddress: shippingAddr?.address,
-                                    storeName: currentCatalog?.store_name
+                                    storeName: currentCatalog?.store_name,
+                                    customerName: profileData?.full_name || undefined
                                   };
                                   // Use customer's phone from profile
                                   const phone = profileData?.phone || checkoutPhone || '';

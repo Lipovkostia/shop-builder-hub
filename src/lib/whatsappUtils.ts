@@ -17,6 +17,7 @@ export interface WhatsAppOrderData {
   total: number;
   shippingAddress?: string;
   storeName?: string;
+  customerName?: string;
 }
 
 /**
@@ -61,6 +62,10 @@ export function generateOrderText(order: WhatsAppOrderData): string {
 
   let text = `📦 *Заказ ${order.orderNumber}*\n`;
   text += `📅 ${date}\n`;
+  
+  if (order.customerName) {
+    text += `👤 ${order.customerName}\n`;
+  }
   
   if (order.storeName) {
     text += `🏪 ${order.storeName}\n`;
