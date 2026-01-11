@@ -5,17 +5,12 @@ import { supabase } from '@/integrations/supabase/client';
 export const EXCEL_TEMPLATE_HEADERS = [
   'Название*',
   'Описание',
-  'Цена продажи*',
   'Закупочная цена',
   'Единица измерения',
   'Количество',
-  'Артикул (SKU)',
   'Тип фасовки',
-  'Вес единицы (кг)',
-  'Вес порции (кг)',
   'Наценка (%)',
   'Наценка (₽)',
-  'Старая цена',
   'Активен',
   'Фото (ссылки через ;)'
 ];
@@ -24,17 +19,12 @@ export const EXCEL_TEMPLATE_HEADERS = [
 const EXAMPLE_ROW = [
   'Сыр Голландский',
   'Твёрдый сыр высокого качества, выдержка 12 месяцев',
-  450,
   300,
   'кг',
   100,
-  'SYR-001',
   'head',
-  2.5,
-  0.25,
   20,
   '',
-  500,
   'да',
   'https://example.com/photo1.jpg; https://example.com/photo2.jpg'
 ];
@@ -43,17 +33,12 @@ const EXAMPLE_ROW = [
 const INSTRUCTIONS = [
   'Обязательное поле',
   'Опционально',
-  'Обязательное поле (число)',
   'Опционально (число)',
   'кг/шт/л/уп/г/мл/м',
   'Опционально (число)',
-  'Опционально',
   'head/package/piece/can/box/carcass',
-  'Опционально (число)',
-  'Опционально (число)',
   'Если указано - игнорируется наценка в рублях',
   'Используется если не указана % наценка',
-  'Опционально (для показа скидки)',
   'да/нет (по умолчанию: да)',
   'Несколько ссылок разделяйте через точку с запятой (;)'
 ];
@@ -79,17 +64,12 @@ export function downloadExcelTemplate(): void {
   ws['!cols'] = [
     { wch: 25 }, // Название
     { wch: 40 }, // Описание
-    { wch: 15 }, // Цена продажи
     { wch: 15 }, // Закупочная цена
     { wch: 18 }, // Единица измерения
     { wch: 12 }, // Количество
-    { wch: 15 }, // Артикул
     { wch: 15 }, // Тип фасовки
-    { wch: 15 }, // Вес единицы
-    { wch: 15 }, // Вес порции
     { wch: 12 }, // Наценка %
     { wch: 12 }, // Наценка ₽
-    { wch: 12 }, // Старая цена
     { wch: 10 }, // Активен
     { wch: 50 }, // Фото
   ];
@@ -155,17 +135,12 @@ export interface ImportProgress {
 export interface ExcelRow {
   'Название*'?: string;
   'Описание'?: string;
-  'Цена продажи*'?: number | string;
   'Закупочная цена'?: number | string;
   'Единица измерения'?: string;
   'Количество'?: number | string;
-  'Артикул (SKU)'?: string;
   'Тип фасовки'?: string;
-  'Вес единицы (кг)'?: number | string;
-  'Вес порции (кг)'?: number | string;
   'Наценка (%)'?: number | string;
   'Наценка (₽)'?: number | string;
-  'Старая цена'?: number | string;
   'Активен'?: string;
   'Фото (ссылки через ;)'?: string;
 }
@@ -231,15 +206,9 @@ export async function importProductsFromExcel(
       try {
         // Validate required fields
         const name = row['Название*']?.toString().trim();
-        const price = parseFloat(row['Цена продажи*']?.toString() || '0');
 
         if (!name) {
           progress.errors.push(`Строка ${i + 3}: Отсутствует название товара`);
-          continue;
-        }
-
-        if (isNaN(price) || price <= 0) {
-          progress.errors.push(`Строка ${i + 3}: Некорректная цена "${row['Цена продажи*']}"`);
           continue;
         }
 
@@ -248,9 +217,6 @@ export async function importProductsFromExcel(
         const quantity = parseFloat(row['Количество']?.toString() || '0') || 0;
         const markupPercent = parseFloat(row['Наценка (%)']?.toString() || '0') || null;
         const markupFixed = parseFloat(row['Наценка (₽)']?.toString() || '0') || null;
-        const comparePrice = parseFloat(row['Старая цена']?.toString() || '0') || null;
-        const unitWeight = parseFloat(row['Вес единицы (кг)']?.toString() || '0') || null;
-        const portionWeight = parseFloat(row['Вес порции (кг)']?.toString() || '0') || null;
         const isActive = row['Активен']?.toString().toLowerCase() !== 'нет';
 
         // Determine markup type
@@ -271,17 +237,13 @@ export async function importProductsFromExcel(
             store_id: storeId,
             name,
             description: row['Описание']?.toString().trim() || null,
-            price,
+            price: 0,
             buy_price: buyPrice,
             unit: mapUnit(row['Единица измерения']),
             quantity,
-            sku: row['Артикул (SKU)']?.toString().trim() || null,
             packaging_type: mapPackagingType(row['Тип фасовки']),
-            unit_weight: unitWeight,
-            portion_weight: portionWeight,
             markup_type: markupType,
             markup_value: markupValue,
-            compare_price: comparePrice,
             is_active: isActive,
             slug: generateSlug(name),
             source: 'excel'
