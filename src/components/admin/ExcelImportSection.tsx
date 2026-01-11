@@ -279,7 +279,7 @@ export function ExcelImportSection({ storeId, onBack, onComplete }: ExcelImportS
       {(isImporting || progress) && !isCheckingDuplicates && (
         <div className="bg-card border border-border rounded-lg p-4 space-y-4">
           <div className="flex items-center gap-3">
-            {progress?.status === 'done' && (progress.successCount > 0 || (progress.updatedCount && progress.updatedCount > 0)) && (
+            {progress?.status === 'done' && (progress.successCount > 0 || (progress.updatedCount ?? 0) > 0) && (
               <Check className="h-5 w-5 text-green-500" />
             )}
             {progress?.status === 'error' && (
@@ -315,12 +315,12 @@ export function ExcelImportSection({ storeId, onBack, onComplete }: ExcelImportS
           )}
 
           {/* Success message */}
-          {progress?.status === 'done' && (progress.successCount > 0 || (progress.updatedCount && progress.updatedCount > 0)) && (
+          {progress?.status === 'done' && (progress.successCount > 0 || (progress.updatedCount ?? 0) > 0) && (
             <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
               <p className="text-sm text-green-700 dark:text-green-400">
                 {progress.successCount > 0 && `Создано товаров: ${progress.successCount}`}
-                {progress.successCount > 0 && progress.updatedCount && progress.updatedCount > 0 && ', '}
-                {progress.updatedCount && progress.updatedCount > 0 && `Обновлено товаров: ${progress.updatedCount}`}
+                {progress.successCount > 0 && (progress.updatedCount ?? 0) > 0 && ', '}
+                {(progress.updatedCount ?? 0) > 0 && `Обновлено товаров: ${progress.updatedCount}`}
               </p>
             </div>
           )}
