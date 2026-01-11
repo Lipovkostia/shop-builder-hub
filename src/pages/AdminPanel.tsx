@@ -630,6 +630,7 @@ export default function AdminPanel({
     setProductGroups: setProductGroupAssignments,
     createGroup: createProductGroup,
     deleteGroup: deleteProductGroup,
+    refetch: refetchProductGroups,
   } = useProductGroups(effectiveStoreId);
 
   // Product categories
@@ -3796,6 +3797,7 @@ export default function AdminPanel({
                   onBack={() => setImportSource("select")}
                   onComplete={() => {
                     refetchProducts();
+                    refetchProductGroups();
                     toast({
                       title: "Импорт завершён",
                       description: "Товары успешно импортированы"
