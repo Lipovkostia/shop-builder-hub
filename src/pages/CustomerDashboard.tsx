@@ -1036,7 +1036,7 @@ const CustomerDashboard = () => {
         case 0: weightPerItem = unitWeight; break;
         case 1: weightPerItem = unitWeight / 2; break;
         case 2: weightPerItem = unitWeight / 4; break;
-        case 3: weightPerItem = portionWeight; break;
+        case 3: weightPerItem = 1; break; // Порция = 1 единица товара
         default: weightPerItem = unitWeight;
       }
       const totalWeight = weightPerItem * quantity;
@@ -1102,7 +1102,7 @@ const CustomerDashboard = () => {
         case 0: weight = unitWeight; break;
         case 1: weight = unitWeight / 2; break;
         case 2: weight = unitWeight / 4; break;
-        case 3: weight = portionWeight; break;
+        case 3: weight = 1; break; // Порция = 1 единица товара
         default: weight = unitWeight;
       }
       // Форматируем вес одной порции
@@ -1174,12 +1174,13 @@ const CustomerDashboard = () => {
       const portionWeightValue = product?.portion_weight || 0.1;
       
       // Calculate portion volume based on variant
+      // Для порции (variantIndex = 3) всегда 1 единица товара
       let portionVolume: number;
       switch (item.variantIndex) {
         case 0: portionVolume = unitWeight; break;
         case 1: portionVolume = unitWeight / 2; break;
         case 2: portionVolume = unitWeight / 4; break;
-        case 3: portionVolume = unitLabel === 'кг' ? portionWeightValue : 1; break;
+        case 3: portionVolume = 1; break; // Порция = 1 единица товара
         default: portionVolume = unitWeight;
       }
       
@@ -1217,17 +1218,17 @@ const CustomerDashboard = () => {
       const portionWeightValue = product?.portion_weight || 0.1;
       
       // Рассчитываем объём порции в зависимости от variantIndex
-      const getPortionVolume = (vIdx: number, uWeight: number, pWeight: number, isKg: boolean): number => {
+      // Для порции (variantIndex = 3) всегда 1 единица товара
+      const getPortionVolume = (vIdx: number, uWeight: number): number => {
         switch (vIdx) {
           case 0: return uWeight;
           case 1: return uWeight / 2;
           case 2: return uWeight / 4;
-          case 3: return isKg ? pWeight : 1;
+          case 3: return 1; // Порция = 1 единица товара
           default: return uWeight;
         }
       };
-      const isKgUnit = unitLabel === 'кг';
-      const portionVolume = getPortionVolume(item.variantIndex, unitWeight, portionWeightValue, isKgUnit);
+      const portionVolume = getPortionVolume(item.variantIndex, unitWeight);
       
       // Общий объём/количество для позиции
       const totalVolume = portionVolume * item.quantity;
@@ -2076,19 +2077,17 @@ const CustomerDashboard = () => {
                   const unitWeight = product?.unit_weight || 1;
 
                   // Рассчитываем объём порции в зависимости от variantIndex
-                  // 0: Целая = unit_weight, 1: 1/2 = unit_weight/2, 2: 1/4 = unit_weight/4, 3: Порция = portion_weight (для кг) или 1 (для шт)
-                  const portionWeightValue = product?.portion_weight || 0.1;
-                  const getPortionVolume = (vIdx: number, uWeight: number, pWeight: number, isKg: boolean): number => {
+                  // 0: Целая = unit_weight, 1: 1/2 = unit_weight/2, 2: 1/4 = unit_weight/4, 3: Порция = 1 единица
+                  const getPortionVolume = (vIdx: number, uWeight: number): number => {
                     switch (vIdx) {
                       case 0: return uWeight;
                       case 1: return uWeight / 2;
                       case 2: return uWeight / 4;
-                      case 3: return isKg ? pWeight : 1; // Для кг используем portion_weight, для шт — 1
+                      case 3: return 1; // Порция = 1 единица товара
                       default: return uWeight;
                     }
                   };
-                  const isKgUnit = unitLabel === 'кг';
-                  const portionVolume = getPortionVolume(item.variantIndex, unitWeight, portionWeightValue, isKgUnit);
+                  const portionVolume = getPortionVolume(item.variantIndex, unitWeight);
                   // Форматируем: если целое число — без десятичных, иначе с одним знаком
                   const portionVolumeFormatted = Number.isInteger(portionVolume) 
                     ? portionVolume.toString() 
