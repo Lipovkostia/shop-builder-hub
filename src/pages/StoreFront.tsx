@@ -945,6 +945,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
     return filtered;
   }, [displayProducts, selectedCatalog, productVisibility, getProductSettings, isOwner, statusFilter, categoryFilter, searchQuery]);
 
+  // Show catalog hint when no catalog selected and there are catalogs to choose from
+  const showCatalogHint = !selectedCatalog && catalogs.length > 0 && displayProducts.length > 0;
+
   // Get categories that exist in the current catalog (from products visible in this catalog)
   const catalogCategories = useMemo(() => {
     if (!selectedCatalog) return [];
@@ -1171,10 +1174,33 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                 }
               }}>
                 <DropdownMenuTrigger 
-                  className={`p-2 rounded hover:bg-muted transition-colors ${onboardingStep9Active && onboardingStep9SubStep === "catalog-trigger" ? 'animate-pulse ring-2 ring-primary ring-offset-2 bg-primary/20' : ''}`}
+                  className={`p-2 rounded hover:bg-muted transition-colors relative ${
+                    showCatalogHint 
+                      ? 'animate-attention-pulse bg-primary/20 ring-2 ring-primary z-20' 
+                      : ''
+                  } ${onboardingStep9Active && onboardingStep9SubStep === "catalog-trigger" ? 'animate-pulse ring-2 ring-primary ring-offset-2 bg-primary/20' : ''}`}
                   data-onboarding-catalog-trigger
                 >
-                  <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                  <FolderOpen className={`w-4 h-4 ${showCatalogHint ? 'text-primary' : 'text-muted-foreground'}`} />
+                  
+                  {/* Прыгающая стрелка указывающая на иконку */}
+                  {showCatalogHint && (
+                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-1 flex items-center animate-bounce-arrow pointer-events-none">
+                      <svg 
+                        className="w-5 h-5 text-primary" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2.5} 
+                          d="M11 17l-5-5m0 0l5-5m-5 5h12" 
+                        />
+                      </svg>
+                    </div>
+                  )}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="min-w-[200px] bg-popover z-50">
                   <DropdownMenuItem 
@@ -1557,16 +1583,34 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
               </>
             ) : (
               <>
-                <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
-                <p className="text-muted-foreground">
+                <FolderOpen className={`w-12 h-12 mb-3 ${showCatalogHint ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
+                <p className={`text-lg font-medium mb-1 ${showCatalogHint ? 'text-foreground' : 'text-muted-foreground'}`}>
                   {selectedCatalog 
                     ? "В этом прайс-листе нет товаров"
-                    : "Выберите прайс-лист для просмотра товаров"}
+                    : "Выберите прайс-лист"}
                 </p>
                 {!selectedCatalog && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Нажмите на иконку папки слева вверху
-                  </p>
+                  <>
+                    <p className="text-muted-foreground text-sm mb-4">
+                      Для просмотра товаров
+                    </p>
+                    <div className="flex items-center gap-2 text-primary animate-bounce">
+                      <svg 
+                        className="w-5 h-5 rotate-[-135deg]" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2.5} 
+                          d="M5 10l7-7m0 0l7 7m-7-7v18" 
+                        />
+                      </svg>
+                      <span className="text-sm font-medium">Нажмите на иконку папки</span>
+                    </div>
+                  </>
                 )}
               </>
             )}
