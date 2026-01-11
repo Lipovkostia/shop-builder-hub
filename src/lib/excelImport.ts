@@ -118,6 +118,7 @@ export interface ImportProgress {
   status: 'parsing' | 'importing' | 'uploading_images' | 'done' | 'error';
   errors: string[];
   successCount: number;
+  updatedCount?: number;
 }
 
 export interface ExcelRow {
@@ -130,13 +131,97 @@ export interface ExcelRow {
   'Фото (ссылки через ;)'?: string;
 }
 
+// Duplicate product info
+export interface DuplicateProduct {
+  excelRowIndex: number;
+  excelName: string;
+  excelRow: ExcelRow;
+  existingProduct: {
+    id: string;
+    name: string;
+    description: string | null;
+    buy_price: number | null;
+    quantity: number;
+  };
+  shouldUpdate: boolean;
+}
+
+// Pre-import check result
+export interface PreImportCheck {
+  newProducts: { row: ExcelRow; rowIndex: number }[];
+  duplicates: DuplicateProduct[];
+  totalRows: number;
+}
+
+/**
+ * Check for duplicate products before import
+ */
+export async function checkForDuplicates(
+  file: File,
+  storeId: string
+): Promise<PreImportCheck> {
+  // Read Excel file
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  const allRows: ExcelRow[] = XLSX.utils.sheet_to_json(sheet, { range: 0 });
+
+  // Filter valid rows (skip instruction row and empty rows)
+  const validRows: { row: ExcelRow; rowIndex: number }[] = [];
+  allRows.forEach((row, index) => {
+    // Skip instruction row (second row)
+    if (index === 1) return;
+    const name = row['Название*'];
+    if (name && typeof name === 'string' && name.trim() !== '' && !name.startsWith('Обязательное')) {
+      validRows.push({ row, rowIndex: index + 2 }); // +2 for Excel 1-based and header
+    }
+  });
+
+  if (validRows.length === 0) {
+    return { newProducts: [], duplicates: [], totalRows: 0 };
+  }
+
+  // Get existing products from database
+  const { data: existingProducts } = await supabase
+    .from('products')
+    .select('id, name, description, buy_price, quantity')
+    .eq('store_id', storeId);
+
+  // Find duplicates
+  const duplicates: DuplicateProduct[] = [];
+  const newProducts: { row: ExcelRow; rowIndex: number }[] = [];
+
+  validRows.forEach(({ row, rowIndex }) => {
+    const excelName = row['Название*']?.toString().trim() || '';
+    const existing = existingProducts?.find(
+      p => p.name.toLowerCase() === excelName.toLowerCase()
+    );
+
+    if (existing) {
+      duplicates.push({
+        excelRowIndex: rowIndex,
+        excelName,
+        excelRow: row,
+        existingProduct: existing,
+        shouldUpdate: true,
+      });
+    } else {
+      newProducts.push({ row, rowIndex });
+    }
+  });
+
+  return { newProducts, duplicates, totalRows: validRows.length };
+}
+
 /**
  * Parse Excel file and import products to database
  */
 export async function importProductsFromExcel(
   file: File,
   storeId: string,
-  onProgress: (progress: ImportProgress) => void
+  onProgress: (progress: ImportProgress) => void,
+  duplicatesToUpdate: DuplicateProduct[] = []
 ): Promise<void> {
   const progress: ImportProgress = {
     total: 0,
@@ -144,7 +229,8 @@ export async function importProductsFromExcel(
     currentProduct: '',
     status: 'parsing',
     errors: [],
-    successCount: 0
+    successCount: 0,
+    updatedCount: 0
   };
 
   try {
@@ -181,6 +267,14 @@ export async function importProductsFromExcel(
       return;
     }
 
+    // Create a map of duplicates to update for quick lookup
+    const duplicateMap = new Map<string, DuplicateProduct>();
+    duplicatesToUpdate.forEach(d => {
+      if (d.shouldUpdate) {
+        duplicateMap.set(d.excelName.toLowerCase(), d);
+      }
+    });
+
     // Process each row
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -201,90 +295,85 @@ export async function importProductsFromExcel(
         const buyPrice = parseFloat(row['Закупочная цена']?.toString() || '0') || null;
         const quantity = parseFloat(row['Количество']?.toString() || '0') || 0;
 
-        // Create product in database (without images first)
-        const { data: product, error: insertError } = await supabase
-          .from('products')
-          .insert({
-            store_id: storeId,
-            name,
-            description: row['Описание']?.toString().trim() || null,
-            price: 0,
-            buy_price: buyPrice,
-            unit: mapUnit(row['Единица измерения']),
-            quantity,
-            packaging_type: mapPackagingType(row['Тип фасовки']),
-            markup_type: null,
-            markup_value: null,
-            is_active: true,
-            slug: generateSlug(name),
-            source: 'excel'
-          })
-          .select()
-          .single();
+        // Check if this is a duplicate to update
+        const duplicateInfo = duplicateMap.get(name.toLowerCase());
 
-        if (insertError) {
-          console.error('Insert error:', insertError);
-          progress.errors.push(`Строка ${i + 3}: Ошибка создания товара - ${insertError.message}`);
-          continue;
-        }
+        if (duplicateInfo) {
+          // UPDATE existing product
+          const { error: updateError } = await supabase
+            .from('products')
+            .update({
+              description: row['Описание']?.toString().trim() || null,
+              buy_price: buyPrice,
+              unit: mapUnit(row['Единица измерения']),
+              quantity,
+              packaging_type: mapPackagingType(row['Тип фасовки']),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', duplicateInfo.existingProduct.id);
 
-        // Process images if provided
-        const photoUrls = row['Фото (ссылки через ;)']?.toString().trim();
-        if (photoUrls && product) {
-          progress.status = 'uploading_images';
-          onProgress(progress);
-
-          const urls = photoUrls.split(';').map(u => u.trim()).filter(Boolean);
-          const uploadedUrls: string[] = [];
-
-          for (let j = 0; j < urls.length; j++) {
-            const imageUrl = urls[j];
-            if (!imageUrl.startsWith('http')) {
-              progress.errors.push(`Строка ${i + 3}: Некорректная ссылка на фото "${imageUrl}"`);
-              continue;
-            }
-
-            try {
-              const { data: imageData, error: imageError } = await supabase.functions.invoke(
-                'fetch-external-image',
-                {
-                  body: {
-                    imageUrl,
-                    productId: product.id,
-                    imageIndex: j
-                  }
-                }
-              );
-
-              if (imageError) {
-                console.error('Image fetch error:', imageError);
-                progress.errors.push(`Строка ${i + 3}: Не удалось загрузить фото ${j + 1}`);
-              } else if (imageData?.url) {
-                uploadedUrls.push(imageData.url);
-              }
-            } catch (imgError) {
-              console.error('Image processing error:', imgError);
-              progress.errors.push(`Строка ${i + 3}: Ошибка обработки фото ${j + 1}`);
-            }
+          if (updateError) {
+            console.error('Update error:', updateError);
+            progress.errors.push(`Строка ${i + 3}: Ошибка обновления товара - ${updateError.message}`);
+            continue;
           }
 
-          // Update product with uploaded image URLs
-          if (uploadedUrls.length > 0) {
-            const { error: updateError } = await supabase
-              .from('products')
-              .update({ images: uploadedUrls })
-              .eq('id', product.id);
-
-            if (updateError) {
-              console.error('Image update error:', updateError);
-              progress.errors.push(`Строка ${i + 3}: Не удалось сохранить ссылки на фото`);
-            }
+          // Process images if provided
+          const photoUrls = row['Фото (ссылки через ;)']?.toString().trim();
+          if (photoUrls) {
+            await processProductImages(
+              photoUrls, 
+              duplicateInfo.existingProduct.id, 
+              i, 
+              progress, 
+              onProgress
+            );
           }
 
-          progress.status = 'importing';
-        }
+          progress.updatedCount = (progress.updatedCount || 0) + 1;
+        } else {
+          // Check if this is a duplicate that was skipped
+          const allDuplicates = duplicatesToUpdate.map(d => d.excelName.toLowerCase());
+          if (allDuplicates.includes(name.toLowerCase())) {
+            // This duplicate was not selected for update, skip it
+            continue;
+          }
 
-        progress.successCount++;
+          // CREATE new product
+          const { data: product, error: insertError } = await supabase
+            .from('products')
+            .insert({
+              store_id: storeId,
+              name,
+              description: row['Описание']?.toString().trim() || null,
+              price: 0,
+              buy_price: buyPrice,
+              unit: mapUnit(row['Единица измерения']),
+              quantity,
+              packaging_type: mapPackagingType(row['Тип фасовки']),
+              markup_type: null,
+              markup_value: null,
+              is_active: true,
+              slug: generateSlug(name),
+              source: 'excel'
+            })
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error('Insert error:', insertError);
+            progress.errors.push(`Строка ${i + 3}: Ошибка создания товара - ${insertError.message}`);
+            continue;
+          }
+
+          // Process images if provided
+          const photoUrls = row['Фото (ссылки через ;)']?.toString().trim();
+          if (photoUrls && product) {
+            await processProductImages(photoUrls, product.id, i, progress, onProgress);
+          }
+
+          progress.successCount++;
+        }
       } catch (rowError) {
         console.error(`Error processing row ${i + 3}:`, rowError);
         progress.errors.push(`Строка ${i + 3}: ${rowError instanceof Error ? rowError.message : 'Неизвестная ошибка'}`);
@@ -299,4 +388,67 @@ export async function importProductsFromExcel(
     progress.errors.push(error instanceof Error ? error.message : 'Ошибка чтения файла');
     onProgress(progress);
   }
+}
+
+/**
+ * Process and upload product images
+ */
+async function processProductImages(
+  photoUrls: string,
+  productId: string,
+  rowIndex: number,
+  progress: ImportProgress,
+  onProgress: (progress: ImportProgress) => void
+): Promise<void> {
+  progress.status = 'uploading_images';
+  onProgress(progress);
+
+  const urls = photoUrls.split(';').map(u => u.trim()).filter(Boolean);
+  const uploadedUrls: string[] = [];
+
+  for (let j = 0; j < urls.length; j++) {
+    const imageUrl = urls[j];
+    if (!imageUrl.startsWith('http')) {
+      progress.errors.push(`Строка ${rowIndex + 3}: Некорректная ссылка на фото "${imageUrl}"`);
+      continue;
+    }
+
+    try {
+      const { data: imageData, error: imageError } = await supabase.functions.invoke(
+        'fetch-external-image',
+        {
+          body: {
+            imageUrl,
+            productId,
+            imageIndex: j
+          }
+        }
+      );
+
+      if (imageError) {
+        console.error('Image fetch error:', imageError);
+        progress.errors.push(`Строка ${rowIndex + 3}: Не удалось загрузить фото ${j + 1}`);
+      } else if (imageData?.url) {
+        uploadedUrls.push(imageData.url);
+      }
+    } catch (imgError) {
+      console.error('Image processing error:', imgError);
+      progress.errors.push(`Строка ${rowIndex + 3}: Ошибка обработки фото ${j + 1}`);
+    }
+  }
+
+  // Update product with uploaded image URLs
+  if (uploadedUrls.length > 0) {
+    const { error: updateError } = await supabase
+      .from('products')
+      .update({ images: uploadedUrls })
+      .eq('id', productId);
+
+    if (updateError) {
+      console.error('Image update error:', updateError);
+      progress.errors.push(`Строка ${rowIndex + 3}: Не удалось сохранить ссылки на фото`);
+    }
+  }
+
+  progress.status = 'importing';
 }

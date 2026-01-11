@@ -2,8 +2,16 @@ import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, Upload, Download, FileSpreadsheet, Check, AlertCircle, Loader2 } from 'lucide-react';
-import { downloadExcelTemplate, importProductsFromExcel, ImportProgress } from '@/lib/excelImport';
+import { 
+  downloadExcelTemplate, 
+  importProductsFromExcel, 
+  checkForDuplicates,
+  ImportProgress, 
+  DuplicateProduct,
+  PreImportCheck 
+} from '@/lib/excelImport';
 import { cn } from '@/lib/utils';
+import { DuplicateReviewDialog } from './DuplicateReviewDialog';
 
 interface ExcelImportSectionProps {
   storeId: string;
@@ -15,6 +23,10 @@ export function ExcelImportSection({ storeId, onBack, onComplete }: ExcelImportS
   const [isDragging, setIsDragging] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [preImportCheck, setPreImportCheck] = useState<PreImportCheck | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -69,21 +81,72 @@ export function ExcelImportSection({ storeId, onBack, onComplete }: ExcelImportS
       return;
     }
 
+    // Check for duplicates first
+    setIsCheckingDuplicates(true);
+    setPendingFile(file);
+    setProgress(null);
+
+    try {
+      const check = await checkForDuplicates(file, storeId);
+      setPreImportCheck(check);
+
+      if (check.duplicates.length > 0) {
+        // Show duplicate review dialog
+        setDuplicateDialogOpen(true);
+        setIsCheckingDuplicates(false);
+      } else {
+        // No duplicates, proceed with import
+        setIsCheckingDuplicates(false);
+        await startImport(file, []);
+      }
+    } catch (error) {
+      console.error('Error checking duplicates:', error);
+      setIsCheckingDuplicates(false);
+      setProgress({
+        total: 0,
+        current: 0,
+        currentProduct: '',
+        status: 'error',
+        errors: ['Ошибка проверки дубликатов'],
+        successCount: 0
+      });
+    }
+  };
+
+  const startImport = async (file: File, duplicatesToUpdate: DuplicateProduct[]) => {
     setIsImporting(true);
     setProgress(null);
+    setDuplicateDialogOpen(false);
 
     await importProductsFromExcel(file, storeId, (p) => {
       setProgress({ ...p });
       
       if (p.status === 'done') {
         setIsImporting(false);
-        if (p.successCount > 0) {
+        if (p.successCount > 0 || (p.updatedCount && p.updatedCount > 0)) {
           onComplete();
         }
       } else if (p.status === 'error') {
         setIsImporting(false);
       }
-    });
+    }, duplicatesToUpdate);
+  };
+
+  const handleDuplicateConfirm = (duplicatesToUpdate: DuplicateProduct[]) => {
+    if (pendingFile) {
+      startImport(pendingFile, duplicatesToUpdate);
+    }
+  };
+
+  const handleSkipDuplicates = () => {
+    if (pendingFile && preImportCheck) {
+      // Import only new products by passing duplicates with shouldUpdate = false
+      const skippedDuplicates = preImportCheck.duplicates.map(d => ({
+        ...d,
+        shouldUpdate: false
+      }));
+      startImport(pendingFile, skippedDuplicates);
+    }
   };
 
   const handleDownloadTemplate = () => {
@@ -104,8 +167,16 @@ export function ExcelImportSection({ storeId, onBack, onComplete }: ExcelImportS
         return `Импорт товара ${progress.current} из ${progress.total}`;
       case 'uploading_images':
         return `Загрузка фото для "${progress.currentProduct}"`;
-      case 'done':
-        return `Импорт завершён. Создано товаров: ${progress.successCount}`;
+      case 'done': {
+        const parts = [];
+        if (progress.successCount > 0) {
+          parts.push(`создано: ${progress.successCount}`);
+        }
+        if (progress.updatedCount && progress.updatedCount > 0) {
+          parts.push(`обновлено: ${progress.updatedCount}`);
+        }
+        return `Импорт завершён. ${parts.join(', ')}`;
+      }
       case 'error':
         return 'Ошибка импорта';
       default:
@@ -116,15 +187,19 @@ export function ExcelImportSection({ storeId, onBack, onComplete }: ExcelImportS
   const resetImport = () => {
     setProgress(null);
     setIsImporting(false);
+    setPreImportCheck(null);
+    setPendingFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
+  const isLoading = isImporting || isCheckingDuplicates;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={onBack} disabled={isImporting}>
+        <Button variant="ghost" size="sm" onClick={onBack} disabled={isLoading}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Назад
         </Button>
@@ -153,7 +228,7 @@ export function ExcelImportSection({ storeId, onBack, onComplete }: ExcelImportS
       </div>
 
       {/* Upload zone */}
-      {!isImporting && progress?.status !== 'done' && (
+      {!isLoading && progress?.status !== 'done' && (
         <div
           className={cn(
             "border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer",
@@ -190,11 +265,21 @@ export function ExcelImportSection({ storeId, onBack, onComplete }: ExcelImportS
         </div>
       )}
 
+      {/* Checking duplicates indicator */}
+      {isCheckingDuplicates && (
+        <div className="bg-card border border-border rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-5 w-5 text-primary animate-spin" />
+            <span className="font-medium">Проверка на дубликаты...</span>
+          </div>
+        </div>
+      )}
+
       {/* Progress section */}
-      {(isImporting || progress) && (
+      {(isImporting || progress) && !isCheckingDuplicates && (
         <div className="bg-card border border-border rounded-lg p-4 space-y-4">
           <div className="flex items-center gap-3">
-            {progress?.status === 'done' && progress.successCount > 0 && (
+            {progress?.status === 'done' && (progress.successCount > 0 || (progress.updatedCount && progress.updatedCount > 0)) && (
               <Check className="h-5 w-5 text-green-500" />
             )}
             {progress?.status === 'error' && (
@@ -230,10 +315,12 @@ export function ExcelImportSection({ storeId, onBack, onComplete }: ExcelImportS
           )}
 
           {/* Success message */}
-          {progress?.status === 'done' && progress.successCount > 0 && (
+          {progress?.status === 'done' && (progress.successCount > 0 || (progress.updatedCount && progress.updatedCount > 0)) && (
             <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
               <p className="text-sm text-green-700 dark:text-green-400">
-                Успешно импортировано {progress.successCount} товар(ов)
+                {progress.successCount > 0 && `Создано товаров: ${progress.successCount}`}
+                {progress.successCount > 0 && progress.updatedCount && progress.updatedCount > 0 && ', '}
+                {progress.updatedCount && progress.updatedCount > 0 && `Обновлено товаров: ${progress.updatedCount}`}
               </p>
             </div>
           )}
@@ -269,6 +356,18 @@ export function ExcelImportSection({ storeId, onBack, onComplete }: ExcelImportS
           Пример: <code className="bg-muted px-1 py-0.5 rounded text-xs">https://site.com/photo1.jpg; https://site.com/photo2.png</code>
         </p>
       </div>
+
+      {/* Duplicate Review Dialog */}
+      {preImportCheck && (
+        <DuplicateReviewDialog
+          open={duplicateDialogOpen}
+          onOpenChange={setDuplicateDialogOpen}
+          duplicates={preImportCheck.duplicates}
+          newProductsCount={preImportCheck.newProducts.length}
+          onConfirm={handleDuplicateConfirm}
+          onSkipDuplicates={handleSkipDuplicates}
+        />
+      )}
     </div>
   );
 }
