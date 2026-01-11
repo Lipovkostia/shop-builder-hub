@@ -498,6 +498,86 @@ export default function AdminPanel({
     updateOrderStatus,
     refetch: refetchOrders
   } = useStoreOrders(effectiveStoreId);
+
+  // Copy order to clipboard for messenger
+  const handleCopySellerOrder = async (order: Order) => {
+    if (!order.items || order.items.length === 0) return;
+
+    const statusText = 
+      order.status === 'pending' ? 'Новый' :
+      order.status === 'processing' ? 'В обработке' :
+      order.status === 'shipped' ? 'Отправлен' :
+      order.status === 'delivered' ? 'Доставлен' :
+      'Отменён';
+
+    const orderDate = new Date(order.created_at);
+    const dateStr = orderDate.toLocaleDateString('ru-RU', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+    const timeStr = orderDate.toLocaleTimeString('ru-RU', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+
+    // Header
+    let text = `📦 ЗАКАЗ ${order.order_number}\n`;
+    text += `📅 ${dateStr} в ${timeStr}\n`;
+    text += `📍 Статус: ${statusText}\n`;
+    if (order.customer_name) text += `👤 Клиент: ${order.customer_name}\n`;
+    text += `─────────────────────\n\n`;
+
+    // Items
+    text += `🛒 ТОВАРЫ:\n\n`;
+    order.items.forEach((item, idx) => {
+      text += `${idx + 1}. ${item.product_name}\n`;
+      text += `   ${item.quantity} шт × ${item.price.toLocaleString()} ₽ = ${item.total.toLocaleString()} ₽\n`;
+    });
+
+    text += `\n─────────────────────\n`;
+    text += `📊 ИТОГО: ${order.items.length} поз.\n`;
+    text += `💰 СУММА: ${order.total.toLocaleString()} ₽\n`;
+
+    // Shipping address
+    if (order.shipping_address) {
+      text += `\n─────────────────────\n`;
+      text += `📬 ДОСТАВКА:\n`;
+      if (order.shipping_address.name) text += `👤 ${order.shipping_address.name}\n`;
+      if (order.shipping_address.phone) text += `📱 ${order.shipping_address.phone}\n`;
+      if (order.shipping_address.address) text += `🏠 ${order.shipping_address.address}\n`;
+      if (order.shipping_address.comment) text += `💬 ${order.shipping_address.comment}\n`;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Заказ скопирован",
+        description: "Можно вставить в мессенджер",
+      });
+    } catch (err) {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        toast({
+          title: "Заказ скопирован",
+          description: "Можно вставить в мессенджер",
+        });
+      } catch (e) {
+        toast({
+          title: "Ошибка",
+          description: "Не удалось скопировать",
+          variant: "destructive",
+        });
+      }
+      document.body.removeChild(textArea);
+    }
+  };
   
   // Catalog product settings from Supabase (categories, markup, status per catalog)
   const {
@@ -5117,6 +5197,18 @@ export default function AdminPanel({
                                   </span>
                                 )}
                               </div>
+                            </div>
+                            
+                            {/* Copy button */}
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopySellerOrder(order);
+                              }}
+                              className="flex-shrink-0 w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center cursor-pointer transition-colors"
+                              title="Скопировать заказ"
+                            >
+                              <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                             </div>
                           </div>
                         </button>
