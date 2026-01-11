@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock, ChevronsUpDown, Send, MessageCircle, Mail } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -101,6 +101,7 @@ import { useStoreCategories, StoreCategory } from "@/hooks/useStoreCategories";
 import { CategoryOrderDialog } from "@/components/admin/CategoryOrderDialog";
 import { useStoreNotificationSettings } from "@/hooks/useStoreNotificationSettings";
 import { useMoyskladOrders } from "@/hooks/useMoyskladOrders";
+import { Textarea } from "@/components/ui/textarea";
 
 // Removed localStorage keys - now using Supabase
 
@@ -284,7 +285,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "orders" | "clients" | "help";
+type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "help";
 type ImportView = "accounts" | "catalog";
 type CatalogView = "list" | "detail";
 
@@ -431,7 +432,7 @@ export default function AdminPanel({
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
-  const { user, profile, isSuperAdmin, loading: authLoading } = useAuth();
+  const { user, profile, isSuperAdmin, loading: authLoading, signOut } = useAuth();
   const isMobile = useIsMobile();
 
   // Note: We don't force auth redirect here - admin panel can be viewed without login
@@ -641,7 +642,7 @@ export default function AdminPanel({
       return initialSection;
     }
     const section = searchParams.get('section');
-    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients') {
+    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'profile' || section === 'orders' || section === 'clients') {
       return section;
     }
     return "products";
@@ -870,7 +871,20 @@ export default function AdminPanel({
   // Bulk selection state for products
   const [selectedBulkProducts, setSelectedBulkProducts] = useState<Set<string>>(new Set());
 
-  // Column visibility state for products table
+  // Profile editing state
+  const [profileName, setProfileName] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [storeName, setStoreName] = useState("");
+  const [storePhone, setStorePhone] = useState("");
+  const [storeEmail, setStoreEmail] = useState("");
+  const [storeAddress, setStoreAddress] = useState("");
+  const [storeDescription, setStoreDescription] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingStore, setSavingStore] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [profileSubSection, setProfileSubSection] = useState<'personal' | 'store' | 'settings'>('personal');
+
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
     drag: true,
     checkbox: true,
@@ -1142,6 +1156,120 @@ export default function AdminPanel({
       setSelectedCatalogProducts(new Set());
     }
   }, [searchParams, setSearchParams]);
+
+  // Initialize profile and store data when profile section is active
+  useEffect(() => {
+    const loadProfileData = async () => {
+      if (activeSection === 'profile' && effectiveStoreId) {
+        // Load profile data
+        if (profile) {
+          setProfileName(profile.full_name || '');
+        }
+        if (user) {
+          // Fetch full profile data including phone
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('full_name, phone')
+            .eq('user_id', user.id)
+            .single();
+          if (profileData) {
+            setProfileName(profileData.full_name || '');
+            setProfilePhone(profileData.phone || '');
+          }
+        }
+        
+        // Load store data
+        const { data: storeData } = await supabase
+          .from('stores')
+          .select('name, contact_phone, contact_email, address, description')
+          .eq('id', effectiveStoreId)
+          .single();
+        
+        if (storeData) {
+          setStoreName(storeData.name || '');
+          setStorePhone(storeData.contact_phone || '');
+          setStoreEmail(storeData.contact_email || '');
+          setStoreAddress(storeData.address || '');
+          setStoreDescription(storeData.description || '');
+        }
+      }
+    };
+    loadProfileData();
+  }, [activeSection, effectiveStoreId, profile, user]);
+
+  // Save profile handler
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSavingProfile(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: profileName.trim() || null,
+          phone: profilePhone.trim() || null,
+        })
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      toast({ title: "Профиль сохранён" });
+    } catch (error: any) {
+      toast({ title: "Ошибка сохранения", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  // Save store handler
+  const handleSaveStore = async () => {
+    if (!effectiveStoreId) return;
+    setSavingStore(true);
+    try {
+      const { error } = await supabase
+        .from('stores')
+        .update({
+          name: storeName.trim(),
+          contact_phone: storePhone.trim() || null,
+          contact_email: storeEmail.trim() || null,
+          address: storeAddress.trim() || null,
+          description: storeDescription.trim() || null,
+        })
+        .eq('id', effectiveStoreId);
+      
+      if (error) throw error;
+      // Update local state
+      setCurrentStoreName(storeName.trim());
+      toast({ title: "Магазин сохранён" });
+    } catch (error: any) {
+      toast({ title: "Ошибка сохранения", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingStore(false);
+    }
+  };
+
+  // Change password handler
+  const handleChangePassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast({ title: "Ошибка", description: "Пароль должен быть минимум 6 символов", variant: "destructive" });
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      toast({ title: "Пароль изменён" });
+      setNewPassword("");
+    } catch (error: any) {
+      toast({ title: "Ошибка смены пароля", description: error.message, variant: "destructive" });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  // Sign out handler
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
 
   // NOTE: Data is now loaded via Supabase hooks (useStoreProducts, useStoreCatalogs, useMoyskladAccounts, useStoreSyncSettings)
   // The localStorage persistence is no longer needed as data is stored in the database
@@ -5244,6 +5372,232 @@ export default function AdminPanel({
             </>
           )}
 
+
+          {effectiveStoreId && activeSection === "profile" && (
+            <>
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold text-foreground">Профиль</h2>
+                <p className="text-sm text-muted-foreground">
+                  Управление данными продавца и магазина
+                </p>
+              </div>
+
+              {/* Подвкладки профиля */}
+              <div className="flex border-b border-border bg-muted/30 rounded-t-lg mb-4">
+                <button
+                  onClick={() => setProfileSubSection('personal')}
+                  className={`flex-1 py-2.5 text-xs font-medium transition-colors relative ${
+                    profileSubSection === 'personal' 
+                      ? 'text-primary' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-1.5">
+                    <User className="w-3.5 h-3.5" />
+                    <span>Личные данные</span>
+                  </div>
+                  {profileSubSection === 'personal' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+                  )}
+                </button>
+                <button
+                  onClick={() => setProfileSubSection('store')}
+                  className={`flex-1 py-2.5 text-xs font-medium transition-colors relative ${
+                    profileSubSection === 'store' 
+                      ? 'text-primary' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Store className="w-3.5 h-3.5" />
+                    <span>Магазин</span>
+                  </div>
+                  {profileSubSection === 'store' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+                  )}
+                </button>
+                <button
+                  onClick={() => setProfileSubSection('settings')}
+                  className={`flex-1 py-2.5 text-xs font-medium transition-colors relative ${
+                    profileSubSection === 'settings' 
+                      ? 'text-primary' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Settings className="w-3.5 h-3.5" />
+                    <span>Настройки</span>
+                  </div>
+                  {profileSubSection === 'settings' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+                  )}
+                </button>
+              </div>
+
+              {/* Личные данные */}
+              {profileSubSection === 'personal' && (
+                <div className="bg-card rounded-lg border border-border p-4 space-y-4 animate-in fade-in duration-150">
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="profile-name">Имя</Label>
+                      <Input
+                        id="profile-name"
+                        value={profileName}
+                        onChange={(e) => setProfileName(e.target.value)}
+                        placeholder="Ваше имя"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="profile-phone">Телефон</Label>
+                      <Input
+                        id="profile-phone"
+                        value={profilePhone}
+                        onChange={(e) => setProfilePhone(e.target.value)}
+                        placeholder="+7 (999) 123-45-67"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-muted-foreground">Email</Label>
+                      <Input value={user?.email || ''} disabled className="bg-muted" />
+                      <p className="text-xs text-muted-foreground">Email нельзя изменить</p>
+                    </div>
+                    <Button 
+                      onClick={handleSaveProfile} 
+                      disabled={savingProfile}
+                      className="w-full"
+                    >
+                      {savingProfile && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                      Сохранить изменения
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Данные магазина */}
+              {profileSubSection === 'store' && (
+                <div className="bg-card rounded-lg border border-border p-4 space-y-4 animate-in fade-in duration-150">
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="store-name">Название магазина</Label>
+                      <Input
+                        id="store-name"
+                        value={storeName}
+                        onChange={(e) => setStoreName(e.target.value)}
+                        placeholder="Название вашего магазина"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="store-phone">Телефон магазина</Label>
+                      <Input
+                        id="store-phone"
+                        value={storePhone}
+                        onChange={(e) => setStorePhone(e.target.value)}
+                        placeholder="+7 (999) 123-45-67"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="store-email">Email магазина</Label>
+                      <Input
+                        id="store-email"
+                        value={storeEmail}
+                        onChange={(e) => setStoreEmail(e.target.value)}
+                        placeholder="shop@example.com"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="store-address">Адрес</Label>
+                      <Input
+                        id="store-address"
+                        value={storeAddress}
+                        onChange={(e) => setStoreAddress(e.target.value)}
+                        placeholder="Адрес магазина"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="store-description">Описание</Label>
+                      <Textarea
+                        id="store-description"
+                        value={storeDescription}
+                        onChange={(e) => setStoreDescription(e.target.value)}
+                        placeholder="Краткое описание магазина"
+                        rows={3}
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleSaveStore} 
+                      disabled={savingStore}
+                      className="w-full"
+                    >
+                      {savingStore && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                      Сохранить магазин
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Настройки */}
+              {profileSubSection === 'settings' && (
+                <div className="space-y-4 animate-in fade-in duration-150">
+                  {/* Смена пароля */}
+                  <div className="bg-card rounded-lg border border-border p-4 space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Key className="w-3.5 h-3.5" />
+                      Смена пароля
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="password"
+                        placeholder="Новый пароль (мин. 6 символов)"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={handleChangePassword} 
+                        disabled={changingPassword || !newPassword}
+                        size="sm"
+                      >
+                        {changingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : "Сменить"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Ссылка на магазин */}
+                  <div className="bg-card rounded-lg border border-border p-4 space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Link2 className="w-3.5 h-3.5" />
+                      Ссылка на магазин
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={`${window.location.origin}/store/${currentStoreSubdomain || storeSubdomainOverride}`}
+                        readOnly
+                        className="flex-1 bg-muted"
+                      />
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/store/${currentStoreSubdomain || storeSubdomainOverride}`);
+                          toast({ title: "Ссылка скопирована" });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Выход */}
+                  <div className="pt-4 border-t border-border">
+                    <Button variant="outline" onClick={handleSignOut} className="w-full gap-2">
+                      <LogOut className="w-4 h-4" />
+                      Выйти из аккаунта
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           {effectiveStoreId && activeSection === "clients" && (
             <StoreCustomersTable storeId={effectiveStoreId} />
