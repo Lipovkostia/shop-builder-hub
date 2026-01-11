@@ -1407,8 +1407,8 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                     </div>
                   )}
                   {categoryFilter !== null && !searchQuery.trim() && (
-                    <div className="px-3 py-2 bg-muted/50 border-b border-border">
-                      <span className="text-sm font-medium text-foreground">
+                    <div className="px-3 py-0.5 bg-muted/50 border-b border-border">
+                      <span className="text-xs font-medium text-foreground leading-tight">
                         {catalogCategories.find(c => c.id === categoryFilter)?.name || 'Категория'}
                       </span>
                     </div>
@@ -1434,8 +1434,8 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                   
                   return (
                     <div key={category.id}>
-                      <div className="px-3 py-1 bg-muted/50 border-b border-border sticky top-0 z-10">
-                        <span className="text-xs font-medium text-foreground">{category.name}</span>
+                      <div className="px-3 py-0.5 bg-muted/50 border-b border-border sticky top-0 z-10">
+                        <span className="text-xs font-medium text-foreground leading-tight">{category.name}</span>
                       </div>
                       {categoryProducts.map(renderProductCard)}
                     </div>
@@ -1455,8 +1455,8 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                   return (
                     <div>
                       {sortedCategories.length > 0 && (
-                        <div className="px-3 py-1 bg-muted/50 border-b border-border sticky top-0 z-10">
-                          <span className="text-xs font-medium text-muted-foreground">Без категории</span>
+                        <div className="px-3 py-0.5 bg-muted/50 border-b border-border sticky top-0 z-10">
+                          <span className="text-xs font-medium text-muted-foreground leading-tight">Без категории</span>
                         </div>
                       )}
                       {uncategorizedProducts.map(renderProductCard)}
