@@ -7,8 +7,9 @@ export const sellerOnboardingStep1: SpotlightStep[] = [
     targetSelector: '[data-onboarding-admin-button]',
     title: 'Перейдите в панель управления',
     description: 'Здесь вы будете добавлять товары, настраивать прайс-листы и управлять заказами. Нажмите на кнопку «Управление».',
-    placement: 'bottom',
-    highlightPadding: 6
+    placement: 'left',
+    highlightPadding: 6,
+    hideActions: true
   }
 ];
 
