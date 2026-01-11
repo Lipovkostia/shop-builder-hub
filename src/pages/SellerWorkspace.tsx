@@ -6,6 +6,8 @@ import { useIsStoreOwner } from "@/hooks/useUserStore";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { OnboardingWelcomeModal } from "@/components/onboarding/OnboardingWelcomeModal";
+import { SpotlightOverlay } from "@/components/onboarding/SpotlightOverlay";
+import { sellerOnboardingStep1 } from "@/components/onboarding/onboardingSteps";
 import StoreFront from "./StoreFront";
 import AdminPanel from "./AdminPanel";
 
@@ -75,20 +77,21 @@ export default function SellerWorkspace() {
     });
   }, [activeView, onboardingStep1Active]);
   
-  // Highlight admin button when onboarding step 1 is active
-  useEffect(() => {
-    if (onboardingStep1Active) {
-      const adminButton = document.querySelector('[data-onboarding-admin-button]');
-      if (adminButton) {
-        adminButton.classList.add('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2', 'bg-primary/20');
-      }
-      return () => {
-        if (adminButton) {
-          adminButton.classList.remove('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2', 'bg-primary/20');
-        }
-      };
-    }
-  }, [onboardingStep1Active]);
+  // Handle spotlight step completion - switches to admin
+  const handleSpotlightStepComplete = useCallback(() => {
+    // Switch to admin panel when spotlight step is completed
+    handleViewChange("admin");
+  }, [handleViewChange]);
+  
+  const handleSpotlightSkip = useCallback(() => {
+    localStorage.removeItem('seller_onboarding_step1');
+    setOnboardingStep1Active(false);
+  }, []);
+  
+  const handleSpotlightClose = useCallback(() => {
+    localStorage.removeItem('seller_onboarding_step1');
+    setOnboardingStep1Active(false);
+  }, []);
 
   const handleSwitchToAdmin = useCallback((section?: string) => {
     if (section) {
@@ -129,6 +132,16 @@ export default function SellerWorkspace() {
           // Modal completed, onboarding continues with step 1
         }} />
       )}
+      
+      {/* Spotlight overlay for step 1 - go to admin panel */}
+      <SpotlightOverlay
+        steps={sellerOnboardingStep1}
+        currentStep={0}
+        onStepComplete={handleSpotlightStepComplete}
+        onSkip={handleSpotlightSkip}
+        onClose={handleSpotlightClose}
+        isActive={onboardingStep1Active && hasFullAccess && activeView === "storefront"}
+      />
       
       {/* Общая шапка с вкладками - для владельца или супер-админа */}
       {hasFullAccess && (

@@ -1,5 +1,17 @@
 import { SpotlightStep } from './SpotlightOverlay';
 
+// Первый шаг онбординга - перейти в панель управления
+export const sellerOnboardingStep1: SpotlightStep[] = [
+  {
+    id: 'go-to-admin',
+    targetSelector: '[data-onboarding-admin-button]',
+    title: 'Перейдите в панель управления',
+    description: 'Здесь вы будете добавлять товары, настраивать прайс-листы и управлять заказами. Нажмите на кнопку «Управление».',
+    placement: 'bottom',
+    highlightPadding: 6
+  }
+];
+
 export const adminPanelSpotlightSteps: SpotlightStep[] = [
   {
     id: 'catalog-column',
