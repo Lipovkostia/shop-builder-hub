@@ -1197,19 +1197,19 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                   <span className="text-primary font-bold text-sm">1</span>
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">Добро пожаловать! Начнём обучение</p>
+                  <p className="text-sm font-medium text-foreground">Добавьте товары в ассортимент</p>
                   <p className="text-xs text-muted-foreground">
-                    Зайдите в панель управления в раздел "Ассортимент" и создайте первый товар.
+                    Ассортимент — это общий список товаров. Отсюда вы выбираете, какие показать в каждом прайс-листе.
                   </p>
                   <p className="text-xs text-primary mt-1 font-medium">
-                    👆 Нажмите на кнопку "Управление" в правом верхнем углу
+                    👆 Нажмите «Управление» → раздел «Ассортимент»
                   </p>
                 </div>
               </div>
             </div>
           )}
           
-          {/* Onboarding Step 9 */}
+          {/* Onboarding Step 9: View storefront with price list */}
           {onboardingStep9Active && onboardingStep9SubStep !== "done" && (
             <div className="bg-primary/10 border-b border-primary/30 p-3">
               <div className="flex items-center gap-3">
@@ -1219,15 +1219,18 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                 <div className="flex-1">
                   {onboardingStep9SubStep === "catalog-trigger" && (
                     <>
-                      <p className="text-sm font-medium text-foreground">Шаг 9.1: Откройте список прайс-листов</p>
-                      <p className="text-xs text-muted-foreground">Нажмите на иконку папки, чтобы увидеть все ваши прайс-листы</p>
-                      <p className="text-xs text-muted-foreground/70 mt-1">💡 Обновите страницу, если прайс-листа нет в списке</p>
+                      <p className="text-sm font-medium text-foreground">Посмотрите витрину глазами покупателя</p>
+                      <p className="text-xs text-muted-foreground">
+                        Нажмите на иконку 📁 папки, чтобы выбрать прайс-лист
+                      </p>
                     </>
                   )}
                   {onboardingStep9SubStep === "catalog-item" && (
                     <>
-                      <p className="text-sm font-medium text-foreground">Шаг 9.2: Выберите прайс-лист</p>
-                      <p className="text-xs text-muted-foreground">Нажмите на созданный прайс-лист, чтобы открыть его</p>
+                      <p className="text-sm font-medium text-foreground">Выберите созданный прайс-лист</p>
+                      <p className="text-xs text-muted-foreground">
+                        Так будет выглядеть каталог для покупателей с этими ценами
+                      </p>
                     </>
                   )}
                   <div className="flex gap-1 mt-2">
@@ -1239,7 +1242,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
             </div>
           )}
           
-          {/* Onboarding Step 10 */}
+          {/* Onboarding Step 10: Quick editing on storefront */}
           {onboardingStep10Active && !onboardingStep10NameEdited && (
             <div className="bg-green-500/10 border-b border-green-500/30 p-3">
               <div className="flex items-center gap-3">
@@ -1247,12 +1250,12 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                   <span className="text-green-600 dark:text-green-400 font-bold text-sm">10</span>
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">Редактирование товаров</p>
+                  <p className="text-sm font-medium text-foreground">Оперативное управление</p>
                   <p className="text-xs text-muted-foreground">
-                    Оперативно меняйте цены, статусы и другие данные о товаре в этом разделе.
+                    Здесь вы можете быстро менять цены и статусы для любого типа покупателей.
                   </p>
                   <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">
-                    Нажмите на название товара и измените его, чтобы завершить обучение.
+                    ✏️ Нажмите на название товара и измените его
                   </p>
                 </div>
               </div>

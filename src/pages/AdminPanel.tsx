@@ -3200,8 +3200,13 @@ export default function AdminPanel({
                       <span className="text-primary font-bold text-sm">2</span>
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">Создайте прайс-лист и привяжите товар</p>
-                      <p className="text-xs text-muted-foreground">Нажмите здесь, чтобы перейти к столбику "Прайс-листы"</p>
+                      <p className="text-sm font-medium text-foreground">Создайте прайс-лист для типа покупателей</p>
+                      <p className="text-xs text-muted-foreground">
+                        Например: «Рестораны» с наценкой 30%, «Оптовики» с наценкой 15%
+                      </p>
+                      <p className="text-xs text-primary mt-1">
+                        Нажмите «+» в столбике «Прайс-листы» →
+                      </p>
                     </div>
                     <ChevronRight className="h-5 w-5 text-primary" />
                   </div>
@@ -3227,8 +3232,13 @@ export default function AdminPanel({
                       <span className="text-primary font-bold text-sm">3</span>
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">Перейдите в прайс-лист и установите цену на товар</p>
-                      <p className="text-xs text-muted-foreground">Нажмите на кнопку перехода в прайс-листе в столбике "Прайс-листы"</p>
+                      <p className="text-sm font-medium text-foreground">Перейдите в прайс-лист для настройки цен</p>
+                      <p className="text-xs text-muted-foreground">
+                        Один товар может быть в разных прайс-листах с разными ценами
+                      </p>
+                      <p className="text-xs text-primary mt-1">
+                        Нажмите на кнопку «→» рядом с прайс-листом
+                      </p>
                     </div>
                     <ChevronRight className="h-5 w-5 text-primary" />
                   </div>
@@ -4665,8 +4675,13 @@ export default function AdminPanel({
                           <span className="text-primary font-bold text-sm">5</span>
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">Установите наценку на товар</p>
-                          <p className="text-xs text-muted-foreground">Наценка может быть в рублях или процентах, индивидуально для каждого товара</p>
+                          <p className="text-sm font-medium text-foreground">Установите наценку для этого прайс-листа</p>
+                          <p className="text-xs text-muted-foreground">
+                            Наценка определяет цену продажи для данного типа покупателей.
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Пример: себестоимость 1000₽ + наценка 30% = цена 1300₽
+                          </p>
                         </div>
                         <ChevronRight className="h-5 w-5 text-primary" />
                       </div>
@@ -4817,12 +4832,15 @@ export default function AdminPanel({
                             <span className="text-primary font-bold text-sm">7</span>
                           </div>
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
+                          <div className="flex items-center gap-2 mb-2">
                               <Link2 className="h-5 w-5 text-primary" />
                               <p className="text-sm font-medium text-foreground">Это ссылка на ваш прайс-лист</p>
                             </div>
+                            <p className="text-xs text-muted-foreground mb-2">
+                              🔗 Каждый прайс-лист имеет уникальную ссылку
+                            </p>
                             <p className="text-xs text-muted-foreground mb-3">
-                              При нажатии автоматически копируется и её можно дать покупателю. При переходе покупатель в личном кабинете увидит каталог строго с теми ценами, которые заданы в этом прайс-листе.
+                              При переходе покупатель регистрируется и видит каталог строго с ценами этого прайс-листа. Он сможет оформить заказ по своим ценам.
                             </p>
                             <Button
                               size="sm"

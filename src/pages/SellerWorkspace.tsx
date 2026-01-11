@@ -5,6 +5,7 @@ import { useStoreOrders } from "@/hooks/useOrders";
 import { useIsStoreOwner } from "@/hooks/useUserStore";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import { OnboardingWelcomeModal } from "@/components/onboarding/OnboardingWelcomeModal";
 import StoreFront from "./StoreFront";
 import AdminPanel from "./AdminPanel";
 
@@ -122,6 +123,13 @@ export default function SellerWorkspace() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Welcome modal for first-time sellers */}
+      {hasFullAccess && (
+        <OnboardingWelcomeModal onComplete={() => {
+          // Modal completed, onboarding continues with step 1
+        }} />
+      )}
+      
       {/* Общая шапка с вкладками - для владельца или супер-админа */}
       {hasFullAccess && (
         <WorkspaceHeader
