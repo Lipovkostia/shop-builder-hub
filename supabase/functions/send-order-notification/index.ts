@@ -99,19 +99,52 @@ function formatOrderText(order: any, items: any[], customerName: string | null):
   return text;
 }
 
-function buildMoyskladOrderComment(order: any): string {
-  const shippingAddress = order.shipping_address;
-  if (!shippingAddress || typeof shippingAddress !== "object") return "";
+function buildMoyskladOrderComment(order: any, items: any[], customerName: string | null): string {
+  const date = new Date(order.created_at);
+  const dateStr = date.toLocaleDateString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const timeStr = date.toLocaleTimeString("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-  let comment = "";
-  if (shippingAddress.name) comment += `Клиент: ${shippingAddress.name}\n`;
-  if (shippingAddress.phone) comment += `Телефон: ${shippingAddress.phone}\n`;
-  if (shippingAddress.address) comment += `Адрес: ${shippingAddress.address}\n`;
-  if (shippingAddress.comment) comment += `Комментарий: ${shippingAddress.comment}`;
-  return comment.trim();
+  let text = `ЗАКАЗ ${order.order_number}\n`;
+  text += `Дата: ${dateStr} в ${timeStr}\n`;
+  
+  if (customerName) {
+    text += `Клиент: ${customerName}\n`;
+  }
+
+  text += `---\n`;
+  text += `ТОВАРЫ:\n`;
+
+  (items || []).forEach((item, index) => {
+    text += `${index + 1}. ${item.product_name}\n`;
+    text += `   ${item.quantity} x ${Number(item.price).toLocaleString("ru-RU")} руб = ${Number(item.total).toLocaleString("ru-RU")} руб\n`;
+  });
+
+  text += `---\n`;
+  text += `ИТОГО: ${(items || []).length} поз.\n`;
+  text += `СУММА: ${Number(order.total).toLocaleString("ru-RU")} руб\n`;
+
+  // Shipping address if present
+  const shippingAddress = order.shipping_address;
+  if (shippingAddress && typeof shippingAddress === "object") {
+    text += `---\n`;
+    text += `ДОСТАВКА:\n`;
+    if (shippingAddress.name) text += `Получатель: ${shippingAddress.name}\n`;
+    if (shippingAddress.phone) text += `Телефон: ${shippingAddress.phone}\n`;
+    if (shippingAddress.address) text += `Адрес: ${shippingAddress.address}\n`;
+    if (shippingAddress.comment) text += `Комментарий: ${shippingAddress.comment}\n`;
+  }
+
+  return text.trim();
 }
 
-async function trySyncOrderToMoysklad(supabase: any, order: any, items: any[]) {
+async function trySyncOrderToMoysklad(supabase: any, order: any, items: any[], customerName: string | null) {
   // Avoid duplicate sync
   if (order.moysklad_order_id) {
     console.log("MoySklad sync: already synced, skipping", order.order_number);
@@ -237,7 +270,7 @@ async function trySyncOrderToMoysklad(supabase: any, order: any, items: any[]) {
     positions,
   };
 
-  const comment = buildMoyskladOrderComment(order);
+  const comment = buildMoyskladOrderComment(order, items, customerName);
   if (comment) payload.description = comment;
 
   console.log(`Creating customerorder in MoySklad for order ${order.order_number}...`);
@@ -310,9 +343,29 @@ serve(async (req) => {
       throw new Error(`Failed to fetch order items: ${itemsError.message}`);
     }
 
+    // Get customer name if available (needed for MoySklad sync too)
+    let customerName: string | null = null;
+    if (order.customer_id) {
+      const { data: storeCustomer } = await supabase
+        .from("store_customers")
+        .select("profile_id")
+        .eq("id", order.customer_id)
+        .single();
+
+      if (storeCustomer) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", storeCustomer.profile_id)
+          .single();
+
+        customerName = profile?.full_name || null;
+      }
+    }
+
     // Try sync to MoySklad (should not affect notifications)
     try {
-      await trySyncOrderToMoysklad(supabase, order, items || []);
+      await trySyncOrderToMoysklad(supabase, order, items || [], customerName);
     } catch (syncErr) {
       console.error("Failed to sync order to MoySklad:", syncErr);
     }
@@ -340,25 +393,7 @@ serve(async (req) => {
       );
     }
 
-    // Get customer name if available
-    let customerName: string | null = null;
-    if (order.customer_id) {
-      const { data: storeCustomer } = await supabase
-        .from("store_customers")
-        .select("profile_id")
-        .eq("id", order.customer_id)
-        .single();
-
-      if (storeCustomer) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("id", storeCustomer.profile_id)
-          .single();
-
-        customerName = profile?.full_name || null;
-      }
-    }
+    // customerName already fetched above before MoySklad sync
 
     // Format the order text
     const orderText = formatOrderText(order, items || [], customerName);
