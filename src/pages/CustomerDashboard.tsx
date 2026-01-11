@@ -1255,6 +1255,7 @@ const CustomerDashboard = () => {
         productName,
         quantity: totalVolume, // Сохраняем реальный объём/количество
         price: pricePerUnit, // Цена за единицу объёма (кг или шт)
+        moyskladId: product?.moysklad_id || undefined, // For MoySklad order sync
       };
     });
 
