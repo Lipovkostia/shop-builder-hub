@@ -5,7 +5,7 @@ import { useStoreOrders } from "@/hooks/useOrders";
 import { useIsStoreOwner } from "@/hooks/useUserStore";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
-import { OnboardingWelcomeModal } from "@/components/onboarding/OnboardingWelcomeModal";
+
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import { OnboardingSpotlight } from "@/components/onboarding/SpotlightOverlay";
 import StoreFront from "./StoreFront";
@@ -93,9 +93,6 @@ export default function SellerWorkspace() {
   return (
     <OnboardingProvider>
       <div className="min-h-screen bg-background flex flex-col">
-        {/* Welcome modal for first-time sellers */}
-        {hasFullAccess && <OnboardingWelcomeModal />}
-        
         {/* Onboarding spotlight overlay */}
         {hasFullAccess && <OnboardingSpotlight />}
         

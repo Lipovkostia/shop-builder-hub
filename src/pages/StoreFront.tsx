@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store as StoreIcon, Package, LayoutGrid, Plus, LogIn } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store as StoreIcon, Package, LayoutGrid, Plus, LogIn, Sparkles, Users, Link2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 import { Badge } from "@/components/ui/badge";
@@ -1688,20 +1688,80 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
           })()
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
-            {/* Empty state for owner with no products at all */}
-            {isOwner && displayProducts.length === 0 ? (
+            {/* Welcome onboarding for owner with no products */}
+            {isOwner && displayProducts.length === 0 && catalogs.length === 0 ? (
+              <div className="max-w-md mx-auto space-y-6">
+                <div className="text-center">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <Sparkles className="w-8 h-8 text-primary" />
+                  </div>
+                  <h2 className="text-xl font-semibold mb-2">Добро пожаловать!</h2>
+                  <p className="text-muted-foreground text-sm">
+                    Главная идея сервиса:
+                  </p>
+                  <p className="text-lg font-semibold text-primary mt-1">
+                    ✨ Каждый тип покупателей видит свои цены
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                      <Users className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Рестораны — одни цены</p>
+                      <p className="text-xs text-muted-foreground">Например, наценка 25%</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                      <Tag className="w-4 h-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Оптовики — другие цены</p>
+                      <p className="text-xs text-muted-foreground">Например, наценка 15%</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                      <Link2 className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Делитесь ссылками на прайс-листы</p>
+                      <p className="text-xs text-muted-foreground">Покупатель видит только свои цены</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-center text-xs text-muted-foreground bg-primary/5 rounded-lg p-3">
+                  <p>Меняйте цены и статусы товаров</p>
+                  <p>оперативно для любого типа покупателей</p>
+                </div>
+
+                <Button 
+                  onClick={() => handleAdminClick('products')}
+                  className="w-full gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Добавить первый товар
+                </Button>
+              </div>
+            ) : isOwner && displayProducts.length === 0 ? (
               <>
                 <Package className="w-16 h-16 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">Добавьте свой первый товар</h3>
+                <h3 className="text-lg font-medium mb-2">Добавьте товары в прайс-лист</h3>
                 <p className="text-muted-foreground text-sm mb-4 max-w-xs">
-                  Ваш ассортимент пока пуст. Добавьте товары, чтобы начать продажи.
+                  Выберите прайс-лист и добавьте в него товары.
                 </p>
                 <Button 
                   onClick={() => handleAdminClick('products')}
                   className="gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  Добавить товар
+                  Перейти к товарам
                 </Button>
               </>
             ) : (
