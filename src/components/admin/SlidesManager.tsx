@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, Trash2, GripVertical, ImageIcon, Save, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Trash2, GripVertical, ImageIcon, Save, X, Upload, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 interface Slide {
   id: string;
@@ -21,9 +23,11 @@ export default function SlidesManager() {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [editingSlide, setEditingSlide] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editImageUrl, setEditImageUrl] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchSlides();
@@ -88,7 +92,17 @@ export default function SlidesManager() {
   const handleDeleteSlide = async (id: string) => {
     if (!confirm('Удалить этот слайд?')) return;
 
+    const slide = slides.find(s => s.id === id);
+    
     try {
+      // Delete image from storage if exists
+      if (slide?.image_url && slide.image_url.includes('landing-slides')) {
+        const path = slide.image_url.split('/landing-slides/')[1];
+        if (path) {
+          await supabase.storage.from('landing-slides').remove([path]);
+        }
+      }
+
       const { error } = await supabase
         .from('landing_slides')
         .delete()
@@ -140,6 +154,77 @@ export default function SlidesManager() {
     setEditingSlide(null);
     setEditTitle('');
     setEditImageUrl('');
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !editingSlide) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Ошибка',
+        description: 'Можно загружать только изображения',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: 'Ошибка',
+        description: 'Размер файла не должен превышать 5 МБ',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Generate unique filename
+      const ext = file.name.split('.').pop();
+      const fileName = `${editingSlide}-${Date.now()}.${ext}`;
+
+      // Delete old image if exists
+      if (editImageUrl && editImageUrl.includes('landing-slides')) {
+        const oldPath = editImageUrl.split('/landing-slides/')[1];
+        if (oldPath) {
+          await supabase.storage.from('landing-slides').remove([oldPath]);
+        }
+      }
+
+      // Upload new image
+      const { error: uploadError } = await supabase.storage
+        .from('landing-slides')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('landing-slides')
+        .getPublicUrl(fileName);
+
+      setEditImageUrl(urlData.publicUrl);
+      toast({ title: 'Изображение загружено' });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: 'Ошибка загрузки',
+        description: 'Не удалось загрузить изображение',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const saveEditing = async () => {
@@ -215,6 +300,16 @@ export default function SlidesManager() {
     }
   };
 
+  const removeImage = async () => {
+    if (editImageUrl && editImageUrl.includes('landing-slides')) {
+      const path = editImageUrl.split('/landing-slides/')[1];
+      if (path) {
+        await supabase.storage.from('landing-slides').remove([path]);
+      }
+    }
+    setEditImageUrl('');
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -243,7 +338,7 @@ export default function SlidesManager() {
             <Card key={slide.id} className={!slide.is_active ? 'opacity-50' : ''}>
               <CardContent className="p-4">
                 {editingSlide === slide.id ? (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <div className="space-y-2">
                       <Label>Текст слайда</Label>
                       <Input
@@ -252,32 +347,85 @@ export default function SlidesManager() {
                         placeholder="Текст слайда"
                       />
                     </div>
+
                     <div className="space-y-2">
-                      <Label>URL изображения</Label>
-                      <Input
-                        value={editImageUrl}
-                        onChange={(e) => setEditImageUrl(e.target.value)}
-                        placeholder="https://example.com/image.png"
-                      />
+                      <Label>Изображение</Label>
+                      
+                      {/* Upload button */}
+                      <div className="flex gap-2">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploading}
+                        >
+                          {isUploading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              Загрузка...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4 mr-1" />
+                              Загрузить изображение
+                            </>
+                          )}
+                        </Button>
+                        {editImageUrl && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={removeImage}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Удалить
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Image preview */}
                       {editImageUrl && (
-                        <div className="mt-2 aspect-[16/9] w-full max-w-xs overflow-hidden rounded-lg border">
+                        <div className="mt-2 aspect-[16/9] w-full max-w-md overflow-hidden rounded-lg border">
                           <img
                             src={editImageUrl}
                             alt="Превью"
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = '';
-                              (e.target as HTMLImageElement).alt = 'Ошибка загрузки';
+                              (e.target as HTMLImageElement).style.display = 'none';
                             }}
                           />
                         </div>
                       )}
+
+                      {/* URL input as fallback */}
+                      <div className="pt-2">
+                        <Label className="text-xs text-muted-foreground">
+                          Или введите URL изображения:
+                        </Label>
+                        <Input
+                          value={editImageUrl}
+                          onChange={(e) => setEditImageUrl(e.target.value)}
+                          placeholder="https://example.com/image.png"
+                          className="mt-1"
+                        />
+                      </div>
                     </div>
+
                     <div className="flex gap-2">
                       <Button
                         size="sm"
                         onClick={saveEditing}
-                        disabled={isSaving}
+                        disabled={isSaving || isUploading}
                       >
                         <Save className="h-4 w-4 mr-1" />
                         Сохранить
@@ -286,6 +434,7 @@ export default function SlidesManager() {
                         size="sm"
                         variant="outline"
                         onClick={cancelEditing}
+                        disabled={isSaving || isUploading}
                       >
                         <X className="h-4 w-4 mr-1" />
                         Отмена
