@@ -13,6 +13,13 @@ import { Store, LogIn, Shield, User } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
 import slideCatalogs from "@/assets/slide-catalogs.png";
 
+interface LandingSlide {
+  id: string;
+  title: string;
+  image_url: string | null;
+  sort_order: number;
+}
+
 const Index = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -30,6 +37,36 @@ const Index = () => {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [slideCount, setSlideCount] = useState(0);
+  const [slides, setSlides] = useState<LandingSlide[]>([]);
+  const [slidesLoading, setSlidesLoading] = useState(true);
+
+  // Загрузка слайдов из базы
+  useEffect(() => {
+    const fetchSlides = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('landing_slides')
+          .select('id, title, image_url, sort_order')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+
+        if (error) throw error;
+        setSlides(data || []);
+      } catch (error) {
+        console.error('Error fetching slides:', error);
+        // Fallback to default slides
+        setSlides([
+          { id: '1', title: 'Создавайте уникальные каталоги для разных покупателей', image_url: null, sort_order: 1 },
+          { id: '2', title: 'Покупатель всегда видит индивидуальную актуальную цену и наличие', image_url: null, sort_order: 2 },
+          { id: '3', title: 'Заказ упаковкой или штучно в 1 клик', image_url: null, sort_order: 3 },
+          { id: '4', title: 'Повторить заказ в 1 клик', image_url: null, sort_order: 4 },
+        ]);
+      } finally {
+        setSlidesLoading(false);
+      }
+    };
+    fetchSlides();
+  }, []);
   
   // Подписка на смену слайда
   useEffect(() => {
@@ -375,57 +412,36 @@ const Index = () => {
             className="w-full"
           >
             <CarouselContent>
-              {/* Слайд 1 */}
-              <CarouselItem>
-                <div className="flex flex-col">
-                  <div className="aspect-[16/9] w-full overflow-hidden rounded-lg mb-4">
-                    <img 
-                      src={slideCatalogs} 
-                      alt="Каталоги" 
-                      className="w-full h-full object-cover"
-                    />
+              {slides.map((slide, index) => (
+                <CarouselItem key={slide.id}>
+                  <div className="flex flex-col">
+                    <div className="aspect-[16/9] w-full overflow-hidden rounded-lg mb-4 bg-muted">
+                      {slide.image_url ? (
+                        <img 
+                          src={slide.image_url} 
+                          alt={slide.title} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : index === 0 ? (
+                        <img 
+                          src={slideCatalogs} 
+                          alt={slide.title} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-4xl">
+                            {index === 1 ? '📊' : index === 2 ? '🛒' : '🔄'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-left text-lg font-medium text-foreground">
+                      {slide.title}
+                    </p>
                   </div>
-                  <p className="text-left text-lg font-medium text-foreground">
-                    Создавайте уникальные каталоги для разных покупателей
-                  </p>
-                </div>
-              </CarouselItem>
-              
-              {/* Слайд 2 */}
-              <CarouselItem>
-                <div className="flex flex-col">
-                  <div className="aspect-[16/9] w-full overflow-hidden rounded-lg mb-4 bg-muted flex items-center justify-center">
-                    <span className="text-4xl">📊</span>
-                  </div>
-                  <p className="text-left text-lg font-medium text-foreground">
-                    Покупатель всегда видит индивидуальную актуальную цену и наличие
-                  </p>
-                </div>
-              </CarouselItem>
-              
-              {/* Слайд 3 */}
-              <CarouselItem>
-                <div className="flex flex-col">
-                  <div className="aspect-[16/9] w-full overflow-hidden rounded-lg mb-4 bg-muted flex items-center justify-center">
-                    <span className="text-4xl">🛒</span>
-                  </div>
-                  <p className="text-left text-lg font-medium text-foreground">
-                    Заказ упаковкой или штучно в 1 клик
-                  </p>
-                </div>
-              </CarouselItem>
-              
-              {/* Слайд 4 */}
-              <CarouselItem>
-                <div className="flex flex-col">
-                  <div className="aspect-[16/9] w-full overflow-hidden rounded-lg mb-4 bg-muted flex items-center justify-center">
-                    <span className="text-4xl">🔄</span>
-                  </div>
-                  <p className="text-left text-lg font-medium text-foreground">
-                    Повторить заказ в 1 клик
-                  </p>
-                </div>
-              </CarouselItem>
+                </CarouselItem>
+              ))}
             </CarouselContent>
           </Carousel>
           

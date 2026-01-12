@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User } from 'lucide-react';
+import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import SlidesManager from '@/components/admin/SlidesManager';
 
 interface StoreWithCounts {
   id: string;
@@ -295,6 +296,10 @@ export default function SuperAdmin() {
               <Users className="h-4 w-4" />
               Покупатели
             </TabsTrigger>
+            <TabsTrigger value="slides" className="gap-2">
+              <Image className="h-4 w-4" />
+              Слайды
+            </TabsTrigger>
           </TabsList>
 
           {/* Stores Tab */}
@@ -571,6 +576,11 @@ export default function SuperAdmin() {
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          {/* Slides Tab */}
+          <TabsContent value="slides" className="space-y-6">
+            <SlidesManager />
           </TabsContent>
         </Tabs>
       </main>
