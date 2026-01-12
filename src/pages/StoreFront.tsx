@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store as StoreIcon, Package, LayoutGrid, Plus, LogIn, Sparkles, Users, Link2, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +21,14 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerFooter,
+} from "@/components/ui/drawer";
 import { useStoreBySubdomain, useIsStoreOwner } from "@/hooks/useUserStore";
 import { useStoreProducts, StoreProduct } from "@/hooks/useStoreProducts";
 import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
@@ -1045,6 +1053,18 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const [isNewCatalogDialogOpen, setIsNewCatalogDialogOpen] = useState(false);
   const [newCatalogName, setNewCatalogName] = useState("");
   const [isCreatingCatalog, setIsCreatingCatalog] = useState(false);
+  const newCatalogInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
+
+  // Отложенный фокус для избежания дёргания клавиатуры на мобильных
+  useEffect(() => {
+    if (isNewCatalogDialogOpen && newCatalogInputRef.current) {
+      const timer = setTimeout(() => {
+        newCatalogInputRef.current?.focus();
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isNewCatalogDialogOpen]);
   
   // Состояние dropdown каталогов для онбординга
   const [catalogDropdownOpen, setCatalogDropdownOpen] = useState(false);
@@ -2005,40 +2025,77 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
       </Dialog>
 
       {/* Диалог создания нового прайс-листа */}
-      <Dialog open={isNewCatalogDialogOpen} onOpenChange={setIsNewCatalogDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Новый прайс-лист</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <Input
-              placeholder="Название прайс-листа"
-              value={newCatalogName}
-              onChange={(e) => setNewCatalogName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && newCatalogName.trim()) {
-                  handleCreateNewCatalog();
-                }
-              }}
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsNewCatalogDialogOpen(false)}
-            >
-              Отмена
-            </Button>
-            <Button 
-              onClick={handleCreateNewCatalog}
-              disabled={!newCatalogName.trim() || isCreatingCatalog}
-            >
-              {isCreatingCatalog ? "Создание..." : "Создать"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {isMobile ? (
+        <Drawer open={isNewCatalogDialogOpen} onOpenChange={setIsNewCatalogDialogOpen}>
+          <DrawerContent>
+            <DrawerHeader className="text-left">
+              <DrawerTitle>Новый прайс-лист</DrawerTitle>
+            </DrawerHeader>
+            <div className="px-4 pb-4">
+              <Input
+                ref={newCatalogInputRef}
+                placeholder="Название прайс-листа"
+                value={newCatalogName}
+                onChange={(e) => setNewCatalogName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newCatalogName.trim()) {
+                    handleCreateNewCatalog();
+                  }
+                }}
+              />
+            </div>
+            <DrawerFooter className="pt-2">
+              <Button 
+                onClick={handleCreateNewCatalog}
+                disabled={!newCatalogName.trim() || isCreatingCatalog}
+              >
+                {isCreatingCatalog ? "Создание..." : "Создать"}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsNewCatalogDialogOpen(false)}
+              >
+                Отмена
+              </Button>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={isNewCatalogDialogOpen} onOpenChange={setIsNewCatalogDialogOpen}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Новый прайс-лист</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <Input
+                ref={newCatalogInputRef}
+                placeholder="Название прайс-листа"
+                value={newCatalogName}
+                onChange={(e) => setNewCatalogName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newCatalogName.trim()) {
+                    handleCreateNewCatalog();
+                  }
+                }}
+              />
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsNewCatalogDialogOpen(false)}
+              >
+                Отмена
+              </Button>
+              <Button 
+                onClick={handleCreateNewCatalog}
+                disabled={!newCatalogName.trim() || isCreatingCatalog}
+              >
+                {isCreatingCatalog ? "Создание..." : "Создать"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
