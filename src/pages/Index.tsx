@@ -86,6 +86,7 @@ const Index = () => {
           .from('stores')
           .select('subdomain')
           .eq('owner_id', profile.id)
+          .limit(1)
           .maybeSingle();
 
         if (store) {
@@ -262,6 +263,7 @@ const Index = () => {
           .from('stores')
           .select('subdomain')
           .eq('owner_id', profile.id)
+          .limit(1)
           .maybeSingle();
 
         if (store) {
