@@ -48,7 +48,7 @@ export function InlineMarkupCell({
 
   const handleSave = () => {
     const numValue = parseFloat(editedValue);
-    if (!isNaN(numValue) && numValue > 0) {
+    if (!isNaN(numValue) && numValue >= 0) {
       onSave({ type: editedType, value: numValue });
     } else {
       onSave(undefined);
@@ -116,14 +116,14 @@ export function InlineMarkupCell({
       onClick={() => setIsEditing(true)}
       title="Нажмите для редактирования"
     >
-      {value && value.value > 0 ? (
+      {value && value.value >= 0 ? (
         <span className={cn(
           "text-xs font-medium px-1.5 py-0.5 rounded",
           value.type === "percent" 
             ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" 
             : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
         )}>
-          +{value.value}{value.type === "percent" ? "%" : "₽"}
+          {value.value > 0 ? '+' : ''}{value.value}{value.type === "percent" ? "%" : "₽"}
         </span>
       ) : (
         <span className="text-xs text-muted-foreground/50 italic">—</span>

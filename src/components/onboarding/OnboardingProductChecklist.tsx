@@ -34,7 +34,7 @@ export function OnboardingProductChecklist({
 
   const items: ChecklistItem[] = [
     { id: 'buyPrice', label: 'Себестоимость', completed: !!buyPrice && parseFloat(buyPrice) > 0 },
-    { id: 'markup', label: 'Наценка', completed: !!markupValue && parseFloat(markupValue) > 0 },
+    { id: 'markup', label: 'Наценка', completed: markupValue !== '' && !isNaN(parseFloat(markupValue)) && parseFloat(markupValue) >= 0 },
     { id: 'priceHalf', label: 'Цена 1/2', completed: !!priceHalf && parseFloat(priceHalf) > 0 },
     { id: 'priceQuarter', label: 'Цена 1/4', completed: !!priceQuarter && parseFloat(priceQuarter) > 0 },
     { id: 'unitWeight', label: 'Объём', completed: !!unitWeight && parseFloat(unitWeight) > 0 },
