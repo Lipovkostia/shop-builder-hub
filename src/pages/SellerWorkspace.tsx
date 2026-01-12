@@ -6,6 +6,7 @@ import { useIsStoreOwner } from "@/hooks/useUserStore";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { OnboardingWelcomeModal } from "@/components/onboarding/OnboardingWelcomeModal";
+import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import StoreFront from "./StoreFront";
 import AdminPanel from "./AdminPanel";
 
@@ -89,40 +90,42 @@ export default function SellerWorkspace() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Welcome modal for first-time sellers */}
-      {hasFullAccess && <OnboardingWelcomeModal />}
-      
-      {/* Общая шапка с вкладками - для владельца или супер-админа */}
-      {hasFullAccess && (
-        <WorkspaceHeader
-          storeName={store.name}
-          storeLogo={store.logo_url}
-          activeView={activeView}
-          onViewChange={handleViewChange}
-          onOrdersClick={() => handleSwitchToAdmin("orders")}
-          ordersCount={orders.length}
-        />
-      )}
-      
-      {/* Контент - оба компонента рендерятся, но скрываются через CSS для сохранения состояния */}
-      <div className="flex-1 overflow-hidden">
-        <div className={activeView === "storefront" ? "block" : "hidden"}>
-          <StoreFront 
-            workspaceMode={hasFullAccess}
-            storeData={store}
-            onSwitchToAdmin={handleSwitchToAdmin}
+    <OnboardingProvider>
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Welcome modal for first-time sellers */}
+        {hasFullAccess && <OnboardingWelcomeModal />}
+        
+        {/* Общая шапка с вкладками - для владельца или супер-админа */}
+        {hasFullAccess && (
+          <WorkspaceHeader
+            storeName={store.name}
+            storeLogo={store.logo_url}
+            activeView={activeView}
+            onViewChange={handleViewChange}
+            onOrdersClick={() => handleSwitchToAdmin("orders")}
+            ordersCount={orders.length}
           />
-        </div>
-        <div className={activeView === "admin" ? "block" : "hidden"}>
-          <AdminPanel 
-            workspaceMode={hasFullAccess}
-            storeIdOverride={store.id}
-            storeSubdomainOverride={store.subdomain}
-            onSwitchToStorefront={handleSwitchToStorefront}
-          />
+        )}
+        
+        {/* Контент - оба компонента рендерятся, но скрываются через CSS для сохранения состояния */}
+        <div className="flex-1 overflow-hidden">
+          <div className={activeView === "storefront" ? "block" : "hidden"}>
+            <StoreFront 
+              workspaceMode={hasFullAccess}
+              storeData={store}
+              onSwitchToAdmin={handleSwitchToAdmin}
+            />
+          </div>
+          <div className={activeView === "admin" ? "block" : "hidden"}>
+            <AdminPanel 
+              workspaceMode={hasFullAccess}
+              storeIdOverride={store.id}
+              storeSubdomainOverride={store.subdomain}
+              onSwitchToStorefront={handleSwitchToStorefront}
+            />
+          </div>
         </div>
       </div>
-    </div>
+    </OnboardingProvider>
   );
 }
