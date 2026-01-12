@@ -35,7 +35,7 @@ const Index = () => {
   const [loginLoading, setLoginLoading] = useState(false);
   
   // Super admin form state
-  const [adminLogin, setAdminLogin] = useState("");
+  const [adminPhone, setAdminPhone] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminLoading, setAdminLoading] = useState(false);
 
@@ -208,20 +208,46 @@ const Index = () => {
   const handleSuperAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Temporary super admin credentials
-    if (adminLogin === "1" && adminPassword === "1") {
-      setAdminLoading(true);
-      // Store super admin session in localStorage temporarily
-      localStorage.setItem('temp_super_admin', 'true');
+    if (!adminPhone.trim() || !adminPassword.trim()) {
+      toast({ title: "Заполните все поля", variant: "destructive" });
+      return;
+    }
+
+    setAdminLoading(true);
+    try {
+      const email = phoneToEmail(adminPhone);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: adminPassword
+      });
+      
+      if (error) throw error;
+      
+      // Check for super_admin role
+      const { data: roleData } = await supabase
+        .rpc('has_platform_role', { 
+          _user_id: data.user.id, 
+          _role: 'super_admin' 
+        });
+      
+      if (!roleData) {
+        await supabase.auth.signOut();
+        throw new Error('Нет прав супер-администратора');
+      }
+      
       toast({ title: "Вход выполнен" });
       navigate('/super-admin');
-      setAdminLoading(false);
-    } else {
+    } catch (error: any) {
       toast({ 
-        title: "Неверные данные", 
-        description: "Проверьте логин и пароль",
+        title: "Ошибка входа", 
+        description: error.message === 'Invalid login credentials' 
+          ? 'Неверный телефон или пароль' 
+          : error.message,
         variant: "destructive" 
       });
+    } finally {
+      setAdminLoading(false);
     }
   };
 
@@ -512,11 +538,11 @@ const Index = () => {
               <CardContent>
                 <form onSubmit={handleSuperAdminLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="adminLogin">Логин</Label>
-                    <Input
-                      id="adminLogin"
-                      value={adminLogin}
-                      onChange={(e) => setAdminLogin(e.target.value)}
+                    <Label htmlFor="adminPhone">Номер телефона</Label>
+                    <PhoneInput
+                      id="adminPhone"
+                      value={adminPhone}
+                      onChange={setAdminPhone}
                     />
                   </div>
                   <div className="space-y-2">

@@ -63,9 +63,7 @@ export default function SuperAdmin() {
   const [customersPage, setCustomersPage] = useState(1);
   const [customersTotal, setCustomersTotal] = useState(0);
 
-  // Check for temp super admin or real super admin
-  const isTempSuperAdmin = localStorage.getItem('temp_super_admin') === 'true';
-  const hasAccess = isSuperAdmin || isTempSuperAdmin;
+  const hasAccess = isSuperAdmin;
 
   useEffect(() => {
     if (!loading && !hasAccess) {
@@ -258,9 +256,9 @@ export default function SuperAdmin() {
     return null;
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('temp_super_admin');
+  const handleLogout = async () => {
     localStorage.removeItem('impersonate_customer_id');
+    await supabase.auth.signOut();
     navigate('/');
   };
 
