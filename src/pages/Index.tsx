@@ -5,10 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Store, LogIn, Shield, User } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
+import slideCatalogs from "@/assets/slide-catalogs.png";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -22,6 +25,23 @@ const Index = () => {
   
   // Active tab state
   const [activeTab, setActiveTab] = useState(tabFromUrl === "customer" ? "customer" : "register");
+  
+  // Carousel state
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [slideCount, setSlideCount] = useState(0);
+  
+  // Подписка на смену слайда
+  useEffect(() => {
+    if (!carouselApi) return;
+    
+    setSlideCount(carouselApi.scrollSnapList().length);
+    setCurrentSlide(carouselApi.selectedScrollSnap());
+    
+    carouselApi.on("select", () => {
+      setCurrentSlide(carouselApi.selectedScrollSnap());
+    });
+  }, [carouselApi]);
   // Registration form state
   const [regStoreName, setRegStoreName] = useState("");
   const [regPhone, setRegPhone] = useState("");
@@ -347,12 +367,80 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex items-start md:items-center justify-center p-4 pt-8 md:pt-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <p className="text-lg font-bold text-foreground">Сохраняем время. Убираем хаос в работе.</p>
-          <div className="mt-3 space-y-1 text-sm text-muted-foreground text-left">
-            <p>1. Покупатель всегда видит индивидуальную актуальную цену и наличие.</p>
-            <p>2. Заказ упаковкой или штучно в 1 клик.</p>
-            <p>3. Повторить заказ в 1 клик.</p>
+        <div className="mb-8">
+          <Carousel
+            setApi={setCarouselApi}
+            opts={{ loop: true }}
+            plugins={[Autoplay({ delay: 5000, stopOnInteraction: true })]}
+            className="w-full"
+          >
+            <CarouselContent>
+              {/* Слайд 1 */}
+              <CarouselItem>
+                <div className="flex flex-col">
+                  <div className="aspect-[16/9] w-full overflow-hidden rounded-lg mb-4">
+                    <img 
+                      src={slideCatalogs} 
+                      alt="Каталоги" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <p className="text-left text-lg font-medium text-foreground">
+                    Создавайте уникальные каталоги для разных покупателей
+                  </p>
+                </div>
+              </CarouselItem>
+              
+              {/* Слайд 2 */}
+              <CarouselItem>
+                <div className="flex flex-col">
+                  <div className="aspect-[16/9] w-full overflow-hidden rounded-lg mb-4 bg-muted flex items-center justify-center">
+                    <span className="text-4xl">📊</span>
+                  </div>
+                  <p className="text-left text-lg font-medium text-foreground">
+                    Покупатель всегда видит индивидуальную актуальную цену и наличие
+                  </p>
+                </div>
+              </CarouselItem>
+              
+              {/* Слайд 3 */}
+              <CarouselItem>
+                <div className="flex flex-col">
+                  <div className="aspect-[16/9] w-full overflow-hidden rounded-lg mb-4 bg-muted flex items-center justify-center">
+                    <span className="text-4xl">🛒</span>
+                  </div>
+                  <p className="text-left text-lg font-medium text-foreground">
+                    Заказ упаковкой или штучно в 1 клик
+                  </p>
+                </div>
+              </CarouselItem>
+              
+              {/* Слайд 4 */}
+              <CarouselItem>
+                <div className="flex flex-col">
+                  <div className="aspect-[16/9] w-full overflow-hidden rounded-lg mb-4 bg-muted flex items-center justify-center">
+                    <span className="text-4xl">🔄</span>
+                  </div>
+                  <p className="text-left text-lg font-medium text-foreground">
+                    Повторить заказ в 1 клик
+                  </p>
+                </div>
+              </CarouselItem>
+            </CarouselContent>
+          </Carousel>
+          
+          {/* Индикаторы */}
+          <div className="flex justify-center gap-2 mt-4">
+            {Array.from({ length: slideCount }).map((_, index) => (
+              <button
+                key={index}
+                onClick={() => carouselApi?.scrollTo(index)}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  index === currentSlide ? "bg-primary" : "bg-muted-foreground/30"
+                }`}
+                aria-label={`Перейти к слайду ${index + 1}`}
+              />
+            ))}
           </div>
         </div>
 
