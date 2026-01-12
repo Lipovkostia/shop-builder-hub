@@ -1349,6 +1349,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                       : 'hover:bg-muted text-muted-foreground hover:text-primary'
                   }`}
                   title="Добавить товар"
+                  data-onboarding="add-product-button"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
