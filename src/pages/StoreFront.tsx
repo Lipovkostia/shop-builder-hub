@@ -462,7 +462,7 @@ function ProductCard({
         ) : (
           /* Без фото: цена и кнопки в одной строке */
           <div className="flex items-center justify-between gap-2 mt-0.5">
-            <span className="text-muted-foreground text-[9px] whitespace-nowrap">
+            <span className="text-muted-foreground text-[11px] whitespace-nowrap">
               {formatPrice(salePrice)}/{unit}
             </span>
             <div className="flex items-center gap-0.5 flex-shrink-0 flex-row-reverse">
