@@ -40,6 +40,7 @@ import {
 } from "@/components/admin/types";
 import AdminPanel from "@/pages/AdminPanel";
 import { useOnboarding } from "@/contexts/OnboardingContext";
+import { OnboardingBanner } from "@/components/onboarding/OnboardingBanner";
 
 interface CartItem {
   productId: string;
@@ -1456,6 +1457,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
               </DropdownMenu>
             </div>
           </div>
+
+          {/* Баннер онбординга - под блоком с иконками */}
+          <OnboardingBanner />
 
           {/* Название магазина и прайс-листа - под блоком с иконками */}
           <div className="px-3 py-1 border-t border-border bg-background">
