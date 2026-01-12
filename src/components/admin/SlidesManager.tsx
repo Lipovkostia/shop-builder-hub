@@ -319,40 +319,41 @@ export default function SlidesManager() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Слайды на главной странице</h3>
-        <Button onClick={handleAddSlide} size="sm">
+    <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <h3 className="text-base sm:text-lg font-semibold">Слайды на главной странице</h3>
+        <Button onClick={handleAddSlide} size="sm" className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-1" />
           Добавить слайд
         </Button>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {slides.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">
+          <p className="text-muted-foreground text-center py-8 text-sm">
             Нет слайдов. Добавьте первый слайд.
           </p>
         ) : (
           slides.map((slide, index) => (
             <Card key={slide.id} className={!slide.is_active ? 'opacity-50' : ''}>
-              <CardContent className="p-4">
+              <CardContent className="p-3">
                 {editingSlide === slide.id ? (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Текст слайда</Label>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Текст слайда</Label>
                       <Input
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
                         placeholder="Текст слайда"
+                        className="h-9"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Изображение</Label>
+                      <Label className="text-sm">Изображение</Label>
                       
                       {/* Upload button */}
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -366,16 +367,17 @@ export default function SlidesManager() {
                           size="sm"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={isUploading}
+                          className="text-xs h-8"
                         >
                           {isUploading ? (
                             <>
-                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                               Загрузка...
                             </>
                           ) : (
                             <>
-                              <Upload className="h-4 w-4 mr-1" />
-                              Загрузить изображение
+                              <Upload className="h-3 w-3 mr-1" />
+                              Загрузить
                             </>
                           )}
                         </Button>
@@ -385,9 +387,9 @@ export default function SlidesManager() {
                             variant="ghost"
                             size="sm"
                             onClick={removeImage}
-                            className="text-destructive hover:text-destructive"
+                            className="text-destructive hover:text-destructive text-xs h-8"
                           >
-                            <Trash2 className="h-4 w-4 mr-1" />
+                            <Trash2 className="h-3 w-3 mr-1" />
                             Удалить
                           </Button>
                         )}
@@ -395,7 +397,7 @@ export default function SlidesManager() {
 
                       {/* Image preview */}
                       {editImageUrl && (
-                        <div className="mt-2 aspect-[16/9] w-full max-w-md overflow-hidden rounded-lg border">
+                        <div className="mt-2 aspect-[16/9] w-full max-w-xs overflow-hidden rounded-lg border">
                           <img
                             src={editImageUrl}
                             alt="Превью"
@@ -408,15 +410,15 @@ export default function SlidesManager() {
                       )}
 
                       {/* URL input as fallback */}
-                      <div className="pt-2">
+                      <div className="pt-1">
                         <Label className="text-xs text-muted-foreground">
-                          Или введите URL изображения:
+                          Или URL изображения:
                         </Label>
                         <Input
                           value={editImageUrl}
                           onChange={(e) => setEditImageUrl(e.target.value)}
                           placeholder="https://example.com/image.png"
-                          className="mt-1"
+                          className="mt-1 h-8 text-sm"
                         />
                       </div>
                     </div>
@@ -426,8 +428,9 @@ export default function SlidesManager() {
                         size="sm"
                         onClick={saveEditing}
                         disabled={isSaving || isUploading}
+                        className="h-8 text-xs"
                       >
-                        <Save className="h-4 w-4 mr-1" />
+                        <Save className="h-3 w-3 mr-1" />
                         Сохранить
                       </Button>
                       <Button
@@ -435,37 +438,40 @@ export default function SlidesManager() {
                         variant="outline"
                         onClick={cancelEditing}
                         disabled={isSaving || isUploading}
+                        className="h-8 text-xs"
                       >
-                        <X className="h-4 w-4 mr-1" />
+                        <X className="h-3 w-3 mr-1" />
                         Отмена
                       </Button>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-start gap-3">
-                    <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    {/* Reorder buttons */}
+                    <div className="flex flex-col gap-0.5 flex-shrink-0">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6"
+                        className="h-5 w-5"
                         onClick={() => moveSlide(slide.id, 'up')}
                         disabled={index === 0}
                       >
-                        <GripVertical className="h-4 w-4 rotate-90" />
+                        <GripVertical className="h-3 w-3 rotate-90" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6"
+                        className="h-5 w-5"
                         onClick={() => moveSlide(slide.id, 'down')}
                         disabled={index === slides.length - 1}
                       >
-                        <GripVertical className="h-4 w-4 rotate-90" />
+                        <GripVertical className="h-3 w-3 rotate-90" />
                       </Button>
                     </div>
 
+                    {/* Image thumbnail */}
                     {slide.image_url ? (
-                      <div className="w-24 h-14 rounded overflow-hidden flex-shrink-0">
+                      <div className="w-16 h-10 sm:w-20 sm:h-12 rounded overflow-hidden flex-shrink-0">
                         <img
                           src={slide.image_url}
                           alt={slide.title}
@@ -473,44 +479,39 @@ export default function SlidesManager() {
                         />
                       </div>
                     ) : (
-                      <div className="w-24 h-14 rounded bg-muted flex items-center justify-center flex-shrink-0">
-                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                      <div className="w-16 h-10 sm:w-20 sm:h-12 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
                       </div>
                     )}
 
+                    {/* Title and position */}
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium line-clamp-2">{slide.title}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Позиция: {slide.sort_order}
-                      </p>
+                      <p className="text-sm font-medium line-clamp-1">{slide.title}</p>
+                      <p className="text-xs text-muted-foreground">#{slide.sort_order}</p>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={slide.is_active}
-                          onCheckedChange={(checked) => handleToggleActive(slide.id, checked)}
-                        />
-                        <span className="text-xs text-muted-foreground">
-                          {slide.is_active ? 'Активен' : 'Скрыт'}
-                        </span>
-                      </div>
-
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => startEditing(slide)}
-                      >
-                        Изменить
-                      </Button>
-
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Switch
+                        checked={slide.is_active}
+                        onCheckedChange={(checked) => handleToggleActive(slide.id, checked)}
+                        className="scale-75"
+                      />
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="text-destructive hover:text-destructive"
+                        className="h-7 w-7"
+                        onClick={() => startEditing(slide)}
+                      >
+                        <Save className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
                         onClick={() => handleDeleteSlide(slide.id)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
