@@ -1408,7 +1408,11 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
               {isOwner && selectedCatalog && (
                 <button 
                   onClick={() => setIsNewProductDialogOpen(true)}
-                  className="p-2 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-primary"
+                  className={`p-2 rounded transition-colors ${
+                    filteredProducts.length === 0 
+                      ? 'animate-attention-pulse bg-primary/20 text-primary ring-2 ring-primary' 
+                      : 'hover:bg-muted text-muted-foreground hover:text-primary'
+                  }`}
                   title="Добавить товар"
                 >
                   <Plus className="w-4 h-4" />
