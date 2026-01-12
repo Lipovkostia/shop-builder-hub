@@ -1,9 +1,10 @@
 import React, { useEffect } from "react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
+import { Sparkles } from "lucide-react";
 
 /**
- * AdminOnboardingBanner - баннер для шага онбординга в панели управления.
- * Отображается под лентой навигации (MobileTabNav).
+ * AdminOnboardingBanner - современный баннер для шага онбординга в панели управления.
+ * Градиентный фон, иконка, компактный размер.
  */
 export function AdminOnboardingBanner() {
   const { currentStep, isActive, nextStep } = useOnboarding();
@@ -37,23 +38,26 @@ export function AdminOnboardingBanner() {
   }
 
   const handleComplete = () => {
-    nextStep(); // Завершает онбординг
+    nextStep();
   };
 
   return (
     <div 
-      className="w-full bg-primary px-4 py-3 flex items-start justify-between gap-3 cursor-pointer hover:bg-primary/90 transition-colors"
+      className="w-full gradient-primary px-3 py-2.5 flex items-center justify-between gap-3 cursor-pointer hover:opacity-95 transition-opacity animate-in fade-in slide-in-from-top-1 duration-300"
       onClick={handleComplete}
     >
-      <p className="text-primary-foreground text-sm font-medium whitespace-pre-line leading-relaxed">
-        {currentStep.description}
-      </p>
+      <div className="flex items-center gap-2.5">
+        <Sparkles className="h-4 w-4 text-white/90 shrink-0" />
+        <p className="text-white text-sm font-medium tracking-wide whitespace-pre-line leading-snug">
+          {currentStep.description}
+        </p>
+      </div>
       <button
         onClick={(e) => {
           e.stopPropagation();
           handleComplete();
         }}
-        className="text-primary-foreground/70 hover:text-primary-foreground text-xs whitespace-nowrap shrink-0 mt-0.5"
+        className="bg-white/15 hover:bg-white/25 text-white text-xs font-medium px-2.5 py-1 rounded-md transition-colors whitespace-nowrap shrink-0"
       >
         Понятно
       </button>
