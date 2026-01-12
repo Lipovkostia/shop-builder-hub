@@ -86,10 +86,40 @@ const Index = () => {
           .from('stores')
           .select('subdomain')
           .eq('owner_id', profile.id)
-          .single();
+          .maybeSingle();
 
         if (store) {
           navigate(`/store/${store.subdomain}`);
+          return;
+        }
+
+        // No store found - auto-create one
+        const { data: fullProfile } = await supabase
+          .from('profiles')
+          .select('full_name, phone')
+          .eq('id', profile.id)
+          .single();
+
+        const storeName = fullProfile?.full_name || fullProfile?.phone?.replace(/\D/g, '') || 'Мой магазин';
+        const baseSubdomain = storeName.toLowerCase()
+          .replace(/[^a-zа-яё0-9\s]/gi, '')
+          .replace(/\s+/g, '-')
+          .substring(0, 20);
+        const subdomain = baseSubdomain + '-' + Date.now().toString(36).slice(-4);
+
+        const { error: storeError } = await supabase
+          .from('stores')
+          .insert({
+            name: storeName,
+            subdomain,
+            owner_id: profile.id,
+            status: 'active'
+          });
+
+        if (!storeError) {
+          toast({ title: "Магазин создан!", description: "Переходим в витрину" });
+          localStorage.setItem('seller_onboarding_step1', 'true');
+          navigate(`/store/${subdomain}`);
           return;
         }
       } else if (profile.role === 'customer') {
