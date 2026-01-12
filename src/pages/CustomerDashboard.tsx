@@ -822,6 +822,7 @@ const CustomerDashboard = () => {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   
   // Extract unique category IDs from products and map to names
+  // Keep the sort_order from storeCategories (already sorted by seller)
   const availableCategories = useMemo(() => {
     const categoryIds = [...new Set(
       products
@@ -829,14 +830,20 @@ const CustomerDashboard = () => {
         .filter(Boolean)
     )];
     
-    // Map IDs to {id, name} objects using storeCategories
+    // Map IDs to {id, name, sort_order} objects using storeCategories
     return categoryIds
       .map(id => {
         const cat = storeCategories.find(c => c.id === id);
-        return cat ? { id: cat.id, name: cat.name } : null;
+        return cat ? { id: cat.id, name: cat.name, sort_order: cat.sort_order } : null;
       })
-      .filter((c): c is { id: string; name: string } => c !== null)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .filter((c): c is { id: string; name: string; sort_order: number | null } => c !== null)
+      .sort((a, b) => {
+        // Sort by sort_order (null values go to end), then by name
+        const orderA = a.sort_order ?? 999999;
+        const orderB = b.sort_order ?? 999999;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.name.localeCompare(b.name);
+      });
   }, [products, storeCategories]);
   
   // Extract unique statuses from products
