@@ -1060,8 +1060,8 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   useEffect(() => {
     if (isNewCatalogDialogOpen && newCatalogInputRef.current) {
       const timer = setTimeout(() => {
-        newCatalogInputRef.current?.focus();
-      }, 150);
+        newCatalogInputRef.current?.focus({ preventScroll: true });
+      }, 250);
       return () => clearTimeout(timer);
     }
   }, [isNewCatalogDialogOpen]);
@@ -2025,77 +2025,43 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
       </Dialog>
 
       {/* Диалог создания нового прайс-листа */}
-      {isMobile ? (
-        <Drawer open={isNewCatalogDialogOpen} onOpenChange={setIsNewCatalogDialogOpen}>
-          <DrawerContent>
-            <DrawerHeader className="text-left">
-              <DrawerTitle>Новый прайс-лист</DrawerTitle>
-            </DrawerHeader>
-            <div className="px-4 pb-4">
-              <Input
-                ref={newCatalogInputRef}
-                placeholder="Название прайс-листа"
-                value={newCatalogName}
-                onChange={(e) => setNewCatalogName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && newCatalogName.trim()) {
-                    handleCreateNewCatalog();
-                  }
-                }}
-              />
-            </div>
-            <DrawerFooter className="pt-2">
-              <Button 
-                onClick={handleCreateNewCatalog}
-                disabled={!newCatalogName.trim() || isCreatingCatalog}
-              >
-                {isCreatingCatalog ? "Создание..." : "Создать"}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setIsNewCatalogDialogOpen(false)}
-              >
-                Отмена
-              </Button>
-            </DrawerFooter>
-          </DrawerContent>
-        </Drawer>
-      ) : (
-        <Dialog open={isNewCatalogDialogOpen} onOpenChange={setIsNewCatalogDialogOpen}>
-          <DialogContent className="sm:max-w-[400px]">
-            <DialogHeader>
-              <DialogTitle>Новый прайс-лист</DialogTitle>
-            </DialogHeader>
-            <div className="py-4">
-              <Input
-                ref={newCatalogInputRef}
-                placeholder="Название прайс-листа"
-                value={newCatalogName}
-                onChange={(e) => setNewCatalogName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && newCatalogName.trim()) {
-                    handleCreateNewCatalog();
-                  }
-                }}
-              />
-            </div>
-            <DialogFooter>
-              <Button 
-                variant="outline" 
-                onClick={() => setIsNewCatalogDialogOpen(false)}
-              >
-                Отмена
-              </Button>
-              <Button 
-                onClick={handleCreateNewCatalog}
-                disabled={!newCatalogName.trim() || isCreatingCatalog}
-              >
-                {isCreatingCatalog ? "Создание..." : "Создать"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog open={isNewCatalogDialogOpen} onOpenChange={setIsNewCatalogDialogOpen}>
+        <DialogContent 
+          className="top-[15vh] translate-y-0 w-[calc(100vw-2rem)] max-w-[400px]"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>Новый прайс-лист</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              ref={newCatalogInputRef}
+              placeholder="Название прайс-листа"
+              value={newCatalogName}
+              onChange={(e) => setNewCatalogName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newCatalogName.trim()) {
+                  handleCreateNewCatalog();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsNewCatalogDialogOpen(false)}
+            >
+              Отмена
+            </Button>
+            <Button 
+              onClick={handleCreateNewCatalog}
+              disabled={!newCatalogName.trim() || isCreatingCatalog}
+            >
+              {isCreatingCatalog ? "Создание..." : "Создать"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
