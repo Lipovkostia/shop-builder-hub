@@ -6,6 +6,14 @@ import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -798,7 +806,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
   const store = workspaceMode ? storeData : fetchedStore;
   
   const { isOwner: isStoreOwner, loading: ownerLoading } = useIsStoreOwner(store?.id || null);
-  const { products, loading: productsLoading, updateProduct } = useStoreProducts(store?.id || null);
+  const { products, loading: productsLoading, updateProduct, createProduct } = useStoreProducts(store?.id || null);
   const { catalogs, productVisibility, setProductCatalogs, refetch: refetchCatalogs } = useStoreCatalogs(store?.id || null);
   const { settings: catalogProductSettings, getProductSettings, updateProductSettings, refetch: refetchCatalogSettings } = useCatalogProductSettings(store?.id || null);
   const { categories } = useStoreCategories(store?.id || null);
@@ -889,6 +897,33 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Состояние диалога создания товара
+  const [isNewProductDialogOpen, setIsNewProductDialogOpen] = useState(false);
+  const [newProductName, setNewProductName] = useState("");
+  const [isCreatingProduct, setIsCreatingProduct] = useState(false);
+
+  // Обработчик создания нового товара
+  const handleCreateNewProduct = async () => {
+    if (!newProductName.trim() || !selectedCatalog) return;
+    
+    setIsCreatingProduct(true);
+    try {
+      // Создаём товар
+      const newProduct = await createProduct({ name: newProductName.trim() });
+      
+      if (newProduct) {
+        // Привязываем к выбранному каталогу
+        await setProductCatalogs(newProduct.id, [selectedCatalog]);
+        
+        // Закрываем диалог и сбрасываем поле
+        setIsNewProductDialogOpen(false);
+        setNewProductName("");
+      }
+    } finally {
+      setIsCreatingProduct(false);
+    }
+  };
 
   // Debounced search - update searchQuery 400ms after user stops typing
   useEffect(() => {
@@ -1340,6 +1375,17 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                 </DropdownMenuContent>
               </DropdownMenu>
 
+              {/* Кнопка добавления нового товара - только для владельца и когда выбран каталог */}
+              {isOwner && selectedCatalog && (
+                <button 
+                  onClick={() => setIsNewProductDialogOpen(true)}
+                  className="p-2 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-primary"
+                  title="Добавить товар"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              )}
+
               {/* Фильтр */}
               <button 
                 onClick={() => setFiltersOpen(!filtersOpen)}
@@ -1728,6 +1774,42 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
         )}
       </main>
       )}
+
+      {/* Диалог создания нового товара */}
+      <Dialog open={isNewProductDialogOpen} onOpenChange={setIsNewProductDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Новый товар</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="Название товара"
+              value={newProductName}
+              onChange={(e) => setNewProductName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newProductName.trim()) {
+                  handleCreateNewProduct();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsNewProductDialogOpen(false)}
+            >
+              Отмена
+            </Button>
+            <Button 
+              onClick={handleCreateNewProduct}
+              disabled={!newProductName.trim() || isCreatingProduct}
+            >
+              {isCreatingProduct ? "Создание..." : "Создать"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
