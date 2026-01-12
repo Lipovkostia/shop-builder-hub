@@ -46,10 +46,13 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
   const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+  const [touchCurrentY, setTouchCurrentY] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const minSwipeDistance = 50;
+  const closeThreshold = 100;
 
   const openViewer = (index: number) => {
     setCurrentIndex(index);
@@ -84,24 +87,60 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [viewerOpen, goNext, goPrev]);
 
-  // Touch handlers for swipe
+  // Touch handlers for swipe (horizontal navigation + vertical close)
   const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchStartY(e.targetTouches[0].clientY);
+    setTouchCurrentY(e.targetTouches[0].clientY);
+    setIsDragging(true);
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
+    if (!isDragging) return;
+    setTouchCurrentY(e.targetTouches[0].clientY);
   };
 
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-    if (isLeftSwipe) goNext();
-    if (isRightSwipe) goPrev();
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartX || !touchStartY || !touchCurrentY) {
+      setIsDragging(false);
+      return;
+    }
+
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    
+    const deltaX = touchStartX - touchEndX;
+    const deltaY = touchEndY - touchStartY;
+    const absDeltaX = Math.abs(deltaX);
+    const absDeltaY = Math.abs(deltaY);
+
+    // Prioritize vertical swipe for close (swipe down)
+    if (deltaY > closeThreshold && absDeltaY > absDeltaX * 1.5) {
+      closeViewer();
+    } 
+    // Horizontal swipe for navigation
+    else if (absDeltaX > minSwipeDistance && absDeltaX > absDeltaY) {
+      if (deltaX > 0) {
+        goNext();
+      } else {
+        goPrev();
+      }
+    }
+
+    setTouchStartX(null);
+    setTouchStartY(null);
+    setTouchCurrentY(null);
+    setIsDragging(false);
   };
+
+  // Calculate drag offset for visual feedback
+  const dragOffset = isDragging && touchStartY && touchCurrentY 
+    ? Math.max(0, touchCurrentY - touchStartY)
+    : 0;
+  
+  const dragOpacity = isDragging && dragOffset > 0 
+    ? Math.max(0.3, 1 - dragOffset / 300)
+    : 1;
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -241,7 +280,8 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
       {/* Fullscreen Viewer Dialog */}
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
         <DialogContent 
-          className="max-w-[100vw] max-h-[100vh] w-screen h-screen p-0 bg-black/95 border-none"
+          className="max-w-[100vw] max-h-[100vh] w-screen h-screen p-0 border-none"
+          style={{ backgroundColor: `rgba(0, 0, 0, ${dragOpacity * 0.95})` }}
           onInteractOutside={(e) => e.preventDefault()}
         >
           <div 
@@ -250,11 +290,21 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
           >
-            {/* Close button */}
+            {/* Swipe down indicator */}
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-1 pointer-events-none md:hidden">
+              <div className="w-10 h-1 bg-white/40 rounded-full" />
+              <span className="text-white/40 text-xs mt-1">Смахните вниз</span>
+            </div>
+
+            {/* Close button - positioned in safe area */}
             <Button
               variant="ghost"
               size="icon"
-              className="absolute top-4 right-4 z-50 text-white hover:bg-white/20"
+              className="absolute z-50 text-white hover:bg-white/20"
+              style={{ 
+                top: 'max(1rem, env(safe-area-inset-top, 1rem))', 
+                right: 'max(1rem, env(safe-area-inset-right, 1rem))' 
+              }}
               onClick={closeViewer}
             >
               <X className="h-6 w-6" />
@@ -311,14 +361,22 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
               </Button>
             )}
 
-            {/* Main image */}
+            {/* Main image with drag animation */}
             {images[currentIndex] && (
-              <img
-                src={images[currentIndex]}
-                alt={`${productName} - фото ${currentIndex + 1}`}
-                className="max-w-full max-h-full object-contain select-none"
-                draggable={false}
-              />
+              <div 
+                className="max-w-full max-h-full flex items-center justify-center transition-transform duration-75"
+                style={{ 
+                  transform: `translateY(${dragOffset}px)`,
+                  opacity: dragOpacity
+                }}
+              >
+                <img
+                  src={images[currentIndex]}
+                  alt={`${productName} - фото ${currentIndex + 1}`}
+                  className="max-w-full max-h-[85vh] object-contain select-none"
+                  draggable={false}
+                />
+              </div>
             )}
 
             {/* Next button */}
