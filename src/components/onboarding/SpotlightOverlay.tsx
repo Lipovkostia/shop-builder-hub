@@ -8,6 +8,7 @@ interface SpotlightOverlayProps {
   message: string;
   pulsatingSelector?: string;
   onSkip?: () => void;
+  onNext?: () => void;
   canSkip?: boolean;
 }
 
@@ -16,6 +17,7 @@ export function SpotlightOverlay({
   message,
   pulsatingSelector,
   onSkip,
+  onNext,
   canSkip = true,
 }: SpotlightOverlayProps) {
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
@@ -133,9 +135,9 @@ export function SpotlightOverlay({
         } : undefined}
       >
         <div className="bg-card border border-border rounded-xl p-4 shadow-2xl relative">
-          {/* Close button - always visible for edge cases */}
+          {/* Close button - moves to next step instead of ending onboarding */}
           <button
-            onClick={onSkip}
+            onClick={onNext}
             className="absolute top-2 right-2 w-6 h-6 rounded-full bg-muted hover:bg-muted-foreground/20 flex items-center justify-center transition-colors"
             title="Закрыть"
           >
@@ -158,7 +160,7 @@ export function SpotlightOverlay({
 }
 
 export function OnboardingSpotlight() {
-  const { currentStep, isActive, skipOnboarding } = useOnboarding();
+  const { currentStep, isActive, skipOnboarding, nextStep } = useOnboarding();
 
   if (!isActive || !currentStep) return null;
 
@@ -172,6 +174,7 @@ export function OnboardingSpotlight() {
       message={currentStep.description}
       pulsatingSelector={(currentStep as any).pulsatingSelector}
       onSkip={skipOnboarding}
+      onNext={nextStep}
       canSkip={!isMandatoryStep}
     />
   );
