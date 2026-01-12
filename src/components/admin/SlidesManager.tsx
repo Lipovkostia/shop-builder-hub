@@ -476,8 +476,11 @@ export default function SlidesManager() {
                         ) : (
                           <>
                             <ImageIcon className="h-10 w-10 text-muted-foreground mb-2" />
-                            <span className="text-sm text-muted-foreground">
+                            <span className="text-sm text-muted-foreground font-medium">
                               Нажмите, чтобы загрузить фото
+                            </span>
+                            <span className="text-xs text-muted-foreground mt-1">
+                              Рекомендуемый размер: 896 × 504 px (16:9)
                             </span>
                           </>
                         )}
