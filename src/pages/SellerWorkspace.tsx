@@ -6,8 +6,6 @@ import { useIsStoreOwner } from "@/hooks/useUserStore";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { OnboardingWelcomeModal } from "@/components/onboarding/OnboardingWelcomeModal";
-import { SpotlightOverlay } from "@/components/onboarding/SpotlightOverlay";
-import { sellerOnboardingStep1 } from "@/components/onboarding/onboardingSteps";
 import StoreFront from "./StoreFront";
 import AdminPanel from "./AdminPanel";
 
@@ -28,29 +26,6 @@ export default function SellerWorkspace() {
 
   const [activeView, setActiveView] = useState<ActiveView>("storefront");
   
-  // Onboarding step 1 state - triggered after seller registration
-  // Only show if explicitly triggered AND not completed before
-  const [onboardingStep1Active, setOnboardingStep1Active] = useState(() => {
-    const isTriggered = localStorage.getItem('seller_onboarding_step1') === 'true';
-    const isCompleted = localStorage.getItem('seller_onboarding_completed') === 'true';
-    return isTriggered && !isCompleted;
-  });
-  
-  // Track if welcome modal was completed - spotlight only shows after this
-  const [welcomeCompleted, setWelcomeCompleted] = useState(() => {
-    // If welcome was already shown before, consider it completed
-    return localStorage.getItem('seller_onboarding_welcome_shown') === 'true';
-  });
-  
-  // Onboarding step 9 state - triggered when user completes step 8 and switches to storefront
-  const [onboardingStep9Active, setOnboardingStep9Active] = useState(false);
-  
-  // Onboarding step 10 state - triggered when user completes step 9
-  const [onboardingStep10Active, setOnboardingStep10Active] = useState(false);
-  
-  // Trigger refetch in StoreFront when switching from admin
-  const [triggerStorefrontRefetch, setTriggerStorefrontRefetch] = useState(false);
-  
   // Прокручиваем страницу вверх при первом входе
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -62,12 +37,6 @@ export default function SellerWorkspace() {
 
   const handleViewChange = useCallback((view: ActiveView) => {
     if (view === activeView) return;
-    
-    // Complete onboarding step 1 when switching to admin
-    if (view === "admin" && onboardingStep1Active) {
-      localStorage.removeItem('seller_onboarding_step1');
-      setOnboardingStep1Active(false);
-    }
     
     // Сохраняем текущую позицию скролла
     if (activeView === "storefront") {
@@ -86,23 +55,7 @@ export default function SellerWorkspace() {
         window.scrollTo(0, adminScrollRef.current);
       }
     });
-  }, [activeView, onboardingStep1Active]);
-  
-  // Handle spotlight step completion - switches to admin
-  const handleSpotlightStepComplete = useCallback(() => {
-    // Switch to admin panel when spotlight step is completed
-    handleViewChange("admin");
-  }, [handleViewChange]);
-  
-  const handleSpotlightSkip = useCallback(() => {
-    localStorage.removeItem('seller_onboarding_step1');
-    setOnboardingStep1Active(false);
-  }, []);
-  
-  const handleSpotlightClose = useCallback(() => {
-    localStorage.removeItem('seller_onboarding_step1');
-    setOnboardingStep1Active(false);
-  }, []);
+  }, [activeView]);
 
   const handleSwitchToAdmin = useCallback((section?: string) => {
     if (section) {
@@ -138,22 +91,7 @@ export default function SellerWorkspace() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Welcome modal for first-time sellers */}
-      {hasFullAccess && (
-        <OnboardingWelcomeModal onComplete={() => {
-          // Modal completed, now show spotlight
-          setWelcomeCompleted(true);
-        }} />
-      )}
-      
-      {/* Spotlight overlay for step 1 - go to admin panel (only after welcome modal) */}
-      <SpotlightOverlay
-        steps={sellerOnboardingStep1}
-        currentStep={0}
-        onStepComplete={handleSpotlightStepComplete}
-        onSkip={handleSpotlightSkip}
-        onClose={handleSpotlightClose}
-        isActive={onboardingStep1Active && hasFullAccess && activeView === "storefront" && welcomeCompleted}
-      />
+      {hasFullAccess && <OnboardingWelcomeModal />}
       
       {/* Общая шапка с вкладками - для владельца или супер-админа */}
       {hasFullAccess && (
@@ -174,25 +112,6 @@ export default function SellerWorkspace() {
             workspaceMode={hasFullAccess}
             storeData={store}
             onSwitchToAdmin={handleSwitchToAdmin}
-            onboardingStep1Active={onboardingStep1Active}
-            onOnboardingStep1Complete={() => {
-              localStorage.removeItem('seller_onboarding_step1');
-              setOnboardingStep1Active(false);
-            }}
-            onboardingStep9Active={onboardingStep9Active}
-            onOnboardingStep9Complete={() => {
-              setOnboardingStep9Active(false);
-              setOnboardingStep10Active(true);
-            }}
-            onboardingStep10Active={onboardingStep10Active}
-            onOnboardingStep10Complete={() => {
-              setOnboardingStep10Active(false);
-              // Mark onboarding as completed so it doesn't restart on refresh
-              localStorage.setItem('seller_onboarding_completed', 'true');
-              localStorage.removeItem('seller_onboarding_step1');
-            }}
-            triggerRefetch={triggerStorefrontRefetch}
-            onRefetchComplete={() => setTriggerStorefrontRefetch(false)}
           />
         </div>
         <div className={activeView === "admin" ? "block" : "hidden"}>
@@ -201,11 +120,6 @@ export default function SellerWorkspace() {
             storeIdOverride={store.id}
             storeSubdomainOverride={store.subdomain}
             onSwitchToStorefront={handleSwitchToStorefront}
-            onTriggerOnboardingStep9={() => {
-              setOnboardingStep9Active(true);
-              setTriggerStorefrontRefetch(true);
-              handleViewChange("storefront");
-            }}
           />
         </div>
       </div>

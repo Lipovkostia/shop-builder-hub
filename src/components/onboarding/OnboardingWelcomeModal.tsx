@@ -10,19 +10,14 @@ import { Users, Tag, Link2, Sparkles } from "lucide-react";
 
 const WELCOME_MODAL_KEY = "seller_onboarding_welcome_shown";
 
-interface OnboardingWelcomeModalProps {
-  onComplete: () => void;
-}
-
-export function OnboardingWelcomeModal({ onComplete }: OnboardingWelcomeModalProps) {
+export function OnboardingWelcomeModal() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    // Show modal only if not shown before and onboarding is active
-    const isOnboardingActive = localStorage.getItem('seller_onboarding_step1') === 'true';
+    // Show modal only if not shown before
     const wasShown = localStorage.getItem(WELCOME_MODAL_KEY) === 'true';
     
-    if (isOnboardingActive && !wasShown) {
+    if (!wasShown) {
       // Small delay to let the page render first
       const timer = setTimeout(() => setOpen(true), 500);
       return () => clearTimeout(timer);
@@ -32,7 +27,6 @@ export function OnboardingWelcomeModal({ onComplete }: OnboardingWelcomeModalPro
   const handleStart = () => {
     localStorage.setItem(WELCOME_MODAL_KEY, 'true');
     setOpen(false);
-    onComplete();
   };
 
   return (
@@ -98,7 +92,7 @@ export function OnboardingWelcomeModal({ onComplete }: OnboardingWelcomeModalPro
         </div>
 
         <Button onClick={handleStart} className="w-full gap-2">
-          Начать настройку
+          Начать работу
           <span className="text-lg">→</span>
         </Button>
       </DialogContent>

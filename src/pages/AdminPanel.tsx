@@ -3,9 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut, FileSpreadsheet, Sheet, Upload } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { SpotlightOverlay } from "@/components/onboarding/SpotlightOverlay";
-import { useOnboardingSpotlight } from "@/components/onboarding/useOnboardingSpotlight";
-import { adminPanelSpotlightSteps } from "@/components/onboarding/onboardingSteps";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -426,7 +423,6 @@ interface AdminPanelProps {
   storeSubdomainOverride?: string;
   onSwitchToStorefront?: () => void;
   initialSection?: ActiveSection;
-  onTriggerOnboardingStep9?: () => void;
 }
 
 export default function AdminPanel({ 
@@ -434,8 +430,7 @@ export default function AdminPanel({
   storeIdOverride, 
   storeSubdomainOverride,
   onSwitchToStorefront,
-  initialSection,
-  onTriggerOnboardingStep9
+  initialSection
 }: AdminPanelProps = {}) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -806,36 +801,8 @@ export default function AdminPanel({
   const [editingCatalogListName, setEditingCatalogListName] = useState<string | null>(null);
   const [catalogListNameValue, setCatalogListNameValue] = useState("");
   
-  // Onboarding step 6 sub-step state: "volume" | "half" | "quarter" | "done"
-  const [onboardingStep6SubStep, setOnboardingStep6SubStep] = useState<"volume" | "half" | "quarter" | "done">("volume");
-  
-  // Onboarding step 7 visibility state
-  const [onboardingStep7Visible, setOnboardingStep7Visible] = useState(true);
-  
-  // Onboarding step 8 visibility state
-  const [onboardingStep8Visible, setOnboardingStep8Visible] = useState(false);
-
   // Collapsed orders state - to hide/show order items
   const [collapsedOrders, setCollapsedOrders] = useState<Set<string>>(new Set());
-  
-  // Spotlight onboarding for guided tour
-  // Активируем когда есть товары но нет прайс-листов (шаг 2 старого онбординга)
-  const spotlightCondition = supabaseProducts.length > 0 && supabaseCatalogs.length === 0 && !productsLoading && !catalogsLoading;
-  const {
-    currentStep: spotlightStep,
-    isSpotlightActive,
-    nextStep: nextSpotlightStep,
-    skipSpotlight,
-    closeSpotlight,
-    startSpotlightFromStep
-  } = useOnboardingSpotlight({
-    storageKey: 'admin_panel_spotlight_v2_completed',
-    steps: adminPanelSpotlightSteps,
-    isOnboardingActive: spotlightCondition,
-    onComplete: () => {
-      console.log('Spotlight onboarding completed');
-    }
-  });
   
   // Order notifications settings panel state
   const [showOrderNotificationsPanel, setShowOrderNotificationsPanel] = useState(false);
@@ -5050,126 +5017,6 @@ export default function AdminPanel({
                     );
                   })()}
 
-                  {/* Onboarding Step 7: Price list link explanation - show when step 6 is complete */}
-                  {(() => {
-                    const catalogProductIds = allProducts.filter(p => selectedCatalogProducts.has(p.id)).map(p => p.id);
-                    const hasBuyPrice = catalogProductIds.some(id => {
-                      const product = allProducts.find(p => p.id === id);
-                      return product?.buyPrice && product.buyPrice > 0;
-                    });
-                    const hasMarkup = currentCatalog && catalogProductIds.some(id => {
-                      const setting = catalogProductSettings.find(s => s.catalog_id === currentCatalog.id && s.product_id === id);
-                      return setting?.markup_value && setting.markup_value > 0;
-                    });
-                    
-                    // Check volume (unitWeight) for any product in catalog
-                    const hasVolume = catalogProductIds.some(id => {
-                      const product = allProducts.find(p => p.id === id);
-                      return product?.unitWeight && product.unitWeight > 0;
-                    });
-                    
-                    // Check half price
-                    const hasHalfPrice = currentCatalog && catalogProductIds.some(id => {
-                      const setting = catalogProductSettings.find(s => s.catalog_id === currentCatalog.id && s.product_id === id);
-                      const portionPrices = setting?.portion_prices as { halfPricePerKg?: number; quarterPricePerKg?: number } | null;
-                      return portionPrices?.halfPricePerKg && portionPrices.halfPricePerKg > 0;
-                    });
-                    
-                    // Check quarter price
-                    const hasQuarterPrice = currentCatalog && catalogProductIds.some(id => {
-                      const setting = catalogProductSettings.find(s => s.catalog_id === currentCatalog.id && s.product_id === id);
-                      const portionPrices = setting?.portion_prices as { halfPricePerKg?: number; quarterPricePerKg?: number } | null;
-                      return portionPrices?.quarterPricePerKg && portionPrices.quarterPricePerKg > 0;
-                    });
-                    
-                    // Step 6 is complete when all portion data is filled
-                    const step6Complete = hasVolume && hasHalfPrice && hasQuarterPrice;
-                    
-                    // Show step 7 only when step 6 is complete and step 7 hasn't been dismissed
-                    const shouldShowStep7 = supabaseProducts.length > 0 && catalogs.length > 0 && 
-                      Object.values(productCatalogVisibility).some(cats => cats.size > 0) && 
-                      hasBuyPrice && hasMarkup && step6Complete && onboardingStep7Visible;
-                    
-                    if (!shouldShowStep7) return null;
-                    
-                    return (
-                      <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 mb-3">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                            <span className="text-primary font-bold text-sm">7</span>
-                          </div>
-                          <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                              <Link2 className="h-5 w-5 text-primary" />
-                              <p className="text-sm font-medium text-foreground">Это ссылка на ваш прайс-лист</p>
-                            </div>
-                            <p className="text-xs text-muted-foreground mb-2">
-                              🔗 Каждый прайс-лист имеет уникальную ссылку
-                            </p>
-                            <p className="text-xs text-muted-foreground mb-3">
-                              При переходе покупатель регистрируется и видит каталог строго с ценами этого прайс-листа. Он сможет оформить заказ по своим ценам.
-                            </p>
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                // Highlight the link button
-                                const linkButton = document.querySelector('[data-onboarding-link-button]');
-                                if (linkButton) {
-                                  linkButton.classList.add('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary', 'ring-offset-2');
-                                  setTimeout(() => {
-                                    linkButton.classList.remove('animate-pulse', 'bg-primary/20', 'ring-2', 'ring-primary', 'ring-offset-2');
-                                  }, 3000);
-                                }
-                                setOnboardingStep7Visible(false);
-                                setOnboardingStep8Visible(true);
-                              }}
-                            >
-                              Я понял. Продолжить
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Onboarding Step 8: Go to Storefront */}
-                  {onboardingStep8Visible && (
-                    <div 
-                      className="bg-primary/10 border border-primary/30 rounded-lg p-4 mb-3 cursor-pointer hover:bg-primary/15 transition-colors"
-                      onClick={() => {
-                        // Highlight the storefront button in WorkspaceHeader
-                        const storefrontButton = document.querySelector('[data-onboarding-storefront-button]');
-                        if (storefrontButton) {
-                          storefrontButton.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-                          storefrontButton.classList.add('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2', 'bg-primary/20');
-                          setTimeout(() => {
-                            storefrontButton.classList.remove('animate-pulse', 'ring-2', 'ring-primary', 'ring-offset-2', 'bg-primary/20');
-                          }, 3000);
-                        }
-                        // Trigger step 9 and switch to storefront
-                        setOnboardingStep8Visible(false);
-                        if (onTriggerOnboardingStep9) {
-                          onTriggerOnboardingStep9();
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                          <span className="text-primary font-bold text-sm">8</span>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Store className="h-4 w-4 text-primary" />
-                            <p className="text-sm font-medium text-foreground">Перейдите в раздел "Витрина"</p>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            В разделе "Витрина" можно просматривать свои прайс-листы и визуально ими управлять. Нажмите сюда, чтобы перейти.
-                          </p>
-                        </div>
-                        <ChevronRight className="h-5 w-5 text-primary" />
-                      </div>
-                    </div>
-                  )}
 
                   <div className="mb-4">
                     <Input
@@ -6762,15 +6609,6 @@ export default function AdminPanel({
         productCount={selectedCatalogProducts.size}
       />
 
-      {/* Spotlight Onboarding Overlay */}
-      <SpotlightOverlay
-        steps={adminPanelSpotlightSteps}
-        currentStep={spotlightStep}
-        onStepComplete={nextSpotlightStep}
-        onSkip={skipSpotlight}
-        onClose={closeSpotlight}
-        isActive={isSpotlightActive}
-      />
     </div>
   );
 }

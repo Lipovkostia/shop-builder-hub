@@ -787,18 +787,10 @@ interface StoreFrontProps {
   workspaceMode?: boolean;
   storeData?: any;
   onSwitchToAdmin?: (section?: string) => void;
-  onboardingStep1Active?: boolean;
-  onOnboardingStep1Complete?: () => void;
-  onboardingStep9Active?: boolean;
-  onOnboardingStep9Complete?: () => void;
-  onboardingStep10Active?: boolean;
-  onOnboardingStep10Complete?: () => void;
-  triggerRefetch?: boolean; // Trigger refetch when this changes to true
-  onRefetchComplete?: () => void; // Called after refetch is done
 }
 
 // Main StoreFront Component
-export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, onboardingStep1Active, onOnboardingStep1Complete, onboardingStep9Active, onOnboardingStep9Complete, onboardingStep10Active, onOnboardingStep10Complete, triggerRefetch, onRefetchComplete }: StoreFrontProps = {}) {
+export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }: StoreFrontProps = {}) {
   const { subdomain } = useParams<{ subdomain: string }>();
   const navigate = useNavigate();
   const { user, profile, isSuperAdmin, loading: authLoading } = useAuth();
@@ -971,20 +963,6 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
   const [viewMode, setViewMode] = useState<'storefront' | 'admin'>('storefront');
   const [adminSection, setAdminSection] = useState<string | undefined>(undefined);
   
-  // Onboarding step 9 sub-step: "catalog-trigger" -> "catalog-item" -> "done"
-  const [onboardingStep9SubStep, setOnboardingStep9SubStep] = useState<"catalog-trigger" | "catalog-item" | "done">("catalog-trigger");
-  
-  // Onboarding step 10: track if name was edited
-  const [onboardingStep10NameEdited, setOnboardingStep10NameEdited] = useState(false);
-
-  // Refetch catalogs when triggerRefetch prop changes to true
-  useEffect(() => {
-    if (triggerRefetch) {
-      refetchCatalogs();
-      refetchCatalogSettings();
-      onRefetchComplete?.();
-    }
-  }, [triggerRefetch, refetchCatalogs, refetchCatalogSettings, onRefetchComplete]);
 
   // Use products directly from hook - realtime handles sync
   const displayProducts = products;
@@ -1015,15 +993,6 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
   // Handle save product
   const handleSaveProduct = async (productId: string, updates: Partial<StoreProduct>) => {
     const result = await updateProduct(productId, updates);
-    
-    // If name was changed during onboarding step 10, complete it
-    if (onboardingStep10Active && updates.name && result) {
-      setOnboardingStep10NameEdited(true);
-      setTimeout(() => {
-        onOnboardingStep10Complete?.();
-      }, 500);
-    }
-    
     return result;
   };
 
@@ -1249,77 +1218,6 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
       {/* Упрощённый хедер в workspaceMode */}
       {workspaceMode && (
         <div className="sticky top-0 z-40 bg-background border-b border-border">
-          {/* Onboarding Step 1 now handled by SpotlightOverlay in SellerWorkspace */}
-          
-          {/* Onboarding Step 9: View storefront with price list */}
-          {onboardingStep9Active && onboardingStep9SubStep !== "done" && (
-            <div className="bg-primary/10 border-b border-primary/30 p-3">
-              <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                  <span className="text-primary font-bold text-sm">9</span>
-                </div>
-                <div className="flex-1">
-                  {onboardingStep9SubStep === "catalog-trigger" && (
-                    <>
-                      <p className="text-sm font-medium text-foreground">Посмотрите витрину глазами покупателя</p>
-                      <p className="text-xs text-muted-foreground">
-                        Нажмите на иконку 📁 папки, чтобы выбрать прайс-лист
-                      </p>
-                    </>
-                  )}
-                  {onboardingStep9SubStep === "catalog-item" && (
-                    <>
-                      <p className="text-sm font-medium text-foreground">Выберите созданный прайс-лист</p>
-                      <p className="text-xs text-muted-foreground">
-                        Так будет выглядеть каталог для покупателей с этими ценами
-                      </p>
-                    </>
-                  )}
-                  <div className="flex gap-1 mt-2">
-                    <div className={`h-1.5 w-8 rounded-full ${onboardingStep9SubStep === "catalog-item" ? 'bg-primary' : 'bg-muted'}`} />
-                    <div className={`h-1.5 w-8 rounded-full bg-muted`} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* Onboarding Step 10: Quick editing on storefront */}
-          {onboardingStep10Active && !onboardingStep10NameEdited && (
-            <div className="bg-green-500/10 border-b border-green-500/30 p-3">
-              <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                  <span className="text-green-600 dark:text-green-400 font-bold text-sm">10</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">Оперативное управление</p>
-                  <p className="text-xs text-muted-foreground">
-                    Здесь вы можете быстро менять цены и статусы для любого типа покупателей.
-                  </p>
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">
-                    ✏️ Нажмите на название товара и измените его
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* Onboarding Complete */}
-          {onboardingStep10Active && onboardingStep10NameEdited && (
-            <div className="bg-green-500/20 border-b border-green-500/50 p-3">
-              <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">✓</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-green-700 dark:text-green-300">Поздравляем! Обучение завершено 🎉</p>
-                  <p className="text-xs text-muted-foreground">
-                    Теперь вы знаете основы работы с платформой
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
           
           {/* Панель управления с иконками */}
           <div className="h-10 flex items-center px-3 bg-muted/30 overflow-hidden">
@@ -1330,17 +1228,13 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
               }`}
             >
               {/* Селектор прайс-листа */}
-              <DropdownMenu onOpenChange={(open) => {
-                if (open && onboardingStep9Active && onboardingStep9SubStep === "catalog-trigger") {
-                  setOnboardingStep9SubStep("catalog-item");
-                }
-              }}>
+              <DropdownMenu>
                 <DropdownMenuTrigger 
                   className={`p-2 rounded hover:bg-muted transition-colors relative ${
                     showCatalogHint 
                       ? 'animate-attention-pulse bg-primary/20 ring-2 ring-primary z-20' 
                       : ''
-                  } ${onboardingStep9Active && onboardingStep9SubStep === "catalog-trigger" ? 'animate-pulse ring-2 ring-primary ring-offset-2 bg-primary/20' : ''}`}
+                  }`}
                   data-onboarding-catalog-trigger
                 >
                   <FolderOpen className={`w-4 h-4 ${showCatalogHint ? 'text-primary' : 'text-muted-foreground'}`} />
@@ -1383,13 +1277,8 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                       key={catalog.id}
                       onClick={() => {
                         setSelectedCatalog(catalog.id);
-                        if (onboardingStep9Active && onboardingStep9SubStep === "catalog-item") {
-                          setOnboardingStep9SubStep("done");
-                          onOnboardingStep9Complete?.();
-                        }
                       }}
-                      className={`cursor-pointer ${onboardingStep9Active && onboardingStep9SubStep === "catalog-item" && index === 0 ? 'animate-pulse bg-primary/20 ring-1 ring-primary' : ''}`}
-                      data-onboarding-catalog-item={index === 0 ? "first" : undefined}
+                      className="cursor-pointer"
                     >
                       <span className={selectedCatalog === catalog.id ? "font-semibold" : ""}>
                         {catalog.name}
@@ -1676,7 +1565,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                     }
                   }}
                   onImagesUpdate={handleImagesUpdate}
-                  isOnboardingHighlighted={onboardingStep10Active && !onboardingStep10NameEdited && filteredProducts.indexOf(product) === 0}
+                  isOnboardingHighlighted={false}
                 />
               );
             };
