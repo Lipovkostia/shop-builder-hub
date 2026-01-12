@@ -1775,7 +1775,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                 <FolderOpen className={`w-12 h-12 mb-3 ${showCatalogHint ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
                 <p className={`text-lg font-medium mb-1 ${showCatalogHint ? 'text-foreground' : 'text-muted-foreground'}`}>
                   {selectedCatalog 
-                    ? "В этом прайс-листе нет товаров"
+                    ? "Добавь товар в этот прайс лист"
                     : "Выберите прайс-лист"}
                 </p>
                 {!selectedCatalog && (
