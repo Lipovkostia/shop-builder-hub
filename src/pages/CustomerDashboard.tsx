@@ -437,8 +437,8 @@ function ProductCard({
                     </button>
                   );
                 })()}
-                {/* Обычная кнопка - показываем только если нет ни одной цены варианта */}
-                {!hasVariantPrices && (() => {
+                {/* Обычная кнопка - показываем только если нет ни одной кнопки варианта И нет кнопки "Целая" */}
+                {!hasVariantPrices && !hasFullPrice && (() => {
                   const qty = getCartQuantity(0);
                   return (
                     <button
