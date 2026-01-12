@@ -106,6 +106,7 @@ import { ImportSourceCard } from "@/components/admin/ImportSourceCard";
 import { downloadExcelTemplate, importProductsFromExcel, ImportProgress, exportProductsToExcel, exportCatalogToExcel, CatalogExportProduct } from "@/lib/excelImport";
 import { ExcelImportSection } from "@/components/admin/ExcelImportSection";
 import { CatalogExportDialog } from "@/components/admin/CatalogExportDialog";
+import { QuickStartList } from "@/components/onboarding/QuickStartList";
 
 // Removed localStorage keys - now using Supabase
 
@@ -6421,27 +6422,8 @@ export default function AdminPanel({
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                {/* Quick Start */}
-                <div className="bg-card rounded-lg border border-border p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Package className="h-5 w-5 text-primary" />
-                      </div>
-                      <h3 className="font-semibold text-foreground">Быстрый старт</h3>
-                    </div>
-                    <Button
-                      onClick={() => {
-                        localStorage.setItem('seller_onboarding_step1', 'true');
-                        if (onSwitchToStorefront) {
-                          onSwitchToStorefront();
-                        }
-                      }}
-                    >
-                      Старт
-                    </Button>
-                  </div>
-                </div>
+                {/* Quick Start - интерактивный список шагов онбординга */}
+                <QuickStartList onStepClick={onSwitchToStorefront} />
 
                 {/* Catalogs Help */}
                 <div className="bg-card rounded-lg border border-border p-6">
