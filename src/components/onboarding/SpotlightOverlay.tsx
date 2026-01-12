@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Lightbulb } from "lucide-react";
+import { Lightbulb, X } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 
 interface SpotlightOverlayProps {
@@ -132,8 +132,17 @@ export function SpotlightOverlay({
           maxWidth: 300,
         } : undefined}
       >
-        <div className="bg-card border border-border rounded-xl p-4 shadow-2xl">
-          <div className="flex items-start gap-3">
+        <div className="bg-card border border-border rounded-xl p-4 shadow-2xl relative">
+          {/* Close button - always visible for edge cases */}
+          <button
+            onClick={onSkip}
+            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-muted hover:bg-muted-foreground/20 flex items-center justify-center transition-colors"
+            title="Закрыть"
+          >
+            <X className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+          
+          <div className="flex items-start gap-3 pr-6">
             <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
               <Lightbulb className="w-4 h-4 text-primary" />
             </div>
