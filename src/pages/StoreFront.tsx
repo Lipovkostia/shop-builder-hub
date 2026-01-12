@@ -321,10 +321,10 @@ function ProductCard({
                 <span>скрыт</span>
               </span>
             )}
-            {product.name}
             {isOwner && (
-              <Pencil className={`inline-block ml-1 w-3 h-3 ${isOnboardingHighlighted ? 'text-primary' : 'text-muted-foreground'}`} />
+              <Pencil className={`inline-block mr-1 w-3 h-3 ${isOnboardingHighlighted ? 'text-primary' : 'text-muted-foreground'}`} />
             )}
+            {product.name}
           </h3>
           {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />}
         </div>
