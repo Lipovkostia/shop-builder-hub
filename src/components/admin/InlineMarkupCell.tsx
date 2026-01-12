@@ -79,7 +79,14 @@ export function InlineMarkupCell({
             ref={inputRef}
             type="number"
             value={editedValue}
-            onChange={(e) => setEditedValue(e.target.value)}
+            onChange={(e) => {
+              let val = e.target.value;
+              // Удаляем лидирующие нули, но оставляем один ноль
+              if (val.length > 1 && val.startsWith('0') && !val.startsWith('0.')) {
+                val = val.replace(/^0+/, '') || '0';
+              }
+              setEditedValue(val);
+            }}
             onKeyDown={handleKeyDown}
             className="h-7 w-14 text-xs px-2 rounded-md border-primary/50 focus-visible:ring-1 focus-visible:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             placeholder="0"
