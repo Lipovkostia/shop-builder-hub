@@ -920,7 +920,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const [catalogDropdownOpen, setCatalogDropdownOpen] = useState(false);
   
   // Получаем контекст онбординга
-  const { currentStep, isActive: isOnboardingActive, nextStep } = useOnboarding();
+  const { currentStep, isActive: isOnboardingActive, nextStep, startOnboarding, completedSteps } = useOnboarding();
   
   // Эффект для автооткрытия dropdown при онбординге
   useEffect(() => {
@@ -1015,6 +1015,16 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   // Use products directly from hook - realtime handles sync
   const displayProducts = products;
   
+  // Автоматически запускаем онбординг для новых пользователей (у которых нет продуктов и каталогов)
+  useEffect(() => {
+    if (isOwner && displayProducts.length === 0 && catalogs.length === 0 && !isOnboardingActive && completedSteps.length === 0) {
+      // Запускаем онбординг с небольшой задержкой для инициализации UI
+      const timer = setTimeout(() => {
+        startOnboarding();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isOwner, displayProducts.length, catalogs.length, isOnboardingActive, completedSteps.length, startOnboarding]);
   // Filter catalogs for customers - they only see catalogs they have access to
   // Owners/admins see all catalogs
   const accessibleCatalogs = useMemo(() => {
@@ -1753,13 +1763,6 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                   <p>оперативно для любого типа покупателей</p>
                 </div>
 
-                <Button 
-                  onClick={() => handleAdminClick('products')}
-                  className="w-full gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Добавить первый товар
-                </Button>
               </div>
             ) : isOwner && displayProducts.length === 0 ? (
               <>
