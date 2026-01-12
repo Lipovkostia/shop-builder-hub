@@ -343,9 +343,17 @@ export function ProductEditPanel({
             <Input
               type="number"
               value={markupValue}
-              onChange={(e) => setMarkupValue(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                // Удаляем ведущие нули, кроме случаев "0" или "0.xxx"
+                if (val === '' || val === '0' || val.startsWith('0.')) {
+                  setMarkupValue(val);
+                } else {
+                  setMarkupValue(val.replace(/^0+/, ''));
+                }
+              }}
               placeholder="0"
-              className={`h-7 text-xs flex-1 ${isOnboardingFillStep && (!markupValue || parseFloat(markupValue) <= 0) ? 'onboarding-field-pulse' : ''}`}
+              className={`h-7 text-xs flex-1 ${isOnboardingFillStep && markupValue === '' ? 'onboarding-field-pulse' : ''}`}
               data-onboarding="field-markup"
             />
             <Select value={markupType} onValueChange={(v) => setMarkupType(v as "percent" | "rubles")}>
