@@ -5,20 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
-import Autoplay from "embla-carousel-autoplay";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Store, LogIn, Shield, User } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
-import slideCatalogs from "@/assets/slide-catalogs.png";
-
-interface LandingSlide {
-  id: string;
-  title: string;
-  image_url: string | null;
-  sort_order: number;
-}
 
 const Index = () => {
   const navigate = useNavigate();
@@ -32,53 +22,7 @@ const Index = () => {
   
   // Active tab state
   const [activeTab, setActiveTab] = useState(tabFromUrl === "customer" ? "customer" : "register");
-  
-  // Carousel state
-  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [slideCount, setSlideCount] = useState(0);
-  const [slides, setSlides] = useState<LandingSlide[]>([]);
-  const [slidesLoading, setSlidesLoading] = useState(true);
 
-  // Загрузка слайдов из базы
-  useEffect(() => {
-    const fetchSlides = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('landing_slides')
-          .select('id, title, image_url, sort_order')
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true });
-
-        if (error) throw error;
-        setSlides(data || []);
-      } catch (error) {
-        console.error('Error fetching slides:', error);
-        // Fallback to default slides
-        setSlides([
-          { id: '1', title: 'Создавайте уникальные каталоги для разных покупателей', image_url: null, sort_order: 1 },
-          { id: '2', title: 'Покупатель всегда видит индивидуальную актуальную цену и наличие', image_url: null, sort_order: 2 },
-          { id: '3', title: 'Заказ упаковкой или штучно в 1 клик', image_url: null, sort_order: 3 },
-          { id: '4', title: 'Повторить заказ в 1 клик', image_url: null, sort_order: 4 },
-        ]);
-      } finally {
-        setSlidesLoading(false);
-      }
-    };
-    fetchSlides();
-  }, []);
-  
-  // Подписка на смену слайда
-  useEffect(() => {
-    if (!carouselApi) return;
-    
-    setSlideCount(carouselApi.scrollSnapList().length);
-    setCurrentSlide(carouselApi.selectedScrollSnap());
-    
-    carouselApi.on("select", () => {
-      setCurrentSlide(carouselApi.selectedScrollSnap());
-    });
-  }, [carouselApi]);
   // Registration form state
   const [regStoreName, setRegStoreName] = useState("");
   const [regPhone, setRegPhone] = useState("");
@@ -404,62 +348,6 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex items-start md:items-center justify-center p-4 pt-8 md:pt-4">
       <div className="w-full max-w-md">
-        <div className="mb-8">
-          <Carousel
-            setApi={setCarouselApi}
-            opts={{ loop: true }}
-            plugins={[Autoplay({ delay: 5000, stopOnInteraction: true })]}
-            className="w-full"
-          >
-            <CarouselContent>
-              {slides.map((slide, index) => (
-                <CarouselItem key={slide.id}>
-                  <div className="flex flex-col">
-                    <div className="aspect-[16/9] w-full overflow-hidden rounded-lg mb-4 bg-muted">
-                      {slide.image_url ? (
-                        <img 
-                          src={slide.image_url} 
-                          alt={slide.title} 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : index === 0 ? (
-                        <img 
-                          src={slideCatalogs} 
-                          alt={slide.title} 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="text-4xl">
-                            {index === 1 ? '📊' : index === 2 ? '🛒' : '🔄'}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-left text-lg font-medium text-foreground">
-                      {slide.title}
-                    </p>
-                  </div>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-          </Carousel>
-          
-          {/* Индикаторы */}
-          <div className="flex justify-center gap-2 mt-4">
-            {Array.from({ length: slideCount }).map((_, index) => (
-              <button
-                key={index}
-                onClick={() => carouselApi?.scrollTo(index)}
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  index === currentSlide ? "bg-primary" : "bg-muted-foreground/30"
-                }`}
-                aria-label={`Перейти к слайду ${index + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="register" className="text-xs sm:text-sm">
