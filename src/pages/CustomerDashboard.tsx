@@ -1883,10 +1883,13 @@ const CustomerDashboard = () => {
           </div>
         ) : products.length > 0 ? (
           (() => {
-            // Filter products by status first
+            // Filter out hidden products first - customers should never see them
+            const visibleProducts = products.filter(p => p.catalog_status !== "hidden");
+
+            // Then filter by selected status if any
             const statusFilteredProducts = selectedStatus 
-              ? products.filter(p => p.catalog_status === selectedStatus)
-              : products;
+              ? visibleProducts.filter(p => p.catalog_status === selectedStatus)
+              : visibleProducts;
             
             if (statusFilteredProducts.length === 0) {
               return (
