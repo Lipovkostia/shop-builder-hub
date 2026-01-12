@@ -7,18 +7,22 @@ export interface OnboardingStep {
   placement: 'top' | 'bottom' | 'left' | 'right';
   action?: 'click' | 'input' | 'manual';
   view?: 'storefront' | 'admin';
+  pulsatingSelector?: string;
+  autoOpenDropdown?: boolean;
 }
 
 export const onboardingSteps: OnboardingStep[] = [
   {
-    id: 'add-product',
-    title: 'Добавление товара',
-    description: 'Нажмите на кнопку "+", чтобы добавить первый товар в ваш ассортимент',
-    shortDescription: 'Как добавить товар',
-    targetSelector: '[data-onboarding="add-product-button"]',
+    id: 'create-pricelist',
+    title: 'Создание прайс-листа',
+    description: 'Создайте прайс-лист и введите название. Прайс-лист — это каталог товаров с ценами, который вы отправляете клиентам.',
+    shortDescription: 'Как создать прайс-лист',
+    targetSelector: '[data-onboarding="catalog-dropdown-content"]',
+    pulsatingSelector: '[data-onboarding="create-catalog-button"]',
     placement: 'bottom',
     action: 'click',
     view: 'storefront',
+    autoOpenDropdown: true,
   },
   // Остальные шаги будут добавлены позже
 ];

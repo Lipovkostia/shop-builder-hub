@@ -184,4 +184,40 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Onboarding pulse animation */
+  .onboarding-pulse {
+    animation: onboarding-pulse 1.5s ease-in-out infinite;
+    position: relative;
+  }
+
+  .onboarding-pulse::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: inherit;
+    border: 2px solid hsl(var(--primary));
+    animation: onboarding-pulse-ring 1.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes onboarding-pulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.02);
+    }
+  }
+
+  @keyframes onboarding-pulse-ring {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.5;
+      transform: scale(1.1);
+    }
+  }
 }

@@ -39,6 +39,7 @@ import {
   calculateSalePrice,
 } from "@/components/admin/types";
 import AdminPanel from "@/pages/AdminPanel";
+import { useOnboarding } from "@/contexts/OnboardingContext";
 
 interface CartItem {
   productId: string;
@@ -541,6 +542,8 @@ function StoreHeader({
   ordersCount,
   viewMode,
   onStoreClick,
+  catalogDropdownOpen,
+  setCatalogDropdownOpen,
 }: {
   store: any;
   cart: CartItem[];
@@ -562,6 +565,8 @@ function StoreHeader({
   ordersCount?: number;
   viewMode?: 'storefront' | 'admin';
   onStoreClick?: () => void;
+  catalogDropdownOpen?: boolean;
+  setCatalogDropdownOpen?: (open: boolean) => void;
 }) {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
@@ -626,17 +631,25 @@ function StoreHeader({
       <div className="h-10 flex items-center justify-between px-3 border-t border-border bg-muted/30">
         <div className="flex items-center gap-1">
           {/* Селектор прайс-листа */}
-          <DropdownMenu>
-            <DropdownMenuTrigger className="p-2 rounded hover:bg-muted transition-colors">
+          <DropdownMenu open={catalogDropdownOpen} onOpenChange={setCatalogDropdownOpen}>
+            <DropdownMenuTrigger 
+              className="p-2 rounded hover:bg-muted transition-colors"
+              data-onboarding="catalog-folder"
+            >
               <FolderOpen className="w-4 h-4 text-muted-foreground" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-[200px] bg-popover z-50">
+            <DropdownMenuContent 
+              align="start" 
+              className="min-w-[200px] bg-popover z-50"
+              data-onboarding="catalog-dropdown-content"
+            >
               {/* Кнопка создания прайс-листа - только для владельца */}
               {isOwner && (
                 <>
                   <DropdownMenuItem
                     onClick={() => onCreateCatalog?.()}
                     className="cursor-pointer text-primary"
+                    data-onboarding="create-catalog-button"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     <span>Создать прайс-лист</span>
@@ -901,6 +914,33 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const [isNewCatalogDialogOpen, setIsNewCatalogDialogOpen] = useState(false);
   const [newCatalogName, setNewCatalogName] = useState("");
   const [isCreatingCatalog, setIsCreatingCatalog] = useState(false);
+  
+  // Состояние dropdown каталогов для онбординга
+  const [catalogDropdownOpen, setCatalogDropdownOpen] = useState(false);
+  
+  // Получаем контекст онбординга
+  const { currentStep, isActive: isOnboardingActive, nextStep } = useOnboarding();
+  
+  // Эффект для автооткрытия dropdown при онбординге
+  useEffect(() => {
+    if (isOnboardingActive && currentStep?.id === 'create-pricelist' && currentStep.autoOpenDropdown) {
+      // Небольшая задержка для инициализации UI
+      const timer = setTimeout(() => {
+        setCatalogDropdownOpen(true);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isOnboardingActive, currentStep]);
+  
+  // Обработчик создания прайс-листа с переходом к следующему шагу
+  const handleCreateCatalogClick = () => {
+    setIsNewCatalogDialogOpen(true);
+    setCatalogDropdownOpen(false);
+    // Переходим к следующему шагу онбординга после открытия диалога
+    if (isOnboardingActive && currentStep?.id === 'create-pricelist') {
+      nextStep();
+    }
+  };
 
   // Обработчик создания нового товара
   const handleCreateNewProduct = async () => {
@@ -1228,14 +1268,14 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
               }`}
             >
               {/* Селектор прайс-листа */}
-              <DropdownMenu>
+              <DropdownMenu open={catalogDropdownOpen} onOpenChange={setCatalogDropdownOpen}>
                 <DropdownMenuTrigger 
                   className={`p-2 rounded hover:bg-muted transition-colors relative ${
                     showCatalogHint 
                       ? 'animate-attention-pulse bg-primary/20 ring-2 ring-primary z-20' 
                       : ''
                   }`}
-                  data-onboarding-catalog-trigger
+                  data-onboarding="catalog-folder"
                 >
                   <FolderOpen className={`w-4 h-4 ${showCatalogHint ? 'text-primary' : 'text-muted-foreground'}`} />
                   
@@ -1258,13 +1298,18 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                     </div>
                   )}
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-[200px] bg-popover z-50">
+                <DropdownMenuContent 
+                  align="start" 
+                  className="min-w-[200px] bg-popover z-50"
+                  data-onboarding="catalog-dropdown-content"
+                >
                   {/* Кнопка создания прайс-листа - только для владельца */}
                   {isOwner && (
                     <>
                       <DropdownMenuItem
-                        onClick={() => setIsNewCatalogDialogOpen(true)}
+                        onClick={handleCreateCatalogClick}
                         className="cursor-pointer text-primary"
+                        data-onboarding="create-catalog-button"
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         <span>Создать прайс-лист</span>
