@@ -33,15 +33,43 @@ const Auth = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    const handleRedirect = async (userId: string) => {
+      // First, get the user's profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id, role")
+        .eq("user_id", userId)
+        .single();
+      
+      if (profile?.role === "seller") {
+        // Check if seller has a store (auto-created by trigger)
+        const { data: store } = await supabase
+          .from("stores")
+          .select("subdomain")
+          .eq("owner_id", profile.id)
+          .single();
+        
+        if (store) {
+          // Set onboarding flag and redirect to store
+          localStorage.setItem('seller_onboarding_step1', 'true');
+          navigate(`/store/${store.subdomain}`);
+          return;
+        }
+      }
+      
+      // Fallback to dashboard
+      navigate(redirectTo);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        navigate(redirectTo);
+        handleRedirect(session.user.id);
       }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        navigate(redirectTo);
+        handleRedirect(session.user.id);
       }
     });
 
