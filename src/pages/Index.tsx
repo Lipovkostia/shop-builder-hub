@@ -52,6 +52,55 @@ const Index = () => {
       setIsCustomerLogin(false); // Show registration form
     }
   }, [tabFromUrl, catalogFromUrl]);
+
+  // Check if user is already logged in and redirect
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      // Check for super admin
+      const { data: platformRole } = await supabase
+        .from('platform_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .eq('role', 'super_admin')
+        .maybeSingle();
+
+      if (platformRole) {
+        navigate('/super-admin');
+        return;
+      }
+
+      // Get profile and determine role
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, role')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (!profile) return;
+
+      if (profile.role === 'seller') {
+        const { data: store } = await supabase
+          .from('stores')
+          .select('subdomain')
+          .eq('owner_id', profile.id)
+          .single();
+
+        if (store) {
+          navigate(`/store/${store.subdomain}`);
+          return;
+        }
+      } else if (profile.role === 'customer') {
+        navigate('/customer-dashboard');
+        return;
+      }
+    };
+
+    checkSession();
+  }, [navigate]);
+
   // Format phone to email for Supabase auth
   const phoneToEmail = (phone: string) => {
     const cleanPhone = phone.replace(/\D/g, "");
@@ -191,7 +240,12 @@ const Index = () => {
          }
       }
 
-      navigate('/dashboard');
+      // No store found - show message
+      toast({ 
+        title: "Магазин не найден", 
+        description: "Зарегистрируйте новый магазин",
+        variant: "destructive" 
+      });
       
     } catch (error: any) {
       console.error('Login error:', error);
