@@ -323,32 +323,45 @@ export default function SlidesManager() {
 
     const targetSlide = slides[targetIndex];
     
+    // Save sort_order values BEFORE any changes
+    const currentSortOrder = currentSlide.sort_order;
+    const targetSortOrder = targetSlide.sort_order;
+    const currentId = currentSlide.id;
+    const targetId = targetSlide.id;
+    
     try {
-      // Swap sort_order values
+      // Swap sort_order values in DB
       await Promise.all([
         supabase
           .from('landing_slides')
-          .update({ sort_order: targetSlide.sort_order })
-          .eq('id', currentSlide.id),
+          .update({ sort_order: targetSortOrder })
+          .eq('id', currentId),
         supabase
           .from('landing_slides')
-          .update({ sort_order: currentSlide.sort_order })
-          .eq('id', targetSlide.id),
+          .update({ sort_order: currentSortOrder })
+          .eq('id', targetId),
       ]);
 
-      // Update local state
-      const newSlides = [...slides];
-      [newSlides[currentIndex], newSlides[targetIndex]] = [newSlides[targetIndex], newSlides[currentIndex]];
+      // Update local state by ID (not by index)
+      const updatedSlides = slides.map(slide => {
+        if (slide.id === currentId) {
+          return { ...slide, sort_order: targetSortOrder };
+        }
+        if (slide.id === targetId) {
+          return { ...slide, sort_order: currentSortOrder };
+        }
+        return slide;
+      });
       
-      // Also swap sort_order in local state
-      const tempSortOrder = newSlides[currentIndex].sort_order;
-      newSlides[currentIndex] = { ...newSlides[currentIndex], sort_order: newSlides[targetIndex].sort_order };
-      newSlides[targetIndex] = { ...newSlides[targetIndex], sort_order: tempSortOrder };
+      // Sort by sort_order to reflect new positions
+      updatedSlides.sort((a, b) => a.sort_order - b.sort_order);
       
-      setSlides(newSlides);
+      setSlides(updatedSlides);
       
       // Navigate to new position
       setTimeout(() => scrollTo(targetIndex), 100);
+      
+      toast({ title: 'Порядок изменён' });
     } catch (error) {
       console.error('Error reordering:', error);
       toast({
