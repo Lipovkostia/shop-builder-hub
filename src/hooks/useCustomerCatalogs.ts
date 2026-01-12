@@ -420,16 +420,21 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Не авторизован");
 
-      // Find catalog by access code
-      const { data: catalog, error: catalogError } = await supabase
-        .from("catalogs")
-        .select("id, store_id, name")
-        .eq("access_code", accessCode)
+      // Use RPC function with SECURITY DEFINER to bypass RLS
+      // This allows users without existing access to lookup catalog info
+      const { data: catalogResult, error: catalogError } = await supabase
+        .rpc("get_catalog_by_access_code", { _access_code: accessCode })
         .single();
 
-      if (catalogError || !catalog) {
+      if (catalogError || !catalogResult) {
         throw new Error("Прайс-лист не найден. Проверьте ссылку.");
       }
+
+      const catalog = {
+        id: catalogResult.id,
+        store_id: catalogResult.store_id,
+        name: catalogResult.name,
+      };
 
       // Get profile
       const { data: profile } = await supabase
