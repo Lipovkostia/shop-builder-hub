@@ -176,14 +176,9 @@ function ProductCard({
   const isPreOrder = effectiveStatus === "pre_order";
   const isHidden = effectiveStatus === "hidden";
 
-  const getFullPrice = () => {
-    if (packagingPrices) {
-      return packagingPrices.full;
-    }
-    return null;
-  };
-
-  const fullPrice = getFullPrice();
+  // Вычисляем fullPrice напрямую, как у покупателя — работает для всех типов товаров
+  const unitWeight = product.unit_weight || 1;
+  const fullPrice = unitWeight > 0 ? salePrice * unitWeight : null;
 
   // Обработчики для галереи изображений
   const handleAddImages = async (files: FileList, source: 'file' | 'camera') => {
