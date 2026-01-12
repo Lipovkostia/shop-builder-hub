@@ -7,7 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
-import { OnboardingSpotlight } from "@/components/onboarding/SpotlightOverlay";
 import StoreFront from "./StoreFront";
 import AdminPanel from "./AdminPanel";
 
@@ -93,9 +92,6 @@ export default function SellerWorkspace() {
   return (
     <OnboardingProvider>
       <div className="min-h-screen bg-background flex flex-col">
-        {/* Onboarding spotlight overlay */}
-        {hasFullAccess && <OnboardingSpotlight />}
-        
         {/* Общая шапка с вкладками - для владельца или супер-админа */}
         {hasFullAccess && (
           <WorkspaceHeader
