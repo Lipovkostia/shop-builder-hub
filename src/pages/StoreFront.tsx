@@ -258,7 +258,7 @@ function ProductCard({
   return (
     <div className="border-b border-border">
     <div 
-      className={`flex gap-1.5 px-1.5 py-1.5 bg-background ${showImages ? 'min-h-[80px]' : 'min-h-[56px]'} ${isHidden ? 'opacity-60' : ''}`}
+      className={`flex gap-1.5 px-1.5 py-1.5 bg-background ${showImages ? 'min-h-[80px]' : 'min-h-[40px]'} ${isHidden ? 'opacity-60' : ''}`}
     >
       {/* Изображение */}
       {showImages && (
@@ -329,137 +329,254 @@ function ProductCard({
           {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />}
         </div>
 
-        {/* Цена за кг - вес и сумма только в режиме с фото */}
-        <p className={`text-muted-foreground leading-tight ${showImages ? 'text-xs' : 'text-[8px]'}`}>
-          {formatPrice(salePrice)}/{unit}
-          {showImages && product.unit_weight && (
-            <span className="ml-1">
-              · {product.unit_weight} {unit}
+        {/* Цена и кнопки */}
+        {showImages ? (
+          <>
+            {/* С фото: цена отдельно */}
+            <p className="text-muted-foreground leading-tight text-xs">
+              {formatPrice(salePrice)}/{unit}
+              {product.unit_weight && (
+                <span className="ml-1">
+                  · {product.unit_weight} {unit}
+                </span>
+              )}
+              {fullPrice && (
+                <span className="ml-1">
+                  · ~{formatPrice(fullPrice)}
+                </span>
+              )}
+            </p>
+            {/* С фото: кнопки отдельно */}
+            <div className="flex items-center gap-0.5 flex-shrink-0 mt-0.5 flex-wrap justify-end ml-auto flex-row-reverse">
+              {/* Кнопки покупки - всегда показываем, но disabled если не in_stock */}
+              {/* Целая - всегда показываем */}
+              {(() => {
+                const qty = getCartQuantity(0);
+                const btnFullPrice = (product.unit_weight || 1) * salePrice;
+                return (
+                  <button
+                    onClick={() => inStock && onAddToCart(product.id, 0, btnFullPrice)}
+                    disabled={!inStock}
+                    className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
+                      inStock 
+                        ? 'border-border hover:border-primary hover:bg-primary/5' 
+                        : 'border-border/50 opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    {qty > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                        {qty}
+                      </span>
+                    )}
+                    <PortionIndicator type="full" />
+                    <span className="text-sm font-medium text-foreground">
+                      {formatPriceSpaced(btnFullPrice)}
+                    </span>
+                  </button>
+                );
+              })()}
+              
+              {/* Половина */}
+              {portionPriceHalf && portionPriceHalf > 0 && (() => {
+                const qty = getCartQuantity(1);
+                const halfWeight = (product.unit_weight || 1) / 2;
+                const halfPrice = halfWeight * portionPriceHalf;
+                return (
+                  <button
+                    onClick={() => inStock && onAddToCart(product.id, 1, halfPrice)}
+                    disabled={!inStock}
+                    className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
+                      inStock 
+                        ? 'border-border hover:border-primary hover:bg-primary/5' 
+                        : 'border-border/50 opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    {qty > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                        {qty}
+                      </span>
+                    )}
+                    <PortionIndicator type="half" />
+                    <span className="text-sm font-medium text-foreground">
+                      {formatPriceSpaced(halfPrice)}
+                    </span>
+                  </button>
+                );
+              })()}
+              
+              {/* Четверть */}
+              {portionPriceQuarter && portionPriceQuarter > 0 && (() => {
+                const qty = getCartQuantity(2);
+                const quarterWeight = (product.unit_weight || 1) / 4;
+                const quarterPrice = quarterWeight * portionPriceQuarter;
+                return (
+                  <button
+                    onClick={() => inStock && onAddToCart(product.id, 2, quarterPrice)}
+                    disabled={!inStock}
+                    className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
+                      inStock 
+                        ? 'border-border hover:border-primary hover:bg-primary/5' 
+                        : 'border-border/50 opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    {qty > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                        {qty}
+                      </span>
+                    )}
+                    <PortionIndicator type="quarter" />
+                    <span className="text-sm font-medium text-foreground">
+                      {formatPriceSpaced(quarterPrice)}
+                    </span>
+                  </button>
+                );
+              })()}
+              
+              {/* Порция */}
+              {portionPricePortion && portionPricePortion > 0 && (() => {
+                const qty = getCartQuantity(3);
+                return (
+                  <button
+                    onClick={() => inStock && onAddToCart(product.id, 3, portionPricePortion)}
+                    disabled={!inStock}
+                    className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
+                      inStock 
+                        ? 'border-border hover:border-primary hover:bg-primary/5' 
+                        : 'border-border/50 opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    {qty > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                        {qty}
+                      </span>
+                    )}
+                    <PortionIndicator type="portion" />
+                    <span className="text-sm font-medium text-foreground">
+                      {formatPriceSpaced(portionPricePortion)}
+                    </span>
+                  </button>
+                );
+              })()}
+            </div>
+          </>
+        ) : (
+          /* Без фото: цена и кнопки в одной строке */
+          <div className="flex items-center justify-between gap-2 mt-0.5">
+            <span className="text-muted-foreground text-[9px] whitespace-nowrap">
+              {formatPrice(salePrice)}/{unit}
             </span>
-          )}
-          {showImages && fullPrice && (
-            <span className="ml-1">
-              · ~{formatPrice(fullPrice)}
-            </span>
-          )}
-        </p>
-
-        {/* Кнопки - flex-shrink-0 чтобы не сжимались */}
-        <div className={`flex items-center gap-0.5 flex-shrink-0 mt-0.5 flex-wrap justify-end ml-auto flex-row-reverse`}>
-          
-          {/* Кнопки покупки - всегда показываем, но disabled если не in_stock */}
-          {/* Целая - всегда показываем */}
-          {(() => {
-            const qty = getCartQuantity(0);
-            // Цена = объём * цена за кг
-            const fullPrice = (product.unit_weight || 1) * salePrice;
-            return (
-              <button
-                onClick={() => inStock && onAddToCart(product.id, 0, fullPrice)}
-                disabled={!inStock}
-                className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
-                  inStock 
-                    ? 'border-border hover:border-primary hover:bg-primary/5' 
-                    : 'border-border/50 opacity-50 cursor-not-allowed'
-                }`}
-              >
-                {qty > 0 && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                    {qty}
-                  </span>
-                )}
-                <PortionIndicator type="full" />
-                <span className="text-sm font-medium text-foreground">
-                  {formatPriceSpaced(fullPrice)}
-                </span>
-              </button>
-            );
-          })()}
-          
-          {/* Половина - показываем только если есть ненулевая цена */}
-          {portionPriceHalf && portionPriceHalf > 0 && (() => {
-            const qty = getCartQuantity(1);
-            // Цена = половина объёма * цена за кг
-            const halfWeight = (product.unit_weight || 1) / 2;
-            const halfPrice = halfWeight * portionPriceHalf;
-            return (
-              <button
-                onClick={() => inStock && onAddToCart(product.id, 1, halfPrice)}
-                disabled={!inStock}
-                className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
-                  inStock 
-                    ? 'border-border hover:border-primary hover:bg-primary/5' 
-                    : 'border-border/50 opacity-50 cursor-not-allowed'
-                }`}
-              >
-                {qty > 0 && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                    {qty}
-                  </span>
-                )}
-                <PortionIndicator type="half" />
-                <span className="text-sm font-medium text-foreground">
-                  {formatPriceSpaced(halfPrice)}
-                </span>
-              </button>
-            );
-          })()}
-          
-          {/* Четверть - показываем только если есть ненулевая цена */}
-          {portionPriceQuarter && portionPriceQuarter > 0 && (() => {
-            const qty = getCartQuantity(2);
-            // Цена = четверть объёма * цена за кг
-            const quarterWeight = (product.unit_weight || 1) / 4;
-            const quarterPrice = quarterWeight * portionPriceQuarter;
-            return (
-              <button
-                onClick={() => inStock && onAddToCart(product.id, 2, quarterPrice)}
-                disabled={!inStock}
-                className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
-                  inStock 
-                    ? 'border-border hover:border-primary hover:bg-primary/5' 
-                    : 'border-border/50 opacity-50 cursor-not-allowed'
-                }`}
-              >
-                {qty > 0 && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                    {qty}
-                  </span>
-                )}
-                <PortionIndicator type="quarter" />
-                <span className="text-sm font-medium text-foreground">
-                  {formatPriceSpaced(quarterPrice)}
-                </span>
-              </button>
-            );
-          })()}
-          
-          {/* Порция - показываем только если есть ненулевая цена */}
-          {portionPricePortion && portionPricePortion > 0 && (() => {
-            const qty = getCartQuantity(3);
-            return (
-              <button
-                onClick={() => inStock && onAddToCart(product.id, 3, portionPricePortion)}
-                disabled={!inStock}
-                className={`relative flex items-center gap-1 h-7 px-2 rounded border transition-all ${
-                  inStock 
-                    ? 'border-border hover:border-primary hover:bg-primary/5' 
-                    : 'border-border/50 opacity-50 cursor-not-allowed'
-                }`}
-              >
-                {qty > 0 && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                    {qty}
-                  </span>
-                )}
-                <PortionIndicator type="portion" />
-                <span className="text-sm font-medium text-foreground">
-                  {formatPriceSpaced(portionPricePortion)}
-                </span>
-              </button>
-            );
-          })()}
-        </div>
+            <div className="flex items-center gap-0.5 flex-shrink-0 flex-row-reverse">
+              {/* Целая */}
+              {(() => {
+                const qty = getCartQuantity(0);
+                const btnFullPrice = (product.unit_weight || 1) * salePrice;
+                return (
+                  <button
+                    onClick={() => inStock && onAddToCart(product.id, 0, btnFullPrice)}
+                    disabled={!inStock}
+                    className={`relative flex items-center gap-1 h-6 px-1.5 rounded border transition-all ${
+                      inStock 
+                        ? 'border-border hover:border-primary hover:bg-primary/5' 
+                        : 'border-border/50 opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    {qty > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary text-primary-foreground text-[8px] font-bold rounded-full flex items-center justify-center">
+                        {qty}
+                      </span>
+                    )}
+                    <PortionIndicator type="full" />
+                    <span className="text-xs font-medium text-foreground">
+                      {formatPriceSpaced(btnFullPrice)}
+                    </span>
+                  </button>
+                );
+              })()}
+              
+              {/* Половина */}
+              {portionPriceHalf && portionPriceHalf > 0 && (() => {
+                const qty = getCartQuantity(1);
+                const halfWeight = (product.unit_weight || 1) / 2;
+                const halfPrice = halfWeight * portionPriceHalf;
+                return (
+                  <button
+                    onClick={() => inStock && onAddToCart(product.id, 1, halfPrice)}
+                    disabled={!inStock}
+                    className={`relative flex items-center gap-1 h-6 px-1.5 rounded border transition-all ${
+                      inStock 
+                        ? 'border-border hover:border-primary hover:bg-primary/5' 
+                        : 'border-border/50 opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    {qty > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary text-primary-foreground text-[8px] font-bold rounded-full flex items-center justify-center">
+                        {qty}
+                      </span>
+                    )}
+                    <PortionIndicator type="half" />
+                    <span className="text-xs font-medium text-foreground">
+                      {formatPriceSpaced(halfPrice)}
+                    </span>
+                  </button>
+                );
+              })()}
+              
+              {/* Четверть */}
+              {portionPriceQuarter && portionPriceQuarter > 0 && (() => {
+                const qty = getCartQuantity(2);
+                const quarterWeight = (product.unit_weight || 1) / 4;
+                const quarterPrice = quarterWeight * portionPriceQuarter;
+                return (
+                  <button
+                    onClick={() => inStock && onAddToCart(product.id, 2, quarterPrice)}
+                    disabled={!inStock}
+                    className={`relative flex items-center gap-1 h-6 px-1.5 rounded border transition-all ${
+                      inStock 
+                        ? 'border-border hover:border-primary hover:bg-primary/5' 
+                        : 'border-border/50 opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    {qty > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary text-primary-foreground text-[8px] font-bold rounded-full flex items-center justify-center">
+                        {qty}
+                      </span>
+                    )}
+                    <PortionIndicator type="quarter" />
+                    <span className="text-xs font-medium text-foreground">
+                      {formatPriceSpaced(quarterPrice)}
+                    </span>
+                  </button>
+                );
+              })()}
+              
+              {/* Порция */}
+              {portionPricePortion && portionPricePortion > 0 && (() => {
+                const qty = getCartQuantity(3);
+                return (
+                  <button
+                    onClick={() => inStock && onAddToCart(product.id, 3, portionPricePortion)}
+                    disabled={!inStock}
+                    className={`relative flex items-center gap-1 h-6 px-1.5 rounded border transition-all ${
+                      inStock 
+                        ? 'border-border hover:border-primary hover:bg-primary/5' 
+                        : 'border-border/50 opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    {qty > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary text-primary-foreground text-[8px] font-bold rounded-full flex items-center justify-center">
+                        {qty}
+                      </span>
+                    )}
+                    <PortionIndicator type="portion" />
+                    <span className="text-xs font-medium text-foreground">
+                      {formatPriceSpaced(portionPricePortion)}
+                    </span>
+                  </button>
+                );
+              })()}
+            </div>
+          </div>
+        )}
       </div>
     </div>
     
