@@ -46,33 +46,25 @@ const CatalogAccess = () => {
       }
 
       try {
-        // Fetch catalog by access_code
-        const { data: catalog, error: catalogError } = await supabase
-          .from("catalogs")
-          .select("id, name, description, store_id, access_code")
-          .eq("access_code", accessCode)
+        // Use RPC function with SECURITY DEFINER to bypass RLS
+        // This allows unauthenticated users to lookup catalog info for registration
+        const { data: catalogResult, error: catalogError } = await supabase
+          .rpc("get_catalog_by_access_code", { _access_code: accessCode })
           .single();
 
-        if (catalogError || !catalog) {
+        if (catalogError || !catalogResult) {
           setError("Прайс-лист не найден");
           setLoading(false);
           return;
         }
 
-        // Fetch store info
-        const { data: store } = await supabase
-          .from("stores")
-          .select("id, name, logo_url")
-          .eq("id", catalog.store_id)
-          .single();
-
         setCatalogInfo({
-          id: catalog.id,
-          name: catalog.name,
-          description: catalog.description,
-          store_id: catalog.store_id,
-          store_name: store?.name || "Магазин",
-          store_logo: store?.logo_url || null,
+          id: catalogResult.id,
+          name: catalogResult.name,
+          description: catalogResult.description,
+          store_id: catalogResult.store_id,
+          store_name: catalogResult.store_name || "Магазин",
+          store_logo: catalogResult.store_logo || null,
         });
       } catch (err) {
         console.error("Error fetching catalog:", err);
