@@ -5760,45 +5760,41 @@ export default function AdminPanel({
                       <div className="flex-1">
                         {selectedNotificationChannel === 'telegram' && (
                           <div className="space-y-3">
-                            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                              <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
-                                Подключение Telegram-уведомлений
-                              </p>
-                              <p className="text-xs text-muted-foreground mb-3">
-                                Нажмите кнопку ниже, чтобы открыть бота в Telegram. 
-                                После нажатия «Start» вы начнете получать уведомления о новых заказах.
-                              </p>
-                              <div className="flex flex-col gap-2">
+                            {notificationContacts.telegram ? (
+                              <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                                  <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                                    Бот активен
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mb-3">
+                                  Уведомления о новых заказах будут приходить в Telegram
+                                </p>
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   className="w-full"
-                                  onClick={async () => {
-                                    try {
-                                      const response = await fetch(
-                                        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-webhook?setup=true`
-                                      );
-                                      const result = await response.json();
-                                      if (result.ok) {
-                                        toast({
-                                          title: "Telegram бот настроен",
-                                          description: "Webhook успешно зарегистрирован. Теперь нажмите 'Открыть бота'.",
-                                        });
-                                      } else {
-                                        throw new Error(result.description || "Ошибка настройки");
-                                      }
-                                    } catch (error: any) {
-                                      toast({
-                                        title: "Ошибка настройки",
-                                        description: error.message,
-                                        variant: "destructive",
-                                      });
+                                  onClick={() => {
+                                    const storeId = effectiveStoreId;
+                                    if (storeId) {
+                                      window.open(`https://t.me/zakaz9999999999_bot?start=${storeId}`, '_blank');
                                     }
                                   }}
                                 >
-                                  <Settings className="h-4 w-4 mr-2" />
-                                  Настроить бота
+                                  <Send className="h-4 w-4 mr-2" />
+                                  Открыть бота
                                 </Button>
+                              </div>
+                            ) : (
+                              <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                                <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+                                  Подключение Telegram-уведомлений
+                                </p>
+                                <p className="text-xs text-muted-foreground mb-3">
+                                  Нажмите кнопку «Открыть бота» и в Telegram нажмите Start.
+                                  Уведомления о заказах начнут приходить автоматически.
+                                </p>
                                 <Button
                                   variant="default"
                                   size="sm"
@@ -5813,13 +5809,6 @@ export default function AdminPanel({
                                   <Send className="h-4 w-4 mr-2" />
                                   Открыть бота
                                 </Button>
-                              </div>
-                            </div>
-                            
-                            {notificationContacts.telegram && (
-                              <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                                <Check className="h-4 w-4" />
-                                <span>Telegram подключен (ID: {notificationContacts.telegram})</span>
                               </div>
                             )}
                           </div>
