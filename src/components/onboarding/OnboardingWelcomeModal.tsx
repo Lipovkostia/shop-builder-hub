@@ -7,13 +7,13 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Users, Tag, Link2, Sparkles } from "lucide-react";
-import { useOnboarding } from "@/contexts/OnboardingContext";
+import { useOnboardingSafe } from "@/contexts/OnboardingContext";
 
 const WELCOME_MODAL_KEY = "seller_onboarding_welcome_shown";
 
 export function OnboardingWelcomeModal() {
   const [open, setOpen] = useState(false);
-  const { startOnboarding } = useOnboarding();
+  const onboarding = useOnboardingSafe();
 
   useEffect(() => {
     // Show modal only if not shown before
@@ -29,8 +29,8 @@ export function OnboardingWelcomeModal() {
   const handleStart = () => {
     localStorage.setItem(WELCOME_MODAL_KEY, 'true');
     setOpen(false);
-    // Start the first onboarding step
-    startOnboarding();
+    // Start the first onboarding step if context is available
+    onboarding?.startOnboarding();
   };
 
   return (

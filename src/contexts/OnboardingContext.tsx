@@ -122,3 +122,8 @@ export function useOnboarding() {
   }
   return context;
 }
+
+// Safe version that returns null if outside provider
+export function useOnboardingSafe() {
+  return useContext(OnboardingContext);
+}
