@@ -250,10 +250,10 @@ const Index = () => {
 
       if (authError) throw authError;
 
-      // Get user's store
+      // Get user's profile
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, full_name, phone')
         .eq('user_id', authData.user.id)
         .single();
 
@@ -262,20 +262,36 @@ const Index = () => {
           .from('stores')
           .select('subdomain')
           .eq('owner_id', profile.id)
-          .single();
+          .maybeSingle();
 
-         if (store) {
-           navigate(`/store/${store.subdomain}`);
-           return;
-         }
+        if (store) {
+          navigate(`/store/${store.subdomain}`);
+          return;
+        }
+
+        // No store found - auto-create one
+        const storeName = profile.full_name || loginPhone.replace(/\D/g, '') || 'Мой магазин';
+        const baseSubdomain = generateSubdomain(storeName);
+        const subdomain = baseSubdomain + '-' + Date.now().toString(36).slice(-4);
+
+        const { error: storeError } = await supabase
+          .from('stores')
+          .insert({
+            name: storeName,
+            subdomain,
+            owner_id: profile.id,
+            status: 'active'
+          });
+
+        if (!storeError) {
+          toast({ title: "Магазин создан!", description: "Переходим в витрину" });
+          localStorage.setItem('seller_onboarding_step1', 'true');
+          navigate(`/store/${subdomain}`);
+          return;
+        } else {
+          throw storeError;
+        }
       }
-
-      // No store found - show message
-      toast({ 
-        title: "Магазин не найден", 
-        description: "Зарегистрируйте новый магазин",
-        variant: "destructive" 
-      });
       
     } catch (error: any) {
       console.error('Login error:', error);
