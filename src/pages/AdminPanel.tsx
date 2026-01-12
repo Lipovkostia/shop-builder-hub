@@ -1668,7 +1668,7 @@ export default function AdminPanel({
           
           // Calculate effective price
           const buyPrice = product.buyPrice || 0;
-          const markup = catalogPricing?.markup || product.markup;
+          const markup = catalogPricing?.markup !== undefined ? catalogPricing.markup : product.markup;
           const price = calculateSalePrice(buyPrice, markup);
           
           // Calculate packaging prices
@@ -2037,7 +2037,8 @@ export default function AdminPanel({
 
     return {
       productId: dbSettings.product_id,
-      markup: dbSettings.markup_value > 0 ? {
+      // Ноль = валидная наценка (цена = себестоимость), undefined только если null
+      markup: dbSettings.markup_value !== null && dbSettings.markup_value !== undefined ? {
         type: dbSettings.markup_type === 'fixed' ? 'rubles' : 'percent',
         value: dbSettings.markup_value
       } : undefined,
@@ -2085,7 +2086,7 @@ export default function AdminPanel({
   // Get effective sale price for catalog (using catalog markup or falling back to base product)
   const getCatalogSalePrice = (product: Product, catalogPricing?: CatalogProductPricing): number => {
     const buyPrice = product.buyPrice || 0;
-    const markup = catalogPricing?.markup || product.markup;
+    const markup = catalogPricing?.markup !== undefined ? catalogPricing.markup : product.markup;
     return calculateSalePrice(buyPrice, markup);
   };
 
