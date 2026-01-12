@@ -5,8 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import Dashboard from "./pages/Dashboard";
+// Auth and Dashboard removed - redirected to Index
 import TestStore from "./pages/TestStore";
 import AdminPanel from "./pages/AdminPanel";
 import SuperAdmin from "./pages/SuperAdmin";
@@ -57,8 +56,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/auth" element={<Navigate to="/" replace />} />
+            <Route path="/dashboard" element={<Navigate to="/" replace />} />
             <Route path="/test-store" element={<TestStore />} />
             <Route path="/admin" element={<AdminPanel />} />
             <Route path="/super-admin" element={<SuperAdmin />} />
