@@ -42,6 +42,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { FullscreenImageViewer } from "@/components/ui/fullscreen-image-viewer";
 import { useToast } from "@/hooks/use-toast";
 import { 
   ShoppingCart, 
@@ -2601,65 +2602,13 @@ const CustomerDashboard = () => {
         </DrawerContent>
       </Drawer>
       {/* Fullscreen Image Viewer */}
-      {fullscreenImages && (
-        <div 
-          className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
-          onClick={() => setFullscreenImages(null)}
-        >
-          {/* Close button */}
-          <button 
-            onClick={() => setFullscreenImages(null)}
-            className="absolute top-4 right-4 p-2 text-white/70 hover:text-white transition-colors z-10"
-          >
-            <X className="w-6 h-6" />
-          </button>
-
-          {/* Image counter */}
-          <div className="absolute top-4 left-4 text-white/70 text-sm">
-            {fullscreenImages.index + 1} / {fullscreenImages.images.length}
-          </div>
-
-          {/* Previous button */}
-          {fullscreenImages.images.length > 1 && (
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                setFullscreenImages(prev => prev ? {
-                  ...prev,
-                  index: prev.index > 0 ? prev.index - 1 : prev.images.length - 1
-                } : null);
-              }}
-              className="absolute left-2 p-2 text-white/70 hover:text-white transition-colors z-10"
-            >
-              <ChevronLeft className="w-8 h-8" />
-            </button>
-          )}
-
-          {/* Current image */}
-          <img
-            src={fullscreenImages.images[fullscreenImages.index]}
-            alt={`Image ${fullscreenImages.index + 1}`}
-            className="max-w-full max-h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-
-          {/* Next button */}
-          {fullscreenImages.images.length > 1 && (
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                setFullscreenImages(prev => prev ? {
-                  ...prev,
-                  index: prev.index < prev.images.length - 1 ? prev.index + 1 : 0
-                } : null);
-              }}
-              className="absolute right-2 p-2 text-white/70 hover:text-white transition-colors z-10"
-            >
-              <ChevronRight className="w-8 h-8" />
-            </button>
-          )}
-        </div>
-      )}
+      <FullscreenImageViewer
+        images={fullscreenImages?.images ?? []}
+        currentIndex={fullscreenImages?.index ?? 0}
+        isOpen={fullscreenImages !== null}
+        onClose={() => setFullscreenImages(null)}
+        onIndexChange={(newIndex) => setFullscreenImages(prev => prev ? { ...prev, index: newIndex } : null)}
+      />
     </div>
   );
 };
