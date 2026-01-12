@@ -220,4 +220,19 @@
       transform: scale(1.1);
     }
   }
+
+  /* Onboarding field pulse animation */
+  .onboarding-field-pulse {
+    animation: onboarding-field-pulse 1.5s ease-in-out infinite;
+    border-color: hsl(var(--primary)) !important;
+  }
+
+  @keyframes onboarding-field-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsla(var(--primary), 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 4px hsla(var(--primary), 0.2);
+    }
+  }
 }
