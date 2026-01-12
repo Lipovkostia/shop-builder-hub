@@ -1778,6 +1778,24 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                     ? "Добавь товар в этот прайс лист"
                     : "Выберите прайс-лист"}
                 </p>
+                {selectedCatalog && (
+                  <div className="flex items-center gap-2 text-primary animate-bounce mt-2">
+                    <span className="text-sm font-medium">Нажми на кнопку</span>
+                    <svg 
+                      className="w-5 h-5 rotate-[-45deg]" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2.5} 
+                        d="M5 10l7-7m0 0l7 7m-7-7v18" 
+                      />
+                    </svg>
+                  </div>
+                )}
                 {!selectedCatalog && (
                   <>
                     <p className="text-muted-foreground text-sm mb-4">
