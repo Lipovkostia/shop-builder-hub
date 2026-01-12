@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store as StoreIcon, Package, LayoutGrid, Plus, LogIn, Sparkles, Users, Link2 } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store as StoreIcon, Package, LayoutGrid, Plus, LogIn, Sparkles, Users, Link2, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 import { Badge } from "@/components/ui/badge";
@@ -681,9 +681,22 @@ function StoreHeader({
 }) {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const selectedCatalogName = catalogs.find((c) => c.id === selectedCatalog)?.name || "Все товары";
+
+  const handleCopyLink = () => {
+    const catalog = catalogs.find(c => c.id === selectedCatalog);
+    if (catalog?.access_code) {
+      const url = `${window.location.origin}/catalog/${catalog.access_code}`;
+      navigator.clipboard.writeText(url);
+      toast({
+        title: "Ссылка скопирована",
+        description: "Ссылка на прайс-лист скопирована в буфер обмена",
+      });
+    }
+  };
 
   // Шестерёнка ВСЕГДА видна для залогиненных пользователей с ролью seller
   // или пока идёт загрузка (чтобы избежать мигания)
@@ -807,9 +820,16 @@ function StoreHeader({
 
       {/* Название магазина и прайс-листа - под блоком с иконками */}
       <div className="px-3 py-1 border-t border-border bg-background">
-        <p className="text-[10px] text-muted-foreground text-right truncate">
-          {store.name} — {selectedCatalogName}
-        </p>
+        <button
+          onClick={handleCopyLink}
+          className="w-full flex items-center justify-end gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          title="Скопировать ссылку на прайс-лист"
+        >
+          <span className="truncate">
+            {store.name} — {selectedCatalogName}
+          </span>
+          <Copy className="w-3 h-3 flex-shrink-0" />
+        </button>
       </div>
 
       {/* Выезжающий блок фильтров */}
