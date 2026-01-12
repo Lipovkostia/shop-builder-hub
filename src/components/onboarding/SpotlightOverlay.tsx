@@ -153,8 +153,9 @@ export function OnboardingSpotlight() {
 
   if (!isActive || !currentStep) return null;
 
-  // First step is mandatory - no skip button
-  const isMandatoryStep = currentStep.id === 'create-pricelist';
+  // First two steps are mandatory - no skip button
+  const mandatorySteps = ['create-pricelist', 'create-product'];
+  const isMandatoryStep = mandatorySteps.includes(currentStep.id);
 
   return (
     <SpotlightOverlay
