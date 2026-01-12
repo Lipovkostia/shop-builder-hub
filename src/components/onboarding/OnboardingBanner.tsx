@@ -41,18 +41,18 @@ export function OnboardingBanner() {
 
   return (
     <div 
-      className="w-full bg-primary px-4 py-2.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-primary/90 transition-colors"
+      className="w-full bg-primary px-4 py-3 flex items-start justify-between gap-3 cursor-pointer hover:bg-primary/90 transition-colors"
       onClick={nextStep}
     >
-      <p className="text-primary-foreground text-sm font-medium">
-        {currentStep.description.split('.')[0]}
+      <p className="text-primary-foreground text-sm font-medium whitespace-pre-line leading-relaxed">
+        {currentStep.description}
       </p>
       <button
         onClick={(e) => {
           e.stopPropagation();
           nextStep();
         }}
-        className="text-primary-foreground/70 hover:text-primary-foreground text-xs whitespace-nowrap"
+        className="text-primary-foreground/70 hover:text-primary-foreground text-xs whitespace-nowrap shrink-0 mt-0.5"
       >
         Понятно
       </button>
