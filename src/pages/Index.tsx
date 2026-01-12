@@ -346,12 +346,32 @@ const Index = () => {
     try {
       if (isCustomerLogin) {
         // Login
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data: authData, error } = await supabase.auth.signInWithPassword({
           email,
           password: customerPassword
         });
 
         if (error) throw error;
+
+        // Проверяем/создаём профиль после логина
+        if (authData.user) {
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('user_id', authData.user.id)
+            .maybeSingle();
+
+          if (!existingProfile) {
+            // Создаём профиль для покупателя
+            await supabase.from('profiles').insert({
+              user_id: authData.user.id,
+              email: email,
+              full_name: customerFullName || '',
+              phone: customerPhone,
+              role: 'customer'
+            });
+          }
+        }
 
         toast({ title: "Вход выполнен" });
         // If coming from catalog link, redirect to catalog access page
@@ -378,7 +398,7 @@ const Index = () => {
         if (authError) {
           if (authError.message.includes('already registered') || authError.code === 'user_already_exists') {
             // User exists, try to login
-            const { error: loginError } = await supabase.auth.signInWithPassword({
+            const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
               email,
               password: customerPassword
             });
@@ -392,6 +412,25 @@ const Index = () => {
               setIsCustomerLogin(true); // Switch to login mode
               setCustomerLoading(false);
               return;
+            }
+
+            // Проверяем/создаём профиль после логина существующего пользователя
+            if (loginData.user) {
+              const { data: existingProfile } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('user_id', loginData.user.id)
+                .maybeSingle();
+
+              if (!existingProfile) {
+                await supabase.from('profiles').insert({
+                  user_id: loginData.user.id,
+                  email: email,
+                  full_name: customerFullName || '',
+                  phone: customerPhone,
+                  role: 'customer'
+                });
+              }
             }
             
             toast({ title: "Вход выполнен", description: "Вы уже были зарегистрированы" });
