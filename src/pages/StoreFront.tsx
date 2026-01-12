@@ -828,7 +828,7 @@ function StoreHeader({
           <span className="truncate">
             {store.name} — {selectedCatalogName}
           </span>
-          <Copy className="w-3 h-3 flex-shrink-0" />
+          <Copy className="w-3.5 h-3.5 flex-shrink-0 text-primary/70" />
         </button>
       </div>
 
