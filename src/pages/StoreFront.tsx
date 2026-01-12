@@ -537,6 +537,7 @@ function StoreHeader({
   searchQuery,
   onSearchChange,
   onAdminClick,
+  onCreateCatalog,
   ordersCount,
   viewMode,
   onStoreClick,
@@ -557,6 +558,7 @@ function StoreHeader({
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onAdminClick?: (section?: string) => void;
+  onCreateCatalog?: () => void;
   ordersCount?: number;
   viewMode?: 'storefront' | 'admin';
   onStoreClick?: () => void;
@@ -633,7 +635,7 @@ function StoreHeader({
               {isOwner && (
                 <>
                   <DropdownMenuItem
-                    onClick={() => onAdminClick?.('catalogs')}
+                    onClick={() => onCreateCatalog?.()}
                     className="cursor-pointer text-primary"
                   >
                     <Plus className="w-4 h-4 mr-2" />
@@ -807,7 +809,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
   
   const { isOwner: isStoreOwner, loading: ownerLoading } = useIsStoreOwner(store?.id || null);
   const { products, loading: productsLoading, updateProduct, createProduct } = useStoreProducts(store?.id || null);
-  const { catalogs, productVisibility, setProductCatalogs, refetch: refetchCatalogs } = useStoreCatalogs(store?.id || null);
+  const { catalogs, productVisibility, setProductCatalogs, createCatalog, refetch: refetchCatalogs } = useStoreCatalogs(store?.id || null);
   const { settings: catalogProductSettings, getProductSettings, updateProductSettings, refetch: refetchCatalogSettings } = useCatalogProductSettings(store?.id || null);
   const { categories } = useStoreCategories(store?.id || null);
   
@@ -903,6 +905,11 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
   const [newProductName, setNewProductName] = useState("");
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
 
+  // Состояние диалога создания прайс-листа
+  const [isNewCatalogDialogOpen, setIsNewCatalogDialogOpen] = useState(false);
+  const [newCatalogName, setNewCatalogName] = useState("");
+  const [isCreatingCatalog, setIsCreatingCatalog] = useState(false);
+
   // Обработчик создания нового товара
   const handleCreateNewProduct = async () => {
     if (!newProductName.trim() || !selectedCatalog) return;
@@ -922,6 +929,27 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
       }
     } finally {
       setIsCreatingProduct(false);
+    }
+  };
+
+  // Обработчик создания нового прайс-листа
+  const handleCreateNewCatalog = async () => {
+    if (!newCatalogName.trim()) return;
+    
+    setIsCreatingCatalog(true);
+    try {
+      const newCatalog = await createCatalog(newCatalogName.trim());
+      
+      if (newCatalog) {
+        // Выбираем новый прайс-лист
+        setSelectedCatalog(newCatalog.id);
+        
+        // Закрываем диалог и сбрасываем поле
+        setIsNewCatalogDialogOpen(false);
+        setNewCatalogName("");
+      }
+    } finally {
+      setIsCreatingCatalog(false);
     }
   };
 
@@ -1211,6 +1239,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onAdminClick={handleAdminClick}
+          onCreateCatalog={() => setIsNewCatalogDialogOpen(true)}
           ordersCount={orders.length}
           viewMode={viewMode}
           onStoreClick={handleStoreClick}
@@ -1340,7 +1369,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                   {isOwner && (
                     <>
                       <DropdownMenuItem
-                        onClick={() => handleAdminClick('catalogs')}
+                        onClick={() => setIsNewCatalogDialogOpen(true)}
                         className="cursor-pointer text-primary"
                       >
                         <Plus className="w-4 h-4 mr-2" />
@@ -1806,6 +1835,42 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
               disabled={!newProductName.trim() || isCreatingProduct}
             >
               {isCreatingProduct ? "Создание..." : "Создать"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Диалог создания нового прайс-листа */}
+      <Dialog open={isNewCatalogDialogOpen} onOpenChange={setIsNewCatalogDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Новый прайс-лист</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="Название прайс-листа"
+              value={newCatalogName}
+              onChange={(e) => setNewCatalogName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newCatalogName.trim()) {
+                  handleCreateNewCatalog();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsNewCatalogDialogOpen(false)}
+            >
+              Отмена
+            </Button>
+            <Button 
+              onClick={handleCreateNewCatalog}
+              disabled={!newCatalogName.trim() || isCreatingCatalog}
+            >
+              {isCreatingCatalog ? "Создание..." : "Создать"}
             </Button>
           </DialogFooter>
         </DialogContent>
