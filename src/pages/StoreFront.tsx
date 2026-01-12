@@ -352,7 +352,7 @@ function ProductCard({
         )}
 
         {/* Кнопки - flex-shrink-0 чтобы не сжимались */}
-        <div className={`flex items-center gap-0.5 flex-shrink-0 mt-0.5 flex-wrap justify-end flex-row-reverse`}>
+        <div className={`flex items-center gap-0.5 flex-shrink-0 mt-0.5 flex-wrap justify-end ml-auto flex-row-reverse`}>
           
           {/* Кнопки покупки - всегда показываем, но disabled если не in_stock */}
           {/* Целая - всегда показываем */}
