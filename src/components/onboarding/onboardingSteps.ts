@@ -37,7 +37,7 @@ export const onboardingSteps: OnboardingStep[] = [
   {
     id: 'fill-product-card',
     title: 'Заполнение карточки товара',
-    description: 'Откройте карточку и внесите данные: Себестоимость, Наценку, Цену за 1/2 и 1/4, Объём единицы товара.',
+    description: 'Откройте карточку и введите:\n\n• Себестоимость и Наценку.\n\n• Установите Уникальную цену за единицу товара при покупке половины 1/2.\n\n• Установите цельный объем от которого будет считаться 1/2 и 1/4',
     shortDescription: 'Как заполнить карточку',
     targetSelector: '[data-onboarding="product-card"]',
     pulsatingSelector: '[data-onboarding="product-card"]',
