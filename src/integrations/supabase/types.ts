@@ -1074,6 +1074,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_catalog_by_access_code: {
+        Args: { _access_code: string }
+        Returns: {
+          description: string
+          id: string
+          name: string
+          store_id: string
+          store_logo: string
+          store_name: string
+        }[]
+      }
       get_catalog_store_id: { Args: { _catalog_id: string }; Returns: string }
       has_catalog_access: {
         Args: { _catalog_id: string; _user_id: string }
