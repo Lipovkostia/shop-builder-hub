@@ -329,15 +329,15 @@ function ProductCard({
           {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />}
         </div>
 
-        {/* Цена за кг и объём - показываем всегда */}
+        {/* Цена за кг - вес и сумма только в режиме с фото */}
         <p className={`text-muted-foreground leading-tight ${showImages ? 'text-xs' : 'text-[8px]'}`}>
           {formatPrice(salePrice)}/{unit}
-          {product.unit_weight && (
+          {showImages && product.unit_weight && (
             <span className="ml-1">
               · {product.unit_weight} {unit}
             </span>
           )}
-          {fullPrice && (
+          {showImages && fullPrice && (
             <span className="ml-1">
               · ~{formatPrice(fullPrice)}
             </span>
