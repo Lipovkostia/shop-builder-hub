@@ -107,6 +107,7 @@ import { downloadExcelTemplate, importProductsFromExcel, ImportProgress, exportP
 import { ExcelImportSection } from "@/components/admin/ExcelImportSection";
 import { CatalogExportDialog } from "@/components/admin/CatalogExportDialog";
 import { QuickStartList } from "@/components/onboarding/QuickStartList";
+import { AdminOnboardingBanner } from "@/components/onboarding/AdminOnboardingBanner";
 
 // Removed localStorage keys - now using Supabase
 
@@ -3145,6 +3146,9 @@ export default function AdminPanel({
         onSectionChange={handleSectionChange}
         workspaceMode={workspaceMode}
       />
+
+      {/* Admin Onboarding Banner - показывается под лентой на шаге explore-admin */}
+      <AdminOnboardingBanner />
 
       {/* Main content */}
       <main 

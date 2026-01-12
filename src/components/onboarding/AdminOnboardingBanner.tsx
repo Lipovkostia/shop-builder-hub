@@ -2,11 +2,10 @@ import React, { useEffect } from "react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 
 /**
- * OnboardingBanner - фиолетовая полоса-подсказка для первого шага онбординга.
- * Отображается под панелью иконок без затемнения экрана.
- * Пульсирует папка с прайс-листами.
+ * AdminOnboardingBanner - баннер для шага онбординга в панели управления.
+ * Отображается под лентой навигации (MobileTabNav).
  */
-export function OnboardingBanner() {
+export function AdminOnboardingBanner() {
   const { currentStep, isActive, nextStep } = useOnboarding();
 
   // Добавляем пульсацию на элемент
@@ -20,7 +19,6 @@ export function OnboardingBanner() {
       }
     };
 
-    // Пытаемся добавить сразу и с интервалом для динамического контента
     addPulse();
     const interval = setInterval(addPulse, 200);
 
@@ -33,16 +31,19 @@ export function OnboardingBanner() {
     };
   }, [isActive, currentStep?.pulsatingSelector]);
 
-  // Показываем для первых четырёх шагов (витрина)
-  const showBannerSteps = ['create-pricelist', 'create-product', 'fill-product-card', 'go-to-admin'];
-  if (!isActive || !currentStep || !showBannerSteps.includes(currentStep.id)) {
+  // Показываем только для шага explore-admin
+  if (!isActive || !currentStep || currentStep.id !== 'explore-admin') {
     return null;
   }
+
+  const handleComplete = () => {
+    nextStep(); // Завершает онбординг
+  };
 
   return (
     <div 
       className="w-full bg-primary px-4 py-3 flex items-start justify-between gap-3 cursor-pointer hover:bg-primary/90 transition-colors"
-      onClick={nextStep}
+      onClick={handleComplete}
     >
       <p className="text-primary-foreground text-sm font-medium whitespace-pre-line leading-relaxed">
         {currentStep.description}
@@ -50,7 +51,7 @@ export function OnboardingBanner() {
       <button
         onClick={(e) => {
           e.stopPropagation();
-          nextStep();
+          handleComplete();
         }}
         className="text-primary-foreground/70 hover:text-primary-foreground text-xs whitespace-nowrap shrink-0 mt-0.5"
       >
