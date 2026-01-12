@@ -1,4 +1,5 @@
 import { Store as StoreIcon, Settings, ShoppingCart } from "lucide-react";
+import { useOnboardingSafe } from "@/contexts/OnboardingContext";
 
 type ActiveView = "storefront" | "admin";
 
@@ -19,12 +20,22 @@ export function WorkspaceHeader({
   onOrdersClick,
   ordersCount = 0,
 }: WorkspaceHeaderProps) {
+  const onboarding = useOnboardingSafe();
+
   const handleOrdersClick = () => {
     if (onOrdersClick) {
       onOrdersClick();
     } else {
       onViewChange("admin");
     }
+  };
+
+  const handleAdminClick = () => {
+    // Если онбординг на шаге "go-to-admin", продвигаем на следующий шаг
+    if (onboarding?.isActive && onboarding.currentStep?.id === 'go-to-admin') {
+      onboarding.nextStep();
+    }
+    onViewChange("admin");
   };
 
   return (
@@ -63,7 +74,7 @@ export function WorkspaceHeader({
         {/* Управление - справа */}
         <div className="flex-1 flex justify-end">
           <button
-            onClick={() => onViewChange("admin")}
+            onClick={handleAdminClick}
             data-onboarding-admin-button
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               activeView === "admin"
