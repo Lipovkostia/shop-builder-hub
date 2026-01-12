@@ -1649,8 +1649,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                     </div>
                   )}
                   {categoryFilter !== null && !searchQuery.trim() && (
-                    <div className="px-3 py-px bg-muted/50 border-b border-border">
-                      <span className="text-[11px] font-medium text-foreground leading-none">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-muted/40 to-transparent border-b border-border/50 sticky top-0 z-10 backdrop-blur-sm">
+                      <div className="w-0.5 h-3 rounded-full bg-primary/70" />
+                      <span className="text-[11px] font-semibold text-foreground/80 uppercase tracking-wider">
                         {catalogCategories.find(c => c.id === categoryFilter)?.name || 'Категория'}
                       </span>
                     </div>
@@ -1676,8 +1677,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                   
                   return (
                     <div key={category.id}>
-                      <div className="px-3 py-px bg-muted/50 border-b border-border sticky top-0 z-10">
-                        <span className="text-[11px] font-medium text-foreground leading-none">{category.name}</span>
+                      <div className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-muted/40 to-transparent border-b border-border/50 sticky top-0 z-10 backdrop-blur-sm">
+                        <div className="w-0.5 h-3 rounded-full bg-primary/70" />
+                        <span className="text-[11px] font-semibold text-foreground/80 uppercase tracking-wider">{category.name}</span>
                       </div>
                       {categoryProducts.map(renderProductCard)}
                     </div>
@@ -1697,8 +1699,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                   return (
                     <div>
                       {sortedCategories.length > 0 && (
-                        <div className="px-3 py-px bg-muted/50 border-b border-border sticky top-0 z-10">
-                          <span className="text-[11px] font-medium text-muted-foreground leading-none">Без категории</span>
+                        <div className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-muted/40 to-transparent border-b border-border/50 sticky top-0 z-10 backdrop-blur-sm">
+                          <div className="w-0.5 h-3 rounded-full bg-muted-foreground/50" />
+                          <span className="text-[11px] font-semibold text-muted-foreground/80 uppercase tracking-wider">Без категории</span>
                         </div>
                       )}
                       {uncategorizedProducts.map(renderProductCard)}
