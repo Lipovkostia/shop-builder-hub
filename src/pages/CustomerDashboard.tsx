@@ -216,8 +216,11 @@ function ProductCard({
   const hasVariantPrices = hasAnyVariantPrice;
   const isHead = product.packaging_type === 'head';
   
-  // Кнопка "целый" показывается если есть хотя бы одна цена варианта ИЛИ если явно задана fullPrice
-  const hasFullPrice = catalogPrices?.full != null || product.price_full != null || hasAnyVariantPrice;
+  // Кнопка "целый" показывается если:
+  // 1. Есть явно заданная цена full
+  // 2. ИЛИ есть хотя бы одна цена варианта
+  // 3. ИЛИ есть unit_weight > 1 (объём) - цена рассчитывается как pricePerKg * unitWeight
+  const hasFullPrice = catalogPrices?.full != null || product.price_full != null || hasAnyVariantPrice || (unitWeight > 1);
   
   // Расчёт цен для вариантов
   // Логика аналогична calculatePackagingPrices из seller: цена за кг * вес порции
