@@ -43,10 +43,12 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       const index = onboardingSteps.findIndex(s => s.id === fromStepId);
       if (index !== -1) {
         setCurrentStepIndex(index);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
     }
     setCurrentStepIndex(0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   const nextStep = useCallback(() => {
@@ -59,6 +61,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     
     if (currentStepIndex < onboardingSteps.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       // All steps completed
       setCurrentStepIndex(-1);
@@ -73,6 +76,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     const index = onboardingSteps.findIndex(s => s.id === stepId);
     if (index !== -1) {
       setCurrentStepIndex(index);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, []);
 
@@ -84,6 +88,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     const currentIndex = onboardingSteps.findIndex(s => s.id === stepId);
     if (currentIndex !== -1 && currentIndex < onboardingSteps.length - 1) {
       setCurrentStepIndex(currentIndex + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       setCurrentStepIndex(-1);
     }
