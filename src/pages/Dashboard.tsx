@@ -67,7 +67,31 @@ const Dashboard = () => {
       return;
     }
 
-    await loadProfile(session.user.id);
+    // Load profile and check if user has a store
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .single();
+
+    if (profileData) {
+      setProfile(profileData);
+      
+      // Check if user already has a store - redirect immediately
+      const { data: storesData } = await supabase
+        .from("stores")
+        .select("*")
+        .eq("owner_id", profileData.id);
+
+      if (storesData && storesData.length > 0) {
+        // Redirect to first store
+        navigate(`/store/${storesData[0].subdomain}`);
+        return;
+      }
+      
+      setStores(storesData || []);
+    }
+    
     setIsLoading(false);
   };
 
