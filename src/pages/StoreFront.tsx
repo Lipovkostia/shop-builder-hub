@@ -334,22 +334,20 @@ function ProductCard({
           {showImages && <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent" />}
         </div>
 
-        {/* Цена за кг и объём - только при показе изображений */}
-        {showImages && (
-          <p className="text-muted-foreground leading-tight text-xs">
-            {formatPrice(salePrice)}/{unit}
-            {product.unit_weight && (
-              <span className="ml-1">
-                · {product.unit_weight} {unit}
-              </span>
-            )}
-            {fullPrice && (
-              <span className="ml-1">
-                · ~{formatPrice(fullPrice)}
-              </span>
-            )}
-          </p>
-        )}
+        {/* Цена за кг и объём - показываем всегда */}
+        <p className={`text-muted-foreground leading-tight ${showImages ? 'text-xs' : 'text-[8px]'}`}>
+          {formatPrice(salePrice)}/{unit}
+          {product.unit_weight && (
+            <span className="ml-1">
+              · {product.unit_weight} {unit}
+            </span>
+          )}
+          {fullPrice && (
+            <span className="ml-1">
+              · ~{formatPrice(fullPrice)}
+            </span>
+          )}
+        </p>
 
         {/* Кнопки - flex-shrink-0 чтобы не сжимались */}
         <div className={`flex items-center gap-0.5 flex-shrink-0 mt-0.5 flex-wrap justify-end ml-auto flex-row-reverse`}>
