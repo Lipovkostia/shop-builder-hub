@@ -26,12 +26,12 @@ export const onboardingSteps: OnboardingStep[] = [
   {
     id: 'create-product',
     title: 'Создание товара',
-    description: 'Создайте товар. Введите название. Товар закрепится в текущем прайс-листе.',
+    description: 'Создайте новый товар. Товар привяжется к открытому прайс-листу.',
     shortDescription: 'Как создать товар',
     targetSelector: '[data-onboarding="add-product-button"]',
     pulsatingSelector: '[data-onboarding="add-product-button"]',
     placement: 'bottom',
     action: 'click',
-    view: 'admin',
+    view: 'storefront',
   },
 ];

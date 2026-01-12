@@ -33,8 +33,9 @@ export function OnboardingBanner() {
     };
   }, [isActive, currentStep?.pulsatingSelector]);
 
-  // Показываем только для первого шага (create-pricelist)
-  if (!isActive || !currentStep || currentStep.id !== 'create-pricelist') {
+  // Показываем для первых двух шагов
+  const showBannerSteps = ['create-pricelist', 'create-product'];
+  if (!isActive || !currentStep || !showBannerSteps.includes(currentStep.id)) {
     return null;
   }
 
