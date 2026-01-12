@@ -182,7 +182,7 @@ export const calculatePackagingPrices = (
   halfPricePerKg: number;
   quarterPricePerKg: number;
 } | null => {
-  if (!unitWeight || packagingType !== "head") return null;
+  if (!unitWeight) return null;
   
   // Цены за кг для каждой порции (по умолчанию = базовая цена)
   const fullPricePerKg = portionPrices?.fullPricePerKg ?? pricePerKg;
