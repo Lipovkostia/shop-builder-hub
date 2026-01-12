@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { X, Lightbulb } from "lucide-react";
+import { Lightbulb } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 
 interface SpotlightOverlayProps {
@@ -8,6 +8,7 @@ interface SpotlightOverlayProps {
   message: string;
   pulsatingSelector?: string;
   onSkip?: () => void;
+  canSkip?: boolean;
 }
 
 export function SpotlightOverlay({
@@ -15,6 +16,7 @@ export function SpotlightOverlay({
   message,
   pulsatingSelector,
   onSkip,
+  canSkip = true,
 }: SpotlightOverlayProps) {
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -121,9 +123,9 @@ export function SpotlightOverlay({
         />
       )}
 
-      {/* Message tooltip - fixed at bottom on mobile */}
+      {/* Message tooltip - centered on mobile, below target on desktop */}
       <div 
-        className="fixed bottom-4 left-4 right-4 md:absolute md:bottom-auto md:left-auto md:right-auto"
+        className="fixed left-4 right-4 top-1/2 -translate-y-1/2 md:top-auto md:translate-y-0 md:absolute md:left-auto md:right-auto"
         style={targetRect && window.innerWidth >= 768 ? {
           top: targetRect.bottom + padding + 16,
           left: Math.max(16, Math.min(targetRect.left, window.innerWidth - 320)),
@@ -139,16 +141,6 @@ export function SpotlightOverlay({
               <p className="text-sm text-foreground leading-relaxed">{message}</p>
             </div>
           </div>
-          
-          <div className="flex justify-end mt-3">
-            <button
-              onClick={onSkip}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-            >
-              <X className="w-3 h-3" />
-              Пропустить обучение
-            </button>
-          </div>
         </div>
       </div>
     </div>,
@@ -161,12 +153,16 @@ export function OnboardingSpotlight() {
 
   if (!isActive || !currentStep) return null;
 
+  // First step is mandatory - no skip button
+  const isMandatoryStep = currentStep.id === 'create-pricelist';
+
   return (
     <SpotlightOverlay
       targetSelector={currentStep.targetSelector}
       message={currentStep.description}
       pulsatingSelector={(currentStep as any).pulsatingSelector}
       onSkip={skipOnboarding}
+      canSkip={!isMandatoryStep}
     />
   );
 }
