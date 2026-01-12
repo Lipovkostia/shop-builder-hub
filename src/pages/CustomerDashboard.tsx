@@ -324,7 +324,7 @@ function ProductCard({
             </div>
             
             {/* Цена - под названием в обоих режимах */}
-            <p className={`text-muted-foreground leading-tight ${showImages ? 'text-xs' : 'text-[8px]'}`}>
+            <p className={`text-muted-foreground leading-tight ${showImages ? 'text-xs' : 'text-[11px]'}`}>
               {formatPrice(basePrice)}/{product.unit}
               {showImages && hasVariantPrices && unitWeight > 0 && (
                 <span className="ml-1">
