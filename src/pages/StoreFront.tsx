@@ -1054,6 +1054,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const [newCatalogName, setNewCatalogName] = useState("");
   const [isCreatingCatalog, setIsCreatingCatalog] = useState(false);
   const newCatalogInputRef = useRef<HTMLInputElement>(null);
+  const newProductInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
 
   // Отложенный фокус для избежания дёргания клавиатуры на мобильных
@@ -1065,6 +1066,15 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
       return () => clearTimeout(timer);
     }
   }, [isNewCatalogDialogOpen]);
+
+  useEffect(() => {
+    if (isNewProductDialogOpen && newProductInputRef.current) {
+      const timer = setTimeout(() => {
+        newProductInputRef.current?.focus({ preventScroll: true });
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+  }, [isNewProductDialogOpen]);
   
   // Состояние dropdown каталогов для онбординга
   const [catalogDropdownOpen, setCatalogDropdownOpen] = useState(false);
@@ -1990,12 +2000,16 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
 
       {/* Диалог создания нового товара */}
       <Dialog open={isNewProductDialogOpen} onOpenChange={setIsNewProductDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent 
+          className="top-[15vh] translate-y-0 w-[calc(100vw-2rem)] max-w-[400px]"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Новый товар</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <Input
+              ref={newProductInputRef}
               placeholder="Название товара"
               value={newProductName}
               onChange={(e) => setNewProductName(e.target.value)}
@@ -2004,7 +2018,6 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                   handleCreateNewProduct();
                 }
               }}
-              autoFocus
             />
           </div>
           <DialogFooter>
