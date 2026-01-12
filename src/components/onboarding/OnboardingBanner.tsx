@@ -33,8 +33,8 @@ export function OnboardingBanner() {
     };
   }, [isActive, currentStep?.pulsatingSelector]);
 
-  // Показываем для первых двух шагов
-  const showBannerSteps = ['create-pricelist', 'create-product'];
+  // Показываем для первых трёх шагов
+  const showBannerSteps = ['create-pricelist', 'create-product', 'fill-product-card'];
   if (!isActive || !currentStep || !showBannerSteps.includes(currentStep.id)) {
     return null;
   }

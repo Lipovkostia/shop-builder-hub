@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { unitOptions as baseUnitOptions, packagingOptions as basePackagingOptions, packagingTypeLabels, PackagingType } from "./types";
 import type { StoreProduct } from "@/hooks/useStoreProducts";
 import { useStoreCategories, StoreCategory } from "@/hooks/useStoreCategories";
+import { useOnboardingSafe } from "@/contexts/OnboardingContext";
+import { OnboardingProductChecklist } from "@/components/onboarding/OnboardingProductChecklist";
 
 interface Catalog {
   id: string;
@@ -57,6 +59,10 @@ export function ProductEditPanel({
   onCatalogSettingsChange,
   storeId,
 }: ProductEditPanelProps) {
+  // Onboarding context
+  const onboarding = useOnboardingSafe();
+  const isOnboardingFillStep = onboarding?.isActive && onboarding.currentStep?.id === 'fill-product-card';
+  
   // Fetch categories from database
   const { categories: storeCategories, createCategory } = useStoreCategories(storeId || product.store_id || null);
   
@@ -323,7 +329,8 @@ export function ProductEditPanel({
               onFocus={() => { buyPriceFocused.current = true; }}
               onBlur={() => { buyPriceFocused.current = false; }}
               placeholder="0"
-              className="h-7 text-xs w-full"
+              className={`h-7 text-xs w-full ${isOnboardingFillStep && (!buyPrice || parseFloat(buyPrice) <= 0) ? 'onboarding-field-pulse' : ''}`}
+              data-onboarding="field-buy-price"
             />
             <span className="text-[10px] text-muted-foreground shrink-0">₽</span>
           </div>
@@ -338,7 +345,8 @@ export function ProductEditPanel({
               value={markupValue}
               onChange={(e) => setMarkupValue(e.target.value)}
               placeholder="0"
-              className="h-7 text-xs flex-1"
+              className={`h-7 text-xs flex-1 ${isOnboardingFillStep && (!markupValue || parseFloat(markupValue) <= 0) ? 'onboarding-field-pulse' : ''}`}
+              data-onboarding="field-markup"
             />
             <Select value={markupType} onValueChange={(v) => setMarkupType(v as "percent" | "rubles")}>
               <SelectTrigger className="h-7 w-12 text-xs px-1">
@@ -368,7 +376,8 @@ export function ProductEditPanel({
             value={priceHalf}
             onChange={(e) => setPriceHalf(e.target.value)}
             placeholder="0"
-            className="h-7 text-xs mt-0.5"
+            className={`h-7 text-xs mt-0.5 ${isOnboardingFillStep && (!priceHalf || parseFloat(priceHalf) <= 0) ? 'onboarding-field-pulse' : ''}`}
+            data-onboarding="field-price-half"
           />
         </div>
 
@@ -379,7 +388,8 @@ export function ProductEditPanel({
             value={priceQuarter}
             onChange={(e) => setPriceQuarter(e.target.value)}
             placeholder="0"
-            className="h-7 text-xs mt-0.5"
+            className={`h-7 text-xs mt-0.5 ${isOnboardingFillStep && (!priceQuarter || parseFloat(priceQuarter) <= 0) ? 'onboarding-field-pulse' : ''}`}
+            data-onboarding="field-price-quarter"
           />
         </div>
 
@@ -484,9 +494,10 @@ export function ProductEditPanel({
             value={unitWeight}
             onChange={(e) => setUnitWeight(e.target.value)}
             placeholder="0"
-            className="h-7 text-xs mt-0.5"
+            className={`h-7 text-xs mt-0.5 ${isOnboardingFillStep && (!unitWeight || parseFloat(unitWeight) <= 0) ? 'onboarding-field-pulse' : ''}`}
             step="0.1"
             min="0"
+            data-onboarding="field-unit-weight"
           />
         </div>
 
@@ -567,6 +578,22 @@ export function ProductEditPanel({
             </div>
           </div>
         )}
+
+        {/* Onboarding Checklist */}
+        <div className="col-span-2 sm:col-span-3">
+          <OnboardingProductChecklist
+            buyPrice={buyPrice}
+            markupValue={markupValue}
+            priceHalf={priceHalf}
+            priceQuarter={priceQuarter}
+            unitWeight={unitWeight}
+            onAllCompleted={() => {
+              if (onboarding?.nextStep) {
+                onboarding.nextStep();
+              }
+            }}
+          />
+        </div>
       </div>
 
       {/* Кнопка закрыть */}

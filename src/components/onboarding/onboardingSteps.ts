@@ -34,4 +34,15 @@ export const onboardingSteps: OnboardingStep[] = [
     action: 'click',
     view: 'storefront',
   },
+  {
+    id: 'fill-product-card',
+    title: 'Заполнение карточки товара',
+    description: 'Откройте карточку и внесите данные: Себестоимость, Наценку, Цену за 1/2 и 1/4, Объём единицы товара.',
+    shortDescription: 'Как заполнить карточку',
+    targetSelector: '[data-onboarding="product-card"]',
+    pulsatingSelector: '[data-onboarding="product-card"]',
+    placement: 'bottom',
+    action: 'manual',
+    view: 'storefront',
+  },
 ];

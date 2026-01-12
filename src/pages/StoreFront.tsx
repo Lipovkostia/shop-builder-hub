@@ -959,6 +959,13 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
         // Закрываем диалог и сбрасываем поле
         setIsNewProductDialogOpen(false);
         setNewProductName("");
+        
+        // Переходим к следующему шагу онбординга и раскрываем карточку
+        if (isOnboardingActive && currentStep?.id === 'create-product') {
+          nextStep();
+          // Раскрываем созданную карточку товара
+          setExpandedProductId(newProduct.id);
+        }
       }
     } finally {
       setIsCreatingProduct(false);
