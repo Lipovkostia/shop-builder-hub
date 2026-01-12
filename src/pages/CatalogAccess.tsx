@@ -89,15 +89,32 @@ const CatalogAccess = () => {
       }
 
       // User is logged in - check if already has access
-      const { data: profile } = await supabase
+      let { data: profile } = await supabase
         .from("profiles")
         .select("id")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
+      // Если профиля нет - создаём его автоматически
       if (!profile) {
-        navigate(`/?tab=customer&catalog=${accessCode}&store=${catalogInfo.store_id}`);
-        return;
+        const { data: newProfile, error: profileError } = await supabase
+          .from("profiles")
+          .insert({
+            user_id: user.id,
+            email: user.email || '',
+            full_name: user.user_metadata?.full_name || '',
+            phone: user.user_metadata?.phone || user.phone || '',
+            role: 'customer'
+          })
+          .select('id')
+          .single();
+
+        if (profileError) {
+          console.error("Error creating profile:", profileError);
+          navigate(`/?tab=customer&catalog=${accessCode}&store=${catalogInfo.store_id}`);
+          return;
+        }
+        profile = newProfile;
       }
 
       // Check if user is a customer of this store
