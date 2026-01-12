@@ -100,7 +100,7 @@ export default function SellerWorkspace() {
             activeView={activeView}
             onViewChange={handleViewChange}
             onOrdersClick={() => handleSwitchToAdmin("orders")}
-            ordersCount={orders.length}
+            ordersCount={orders.filter(o => o.status === 'pending').length}
           />
         )}
         
