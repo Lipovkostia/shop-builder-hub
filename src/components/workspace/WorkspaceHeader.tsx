@@ -63,8 +63,8 @@ export function WorkspaceHeader({
             </button>
           </div>
 
-          {/* Центральная часть - Заказы и AI */}
-          <div className="flex items-center gap-2">
+          {/* Центральная часть - Заказы, AI, и Управление */}
+          <div className="flex items-center gap-3">
             {/* Мои заказы */}
             <button
               className="relative flex items-center justify-center p-2 rounded-full hover:bg-muted transition-colors"
@@ -79,30 +79,34 @@ export function WorkspaceHeader({
               )}
             </button>
 
-            {/* AI Помощник - яркая кнопка */}
+            {/* AI Помощник - по центру между заказами и шестерёнкой */}
             <button
               onClick={() => setAiAssistantOpen(true)}
-              className="relative flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:scale-110 transition-all duration-300 animate-shimmer"
+              className="relative flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 shadow-md shadow-purple-500/40 hover:shadow-purple-500/60 hover:scale-110 transition-all duration-300"
               title="AI Помощник"
             >
-              <Sparkles className="w-5 h-5 text-white" />
+              <Sparkles className="w-4 h-4 text-white" />
+              <span className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 animate-pulse opacity-30"></span>
             </button>
-          </div>
 
-          {/* Управление - справа */}
-          <div className="flex-1 flex justify-end">
+            {/* Управление */}
             <button
               onClick={handleAdminClick}
               data-onboarding-admin-button
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              className={`flex items-center justify-center p-2 rounded-full transition-colors ${
                 activeView === "admin"
-                  ? "bg-muted text-foreground shadow-sm"
+                  ? "bg-muted text-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               }`}
+              title="Управление"
             >
-              <Settings className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Управление</span>
+              <Settings className="w-5 h-5" />
             </button>
+          </div>
+
+          {/* Правая часть - пустая для баланса */}
+          <div className="flex-1 flex justify-end">
+            {/* Placeholder for balance */}
           </div>
         </div>
       </header>
