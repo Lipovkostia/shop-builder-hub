@@ -97,6 +97,7 @@ export default function SellerWorkspace() {
           <WorkspaceHeader
             storeName={store.name}
             storeLogo={store.logo_url}
+            storeId={store.id}
             activeView={activeView}
             onViewChange={handleViewChange}
             onOrdersClick={() => handleSwitchToAdmin("orders")}
