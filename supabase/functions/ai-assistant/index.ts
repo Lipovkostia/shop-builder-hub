@@ -172,6 +172,19 @@ serve(async (req) => {
 6. Учитывай синонимы: "сёмга" = "семга", "рыба" включает лосось, форель, сёмгу и т.д.
 7. Для каждого найденного товара укажи причину (reason) почему он выбран
 
+ПРАВИЛА ДЛЯ ИЗМЕНЕНИЯ ЦЕН (ОЧЕНЬ ВАЖНО!):
+Когда пользователь указывает ЦЕЛЕВУЮ ЦЕНУ продажи (например "установи цену 80000", "сделай цену 50000 рублей", "поставь 120000"):
+- Это означает что пользователь хочет ИТОГОВУЮ цену продажи, а НЕ наценку
+- Установи поле target_price равным указанной цене
+- НЕ устанавливай new_markup_type и new_markup_value напрямую
+- Фронтенд сам рассчитает наценку как: наценка = target_price - buyPrice
+
+Когда пользователь указывает НАЦЕНКУ в процентах (например "наценка 25%", "добавь 30%"):
+- Используй new_markup_type: "percent" и new_markup_value: указанный_процент
+
+Когда пользователь указывает НАЦЕНКУ в рублях (например "добавь 5000 к цене", "наценка 10000 рублей"):
+- Используй new_markup_type: "rubles" и new_markup_value: указанная_сумма
+
 Товары магазина (${productList.length} шт):
 ${JSON.stringify(productList.slice(0, 200), null, 2)}
 ${productList.length > 200 ? `\n... и ещё ${productList.length - 200} товаров` : ""}`;
@@ -214,8 +227,9 @@ ${productList.length > 200 ? `\n... и ещё ${productList.length - 200} тов
                         id: { type: "string", description: "Product ID" },
                         name: { type: "string", description: "Product name" },
                         reason: { type: "string", description: "Why this product was selected" },
-                        new_markup_type: { type: "string", enum: ["percent", "rubles"], description: "New markup type if changing prices" },
-                        new_markup_value: { type: "number", description: "New markup value if changing prices" },
+                        new_markup_type: { type: "string", enum: ["percent", "rubles"], description: "New markup type if specifying markup directly" },
+                        new_markup_value: { type: "number", description: "New markup value if specifying markup directly" },
+                        target_price: { type: "number", description: "Target sale price if user specified final price (e.g. 'set price 80000')" },
                       },
                       required: ["id", "name", "reason"],
                     },
@@ -298,6 +312,7 @@ ${productList.length > 200 ? `\n... и ещё ${productList.length - 200} тов
         ...p,
         current_status: current?.isActive ? "in_stock" : "hidden",
         current_markup: current ? { type: current.markupType, value: current.markupValue } : undefined,
+        buy_price: current?.buyPrice || 0,
       };
     });
 
