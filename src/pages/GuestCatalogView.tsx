@@ -1,0 +1,965 @@
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useGuestCatalog, GuestProduct, GuestCartItem } from "@/hooks/useGuestCatalog";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerFooter,
+} from "@/components/ui/drawer";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { FullscreenImageViewer } from "@/components/ui/fullscreen-image-viewer";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  ShoppingCart, 
+  Plus, 
+  Minus, 
+  Trash2, 
+  LogIn, 
+  Package,
+  Loader2,
+  Check,
+  LayoutGrid,
+  Search,
+  X,
+  Image,
+  Filter,
+  User,
+  Store,
+  Phone,
+  MessageCircle
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+// Utility functions
+function formatPriceSpaced(price: number): string {
+  return Math.round(price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
+function formatPrice(price: number): string {
+  return `${formatPriceSpaced(price)} ₽`;
+}
+
+// Portion indicator component
+function PortionIndicator({ type }: { type: "full" | "half" | "quarter" | "portion" }) {
+  const size = 14;
+  const r = 5;
+  const cx = size / 2;
+  const cy = size / 2;
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="flex-shrink-0">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary" />
+      {type === "full" && <circle cx={cx} cy={cy} r={r} className="fill-primary" />}
+      {type === "half" && <path d={`M ${cx} ${cy - r} A ${r} ${r} 0 0 0 ${cx} ${cy + r} Z`} className="fill-primary" />}
+      {type === "quarter" && <path d={`M ${cx} ${cy} L ${cx} ${cy - r} A ${r} ${r} 0 0 1 ${cx + r} ${cy} Z`} className="fill-primary" />}
+      {type === "portion" && <circle cx={cx} cy={cy} r={2} className="fill-primary" />}
+    </svg>
+  );
+}
+
+// Product card component
+function GuestProductCard({ 
+  product, 
+  cart, 
+  onAddToCart,
+  showImages = true,
+  isExpanded = false,
+  onImageClick,
+  onOpenFullscreen,
+  isDescriptionExpanded = false,
+  onNameClick
+}: { 
+  product: GuestProduct;
+  cart: GuestCartItem[];
+  onAddToCart: (productId: string, productName: string, variantIndex: number, price: number, unit: string | null, unitWeight: number | null) => void;
+  showImages?: boolean;
+  isExpanded?: boolean;
+  onImageClick?: () => void;
+  onOpenFullscreen?: (imageIndex: number) => void;
+  isDescriptionExpanded?: boolean;
+  onNameClick?: () => void;
+}) {
+  const getCartQuantity = (variantIndex: number) => {
+    const item = cart.find(c => c.productId === product.id && c.variantIndex === variantIndex);
+    return item?.quantity || 0;
+  };
+
+  const basePrice = product.price;
+  const unitWeight = product.unit_weight || 1;
+  
+  const catalogPrices = product.catalog_portion_prices;
+  
+  const hasHalfPrice = catalogPrices?.half != null || product.price_half != null;
+  const hasQuarterPrice = catalogPrices?.quarter != null || product.price_quarter != null;
+  const hasPortionPrice = catalogPrices?.portion != null || product.price_portion != null;
+  
+  const hasAnyVariantPrice = hasHalfPrice || hasQuarterPrice || hasPortionPrice;
+  const hasVariantPrices = hasAnyVariantPrice;
+  
+  const hasFullPrice = catalogPrices?.full != null || product.price_full != null || hasAnyVariantPrice || (unitWeight > 1);
+  
+  const fullPricePerKg = catalogPrices?.full || product.price_full || basePrice;
+  const halfPricePerKg = catalogPrices?.half || product.price_half || basePrice;
+  const quarterPricePerKg = catalogPrices?.quarter || product.price_quarter || basePrice;
+  const portionPrice = catalogPrices?.portion || product.price_portion || null;
+  
+  const fullPrice = fullPricePerKg * unitWeight;
+  const halfPrice = halfPricePerKg * (unitWeight / 2);
+  const quarterPrice = quarterPricePerKg * (unitWeight / 4);
+
+  const catalogStatus = product.catalog_status;
+  const canOrder = catalogStatus ? catalogStatus === "in_stock" || catalogStatus === "pre_order" : product.quantity > 0;
+
+  const statusLabels: Record<string, string> = {
+    in_stock: "В наличии",
+    pre_order: "Под заказ",
+    out_of_stock: "Нет в наличии",
+    coming_soon: "Ожидается",
+    hidden: "Скрыт",
+  };
+  const statusLabel = catalogStatus ? (statusLabels[catalogStatus] || "Нет в наличии") : null;
+  const image = product.images?.[0] || "";
+
+  const descInnerRef = useRef<HTMLDivElement>(null);
+  const [descHeight, setDescHeight] = useState(0);
+
+  useEffect(() => {
+    if (!showImages || !product.description) return;
+    if (isDescriptionExpanded) {
+      requestAnimationFrame(() => {
+        setDescHeight(descInnerRef.current?.scrollHeight ?? 0);
+      });
+    } else {
+      setDescHeight(0);
+    }
+  }, [isDescriptionExpanded, showImages, product.description]);
+
+  return (
+    <>
+      <div className={`flex gap-1.5 px-1.5 py-0.5 bg-background border-b border-border transition-all ${showImages ? 'min-h-[72px] h-auto' : (isDescriptionExpanded ? 'min-h-[36px] h-auto' : 'h-9 min-h-[36px]')}`}>
+        {showImages && (
+          <button 
+            onClick={onImageClick}
+            className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-start cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+          >
+            {image ? (
+              <img src={image} alt={product.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Package className="w-6 h-6 text-muted-foreground" />
+              </div>
+            )}
+            {(product.images?.length || 0) > 1 && (
+              <div className="absolute bottom-0.5 right-0.5 bg-black/60 text-white text-[8px] px-1 rounded">
+                {product.images?.length}
+              </div>
+            )}
+          </button>
+        )}
+
+        <div className={`flex-1 min-w-0 flex ${showImages ? 'flex-col justify-start gap-0' : 'flex-row items-center gap-2'}`}>
+          <div className={`${showImages ? '' : 'flex-1 min-w-0 overflow-hidden flex flex-col justify-center'}`}>
+            <div className="flex items-center gap-1">
+              {catalogStatus === "pre_order" && (
+                <span className={`inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 flex-shrink-0 ${showImages ? 'mr-1.5 text-xs' : 'mr-1'}`}>
+                  <span className={`rounded-full bg-blue-500 ${showImages ? 'w-2 h-2' : 'w-1.5 h-1.5'}`} />
+                  {showImages && <span>под заказ</span>}
+                </span>
+              )}
+              <button 
+                onClick={onNameClick}
+                className={`relative overflow-hidden text-left flex-1 min-w-0 ${product.description ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+              >
+                <h3 className={`font-medium text-foreground leading-tight ${showImages ? 'text-lg pr-6' : 'text-[11px] pr-4'} ${isDescriptionExpanded ? 'text-primary whitespace-normal break-words' : 'whitespace-nowrap'}`}>
+                  {product.name}
+                </h3>
+                {!isDescriptionExpanded && (
+                  <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+                )}
+              </button>
+            </div>
+            
+            <p className={`text-muted-foreground leading-tight ${showImages ? 'text-xs' : 'text-[11px]'}`}>
+              {formatPrice(basePrice)}/{product.unit}
+              {showImages && hasVariantPrices && unitWeight > 0 && (
+                <span className="ml-1">
+                  · {unitWeight}{product.unit === 'шт' ? 'шт' : 'кг'} ~{formatPrice(fullPrice)}{product.packaging_type ? `/${product.packaging_type}` : ''}
+                </span>
+              )}
+            </p>
+          </div>
+          
+          {showImages && product.description && (
+            <div
+              className="overflow-hidden"
+              style={{
+                maxHeight: isDescriptionExpanded ? descHeight : 0,
+                opacity: isDescriptionExpanded ? 1 : 0,
+                transition: "max-height 320ms ease-in-out, opacity 200ms ease-in-out",
+                willChange: "max-height",
+              }}
+            >
+              <div ref={descInnerRef}>
+                <p className="text-xs text-muted-foreground leading-relaxed py-1 pr-2 break-words whitespace-normal max-w-full">
+                  {product.description}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className={`flex items-center gap-0.5 flex-wrap flex-shrink-0 ${showImages ? 'mt-0.5 justify-end ml-auto' : 'justify-end'}`}>
+            {canOrder ? (
+              <>
+                {hasPortionPrice && portionPrice && (() => {
+                  const qty = getCartQuantity(3);
+                  return (
+                    <button
+                      onClick={() => onAddToCart(product.id, product.name, 3, portionPrice, product.unit, unitWeight)}
+                      className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all h-7 px-2`}
+                    >
+                      {qty > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground font-bold rounded-full flex items-center justify-center w-3.5 h-3.5 text-[9px]">
+                          {qty}
+                        </span>
+                      )}
+                      <PortionIndicator type="portion" />
+                      <span className="font-medium text-foreground text-sm">{formatPriceSpaced(portionPrice)}</span>
+                    </button>
+                  );
+                })()}
+                {hasQuarterPrice && (() => {
+                  const qty = getCartQuantity(2);
+                  return (
+                    <button
+                      onClick={() => onAddToCart(product.id, product.name, 2, quarterPrice, product.unit, unitWeight)}
+                      className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all h-7 px-2`}
+                    >
+                      {qty > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground font-bold rounded-full flex items-center justify-center w-3.5 h-3.5 text-[9px]">
+                          {qty}
+                        </span>
+                      )}
+                      <PortionIndicator type="quarter" />
+                      <span className="font-medium text-foreground text-sm">{formatPriceSpaced(quarterPrice)}</span>
+                    </button>
+                  );
+                })()}
+                {hasHalfPrice && (() => {
+                  const qty = getCartQuantity(1);
+                  return (
+                    <button
+                      onClick={() => onAddToCart(product.id, product.name, 1, halfPrice, product.unit, unitWeight)}
+                      className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all h-7 px-2`}
+                    >
+                      {qty > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground font-bold rounded-full flex items-center justify-center w-3.5 h-3.5 text-[9px]">
+                          {qty}
+                        </span>
+                      )}
+                      <PortionIndicator type="half" />
+                      <span className="font-medium text-foreground text-sm">{formatPriceSpaced(halfPrice)}</span>
+                    </button>
+                  );
+                })()}
+                {hasFullPrice && (() => {
+                  const qty = getCartQuantity(0);
+                  return (
+                    <button
+                      onClick={() => onAddToCart(product.id, product.name, 0, fullPrice, product.unit, unitWeight)}
+                      className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all h-7 px-2`}
+                    >
+                      {qty > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground font-bold rounded-full flex items-center justify-center w-3.5 h-3.5 text-[9px]">
+                          {qty}
+                        </span>
+                      )}
+                      <PortionIndicator type="full" />
+                      <span className="font-medium text-foreground text-sm">{formatPriceSpaced(fullPrice)}</span>
+                    </button>
+                  );
+                })()}
+                {!hasVariantPrices && !hasFullPrice && (() => {
+                  const qty = getCartQuantity(0);
+                  return (
+                    <button
+                      onClick={() => onAddToCart(product.id, product.name, 0, basePrice, product.unit, unitWeight)}
+                      className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all h-7 px-2`}
+                    >
+                      {qty > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground font-bold rounded-full flex items-center justify-center w-3.5 h-3.5 text-[9px]">
+                          {qty}
+                        </span>
+                      )}
+                      <Plus className="w-3 h-3 text-primary" />
+                      <span className="font-medium text-foreground text-sm">{formatPriceSpaced(basePrice)}</span>
+                    </button>
+                  );
+                })()}
+              </>
+            ) : (
+              <span className={`text-muted-foreground ${showImages ? 'text-xs' : 'text-[10px]'}`}>
+                {statusLabel || "Нет в наличии"}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {!showImages && (
+        <Collapsible open={isDescriptionExpanded}>
+          <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+            {product.description && (
+              <div className="px-3 py-2 bg-muted/30 border-b border-border">
+                <p className="text-[10px] text-muted-foreground leading-relaxed whitespace-normal break-words">
+                  {product.description}
+                </p>
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+      
+      <Collapsible open={isExpanded}>
+        <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+          {(product.images?.length || 0) > 0 && (
+            <div className="overflow-x-auto bg-muted/30 border-b border-border">
+              <div className="flex gap-2 p-2">
+                {product.images?.map((img, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => onOpenFullscreen?.(idx)}
+                    className="w-32 h-32 flex-shrink-0 rounded overflow-hidden bg-muted cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                  >
+                    <img src={img} alt={`${product.name} ${idx + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
+    </>
+  );
+}
+
+// Main component
+const GuestCatalogView = () => {
+  const { accessCode } = useParams<{ accessCode: string }>();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user } = useAuth();
+
+  const {
+    catalogInfo,
+    products,
+    cart,
+    loading,
+    productsLoading,
+    error,
+    addToCart,
+    updateCartQuantity,
+    removeFromCart,
+    clearCart,
+    cartTotal,
+    cartItemsCount,
+  } = useGuestCatalog(accessCode);
+
+  // UI state
+  const [showImages, setShowImages] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [descriptionExpandedId, setDescriptionExpandedId] = useState<string | null>(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Cart & checkout state
+  const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [guestName, setGuestName] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [guestComment, setGuestComment] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fullscreen image viewer
+  const [fullscreenProduct, setFullscreenProduct] = useState<GuestProduct | null>(null);
+  const [fullscreenIndex, setFullscreenIndex] = useState(0);
+
+  // Detect mobile
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  // Get unique categories from products
+  const categories = useMemo(() => {
+    const categoryMap = new Map<string, string>();
+    products.forEach(p => {
+      if (p.category_id && p.category_name) {
+        categoryMap.set(p.category_id, p.category_name);
+      }
+    });
+    return Array.from(categoryMap.entries()).map(([id, name]) => ({ id, name }));
+  }, [products]);
+
+  // Get unique statuses
+  const availableStatuses = useMemo(() => {
+    const statusSet = new Set<string>();
+    products.forEach(p => {
+      if (p.catalog_status) statusSet.add(p.catalog_status);
+    });
+    const statusLabels: Record<string, string> = {
+      in_stock: "В наличии",
+      pre_order: "Под заказ",
+      out_of_stock: "Нет в наличии",
+      coming_soon: "Ожидается",
+    };
+    return Array.from(statusSet).map(s => ({ value: s, label: statusLabels[s] || s }));
+  }, [products]);
+
+  // Filter products
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      if (selectedCategory && p.category_id !== selectedCategory) return false;
+      if (selectedStatus && p.catalog_status !== selectedStatus) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        return p.name.toLowerCase().includes(q) || 
+               p.sku?.toLowerCase().includes(q) ||
+               p.description?.toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [products, selectedCategory, selectedStatus, searchQuery]);
+
+  // Handle checkout submission
+  const handleCheckout = async () => {
+    if (!guestName.trim() || !guestPhone.trim()) {
+      toast({
+        title: "Заполните данные",
+        description: "Укажите имя и телефон для оформления заказа",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (cart.length === 0) {
+      toast({
+        title: "Корзина пуста",
+        description: "Добавьте товары для оформления заказа",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Generate order number
+      const orderNumber = `G${Date.now().toString(36).toUpperCase()}`;
+
+      // Create guest order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          order_number: orderNumber,
+          store_id: catalogInfo!.store_id,
+          customer_id: null,
+          guest_name: guestName.trim(),
+          guest_phone: guestPhone.trim(),
+          is_guest_order: true,
+          notes: guestComment.trim() || null,
+          subtotal: cartTotal,
+          total: cartTotal,
+          status: 'pending',
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Create order items
+      const orderItems = cart.map(item => {
+        const variantLabels = ['целая', '1/2', '1/4', 'порция'];
+        const variantLabel = variantLabels[item.variantIndex] || '';
+        return {
+          order_id: order.id,
+          product_id: null, // Can't reference product directly due to RLS
+          product_name: `${item.productName}${variantLabel ? ` (${variantLabel})` : ''}`,
+          quantity: item.quantity,
+          price: item.price,
+          total: item.price * item.quantity,
+        };
+      });
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      // Send notification to store owner (optional - could be edge function)
+      try {
+        await supabase.functions.invoke('send-order-notification', {
+          body: { orderId: order.id },
+        });
+      } catch (e) {
+        console.log('Notification failed (non-critical):', e);
+      }
+
+      toast({
+        title: "Заказ оформлен!",
+        description: `Номер заказа: ${orderNumber}. Мы свяжемся с вами в ближайшее время.`,
+      });
+
+      clearCart();
+      setCheckoutOpen(false);
+      setCartOpen(false);
+      setGuestName("");
+      setGuestPhone("");
+      setGuestComment("");
+
+    } catch (err: any) {
+      console.error('Checkout error:', err);
+      toast({
+        title: "Ошибка оформления",
+        description: err.message || "Попробуйте ещё раз",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Redirect authenticated users to customer dashboard
+  useEffect(() => {
+    if (user && catalogInfo) {
+      navigate(`/catalog/${accessCode}`);
+    }
+  }, [user, catalogInfo, accessCode, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="mt-4 text-muted-foreground">Загрузка каталога...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center">
+          <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h1 className="text-xl font-semibold mb-2">Каталог не найден</h1>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={() => navigate("/")} variant="outline">
+            На главную
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const CartContent = () => (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-auto">
+        {cart.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full py-12 text-center">
+            <ShoppingCart className="w-12 h-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Корзина пуста</p>
+          </div>
+        ) : (
+          <div className="space-y-2 p-4">
+            {cart.map((item, idx) => {
+              const variantLabels = ['Целая', '1/2', '1/4', 'Порция'];
+              return (
+                <div key={idx} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{item.productName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {variantLabels[item.variantIndex]} · {formatPrice(item.price)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => updateCartQuantity(item.productId, item.variantIndex, item.quantity - 1)}
+                      className="w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
+                    <button 
+                      onClick={() => updateCartQuantity(item.productId, item.variantIndex, item.quantity + 1)}
+                      className="w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                    <button 
+                      onClick={() => removeFromCart(item.productId, item.variantIndex)}
+                      className="w-7 h-7 rounded-full bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive/20"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {cart.length > 0 && (
+        <div className="border-t border-border p-4 space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="font-medium">Итого:</span>
+            <span className="text-lg font-bold">{formatPrice(cartTotal)}</span>
+          </div>
+          <Button 
+            onClick={() => {
+              setCartOpen(false);
+              setCheckoutOpen(true);
+            }} 
+            className="w-full"
+          >
+            Оформить заказ
+          </Button>
+          <Button 
+            onClick={() => navigate(`/?tab=customer&catalog=${accessCode}&store=${catalogInfo?.store_id}`)} 
+            variant="outline"
+            className="w-full"
+          >
+            <LogIn className="w-4 h-4 mr-2" />
+            Войти для сохранения заказов
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+
+  const CheckoutContent = () => (
+    <div className="space-y-4 p-4">
+      <div className="space-y-2">
+        <Label htmlFor="guest-name">Ваше имя *</Label>
+        <Input
+          id="guest-name"
+          placeholder="Как к вам обращаться?"
+          value={guestName}
+          onChange={(e) => setGuestName(e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="guest-phone">Телефон *</Label>
+        <Input
+          id="guest-phone"
+          type="tel"
+          placeholder="+7 (999) 123-45-67"
+          value={guestPhone}
+          onChange={(e) => setGuestPhone(e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="guest-comment">Комментарий</Label>
+        <Input
+          id="guest-comment"
+          placeholder="Пожелания к заказу"
+          value={guestComment}
+          onChange={(e) => setGuestComment(e.target.value)}
+        />
+      </div>
+      
+      <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+        <div className="text-sm font-medium">Ваш заказ:</div>
+        {cart.map((item, idx) => {
+          const variantLabels = ['Целая', '1/2', '1/4', 'Порция'];
+          return (
+            <div key={idx} className="flex justify-between text-sm">
+              <span className="truncate">{item.productName} ({variantLabels[item.variantIndex]}) × {item.quantity}</span>
+              <span className="font-medium ml-2">{formatPrice(item.price * item.quantity)}</span>
+            </div>
+          );
+        })}
+        <div className="border-t border-border pt-2 flex justify-between font-medium">
+          <span>Итого:</span>
+          <span>{formatPrice(cartTotal)}</span>
+        </div>
+      </div>
+
+      <Button 
+        onClick={handleCheckout} 
+        disabled={isSubmitting}
+        className="w-full"
+      >
+        {isSubmitting ? (
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        ) : (
+          <Check className="w-4 h-4 mr-2" />
+        )}
+        Отправить заказ
+      </Button>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="h-12 flex items-center justify-between px-3 relative">
+          <button 
+            onClick={() => setCartOpen(true)}
+            className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3"
+          >
+            <ShoppingCart className="w-4 h-4 text-primary" />
+            <span className="text-xs font-semibold text-foreground">{formatPrice(cartTotal)}</span>
+            {cartItemsCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                {cartItemsCount}
+              </span>
+            )}
+          </button>
+
+          {/* Category filter - center */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <DropdownMenu>
+              <DropdownMenuTrigger 
+                className={`p-1.5 transition-colors rounded-full ${selectedCategory ? 'bg-primary/20 text-primary' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="min-w-[160px] bg-popover z-50">
+                <DropdownMenuItem onClick={() => setSelectedCategory(null)} className="cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    {!selectedCategory && <Check className="w-4 h-4 text-primary" />}
+                    <span className={!selectedCategory ? "font-semibold" : ""}>Все категории</span>
+                  </div>
+                </DropdownMenuItem>
+                {categories.map((cat) => (
+                  <DropdownMenuItem key={cat.id} onClick={() => setSelectedCategory(cat.id)} className="cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      {selectedCategory === cat.id && <Check className="w-4 h-4 text-primary" />}
+                      <span className={selectedCategory === cat.id ? "font-semibold" : ""}>{cat.name}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Login button - right */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(`/?tab=customer&catalog=${accessCode}&store=${catalogInfo?.store_id}`)}
+            className="text-xs"
+          >
+            <LogIn className="w-4 h-4 mr-1" />
+            Войти
+          </Button>
+        </div>
+
+        {/* Search and controls */}
+        <div className="h-10 flex items-center px-3 border-t border-border bg-muted/30 overflow-hidden">
+          <div className={`flex items-center gap-1 transition-all duration-300 ease-in-out ${isSearchFocused ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>
+            <button 
+              onClick={() => setShowImages(!showImages)}
+              className={`p-2 rounded transition-colors ${showImages ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+            >
+              <Image className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className={`flex items-center transition-all duration-300 ease-in-out ${isSearchFocused ? 'flex-1 mx-0' : 'flex-1 mx-2'}`}>
+            <div 
+              className={`flex items-center gap-2 bg-background border border-border rounded-full transition-all duration-300 ease-in-out cursor-text ${isSearchFocused ? 'w-full px-3 py-1.5' : 'w-8 h-8 justify-center px-0'}`}
+              onClick={() => {
+                setIsSearchFocused(true);
+                setTimeout(() => searchInputRef.current?.focus(), 50);
+              }}
+            >
+              <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Поиск товара..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => { if (!searchQuery) setIsSearchFocused(false); }}
+                className={`bg-transparent outline-none text-sm transition-all duration-300 ease-in-out ${isSearchFocused ? 'w-full opacity-100' : 'w-0 opacity-0'}`}
+              />
+              {isSearchFocused && searchQuery && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setSearchQuery(''); searchInputRef.current?.focus(); }}
+                  className="p-0.5 hover:bg-muted rounded-full"
+                >
+                  <X className="w-3 h-3 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className={`flex items-center transition-all duration-300 ease-in-out ${isSearchFocused ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>
+            <DropdownMenu>
+              <DropdownMenuTrigger 
+                className={`p-2 rounded transition-colors ${selectedStatus ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+              >
+                <Filter className="w-4 h-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[160px] bg-popover z-50">
+                <DropdownMenuItem onClick={() => setSelectedStatus(null)} className="cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    {!selectedStatus && <Check className="w-4 h-4 text-primary" />}
+                    <span className={!selectedStatus ? "font-semibold" : ""}>Все статусы</span>
+                  </div>
+                </DropdownMenuItem>
+                {availableStatuses.map((status) => (
+                  <DropdownMenuItem key={status.value} onClick={() => setSelectedStatus(status.value)} className="cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      {selectedStatus === status.value && <Check className="w-4 h-4 text-primary" />}
+                      <span className={selectedStatus === status.value ? "font-semibold" : ""}>{status.label}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+        
+        {/* Store name */}
+        <div className="px-3 py-1 border-t border-border bg-background">
+          <p className="text-[10px] text-muted-foreground text-right truncate">
+            {catalogInfo?.store_name} — {catalogInfo?.name}
+          </p>
+        </div>
+      </header>
+
+      {/* Products */}
+      <main className="flex-1 overflow-auto">
+        {productsLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+            <Package className="w-12 h-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">
+              {searchQuery ? "Ничего не найдено" : "В каталоге пока нет товаров"}
+            </p>
+          </div>
+        ) : (
+          <div>
+            {filteredProducts.map((product) => (
+              <GuestProductCard
+                key={product.id}
+                product={product}
+                cart={cart}
+                onAddToCart={addToCart}
+                showImages={showImages}
+                isExpanded={expandedProductId === product.id}
+                onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
+                onOpenFullscreen={(idx) => {
+                  setFullscreenProduct(product);
+                  setFullscreenIndex(idx);
+                }}
+                isDescriptionExpanded={descriptionExpandedId === product.id}
+                onNameClick={() => {
+                  if (product.description) {
+                    setDescriptionExpandedId(descriptionExpandedId === product.id ? null : product.id);
+                  }
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Cart Sheet/Drawer */}
+      {isMobile ? (
+        <Drawer open={cartOpen} onOpenChange={setCartOpen}>
+          <DrawerContent className="max-h-[85vh]">
+            <DrawerHeader>
+              <DrawerTitle>Корзина</DrawerTitle>
+              <DrawerDescription>
+                {cartItemsCount} {cartItemsCount === 1 ? 'товар' : 'товаров'} на {formatPrice(cartTotal)}
+              </DrawerDescription>
+            </DrawerHeader>
+            <CartContent />
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Sheet open={cartOpen} onOpenChange={setCartOpen}>
+          <SheetContent className="w-full sm:max-w-md">
+            <SheetHeader>
+              <SheetTitle>Корзина</SheetTitle>
+              <SheetDescription>
+                {cartItemsCount} {cartItemsCount === 1 ? 'товар' : 'товаров'} на {formatPrice(cartTotal)}
+              </SheetDescription>
+            </SheetHeader>
+            <CartContent />
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {/* Checkout Dialog */}
+      <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Оформление заказа</DialogTitle>
+            <DialogDescription>
+              Укажите контактные данные для связи
+            </DialogDescription>
+          </DialogHeader>
+          <CheckoutContent />
+        </DialogContent>
+      </Dialog>
+
+      {/* Fullscreen Image Viewer */}
+      <FullscreenImageViewer
+        images={fullscreenProduct?.images || []}
+        currentIndex={fullscreenIndex}
+        isOpen={!!fullscreenProduct}
+        onClose={() => setFullscreenProduct(null)}
+        onIndexChange={setFullscreenIndex}
+      />
+    </div>
+  );
+};
+
+export default GuestCatalogView;

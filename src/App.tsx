@@ -14,6 +14,7 @@ import SellerWorkspace from "./pages/SellerWorkspace";
 import NotFound from "./pages/NotFound";
 import CatalogAccess from "./pages/CatalogAccess";
 import CustomerDashboard from "./pages/CustomerDashboard";
+import GuestCatalogView from "./pages/GuestCatalogView";
 import { useStoreBySubdomain } from "@/hooks/useUserStore";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -63,6 +64,7 @@ const App = () => (
             <Route path="/super-admin" element={<SuperAdmin />} />
             {/* Customer routes */}
             <Route path="/catalog/:accessCode" element={<CatalogAccess />} />
+            <Route path="/catalog/:accessCode/view" element={<GuestCatalogView />} />
             <Route path="/customer-dashboard" element={<CustomerDashboard />} />
             {/* Store routes - SellerWorkspace for seamless transitions */}
             <Route path="/store/:subdomain" element={<SellerWorkspace />} />
