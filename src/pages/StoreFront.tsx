@@ -1757,8 +1757,8 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
       {/* Витрина */}
       {viewMode === 'storefront' && (
         <main className="flex-1 overflow-auto">
-        {/* AI Assistant Banner - только для владельца */}
-        {isOwner && workspaceMode && (
+        {/* AI Assistant Banner - показываем владельцу/админу */}
+        {isOwner && (
           <AIAssistantBanner storeId={store?.id || null} />
         )}
         {filteredProducts.length > 0 ? (
