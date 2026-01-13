@@ -1,11 +1,14 @@
-import { Store as StoreIcon, Settings, ShoppingCart } from "lucide-react";
+import { useState } from "react";
+import { Store as StoreIcon, Settings, ShoppingCart, Sparkles } from "lucide-react";
 import { useOnboardingSafe } from "@/contexts/OnboardingContext";
+import { AIAssistantPanel } from "@/components/admin/AIAssistantPanel";
 
 type ActiveView = "storefront" | "admin";
 
 interface WorkspaceHeaderProps {
   storeName: string;
   storeLogo?: string | null;
+  storeId?: string | null;
   activeView: ActiveView;
   onViewChange: (view: ActiveView) => void;
   onOrdersClick?: () => void;
@@ -15,12 +18,14 @@ interface WorkspaceHeaderProps {
 export function WorkspaceHeader({
   storeName,
   storeLogo,
+  storeId,
   activeView,
   onViewChange,
   onOrdersClick,
   ordersCount = 0,
 }: WorkspaceHeaderProps) {
   const onboarding = useOnboardingSafe();
+  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
 
   const handleOrdersClick = () => {
     if (onOrdersClick) {
@@ -39,54 +44,106 @@ export function WorkspaceHeader({
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-background border-b border-border">
-      <div className="h-12 flex items-center justify-between px-3">
-        {/* Витрина - слева */}
-        <div className="flex-1">
-          <button
-            onClick={() => onViewChange("storefront")}
-            data-onboarding-storefront-button
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              activeView === "storefront"
-                ? "bg-muted text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            }`}
-          >
-            <StoreIcon className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Витрина</span>
-          </button>
-        </div>
+    <>
+      <header className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="h-12 flex items-center justify-between px-3">
+          {/* Витрина - слева */}
+          <div className="flex-1">
+            <button
+              onClick={() => onViewChange("storefront")}
+              data-onboarding-storefront-button
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                activeView === "storefront"
+                  ? "bg-muted text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
+            >
+              <StoreIcon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Витрина</span>
+            </button>
+          </div>
 
-        {/* Мои заказы - по центру */}
-        <button
-          className="relative flex items-center justify-center p-2 rounded-full hover:bg-muted transition-colors"
-          onClick={handleOrdersClick}
-          title="Мои заказы"
-        >
-          <ShoppingCart className="w-5 h-5 text-muted-foreground" />
-          {ordersCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-              {ordersCount > 99 ? "99+" : ordersCount}
-            </span>
-          )}
-        </button>
+          {/* Центральная часть - Заказы и AI */}
+          <div className="flex items-center gap-2">
+            {/* Мои заказы */}
+            <button
+              className="relative flex items-center justify-center p-2 rounded-full hover:bg-muted transition-colors"
+              onClick={handleOrdersClick}
+              title="Мои заказы"
+            >
+              <ShoppingCart className="w-5 h-5 text-muted-foreground" />
+              {ordersCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                  {ordersCount > 99 ? "99+" : ordersCount}
+                </span>
+              )}
+            </button>
 
-        {/* Управление - справа */}
-        <div className="flex-1 flex justify-end">
-          <button
-            onClick={handleAdminClick}
-            data-onboarding-admin-button
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              activeView === "admin"
-                ? "bg-muted text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            }`}
-          >
-            <Settings className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Управление</span>
-          </button>
+            {/* AI Помощник - с анимацией переливания */}
+            <button
+              onClick={() => setAiAssistantOpen(true)}
+              className="relative flex items-center justify-center p-2 rounded-full transition-all duration-300 group hover:scale-110"
+              title="AI Помощник"
+            >
+              {/* Фоновое свечение */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300" />
+              
+              {/* Анимированный градиентный бордер */}
+              <div className="absolute inset-0 rounded-full p-[2px] bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 animate-gradient-x">
+                <div className="w-full h-full rounded-full bg-background" />
+              </div>
+              
+              {/* Иконка */}
+              <Sparkles className="relative w-5 h-5 text-transparent bg-clip-text bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 animate-pulse-subtle" 
+                style={{ 
+                  fill: 'url(#ai-gradient)',
+                  stroke: 'url(#ai-gradient)',
+                }}
+              />
+              
+              {/* SVG градиент для иконки */}
+              <svg width="0" height="0" className="absolute">
+                <defs>
+                  <linearGradient id="ai-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#8B5CF6">
+                      <animate attributeName="stop-color" values="#8B5CF6;#EC4899;#8B5CF6" dur="2s" repeatCount="indefinite" />
+                    </stop>
+                    <stop offset="50%" stopColor="#A855F7">
+                      <animate attributeName="stop-color" values="#A855F7;#8B5CF6;#A855F7" dur="2s" repeatCount="indefinite" />
+                    </stop>
+                    <stop offset="100%" stopColor="#EC4899">
+                      <animate attributeName="stop-color" values="#EC4899;#A855F7;#EC4899" dur="2s" repeatCount="indefinite" />
+                    </stop>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </button>
+          </div>
+
+          {/* Управление - справа */}
+          <div className="flex-1 flex justify-end">
+            <button
+              onClick={handleAdminClick}
+              data-onboarding-admin-button
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                activeView === "admin"
+                  ? "bg-muted text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Управление</span>
+            </button>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* AI Assistant Panel */}
+      <AIAssistantPanel
+        open={aiAssistantOpen}
+        onOpenChange={setAiAssistantOpen}
+        storeId={storeId || null}
+      />
+    </>
   );
 }
