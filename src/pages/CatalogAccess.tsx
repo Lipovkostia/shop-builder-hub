@@ -83,8 +83,8 @@ const CatalogAccess = () => {
 
     const handleAuthState = async () => {
       if (!user || !session) {
-        // User not logged in - redirect to main page with customer tab and catalog info
-        navigate(`/?tab=customer&catalog=${accessCode}&store=${catalogInfo.store_id}`);
+        // User not logged in - redirect to guest catalog view
+        navigate(`/catalog/${accessCode}/view`);
         return;
       }
 
