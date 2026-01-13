@@ -12,6 +12,8 @@ export interface FoundProduct {
   new_markup?: { type: string; value: number };
   new_markup_type?: string;
   new_markup_value?: number;
+  target_price?: number;
+  buy_price?: number;
 }
 
 export interface AIAssistantResponse {

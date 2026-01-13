@@ -147,13 +147,14 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
     setQuery(prompt);
   }, []);
 
+  const { products: storeProducts } = useStoreProducts(storeId);
+
   const handleApply = useCallback(async () => {
     if (!response || selectedProducts.size === 0) return;
 
     setState("applying" as AssistantState);
 
     try {
-      const defaultCatalog = catalogs.find(c => c.is_default) || catalogs[0];
       const productsToUpdate = response.products.filter(p => selectedProducts.has(p.id));
       let successCount = 0;
 
@@ -167,12 +168,28 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
               await updateProductSettings(catalog.id, product.id, { status: newStatus });
             }
             successCount++;
-          } else if (response.action === "update_prices" && product.new_markup_type && product.new_markup_value) {
-            await updateProduct(product.id, {
-              markup_type: product.new_markup_type,
-              markup_value: product.new_markup_value,
-            });
-            successCount++;
+          } else if (response.action === "update_prices") {
+            let markupType = product.new_markup_type;
+            let markupValue = product.new_markup_value;
+
+            // If target_price is set, calculate markup from it
+            if (product.target_price !== undefined && product.target_price !== null) {
+              const currentProduct = storeProducts?.find(p => p.id === product.id);
+              const buyPrice = currentProduct?.buy_price || product.buy_price || 0;
+              
+              if (buyPrice > 0) {
+                markupType = "rubles";
+                markupValue = product.target_price - buyPrice;
+              }
+            }
+
+            if (markupType && markupValue !== undefined) {
+              await updateProduct(product.id, {
+                markup_type: markupType,
+                markup_value: markupValue,
+              });
+              successCount++;
+            }
           }
         } catch (err) {
           console.error(`Failed to update product ${product.id}:`, err);
@@ -198,7 +215,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
       });
       setState("error" as AssistantState);
     }
-  }, [response, selectedProducts, catalogs, updateProductSettings, updateProduct, toast, setState, onOpenChange]);
+  }, [response, selectedProducts, catalogs, storeProducts, updateProductSettings, updateProduct, toast, setState, onOpenChange]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -398,6 +415,28 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
                         {product.current_status && (
                           <p className="text-xs text-muted-foreground mt-1">
                             Текущий статус: {product.current_status === "hidden" ? "Скрыт" : "Активен"}
+                          </p>
+                        )}
+                        {response.action === "update_prices" && product.target_price !== undefined && (
+                          (() => {
+                            const currentProduct = storeProducts?.find(p => p.id === product.id);
+                            const buyPrice = currentProduct?.buy_price || product.buy_price || 0;
+                            const calculatedMarkup = buyPrice > 0 ? product.target_price - buyPrice : null;
+                            return (
+                              <p className="text-xs text-primary mt-1">
+                                Целевая цена: {product.target_price.toLocaleString()}₽
+                                {calculatedMarkup !== null && (
+                                  <span className="text-muted-foreground">
+                                    {" "}(наценка: {calculatedMarkup >= 0 ? "+" : ""}{calculatedMarkup.toLocaleString()}₽)
+                                  </span>
+                                )}
+                              </p>
+                            );
+                          })()
+                        )}
+                        {response.action === "update_prices" && product.new_markup_type && product.new_markup_value !== undefined && !product.target_price && (
+                          <p className="text-xs text-primary mt-1">
+                            Наценка: {product.new_markup_type === "percent" ? `${product.new_markup_value}%` : `${product.new_markup_value.toLocaleString()}₽`}
                           </p>
                         )}
                       </div>
