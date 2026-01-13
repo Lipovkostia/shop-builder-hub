@@ -429,7 +429,10 @@ export type Database = {
           created_at: string
           customer_id: string | null
           discount: number | null
+          guest_name: string | null
+          guest_phone: string | null
           id: string
+          is_guest_order: boolean | null
           moysklad_order_id: string | null
           notes: string | null
           order_number: string
@@ -445,7 +448,10 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           discount?: number | null
+          guest_name?: string | null
+          guest_phone?: string | null
           id?: string
+          is_guest_order?: boolean | null
           moysklad_order_id?: string | null
           notes?: string | null
           order_number: string
@@ -461,7 +467,10 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           discount?: number | null
+          guest_name?: string | null
+          guest_phone?: string | null
           id?: string
+          is_guest_order?: boolean | null
           moysklad_order_id?: string | null
           notes?: string | null
           order_number?: string
@@ -1110,6 +1119,42 @@ export type Database = {
           description: string
           id: string
           name: string
+          store_id: string
+          store_logo: string
+          store_name: string
+        }[]
+      }
+      get_catalog_products_public: {
+        Args: { _access_code: string }
+        Returns: {
+          catalog_description: string
+          catalog_id: string
+          catalog_name: string
+          category_id: string
+          category_name: string
+          category_slug: string
+          product_compare_price: number
+          product_description: string
+          product_id: string
+          product_images: string[]
+          product_name: string
+          product_packaging_type: string
+          product_portion_weight: number
+          product_price: number
+          product_price_full: number
+          product_price_half: number
+          product_price_portion: number
+          product_price_quarter: number
+          product_quantity: number
+          product_sku: string
+          product_slug: string
+          product_unit: string
+          setting_categories: string[]
+          setting_markup_type: string
+          setting_markup_value: number
+          setting_portion_prices: Json
+          setting_status: string
+          store_description: string
           store_id: string
           store_logo: string
           store_name: string
