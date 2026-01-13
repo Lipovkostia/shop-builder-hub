@@ -1069,10 +1069,15 @@ export async function importProductsToCatalog(
 
         // Resolve category names to IDs
         const categoryIds: string[] = [];
+        console.log(`[Import] Товар "${name}" - категории из Excel:`, categories);
+        
         for (const catName of categories) {
           let catId = categoryCache.get(catName.toLowerCase());
+          console.log(`[Import] Категория "${catName}" - найдена в кеше: ${catId ? 'да' : 'нет'}`);
+          
           if (!catId) {
             // Create new category
+            console.log(`[Import] Создаём новую категорию "${catName}"...`);
             const { data: newCat, error: catError } = await supabase
               .from('categories')
               .insert({
@@ -1083,13 +1088,18 @@ export async function importProductsToCatalog(
               .select('id')
               .single();
             
-            if (!catError && newCat) {
+            if (catError) {
+              console.error(`[Import] Ошибка создания категории "${catName}":`, catError);
+            } else if (newCat) {
               catId = newCat.id;
               categoryCache.set(catName.toLowerCase(), catId);
+              console.log(`[Import] ✅ Категория "${catName}" создана с id: ${catId}`);
             }
           }
           if (catId) categoryIds.push(catId);
         }
+        
+        console.log(`[Import] Итого categoryIds для товара "${name}":`, categoryIds);
 
         // Upsert catalog product settings
         const settingsPayload: any = {
@@ -1112,6 +1122,8 @@ export async function importProductsToCatalog(
           settingsPayload.portion_prices = portionPrices;
         }
 
+        console.log(`[Import] Сохраняем настройки для "${name}":`, settingsPayload);
+
         const { error: settingsError } = await supabase
           .from('catalog_product_settings')
           .upsert(settingsPayload, {
@@ -1119,8 +1131,10 @@ export async function importProductsToCatalog(
           });
 
         if (settingsError) {
-          console.error('Settings error:', settingsError);
+          console.error(`[Import] ❌ Ошибка сохранения настроек для "${name}":`, settingsError);
           progress.errors.push(`Строка ${i + 3}: Ошибка сохранения настроек - ${settingsError.message}`);
+        } else {
+          console.log(`[Import] ✅ Настройки сохранены для "${name}"`);
         }
 
       } catch (rowError) {
