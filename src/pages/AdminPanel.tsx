@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut, FileSpreadsheet, Sheet, Upload } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut, FileSpreadsheet, Sheet, Upload, Sparkles } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -109,6 +109,7 @@ import { CatalogExportDialog } from "@/components/admin/CatalogExportDialog";
 import { CatalogImportDialog } from "@/components/admin/CatalogImportDialog";
 import { QuickStartList } from "@/components/onboarding/QuickStartList";
 import { AdminOnboardingBanner } from "@/components/onboarding/AdminOnboardingBanner";
+import { AIAssistantPanel } from "@/components/admin/AIAssistantPanel";
 
 // Removed localStorage keys - now using Supabase
 
@@ -887,6 +888,7 @@ export default function AdminPanel({
   const [catalogExportDialogOpen, setCatalogExportDialogOpen] = useState(false);
   const [catalogImportDialogOpen, setCatalogImportDialogOpen] = useState(false);
   const [isExportingCatalog, setIsExportingCatalog] = useState(false);
+  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
 
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
     drag: true,
@@ -3237,6 +3239,16 @@ export default function AdminPanel({
                       <Download className="h-3.5 w-3.5" />
                     )}
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs gap-1"
+                    onClick={() => setAiAssistantOpen(true)}
+                    title="AI Помощник для массовых операций"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    <span className="hidden sm:inline">AI</span>
+                  </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1">
@@ -3776,6 +3788,13 @@ export default function AdminPanel({
                 open={editDialogOpen}
                 onOpenChange={setEditDialogOpen}
                 onSave={updateProduct}
+              />
+              
+              {/* AI Assistant Panel */}
+              <AIAssistantPanel
+                open={aiAssistantOpen}
+                onOpenChange={setAiAssistantOpen}
+                storeId={effectiveStoreId}
               />
             </>
           )}
