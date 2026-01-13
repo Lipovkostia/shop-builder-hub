@@ -106,6 +106,7 @@ import { ImportSourceCard } from "@/components/admin/ImportSourceCard";
 import { downloadExcelTemplate, importProductsFromExcel, ImportProgress, exportProductsToExcel, exportCatalogToExcel, CatalogExportProduct } from "@/lib/excelImport";
 import { ExcelImportSection } from "@/components/admin/ExcelImportSection";
 import { CatalogExportDialog } from "@/components/admin/CatalogExportDialog";
+import { CatalogImportDialog } from "@/components/admin/CatalogImportDialog";
 import { QuickStartList } from "@/components/onboarding/QuickStartList";
 import { AdminOnboardingBanner } from "@/components/onboarding/AdminOnboardingBanner";
 
@@ -884,6 +885,7 @@ export default function AdminPanel({
   const [profileSubSection, setProfileSubSection] = useState<'personal' | 'store' | 'settings'>('personal');
   const [isExportingProducts, setIsExportingProducts] = useState(false);
   const [catalogExportDialogOpen, setCatalogExportDialogOpen] = useState(false);
+  const [catalogImportDialogOpen, setCatalogImportDialogOpen] = useState(false);
   const [isExportingCatalog, setIsExportingCatalog] = useState(false);
 
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
@@ -4720,6 +4722,15 @@ export default function AdminPanel({
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
+                        title="Импорт товаров из Excel"
+                        onClick={() => setCatalogImportDialogOpen(true)}
+                      >
+                        <Upload className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
                         title="Скачать прайс-лист в Excel"
                         onClick={() => setCatalogExportDialogOpen(true)}
                         disabled={selectedCatalogProducts.size === 0}
@@ -6517,6 +6528,20 @@ export default function AdminPanel({
         onExport={handleExportCatalog}
         isExporting={isExportingCatalog}
         productCount={selectedCatalogProducts.size}
+      />
+
+      {/* Catalog Import Dialog */}
+      <CatalogImportDialog
+        open={catalogImportDialogOpen}
+        onOpenChange={setCatalogImportDialogOpen}
+        storeId={effectiveStoreId || ""}
+        catalogId={currentCatalog?.id || ""}
+        catalogName={currentCatalog?.name || ""}
+        onComplete={() => {
+          // Refresh products and catalog data
+          refetchProducts();
+          refetchCatalogs();
+        }}
       />
 
     </div>

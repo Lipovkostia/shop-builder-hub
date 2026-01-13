@@ -655,13 +655,489 @@ export async function exportProductsToExcel(
   XLSX.writeFile(wb, `ассортимент_${date}.xlsx`);
 }
 
-// Status labels for export
+// Status labels for export/import
 const STATUS_LABELS: Record<string, string> = {
   'in_stock': 'В наличии',
   'out_of_stock': 'Нет в наличии',
   'on_order': 'Под заказ',
   'coming_soon': 'Ожидается',
+  'pre_order': 'Под заказ',
+  'hidden': 'Скрыт',
 };
+
+// Reverse status labels for import (Russian -> English)
+const STATUS_LABELS_REVERSE: Record<string, string> = {
+  'в наличии': 'in_stock',
+  'нет в наличии': 'out_of_stock',
+  'под заказ': 'pre_order',
+  'ожидается': 'coming_soon',
+  'скрыт': 'hidden',
+  'in_stock': 'in_stock',
+  'out_of_stock': 'out_of_stock',
+  'pre_order': 'pre_order',
+  'hidden': 'hidden',
+};
+
+// ============================================
+// CATALOG IMPORT FUNCTIONALITY
+// ============================================
+
+// Template column headers for catalog import (Russian)
+export const CATALOG_IMPORT_TEMPLATE_HEADERS = [
+  'Название*',
+  'Описание',
+  'Категории',
+  'Ед. изм.',
+  'Объем',
+  'Вид (тип фасовки)',
+  'Себестоимость',
+  'Наценка %',
+  'Наценка руб',
+  'Статус',
+  'Цена ½ (₽/кг)',
+  'Цена ¼ (₽/кг)',
+  'Цена порции',
+  'Группа',
+  'Фото (ссылки через ;)'
+];
+
+// Instructions for catalog import template
+const CATALOG_IMPORT_INSTRUCTIONS = [
+  'Обязательное',
+  'Опционально',
+  'Через ; (Сыры; Твердые)',
+  'кг/шт/л/уп/г/мл/м',
+  'Вес/кол-во единицы',
+  'head/package/piece/can/box/carcass',
+  'Число',
+  'Только % ИЛИ руб',
+  'Только % ИЛИ руб',
+  'in_stock/out_of_stock/pre_order/hidden',
+  'Число или пусто',
+  'Число или пусто',
+  'Число или пусто',
+  'Группа для ассортимента',
+  'Несколько через ;'
+];
+
+// Example row for catalog import template
+const CATALOG_IMPORT_EXAMPLE = [
+  'Сыр Голландский',
+  'Твёрдый сыр высокого качества',
+  'Сыры; Твёрдые сыры',
+  'кг',
+  10,
+  'head',
+  300,
+  30,
+  '',
+  'in_stock',
+  350,
+  400,
+  '',
+  'Молочные продукты',
+  'https://example.com/photo1.jpg'
+];
+
+export interface CatalogImportProgress {
+  total: number;
+  current: number;
+  currentProduct: string;
+  status: 'parsing' | 'importing' | 'uploading_images' | 'done' | 'error';
+  errors: string[];
+  successCount: number;
+  addedToCatalogCount: number;
+  updatedCount?: number;
+}
+
+interface CatalogExcelRow {
+  'Название*'?: string;
+  'Описание'?: string;
+  'Категории'?: string;
+  'Ед. изм.'?: string;
+  'Объем'?: number | string;
+  'Вид (тип фасовки)'?: string;
+  'Себестоимость'?: number | string;
+  'Наценка %'?: number | string;
+  'Наценка руб'?: number | string;
+  'Статус'?: string;
+  'Цена ½ (₽/кг)'?: number | string;
+  'Цена ¼ (₽/кг)'?: number | string;
+  'Цена порции'?: number | string;
+  'Группа'?: string;
+  'Фото (ссылки через ;)'?: string;
+}
+
+/**
+ * Download catalog import template with catalog-specific fields
+ */
+export async function downloadCatalogImportTemplate(storeId: string, catalogId: string): Promise<void> {
+  // Fetch existing groups for this store
+  const { data: groups } = await supabase
+    .from('product_groups')
+    .select('name')
+    .eq('store_id', storeId)
+    .order('sort_order');
+
+  // Fetch existing categories for this store
+  const { data: categories } = await supabase
+    .from('categories')
+    .select('name')
+    .eq('store_id', storeId)
+    .order('sort_order');
+
+  // Build dynamic instructions
+  const instructions = [...CATALOG_IMPORT_INSTRUCTIONS];
+  
+  // Update categories hint
+  const categoryNames = categories?.map(c => c.name).join(', ') || '';
+  if (categoryNames) {
+    instructions[2] = `Существующие: ${categoryNames.slice(0, 50)}...`;
+  }
+  
+  // Update groups hint
+  const groupNames = groups?.map(g => g.name).join(', ') || '';
+  if (groupNames) {
+    instructions[13] = `Существующие: ${groupNames.slice(0, 50)}...`;
+  }
+
+  // Create workbook
+  const wb = XLSX.utils.book_new();
+
+  // Create data array with headers, instructions, and example
+  const data = [
+    CATALOG_IMPORT_TEMPLATE_HEADERS,
+    instructions,
+    CATALOG_IMPORT_EXAMPLE
+  ];
+
+  // Create worksheet
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 25 }, // Название
+    { wch: 35 }, // Описание
+    { wch: 25 }, // Категории
+    { wch: 12 }, // Ед. изм.
+    { wch: 10 }, // Объем
+    { wch: 18 }, // Тип фасовки
+    { wch: 14 }, // Себестоимость
+    { wch: 12 }, // Наценка %
+    { wch: 14 }, // Наценка руб
+    { wch: 15 }, // Статус
+    { wch: 14 }, // Цена ½
+    { wch: 14 }, // Цена ¼
+    { wch: 14 }, // Цена порции
+    { wch: 25 }, // Группа
+    { wch: 50 }, // Фото
+  ];
+
+  // Add worksheet to workbook
+  XLSX.utils.book_append_sheet(wb, ws, 'Импорт в прайс-лист');
+
+  // Generate and download file
+  XLSX.writeFile(wb, 'шаблон_импорта_в_прайс_лист.xlsx');
+}
+
+/**
+ * Parse categories string into array
+ */
+function parseCategories(categoriesStr: string | undefined): string[] {
+  if (!categoriesStr) return [];
+  return categoriesStr
+    .split(';')
+    .map(c => c.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Parse status string to valid status value
+ */
+function parseStatus(statusStr: string | undefined): string {
+  if (!statusStr) return 'in_stock';
+  const normalized = statusStr.toLowerCase().trim();
+  return STATUS_LABELS_REVERSE[normalized] || 'in_stock';
+}
+
+/**
+ * Import products to catalog from Excel file
+ */
+export async function importProductsToCatalog(
+  file: File,
+  storeId: string,
+  catalogId: string,
+  onProgress: (progress: CatalogImportProgress) => void
+): Promise<void> {
+  const progress: CatalogImportProgress = {
+    total: 0,
+    current: 0,
+    currentProduct: '',
+    status: 'parsing',
+    errors: [],
+    successCount: 0,
+    addedToCatalogCount: 0,
+    updatedCount: 0
+  };
+
+  try {
+    onProgress(progress);
+
+    // Read Excel file
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    
+    // Get first sheet
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    
+    // Convert to JSON
+    const allRows: CatalogExcelRow[] = XLSX.utils.sheet_to_json(sheet, { range: 0 });
+    
+    // Filter out instruction row and empty rows
+    const rows = allRows.filter((row, index) => {
+      if (index === 1) return false; // Skip instruction row
+      const name = row['Название*'];
+      return name && typeof name === 'string' && name.trim() !== '' && !name.startsWith('Обязательное');
+    });
+
+    progress.total = rows.length;
+    progress.status = 'importing';
+    onProgress(progress);
+
+    if (rows.length === 0) {
+      progress.status = 'error';
+      progress.errors.push('Файл не содержит товаров для импорта');
+      onProgress(progress);
+      return;
+    }
+
+    // Load existing products for this store
+    const { data: existingProducts } = await supabase
+      .from('products')
+      .select('id, name')
+      .eq('store_id', storeId);
+
+    // Create map for quick lookup
+    const productMap = new Map<string, string>();
+    existingProducts?.forEach(p => {
+      productMap.set(p.name.toLowerCase(), p.id);
+    });
+
+    // Load existing groups
+    const { data: existingGroupsData } = await supabase
+      .from('product_groups')
+      .select('id, name')
+      .eq('store_id', storeId);
+    
+    const groupCache = new Map<string, string>();
+    existingGroupsData?.forEach(g => {
+      groupCache.set(g.name.toLowerCase(), g.id);
+    });
+
+    // Load existing categories
+    const { data: existingCategoriesData } = await supabase
+      .from('categories')
+      .select('id, name')
+      .eq('store_id', storeId);
+    
+    const categoryCache = new Map<string, string>();
+    existingCategoriesData?.forEach(c => {
+      categoryCache.set(c.name.toLowerCase(), c.id);
+    });
+
+    // Check existing catalog visibility
+    const { data: existingVisibility } = await supabase
+      .from('product_catalog_visibility')
+      .select('product_id')
+      .eq('catalog_id', catalogId);
+
+    const visibleProducts = new Set(existingVisibility?.map(v => v.product_id) || []);
+
+    // Process each row
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      progress.current = i + 1;
+      progress.currentProduct = row['Название*'] || `Строка ${i + 3}`;
+      onProgress(progress);
+
+      try {
+        const name = row['Название*']?.toString().trim();
+        if (!name) {
+          progress.errors.push(`Строка ${i + 3}: Отсутствует название товара`);
+          continue;
+        }
+
+        // Parse fields
+        const buyPrice = parseFloat(row['Себестоимость']?.toString() || '0') || null;
+        const unitWeight = parseFloat(row['Объем']?.toString() || '0') || null;
+        const markupPercent = parseFloat(row['Наценка %']?.toString() || '0') || null;
+        const markupFixed = parseFloat(row['Наценка руб']?.toString() || '0') || null;
+        const priceHalf = parseFloat(row['Цена ½ (₽/кг)']?.toString() || '0') || null;
+        const priceQuarter = parseFloat(row['Цена ¼ (₽/кг)']?.toString() || '0') || null;
+        const pricePortion = parseFloat(row['Цена порции']?.toString() || '0') || null;
+        const status = parseStatus(row['Статус']);
+        const categories = parseCategories(row['Категории']);
+
+        let productId = productMap.get(name.toLowerCase());
+        const isNewProduct = !productId;
+
+        if (isNewProduct) {
+          // Create new product
+          const { data: product, error: insertError } = await supabase
+            .from('products')
+            .insert({
+              store_id: storeId,
+              name,
+              description: row['Описание']?.toString().trim() || null,
+              price: 0,
+              buy_price: buyPrice,
+              unit: mapUnit(row['Ед. изм.']),
+              quantity: 0,
+              unit_weight: unitWeight,
+              packaging_type: mapPackagingType(row['Вид (тип фасовки)']),
+              is_active: true,
+              slug: generateSlug(name),
+              source: 'excel_catalog'
+            })
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error('Insert error:', insertError);
+            progress.errors.push(`Строка ${i + 3}: Ошибка создания товара - ${insertError.message}`);
+            continue;
+          }
+
+          productId = product.id;
+          productMap.set(name.toLowerCase(), productId);
+          progress.successCount++;
+
+          // Process group assignment
+          const groupName = row['Группа']?.toString().trim();
+          if (groupName) {
+            const groupId = await getOrCreateGroup(groupName, storeId, groupCache);
+            if (groupId) {
+              await assignProductToGroup(productId, groupId);
+            }
+          }
+
+          // Process images if provided
+          const photoUrls = row['Фото (ссылки через ;)']?.toString().trim();
+          if (photoUrls) {
+            await processProductImages(photoUrls, productId, i, progress as unknown as ImportProgress, onProgress as unknown as (p: ImportProgress) => void);
+          }
+        } else {
+          // Update existing product's base fields if needed
+          if (buyPrice !== null || unitWeight !== null) {
+            await supabase
+              .from('products')
+              .update({
+                buy_price: buyPrice ?? undefined,
+                unit_weight: unitWeight ?? undefined,
+                unit: mapUnit(row['Ед. изм.']),
+                packaging_type: mapPackagingType(row['Вид (тип фасовки)']),
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', productId);
+          }
+          progress.updatedCount = (progress.updatedCount || 0) + 1;
+        }
+
+        // Add to catalog if not already there
+        if (!visibleProducts.has(productId)) {
+          const { error: visibilityError } = await supabase
+            .from('product_catalog_visibility')
+            .insert({
+              product_id: productId,
+              catalog_id: catalogId
+            });
+
+          if (visibilityError && !visibilityError.message.includes('duplicate')) {
+            console.error('Visibility error:', visibilityError);
+          } else {
+            visibleProducts.add(productId);
+            progress.addedToCatalogCount++;
+          }
+        }
+
+        // Create/update catalog product settings
+        const portionPrices: Record<string, number> = {};
+        if (priceHalf !== null) portionPrices.half = priceHalf;
+        if (priceQuarter !== null) portionPrices.quarter = priceQuarter;
+        if (pricePortion !== null) portionPrices.portion = pricePortion;
+
+        // Resolve category names to IDs
+        const categoryIds: string[] = [];
+        for (const catName of categories) {
+          let catId = categoryCache.get(catName.toLowerCase());
+          if (!catId) {
+            // Create new category
+            const { data: newCat, error: catError } = await supabase
+              .from('categories')
+              .insert({
+                store_id: storeId,
+                name: catName,
+                slug: generateSlug(catName)
+              })
+              .select('id')
+              .single();
+            
+            if (!catError && newCat) {
+              catId = newCat.id;
+              categoryCache.set(catName.toLowerCase(), catId);
+            }
+          }
+          if (catId) categoryIds.push(catId);
+        }
+
+        // Upsert catalog product settings
+        const settingsPayload: any = {
+          catalog_id: catalogId,
+          product_id: productId,
+          status,
+          categories: categoryIds.length > 0 ? categoryIds : null,
+          updated_at: new Date().toISOString()
+        };
+
+        if (markupPercent !== null && markupPercent > 0) {
+          settingsPayload.markup_type = 'percent';
+          settingsPayload.markup_value = markupPercent;
+        } else if (markupFixed !== null && markupFixed > 0) {
+          settingsPayload.markup_type = 'fixed';
+          settingsPayload.markup_value = markupFixed;
+        }
+
+        if (Object.keys(portionPrices).length > 0) {
+          settingsPayload.portion_prices = portionPrices;
+        }
+
+        const { error: settingsError } = await supabase
+          .from('catalog_product_settings')
+          .upsert(settingsPayload, {
+            onConflict: 'catalog_id,product_id'
+          });
+
+        if (settingsError) {
+          console.error('Settings error:', settingsError);
+          progress.errors.push(`Строка ${i + 3}: Ошибка сохранения настроек - ${settingsError.message}`);
+        }
+
+      } catch (rowError) {
+        console.error(`Error processing row ${i + 3}:`, rowError);
+        progress.errors.push(`Строка ${i + 3}: ${rowError instanceof Error ? rowError.message : 'Неизвестная ошибка'}`);
+      }
+    }
+
+    progress.status = 'done';
+    onProgress(progress);
+  } catch (error) {
+    console.error('Catalog import error:', error);
+    progress.status = 'error';
+    progress.errors.push(error instanceof Error ? error.message : 'Ошибка чтения файла');
+    onProgress(progress);
+  }
+}
 
 // Catalog export product interface
 export interface CatalogExportProduct {
