@@ -79,44 +79,13 @@ export function WorkspaceHeader({
               )}
             </button>
 
-            {/* AI Помощник - с анимацией переливания */}
+            {/* AI Помощник - яркая кнопка */}
             <button
               onClick={() => setAiAssistantOpen(true)}
-              className="relative flex items-center justify-center p-2 rounded-full transition-all duration-300 group hover:scale-110"
+              className="relative flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:scale-110 transition-all duration-300 animate-shimmer"
               title="AI Помощник"
             >
-              {/* Фоновое свечение */}
-              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300" />
-              
-              {/* Анимированный градиентный бордер */}
-              <div className="absolute inset-0 rounded-full p-[2px] bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 animate-gradient-x">
-                <div className="w-full h-full rounded-full bg-background" />
-              </div>
-              
-              {/* Иконка */}
-              <Sparkles className="relative w-5 h-5 text-transparent bg-clip-text bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 animate-pulse-subtle" 
-                style={{ 
-                  fill: 'url(#ai-gradient)',
-                  stroke: 'url(#ai-gradient)',
-                }}
-              />
-              
-              {/* SVG градиент для иконки */}
-              <svg width="0" height="0" className="absolute">
-                <defs>
-                  <linearGradient id="ai-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#8B5CF6">
-                      <animate attributeName="stop-color" values="#8B5CF6;#EC4899;#8B5CF6" dur="2s" repeatCount="indefinite" />
-                    </stop>
-                    <stop offset="50%" stopColor="#A855F7">
-                      <animate attributeName="stop-color" values="#A855F7;#8B5CF6;#A855F7" dur="2s" repeatCount="indefinite" />
-                    </stop>
-                    <stop offset="100%" stopColor="#EC4899">
-                      <animate attributeName="stop-color" values="#EC4899;#A855F7;#EC4899" dur="2s" repeatCount="indefinite" />
-                    </stop>
-                  </linearGradient>
-                </defs>
-              </svg>
+              <Sparkles className="w-5 h-5 text-white" />
             </button>
           </div>
 

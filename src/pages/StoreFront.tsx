@@ -49,6 +49,7 @@ import {
 import AdminPanel from "@/pages/AdminPanel";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { OnboardingBanner } from "@/components/onboarding/OnboardingBanner";
+import { AIAssistantBanner } from "@/components/admin/AIAssistantBanner";
 
 interface CartItem {
   productId: string;
@@ -1756,6 +1757,10 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
       {/* Витрина */}
       {viewMode === 'storefront' && (
         <main className="flex-1 overflow-auto">
+        {/* AI Assistant Banner - только для владельца */}
+        {isOwner && workspaceMode && (
+          <AIAssistantBanner storeId={store?.id || null} />
+        )}
         {filteredProducts.length > 0 ? (
           (() => {
             // Helper function to render a product card
