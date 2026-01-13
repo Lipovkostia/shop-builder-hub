@@ -489,61 +489,34 @@ const GuestCatalogView = () => {
     setIsSubmitting(true);
 
     try {
-      // Generate order number
-      const orderNumber = `G${Date.now().toString(36).toUpperCase()}`;
-
-      // Create guest order
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          order_number: orderNumber,
-          store_id: catalogInfo!.store_id,
-          customer_id: null,
-          guest_name: guestName.trim(),
-          guest_phone: guestPhone.trim(),
-          is_guest_order: true,
-          notes: guestComment.trim() || null,
-          subtotal: cartTotal,
-          total: cartTotal,
-          status: 'pending',
-        })
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Create order items
-      const orderItems = cart.map(item => {
-        const variantLabels = ['целая', '1/2', '1/4', 'порция'];
-        const variantLabel = variantLabels[item.variantIndex] || '';
-        return {
-          order_id: order.id,
-          product_id: null, // Can't reference product directly due to RLS
-          product_name: `${item.productName}${variantLabel ? ` (${variantLabel})` : ''}`,
-          quantity: item.quantity,
-          price: item.price,
-          total: item.price * item.quantity,
-        };
+      // Use edge function for reliable guest order creation
+      const { data, error } = await supabase.functions.invoke('create-guest-order', {
+        body: {
+          accessCode,
+          guestName: guestName.trim(),
+          guestPhone: guestPhone.trim(),
+          guestComment: guestComment.trim() || undefined,
+          items: cart.map(item => ({
+            productId: item.productId,
+            productName: item.productName,
+            variantIndex: item.variantIndex,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+        },
       });
 
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
+      if (error) {
+        throw new Error(error.message || 'Failed to create order');
+      }
 
-      if (itemsError) throw itemsError;
-
-      // Send notification to store owner (optional - could be edge function)
-      try {
-        await supabase.functions.invoke('send-order-notification', {
-          body: { orderId: order.id },
-        });
-      } catch (e) {
-        console.log('Notification failed (non-critical):', e);
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to create order');
       }
 
       toast({
         title: "Заказ оформлен!",
-        description: `Номер заказа: ${orderNumber}. Мы свяжемся с вами в ближайшее время.`,
+        description: `Номер заказа: ${data.orderNumber}. Мы свяжемся с вами в ближайшее время.`,
       });
 
       clearCart();
