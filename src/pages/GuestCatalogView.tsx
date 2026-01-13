@@ -412,6 +412,14 @@ const GuestCatalogView = () => {
   const [guestComment, setGuestComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Success & registration state
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [lastOrderNumber, setLastOrderNumber] = useState("");
+  const [lastOrderId, setLastOrderId] = useState("");
+  const [showRegisterForm, setShowRegisterForm] = useState(false);
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
+
   // Fullscreen image viewer
   const [fullscreenProduct, setFullscreenProduct] = useState<GuestProduct | null>(null);
   const [fullscreenIndex, setFullscreenIndex] = useState(0);
@@ -514,17 +522,13 @@ const GuestCatalogView = () => {
         throw new Error(data?.error || 'Failed to create order');
       }
 
-      toast({
-        title: "Заказ оформлен!",
-        description: `Номер заказа: ${data.orderNumber}. Мы свяжемся с вами в ближайшее время.`,
-      });
-
+      // Show success dialog with registration option
+      setLastOrderNumber(data.orderNumber);
+      setLastOrderId(data.orderId);
       clearCart();
       setCheckoutOpen(false);
       setCartOpen(false);
-      setGuestName("");
-      setGuestPhone("");
-      setGuestComment("");
+      setSuccessDialogOpen(true);
 
     } catch (err: any) {
       console.error('Checkout error:', err);
@@ -536,6 +540,157 @@ const GuestCatalogView = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Handle registration after order
+  const handleRegister = async () => {
+    if (!registerPassword || registerPassword.length < 6) {
+      toast({
+        title: "Слишком короткий пароль",
+        description: "Пароль должен содержать минимум 6 символов",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsRegistering(true);
+
+    try {
+      // Create email from phone (for Supabase auth)
+      const cleanPhone = guestPhone.replace(/\D/g, '');
+      const email = `${cleanPhone}@phone.local`;
+
+      // Sign up user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password: registerPassword,
+        options: {
+          data: {
+            full_name: guestName,
+            phone: guestPhone,
+          },
+        },
+      });
+
+      if (authError) throw authError;
+
+      if (!authData.user) {
+        throw new Error('Ошибка создания аккаунта');
+      }
+
+      // Create profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: authData.user.id,
+          email,
+          full_name: guestName,
+          phone: guestPhone,
+          role: 'customer',
+        })
+        .select()
+        .single();
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        // Profile might already exist via trigger, try to fetch it
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', authData.user.id)
+          .single();
+        
+        if (!existingProfile) throw profileError;
+      }
+
+      const profileId = profile?.id || (await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', authData.user.id)
+        .single()).data?.id;
+
+      if (!profileId) throw new Error('Не удалось получить профиль');
+
+      // Create store_customer record
+      const { data: storeCustomer, error: scError } = await supabase
+        .from('store_customers')
+        .insert({
+          profile_id: profileId,
+          store_id: catalogInfo!.store_id,
+        })
+        .select()
+        .single();
+
+      if (scError && !scError.message.includes('duplicate')) {
+        console.error('Store customer error:', scError);
+      }
+
+      // Get store_customer id (either just created or existing)
+      const storeCustomerId = storeCustomer?.id || (await supabase
+        .from('store_customers')
+        .select('id')
+        .eq('profile_id', profileId)
+        .eq('store_id', catalogInfo!.store_id)
+        .single()).data?.id;
+
+      if (storeCustomerId) {
+        // Add catalog access
+        await supabase
+          .from('customer_catalog_access')
+          .insert({
+            store_customer_id: storeCustomerId,
+            catalog_id: catalogInfo!.id,
+          })
+          .select()
+          .maybeSingle();
+
+        // Link the guest order to this customer
+        if (lastOrderId) {
+          await supabase
+            .from('orders')
+            .update({ 
+              customer_id: storeCustomerId,
+              is_guest_order: false,
+            })
+            .eq('id', lastOrderId);
+        }
+      }
+
+      toast({
+        title: "Аккаунт создан!",
+        description: "Теперь ваши заказы будут сохраняться в истории",
+      });
+
+      // Clear form and close dialog
+      setSuccessDialogOpen(false);
+      setShowRegisterForm(false);
+      setRegisterPassword("");
+      setGuestName("");
+      setGuestPhone("");
+      setGuestComment("");
+
+      // Redirect to customer dashboard
+      navigate('/customer-dashboard');
+
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      toast({
+        title: "Ошибка регистрации",
+        description: err.message || "Попробуйте ещё раз",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
+  const handleCloseSuccess = () => {
+    setSuccessDialogOpen(false);
+    setShowRegisterForm(false);
+    setRegisterPassword("");
+    setGuestName("");
+    setGuestPhone("");
+    setGuestComment("");
   };
 
   // Redirect authenticated users to customer dashboard
@@ -920,6 +1075,93 @@ const GuestCatalogView = () => {
             </DialogDescription>
           </DialogHeader>
           <CheckoutContent />
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Dialog with Registration Option */}
+      <Dialog open={successDialogOpen} onOpenChange={(open) => !open && handleCloseSuccess()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+              <Check className="h-6 w-6 text-green-600 dark:text-green-400" />
+            </div>
+            <DialogTitle className="text-center">Заказ оформлен!</DialogTitle>
+            <DialogDescription className="text-center">
+              Номер заказа: <span className="font-mono font-semibold">{lastOrderNumber}</span>
+              <br />
+              Мы свяжемся с вами в ближайшее время.
+            </DialogDescription>
+          </DialogHeader>
+
+          {!showRegisterForm ? (
+            <div className="space-y-4 pt-4">
+              <div className="p-4 bg-muted/50 rounded-lg text-center">
+                <p className="text-sm text-muted-foreground mb-3">
+                  Хотите сохранять историю заказов и быстрее оформлять следующие покупки?
+                </p>
+                <Button 
+                  onClick={() => setShowRegisterForm(true)}
+                  className="w-full"
+                >
+                  <User className="w-4 h-4 mr-2" />
+                  Создать аккаунт
+                </Button>
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={handleCloseSuccess}
+                className="w-full"
+              >
+                Продолжить без регистрации
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-4">
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Имя:</span> {guestName}
+                </p>
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Телефон:</span> {guestPhone}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="register-password">Придумайте пароль</Label>
+                <Input
+                  id="register-password"
+                  type="password"
+                  placeholder="Минимум 6 символов"
+                  value={registerPassword}
+                  onChange={(e) => setRegisterPassword(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Пароль нужен для входа в личный кабинет
+                </p>
+              </div>
+
+              <Button 
+                onClick={handleRegister}
+                disabled={isRegistering}
+                className="w-full"
+              >
+                {isRegistering ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4 mr-2" />
+                )}
+                Зарегистрироваться
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                onClick={() => setShowRegisterForm(false)}
+                className="w-full"
+              >
+                Назад
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
