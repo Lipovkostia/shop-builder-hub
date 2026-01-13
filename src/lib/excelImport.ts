@@ -743,14 +743,14 @@ export interface CatalogImportProgress {
   total: number;
   current: number;
   currentProduct: string;
-  status: 'parsing' | 'importing' | 'uploading_images' | 'done' | 'error';
+  status: 'parsing' | 'checking' | 'importing' | 'uploading_images' | 'done' | 'error';
   errors: string[];
   successCount: number;
   addedToCatalogCount: number;
   updatedCount?: number;
 }
 
-interface CatalogExcelRow {
+export interface CatalogExcelRow {
   'Название*'?: string;
   'Описание'?: string;
   'Категории'?: string;
@@ -766,6 +766,108 @@ interface CatalogExcelRow {
   'Цена порции'?: number | string;
   'Группа'?: string;
   'Фото (ссылки через ;)'?: string;
+}
+
+// Pre-import check for catalog import
+export interface CatalogImportCheck {
+  existingProducts: {
+    row: CatalogExcelRow;
+    rowIndex: number;
+    productId: string;
+    productName: string;
+  }[];
+  newProducts: {
+    row: CatalogExcelRow;
+    rowIndex: number;
+    name: string;
+    category?: string;
+    description?: string;
+  }[];
+  errors: string[];
+  totalRows: number;
+}
+
+/**
+ * Check which products exist in the assortment before catalog import
+ */
+export async function checkCatalogImportProducts(
+  file: File,
+  storeId: string
+): Promise<CatalogImportCheck> {
+  // Read Excel file
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  
+  // Convert to JSON
+  const allRows: CatalogExcelRow[] = XLSX.utils.sheet_to_json(sheet, { range: 0 });
+  
+  // Filter out instruction row and empty rows
+  const validRows: { row: CatalogExcelRow; rowIndex: number }[] = [];
+  allRows.forEach((row, index) => {
+    if (index === 1) return; // Skip instruction row
+    const name = row['Название*'];
+    if (!name || typeof name !== 'string') return;
+    const nameStr = name.trim();
+    if (nameStr === '' || nameStr.startsWith('Обязательное') || nameStr === 'Название*') return;
+    
+    // index is 0-based, Excel row = index + 2 (header + 1-indexed)
+    validRows.push({ row, rowIndex: index + 2 });
+  });
+
+  if (validRows.length === 0) {
+    return { existingProducts: [], newProducts: [], errors: [], totalRows: 0 };
+  }
+
+  // Get existing products from database
+  const { data: existingProducts } = await supabase
+    .from('products')
+    .select('id, name')
+    .eq('store_id', storeId);
+
+  // Create map for quick lookup
+  const productMap = new Map<string, string>();
+  existingProducts?.forEach(p => {
+    productMap.set(p.name.toLowerCase(), p.id);
+  });
+
+  // Categorize rows
+  const result: CatalogImportCheck = {
+    existingProducts: [],
+    newProducts: [],
+    errors: [],
+    totalRows: validRows.length
+  };
+
+  validRows.forEach(({ row, rowIndex }) => {
+    const name = row['Название*']?.toString().trim();
+    if (!name) {
+      result.errors.push(`Строка ${rowIndex}: Отсутствует название товара`);
+      return;
+    }
+
+    const productId = productMap.get(name.toLowerCase());
+    
+    if (productId) {
+      result.existingProducts.push({
+        row,
+        rowIndex,
+        productId,
+        productName: name
+      });
+    } else {
+      result.newProducts.push({
+        row,
+        rowIndex,
+        name,
+        category: row['Категории']?.toString().trim(),
+        description: row['Описание']?.toString().trim()
+      });
+    }
+  });
+
+  return result;
 }
 
 /**
@@ -861,13 +963,23 @@ function parseStatus(statusStr: string | undefined): string {
 }
 
 /**
+ * New product to create during catalog import
+ */
+export interface NewProductToCreate {
+  rowIndex: number;
+  name: string;
+}
+
+/**
  * Import products to catalog from Excel file
+ * @param newProductsToCreate - List of new products that user approved to create. If empty, only existing products will be updated.
  */
 export async function importProductsToCatalog(
   file: File,
   storeId: string,
   catalogId: string,
-  onProgress: (progress: CatalogImportProgress) => void
+  onProgress: (progress: CatalogImportProgress) => void,
+  newProductsToCreate: NewProductToCreate[] = []
 ): Promise<void> {
   const progress: CatalogImportProgress = {
     total: 0,
@@ -879,6 +991,9 @@ export async function importProductsToCatalog(
     addedToCatalogCount: 0,
     updatedCount: 0
   };
+
+  // Create set of approved new product row indices for quick lookup
+  const approvedNewProductRows = new Set(newProductsToCreate.map(p => p.rowIndex));
 
   try {
     onProgress(progress);
@@ -894,11 +1009,17 @@ export async function importProductsToCatalog(
     // Convert to JSON
     const allRows: CatalogExcelRow[] = XLSX.utils.sheet_to_json(sheet, { range: 0 });
     
-    // Filter out instruction row and empty rows
-    const rows = allRows.filter((row, index) => {
-      if (index === 1) return false; // Skip instruction row
+    // Filter out instruction row and empty rows, track original indices
+    const rows: { row: CatalogExcelRow; originalIndex: number }[] = [];
+    allRows.forEach((row, index) => {
+      if (index === 1) return; // Skip instruction row
       const name = row['Название*'];
-      return name && typeof name === 'string' && name.trim() !== '' && !name.startsWith('Обязательное');
+      if (!name || typeof name !== 'string') return;
+      const nameStr = name.trim();
+      if (nameStr === '' || nameStr.startsWith('Обязательное') || nameStr === 'Название*') return;
+      
+      // Excel row = index + 2 (header + 1-indexed)
+      rows.push({ row, originalIndex: index + 2 });
     });
 
     progress.total = rows.length;
@@ -956,15 +1077,15 @@ export async function importProductsToCatalog(
 
     // Process each row
     for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
+      const { row, originalIndex } = rows[i];
       progress.current = i + 1;
-      progress.currentProduct = row['Название*'] || `Строка ${i + 3}`;
+      progress.currentProduct = row['Название*'] || `Строка ${originalIndex}`;
       onProgress(progress);
 
       try {
         const name = row['Название*']?.toString().trim();
         if (!name) {
-          progress.errors.push(`Строка ${i + 3}: Отсутствует название товара`);
+          progress.errors.push(`Строка ${originalIndex}: Отсутствует название товара`);
           continue;
         }
 
@@ -983,7 +1104,14 @@ export async function importProductsToCatalog(
         const isNewProduct = !productId;
 
         if (isNewProduct) {
-          // Create new product
+          // Check if this new product was approved by user
+          if (!approvedNewProductRows.has(originalIndex)) {
+            // User did not approve this new product, skip it
+            console.log(`[Import] Пропускаем новый товар "${name}" (строка ${originalIndex}) - не одобрен пользователем`);
+            continue;
+          }
+
+          // Create new product (approved by user)
           const { data: product, error: insertError } = await supabase
             .from('products')
             .insert({
@@ -1005,7 +1133,7 @@ export async function importProductsToCatalog(
 
           if (insertError) {
             console.error('Insert error:', insertError);
-            progress.errors.push(`Строка ${i + 3}: Ошибка создания товара - ${insertError.message}`);
+            progress.errors.push(`Строка ${originalIndex}: Ошибка создания товара - ${insertError.message}`);
             continue;
           }
 
