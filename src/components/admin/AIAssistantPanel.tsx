@@ -35,10 +35,10 @@ interface AIAssistantPanelProps {
 }
 
 const quickCommands = [
-  { icon: EyeOff, label: "Скрыть товары", prompt: "скрыть " },
-  { icon: Eye, label: "Показать товары", prompt: "показать " },
-  { icon: DollarSign, label: "Изменить цены", prompt: "установить наценку " },
-  { icon: Search, label: "Найти товары", prompt: "найти " },
+  { icon: EyeOff, label: "Скрыть товары", prompt: "скрыть ", inDevelopment: false },
+  { icon: Eye, label: "Показать товары", prompt: "показать ", inDevelopment: false },
+  { icon: DollarSign, label: "Изменить цены", prompt: "установить наценку ", inDevelopment: true },
+  { icon: Search, label: "Найти товары", prompt: "найти ", inDevelopment: false },
 ];
 
 export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPanelProps) {
@@ -264,10 +264,15 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
                     variant="outline"
                     size="sm"
                     onClick={() => handleQuickCommand(cmd.prompt)}
-                    className="text-xs"
+                    className={cn("text-xs relative", cmd.inDevelopment && "opacity-70")}
                   >
                     <cmd.icon className="h-3 w-3 mr-1" />
                     {cmd.label}
+                    {cmd.inDevelopment && (
+                      <Badge variant="secondary" className="ml-1 text-[9px] px-1 py-0 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                        В разработке
+                      </Badge>
+                    )}
                   </Button>
                 ))}
               </div>
@@ -298,27 +303,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
               )}
 
               <div className="flex gap-2">
-                <Button
-                  variant={isRecording ? "destructive" : "outline"}
-                  size="icon"
-                  onClick={isRecording ? handleStopRecording : handleStartRecording}
-                  className={cn(
-                    "relative",
-                    isRecording && "animate-pulse"
-                  )}
-                >
-                  {isRecording ? (
-                    <>
-                      <MicOff className="h-4 w-4" />
-                      <span className="absolute -top-1 -right-1 text-[10px] bg-destructive text-destructive-foreground rounded px-1">
-                        {formatTime(recordingTime)}
-                      </span>
-                    </>
-                  ) : (
-                    <Mic className="h-4 w-4" />
-                  )}
-                </Button>
-                
                 <Button 
                   onClick={handleSubmit} 
                   disabled={!query.trim()}
@@ -327,7 +311,70 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
                   <Send className="h-4 w-4 mr-2" />
                   Выполнить
                 </Button>
+
+                {/* Push-to-talk microphone button */}
+                <div className="relative group">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onMouseDown={handleStartRecording}
+                    onMouseUp={handleStopRecording}
+                    onMouseLeave={isRecording ? handleStopRecording : undefined}
+                    onTouchStart={handleStartRecording}
+                    onTouchEnd={handleStopRecording}
+                    className={cn(
+                      "relative transition-all duration-200",
+                      isRecording 
+                        ? "bg-red-500 hover:bg-red-600 border-red-500 text-white scale-110 shadow-lg shadow-red-500/30" 
+                        : "border-red-200 hover:border-red-400 hover:bg-red-50 dark:border-red-800 dark:hover:border-red-600 dark:hover:bg-red-950"
+                    )}
+                    title="Зажмите для записи голоса"
+                  >
+                    {isRecording ? (
+                      <MicOff className="h-4 w-4 animate-pulse" />
+                    ) : (
+                      <Mic className="h-4 w-4 text-red-500" />
+                    )}
+                    
+                    {/* Recording indicator */}
+                    {isRecording && (
+                      <>
+                        <span className="absolute -top-2 -right-2 flex h-5 w-5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 items-center justify-center text-[9px] text-white font-medium">
+                            {formatTime(recordingTime)}
+                          </span>
+                        </span>
+                        <span className="absolute inset-0 rounded-md animate-pulse bg-red-500/20"></span>
+                      </>
+                    )}
+                  </Button>
+                  
+                  {/* Tooltip hint */}
+                  {!isRecording && (
+                    <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                      <div className="bg-popover text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg border whitespace-nowrap">
+                        <p className="font-medium">Голосовой ввод</p>
+                        <p className="text-muted-foreground">Зажмите и говорите</p>
+                      </div>
+                      <div className="absolute bottom-0 right-4 transform translate-y-1/2 rotate-45 w-2 h-2 bg-popover border-r border-b"></div>
+                    </div>
+                  )}
+                </div>
               </div>
+              
+              {/* Recording status */}
+              {isRecording && (
+                <div className="flex items-center justify-center gap-2 py-2 px-3 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800 animate-pulse">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                  </span>
+                  <span className="text-sm text-red-600 dark:text-red-400 font-medium">
+                    Идёт запись... Отпустите кнопку для отправки
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
