@@ -58,6 +58,9 @@ interface CartItem {
   price: number;
 }
 
+// Storage key for persisting selected catalog
+const SELLER_CATALOG_STORAGE_KEY = 'seller_selected_catalog_id';
+
 // Форматирование цены с пробелом
 function formatPriceSpaced(price: number): string {
   return Math.round(price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
@@ -1070,7 +1073,51 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const { orders } = useStoreOrders(isOwner ? store?.id : null);
   
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedCatalog, setSelectedCatalog] = useState<string | null>(null);
+  const [selectedCatalogState, setSelectedCatalogState] = useState<string | null>(() => {
+    // Initialize from localStorage if available
+    try {
+      const stored = localStorage.getItem(SELLER_CATALOG_STORAGE_KEY);
+      return stored || null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Wrapper to persist selectedCatalog to localStorage
+  const setSelectedCatalog = useCallback((catalogId: string | null) => {
+    setSelectedCatalogState(catalogId);
+    try {
+      if (catalogId) {
+        localStorage.setItem(SELLER_CATALOG_STORAGE_KEY, catalogId);
+      } else {
+        localStorage.removeItem(SELLER_CATALOG_STORAGE_KEY);
+      }
+    } catch (e) {
+      console.error('Failed to save selected catalog:', e);
+    }
+  }, []);
+
+  // Validate and set initial catalog from localStorage or first available
+  const selectedCatalog = useMemo(() => {
+    if (!catalogs.length) return null;
+    // If stored catalog exists in available catalogs, use it
+    if (selectedCatalogState && catalogs.some(c => c.id === selectedCatalogState)) {
+      return selectedCatalogState;
+    }
+    // Otherwise default to first catalog
+    return catalogs[0]?.id || null;
+  }, [selectedCatalogState, catalogs]);
+
+  // Sync selectedCatalog to localStorage when catalogs load (initial selection)
+  useEffect(() => {
+    if (catalogs.length > 0 && !selectedCatalogState) {
+      // Auto-select first catalog if none saved
+      setSelectedCatalog(catalogs[0].id);
+    } else if (catalogs.length > 0 && selectedCatalogState && !catalogs.some(c => c.id === selectedCatalogState)) {
+      // Saved catalog no longer exists, select first available
+      setSelectedCatalog(catalogs[0].id);
+    }
+  }, [catalogs, selectedCatalogState, setSelectedCatalog]);
   const [showImages, setShowImages] = useState(true);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [galleryOpenProductId, setGalleryOpenProductId] = useState<string | null>(null);
