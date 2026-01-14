@@ -41,6 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CustomerAIAssistantBanner } from "@/components/customer/CustomerAIAssistantBanner";
 import { CustomerAIAssistantPanel } from "@/components/customer/CustomerAIAssistantPanel";
 import { useCustomerAIAssistant, FoundItem } from "@/hooks/useCustomerAIAssistant";
+import { DemoTour, productCardDemoSteps, DEMO_PRODUCT } from "@/components/demo";
 import { 
   ShoppingCart, 
   Plus, 
@@ -59,7 +60,8 @@ import {
   Store,
   Phone,
   MessageCircle,
-  Sparkles
+  Sparkles,
+  PlayCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -100,7 +102,8 @@ function GuestProductCard({
   onImageClick,
   onOpenFullscreen,
   isDescriptionExpanded = false,
-  onNameClick
+  onNameClick,
+  isDemo = false
 }: { 
   product: GuestProduct;
   cart: GuestCartItem[];
@@ -111,6 +114,7 @@ function GuestProductCard({
   onOpenFullscreen?: (imageIndex: number) => void;
   isDescriptionExpanded?: boolean;
   onNameClick?: () => void;
+  isDemo?: boolean;
 }) {
   const getCartQuantity = (variantIndex: number) => {
     const item = cart.find(c => c.productId === product.id && c.variantIndex === variantIndex);
@@ -174,6 +178,7 @@ function GuestProductCard({
           <button 
             onClick={onImageClick}
             className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted self-start cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+            {...(isDemo ? { 'data-demo': 'product-image' } : {})}
           >
             {image ? (
               <img src={image} alt={product.name} className="w-full h-full object-cover" />
@@ -202,6 +207,7 @@ function GuestProductCard({
               <button 
                 onClick={onNameClick}
                 className={`relative overflow-hidden text-left flex-1 min-w-0 ${product.description ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+                {...(isDemo ? { 'data-demo': 'product-name' } : {})}
               >
                 <h3 className={`font-medium text-foreground leading-tight ${showImages ? 'text-lg pr-6' : 'text-[11px] pr-4'} ${isDescriptionExpanded ? 'text-primary whitespace-normal break-words' : 'whitespace-nowrap'}`}>
                   {product.name}
@@ -212,7 +218,10 @@ function GuestProductCard({
               </button>
             </div>
             
-            <p className={`text-muted-foreground leading-tight ${showImages ? 'text-xs' : 'text-[11px]'}`}>
+            <p 
+              className={`text-muted-foreground leading-tight ${showImages ? 'text-xs' : 'text-[11px]'}`}
+              {...(isDemo ? { 'data-demo': 'price-per-unit' } : {})}
+            >
               {formatPrice(basePrice)}/{product.unit}
               {showImages && hasVariantPrices && unitWeight > 0 && (
                 <span className="ml-1">
@@ -283,6 +292,7 @@ function GuestProductCard({
                     <button
                       onClick={() => onAddToCart(product.id, product.name, 1, halfPrice, product.unit, unitWeight, product.images, product.packaging_type)}
                       className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all h-7 px-2`}
+                      {...(isDemo ? { 'data-demo': 'buy-half' } : {})}
                     >
                       {qty > 0 && (
                         <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground font-bold rounded-full flex items-center justify-center w-3.5 h-3.5 text-[9px]">
@@ -300,6 +310,7 @@ function GuestProductCard({
                     <button
                       onClick={() => onAddToCart(product.id, product.name, 0, fullPrice, product.unit, unitWeight, product.images, product.packaging_type)}
                       className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all h-7 px-2`}
+                      {...(isDemo ? { 'data-demo': 'buy-full' } : {})}
                     >
                       {qty > 0 && (
                         <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground font-bold rounded-full flex items-center justify-center w-3.5 h-3.5 text-[9px]">
@@ -457,6 +468,10 @@ const GuestCatalogView = () => {
   // Fullscreen image viewer
   const [fullscreenProduct, setFullscreenProduct] = useState<GuestProduct | null>(null);
   const [fullscreenIndex, setFullscreenIndex] = useState(0);
+
+  // Demo tour state
+  const [showDemoTour, setShowDemoTour] = useState(false);
+  const [demoProduct, setDemoProduct] = useState<GuestProduct | null>(null);
 
   // Detect mobile
   const [isMobile, setIsMobile] = useState(false);
@@ -865,6 +880,7 @@ const GuestCatalogView = () => {
           <button 
             onClick={() => setCartOpen(true)}
             className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full py-1.5 px-3"
+            data-demo="cart-button"
           >
             <ShoppingCart className="w-4 h-4 text-primary" />
             <span className="text-xs font-semibold text-foreground">{formatPrice(cartTotal)}</span>
@@ -902,8 +918,20 @@ const GuestCatalogView = () => {
             </DropdownMenu>
           </div>
 
-          {/* AI and Login buttons - right */}
+          {/* Demo, AI and Login buttons - right */}
           <div className="flex items-center gap-2">
+            {/* Demo Tour Button */}
+            <button
+              onClick={() => {
+                setDemoProduct(DEMO_PRODUCT as unknown as GuestProduct);
+                setShowDemoTour(true);
+              }}
+              className="flex items-center justify-center w-7 h-7 rounded-full bg-muted hover:bg-muted/80 transition-colors"
+              title="Смотреть демо"
+            >
+              <PlayCircle className="w-4 h-4 text-muted-foreground" />
+            </button>
+
             {/* AI Assistant Button */}
             <button
               onClick={() => setIsAIPanelOpen(true)}
@@ -1057,14 +1085,19 @@ const GuestCatalogView = () => {
                       setDescriptionExpandedId(descriptionExpandedId === product.id ? null : product.id);
                     }
                   }}
+                  isDemo={showDemoTour && demoProduct?.id === product.id}
                 />
               );
+
+              // Demo product at top when demo is active
+              const demoProductCard = showDemoTour && demoProduct ? renderProductCard(demoProduct) : null;
 
               // Если выбрана конкретная категория - показать только её с заголовком
               if (selectedCategory) {
                 const categoryName = availableCategories.find(c => c.id === selectedCategory)?.name || 'Категория';
                 return (
                   <>
+                    {demoProductCard}
                     <div className="px-3 py-2 bg-muted/50 border-b border-border sticky top-0 z-10">
                       <span className="text-sm font-medium text-foreground">{categoryName}</span>
                     </div>
