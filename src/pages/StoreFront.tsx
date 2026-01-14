@@ -695,11 +695,34 @@ function StoreHeader({
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const selectedCatalogName = catalogs.find((c) => c.id === selectedCatalog)?.name || "Все товары";
 
-  const handleCopyLink = () => {
+  const handleSharePrice = async () => {
     const catalog = catalogs.find(c => c.id === selectedCatalog);
-    if (catalog?.access_code) {
-      const url = `${window.location.origin}/catalog/${catalog.access_code}`;
-      navigator.clipboard.writeText(url);
+    if (!catalog?.access_code) return;
+    
+    const url = `${window.location.origin}/catalog/${catalog.access_code}`;
+    const shareTitle = `${store?.name} — ${selectedCatalogName}`;
+    
+    // Проверяем поддержку Web Share API (работает на мобильных)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: `Прайс-лист: ${shareTitle}`,
+          url: url,
+        });
+      } catch (err) {
+        // Пользователь отменил или ошибка - копируем в буфер
+        if ((err as Error).name !== 'AbortError') {
+          await navigator.clipboard.writeText(url);
+          toast({
+            title: "Ссылка скопирована",
+            description: "Ссылка на прайс-лист скопирована в буфер обмена",
+          });
+        }
+      }
+    } else {
+      // Fallback для браузеров без Web Share API
+      await navigator.clipboard.writeText(url);
       toast({
         title: "Ссылка скопирована",
         description: "Ссылка на прайс-лист скопирована в буфер обмена",
@@ -827,19 +850,28 @@ function StoreHeader({
       </div>
       </div>
 
-      {/* Название магазина и прайс-листа - под блоком с иконками */}
-      <div className="px-3 py-1 border-t border-border bg-background">
-        <button
-          onClick={handleCopyLink}
-          className="w-full flex items-center justify-end gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          title="Скопировать ссылку на прайс-лист"
-        >
-          <span className="truncate">
-            {store.name} — {selectedCatalogName}
-          </span>
-          <Copy className="w-3.5 h-3.5 flex-shrink-0 text-primary/70" />
-        </button>
-      </div>
+      {/* Блок "Поделись прайсом" - с нативным шарингом */}
+      <button
+        onClick={handleSharePrice}
+        className="w-full px-3 py-2 border-t border-border bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-colors cursor-pointer group"
+        title="Нажмите чтобы поделиться прайс-листом"
+      >
+        <div className="flex items-center justify-between">
+          {/* Левая часть - призыв к действию */}
+          <div className="flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-primary" />
+            <span className="text-xs font-medium text-primary">Поделись прайсом</span>
+          </div>
+          
+          {/* Правая часть - название прайса */}
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">
+            <span className="truncate max-w-[180px]">
+              {store.name} — {selectedCatalogName}
+            </span>
+            <Copy className="w-3 h-3 flex-shrink-0 opacity-50 group-hover:opacity-100" />
+          </div>
+        </div>
+      </button>
 
       {/* Выезжающий блок фильтров */}
       <Collapsible open={filtersOpen}>
