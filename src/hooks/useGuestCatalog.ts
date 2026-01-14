@@ -318,6 +318,30 @@ export function useGuestCatalog(accessCode: string | undefined) {
     localStorage.removeItem(`${CART_STORAGE_KEY}_${catalogInfo.id}`);
   }, [catalogInfo]);
 
+  // Add multiple items to cart at once (for AI assistant)
+  const addItemsToCart = useCallback((items: GuestCartItem[]) => {
+    if (!catalogInfo) return;
+
+    setCart(prev => {
+      const merged = [...prev];
+      items.forEach(newItem => {
+        const existingIdx = merged.findIndex(
+          ci => ci.productId === newItem.productId && ci.variantIndex === newItem.variantIndex
+        );
+        if (existingIdx >= 0) {
+          merged[existingIdx] = {
+            ...merged[existingIdx],
+            quantity: merged[existingIdx].quantity + newItem.quantity,
+          };
+        } else {
+          merged.push(newItem);
+        }
+      });
+      saveCart(catalogInfo.id, merged);
+      return merged;
+    });
+  }, [catalogInfo]);
+
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -362,6 +386,7 @@ export function useGuestCatalog(accessCode: string | undefined) {
     productsLoading,
     error,
     addToCart,
+    addItemsToCart,
     updateCartQuantity,
     removeFromCart,
     clearCart,

@@ -39,6 +39,8 @@ import {
 } from "@/components/ui/dialog";
 import { FullscreenImageViewer } from "@/components/ui/fullscreen-image-viewer";
 import { useToast } from "@/hooks/use-toast";
+import { CustomerAIAssistantBanner } from "@/components/customer/CustomerAIAssistantBanner";
+import { FoundItem } from "@/hooks/useCustomerAIAssistant";
 import { 
   ShoppingCart, 
   Plus, 
@@ -388,12 +390,40 @@ const GuestCatalogView = () => {
     productsLoading,
     error,
     addToCart,
+    addItemsToCart,
     updateCartQuantity,
     removeFromCart,
     clearCart,
     cartTotal,
     cartItemsCount,
   } = useGuestCatalog(accessCode);
+
+  // Handler for AI assistant adding items to cart
+  const handleAIAddToCart = (items: FoundItem[]) => {
+    if (!catalogInfo || items.length === 0) return;
+
+    const cartItems: GuestCartItem[] = items.map(item => {
+      const product = products.find(p => p.id === item.productId);
+      return {
+        productId: item.productId,
+        productName: item.productName,
+        variantIndex: item.variantIndex,
+        quantity: item.quantity,
+        price: item.unitPrice,
+        unit: product?.unit || null,
+        unit_weight: product?.unit_weight || null,
+        images: product?.images || null,
+        packaging_type: product?.packaging_type || null,
+      };
+    });
+
+    addItemsToCart(cartItems);
+    setCartOpen(true);
+    toast({
+      title: "Товары добавлены в корзину",
+      description: `${items.length} ${items.length === 1 ? 'товар' : items.length < 5 ? 'товара' : 'товаров'}`,
+    });
+  };
 
   // UI state
   const [showImages, setShowImages] = useState(true);
@@ -951,6 +981,15 @@ const GuestCatalogView = () => {
           </p>
         </div>
       </header>
+
+      {/* AI Assistant Banner */}
+      {catalogInfo && (
+        <CustomerAIAssistantBanner
+          catalogId={catalogInfo.id}
+          orders={[]}
+          onAddToCart={handleAIAddToCart}
+        />
+      )}
 
       {/* Products */}
       <main className="flex-1 overflow-auto">
