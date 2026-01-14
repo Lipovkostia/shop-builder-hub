@@ -344,7 +344,7 @@ export function CustomerAIAssistantPanel({
                   {response.items.map((item, idx) => (
                     <div
                       key={`${item.productId}-${idx}`}
-                      className={`p-2.5 rounded-lg border transition-colors overflow-hidden ${
+                      className={`w-full max-w-full p-2.5 rounded-lg border transition-colors overflow-hidden ${
                         item.available 
                           ? selectedItems.has(item.productId)
                             ? 'border-primary bg-primary/5'
@@ -367,8 +367,8 @@ export function CustomerAIAssistantPanel({
                         )}
                         
                         <div className="flex-1 min-w-0 overflow-hidden">
-                          <div className="flex items-center gap-1.5 max-w-full">
-                            <span className="font-medium text-sm truncate block">{item.productName}</span>
+                          <div className="flex items-center gap-1.5 min-w-0 max-w-full">
+                            <span className="font-medium text-sm truncate flex-1 min-w-0">{item.productName}</span>
                             <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 flex-shrink-0 whitespace-nowrap">
                               {item.variantLabel}
                             </Badge>
@@ -470,13 +470,13 @@ export function CustomerAIAssistantPanel({
         </ScrollArea>
 
         {/* Footer with actions - compact */}
-        {(state === "confirming" || hasExistingItems) && response && response.items.length > 0 && (
-          <div className="px-4 py-3 border-t border-border bg-background flex-shrink-0 space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">
+          {(state === "confirming" || hasExistingItems) && response && response.items.length > 0 && (
+          <div className="px-4 py-3 border-t border-border bg-background flex-shrink-0 space-y-2 overflow-x-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm min-w-0">
+              <span className="text-muted-foreground min-w-0">
                 Выбрано: <span className="font-medium text-foreground">{selectedItems.size}</span>
               </span>
-              <span>
+              <span className="whitespace-nowrap">
                 <span className="text-muted-foreground">Итого: </span>
                 <span className="font-bold text-primary">{formatPrice(getSelectedTotal())}</span>
               </span>
