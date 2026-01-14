@@ -52,7 +52,14 @@ export function useCustomerAIAssistant(catalogId: string | null) {
     setError(null);
   }, []);
 
-  const searchProducts = useCallback(async (query: string) => {
+  // Merges new items into existing response, avoiding duplicates
+  const mergeItems = useCallback((existingItems: FoundItem[], newItems: FoundItem[]): FoundItem[] => {
+    const existingIds = new Set(existingItems.map(i => i.productId));
+    const uniqueNewItems = newItems.filter(i => !existingIds.has(i.productId));
+    return [...existingItems, ...uniqueNewItems];
+  }, []);
+
+  const searchProducts = useCallback(async (query: string, appendMode: boolean = false) => {
     if (!catalogId || !query.trim()) return;
 
     setState("processing");
@@ -72,9 +79,25 @@ export function useCustomerAIAssistant(catalogId: string | null) {
       }
 
       const result = data as CustomerAIResponse;
-      setResponse(result);
-      // Pre-select only available items
-      setSelectedItems(new Set(result.items.filter(i => i.available).map(i => i.productId)));
+      
+      if (appendMode && response) {
+        // Merge new items with existing ones
+        const mergedItems = mergeItems(response.items, result.items);
+        const newAvailableIds = result.items.filter(i => i.available).map(i => i.productId);
+        
+        setResponse({
+          ...result,
+          items: mergedItems,
+          summary: `${response.summary}. ${result.summary}`,
+          unavailableCount: mergedItems.filter(i => !i.available).length,
+        });
+        // Add new available items to selection
+        setSelectedItems(prev => new Set([...prev, ...newAvailableIds]));
+      } else {
+        setResponse(result);
+        // Pre-select only available items
+        setSelectedItems(new Set(result.items.filter(i => i.available).map(i => i.productId)));
+      }
       setState("confirming");
 
     } catch (err) {
@@ -87,9 +110,9 @@ export function useCustomerAIAssistant(catalogId: string | null) {
         variant: "destructive",
       });
     }
-  }, [catalogId, toast]);
+  }, [catalogId, toast, response, mergeItems]);
 
-  const searchWithAudio = useCallback(async (audioBlob: Blob) => {
+  const searchWithAudio = useCallback(async (audioBlob: Blob, appendMode: boolean = false) => {
     if (!catalogId) return;
 
     setState("processing");
@@ -100,7 +123,7 @@ export function useCustomerAIAssistant(catalogId: string | null) {
       formData.append("audio", audioBlob, "recording.webm");
       formData.append("catalogId", catalogId);
 
-      const response = await fetch(
+      const fetchResponse = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-customer-assistant`,
         {
           method: "POST",
@@ -111,19 +134,33 @@ export function useCustomerAIAssistant(catalogId: string | null) {
         }
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!fetchResponse.ok) {
+        const errorData = await fetchResponse.json();
         throw new Error(errorData.error || "Voice search failed");
       }
 
-      const result = await response.json() as CustomerAIResponse;
+      const result = await fetchResponse.json() as CustomerAIResponse;
       
       if (result.error) {
         throw new Error(result.error);
       }
 
-      setResponse(result);
-      setSelectedItems(new Set(result.items.filter(i => i.available).map(i => i.productId)));
+      if (appendMode && response) {
+        // Merge new items with existing ones
+        const mergedItems = mergeItems(response.items, result.items);
+        const newAvailableIds = result.items.filter(i => i.available).map(i => i.productId);
+        
+        setResponse({
+          ...result,
+          items: mergedItems,
+          summary: `${response.summary}. ${result.summary}`,
+          unavailableCount: mergedItems.filter(i => !i.available).length,
+        });
+        setSelectedItems(prev => new Set([...prev, ...newAvailableIds]));
+      } else {
+        setResponse(result);
+        setSelectedItems(new Set(result.items.filter(i => i.available).map(i => i.productId)));
+      }
       setState("confirming");
 
     } catch (err) {
@@ -136,9 +173,9 @@ export function useCustomerAIAssistant(catalogId: string | null) {
         variant: "destructive",
       });
     }
-  }, [catalogId, toast]);
+  }, [catalogId, toast, response, mergeItems]);
 
-  const repeatOrder = useCallback(async (orderId: string) => {
+  const repeatOrder = useCallback(async (orderId: string, appendMode: boolean = false) => {
     if (!catalogId) return;
 
     setState("processing");
@@ -158,8 +195,22 @@ export function useCustomerAIAssistant(catalogId: string | null) {
       }
 
       const result = data as CustomerAIResponse;
-      setResponse(result);
-      setSelectedItems(new Set(result.items.filter(i => i.available).map(i => i.productId)));
+      
+      if (appendMode && response) {
+        const mergedItems = mergeItems(response.items, result.items);
+        const newAvailableIds = result.items.filter(i => i.available).map(i => i.productId);
+        
+        setResponse({
+          ...result,
+          items: mergedItems,
+          summary: `${response.summary}. ${result.summary}`,
+          unavailableCount: mergedItems.filter(i => !i.available).length,
+        });
+        setSelectedItems(prev => new Set([...prev, ...newAvailableIds]));
+      } else {
+        setResponse(result);
+        setSelectedItems(new Set(result.items.filter(i => i.available).map(i => i.productId)));
+      }
       setState("confirming");
 
     } catch (err) {
@@ -172,7 +223,28 @@ export function useCustomerAIAssistant(catalogId: string | null) {
         variant: "destructive",
       });
     }
-  }, [catalogId, toast]);
+  }, [catalogId, toast, response, mergeItems]);
+
+  // Remove a single item from the list
+  const removeItem = useCallback((productId: string) => {
+    setResponse(prev => {
+      if (!prev) return prev;
+      const newItems = prev.items.filter(i => i.productId !== productId);
+      return {
+        ...prev,
+        items: newItems,
+        unavailableCount: newItems.filter(i => !i.available).length,
+      };
+    });
+    setSelectedItems(prev => {
+      const next = new Set(prev);
+      next.delete(productId);
+      return next;
+    });
+  }, []);
+
+  // Check if we have items (for badge display)
+  const itemCount = response?.items?.length ?? 0;
 
   const toggleItem = useCallback((productId: string) => {
     setSelectedItems(prev => {
@@ -235,6 +307,7 @@ export function useCustomerAIAssistant(catalogId: string | null) {
     response,
     selectedItems,
     error,
+    itemCount,
     reset,
     searchProducts,
     searchWithAudio,
@@ -243,6 +316,7 @@ export function useCustomerAIAssistant(catalogId: string | null) {
     selectAll,
     deselectAll,
     updateItemQuantity,
+    removeItem,
     getSelectedItems,
     getSelectedTotal,
   };

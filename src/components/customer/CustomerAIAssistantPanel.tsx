@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
   Sheet,
   SheetContent,
@@ -19,12 +19,12 @@ import {
   ShoppingCart,
   RotateCcw,
   AlertCircle,
-  Check,
   X,
   Package,
   ChevronDown,
   Plus,
   Minus,
+  Trash2,
 } from "lucide-react";
 import { useCustomerAIAssistant, FoundItem } from "@/hooks/useCustomerAIAssistant";
 import { Order } from "@/hooks/useOrders";
@@ -32,7 +32,7 @@ import { Order } from "@/hooks/useOrders";
 interface CustomerAIAssistantPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  catalogId: string | null;
+  assistant: ReturnType<typeof useCustomerAIAssistant>;
   orders?: Order[];
   onAddToCart: (items: FoundItem[]) => void;
 }
@@ -44,7 +44,7 @@ function formatPrice(price: number): string {
 export function CustomerAIAssistantPanel({
   open,
   onOpenChange,
-  catalogId,
+  assistant,
   orders = [],
   onAddToCart,
 }: CustomerAIAssistantPanelProps) {
@@ -62,9 +62,10 @@ export function CustomerAIAssistantPanel({
     selectAll,
     deselectAll,
     updateItemQuantity,
+    removeItem,
     getSelectedItems,
     getSelectedTotal,
-  } = useCustomerAIAssistant(catalogId);
+  } = assistant;
 
   const [query, setQuery] = useState("");
   const [isRecording, setIsRecording] = useState(false);
@@ -72,23 +73,16 @@ export function CustomerAIAssistantPanel({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  // Reset state when panel closes
-  useEffect(() => {
-    if (!open) {
-      setTimeout(() => {
-        reset();
-        setQuery("");
-        setIsRecording(false);
-        setShowOrders(false);
-      }, 300);
-    }
-  }, [open, reset]);
+  // Check if we have existing items (for append mode)
+  const hasExistingItems = (response?.items?.length ?? 0) > 0;
 
   const handleSubmit = useCallback(() => {
     if (query.trim()) {
-      searchProducts(query.trim());
+      // Use append mode if we already have items
+      searchProducts(query.trim(), hasExistingItems);
+      setQuery("");
     }
-  }, [query, searchProducts]);
+  }, [query, searchProducts, hasExistingItems]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -114,7 +108,7 @@ export function CustomerAIAssistantPanel({
         stream.getTracks().forEach(track => track.stop());
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         if (audioBlob.size > 0) {
-          await searchWithAudio(audioBlob);
+          await searchWithAudio(audioBlob, hasExistingItems);
         }
       };
 
@@ -124,7 +118,7 @@ export function CustomerAIAssistantPanel({
     } catch (err) {
       console.error("Failed to start recording:", err);
     }
-  }, [searchWithAudio, setState]);
+  }, [searchWithAudio, setState, hasExistingItems]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording) {
@@ -134,20 +128,29 @@ export function CustomerAIAssistantPanel({
   }, [isRecording]);
 
   const handleRepeatOrder = useCallback((orderId: string) => {
-    repeatOrder(orderId);
+    repeatOrder(orderId, hasExistingItems);
     setShowOrders(false);
-  }, [repeatOrder]);
+  }, [repeatOrder, hasExistingItems]);
 
   const handleAddToCart = useCallback(() => {
     const items = getSelectedItems();
     if (items.length > 0) {
       onAddToCart(items);
+      reset(); // Reset only after successful add to cart
       onOpenChange(false);
     }
-  }, [getSelectedItems, onAddToCart, onOpenChange]);
+  }, [getSelectedItems, onAddToCart, onOpenChange, reset]);
+
+  const handleClearList = useCallback(() => {
+    reset();
+    setQuery("");
+  }, [reset]);
 
   // Recent orders (last 5)
   const recentOrders = orders.slice(0, 5);
+
+  // Show input in idle, recording, or confirming states
+  const showInput = state === "idle" || state === "recording" || state === "confirming";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -157,13 +160,18 @@ export function CustomerAIAssistantPanel({
           <SheetTitle className="flex items-center gap-2 text-lg">
             <Sparkles className="w-5 h-5 text-primary" />
             Умный заказ
+            {hasExistingItems && (
+              <Badge variant="secondary" className="ml-2">
+                {response?.items?.length} товар{(response?.items?.length ?? 0) === 1 ? '' : (response?.items?.length ?? 0) < 5 ? 'а' : 'ов'}
+              </Badge>
+            )}
           </SheetTitle>
         </SheetHeader>
 
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-4">
-            {/* Quick actions */}
-            {state === "idle" && recentOrders.length > 0 && (
+            {/* Quick actions - repeat order */}
+            {(state === "idle" || state === "confirming") && recentOrders.length > 0 && (
               <div className="space-y-2">
                 <button
                   onClick={() => setShowOrders(!showOrders)}
@@ -201,16 +209,16 @@ export function CustomerAIAssistantPanel({
               </div>
             )}
 
-            {/* Input area */}
-            {(state === "idle" || state === "recording") && (
+            {/* Input area - show in idle, recording, and confirming states */}
+            {showInput && (
               <div className="space-y-2">
                 <div className="relative">
                   <Textarea
-                    placeholder="Сёмга 2кг, форель полкило, икра 3 порции..."
+                    placeholder={hasExistingItems ? "Добавить ещё..." : "Сёмга 2кг, форель полкило, икра 3 порции..."}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    className="min-h-[80px] pr-24 resize-none"
+                    className="min-h-[60px] pr-24 resize-none"
                     disabled={isRecording}
                   />
                   <div className="absolute bottom-2 right-2 flex gap-1">
@@ -247,37 +255,39 @@ export function CustomerAIAssistantPanel({
                   </div>
                 )}
                 
-                {/* Example commands */}
-                <div className="space-y-1.5">
-                  <p className="text-xs text-muted-foreground">
-                    Напишите или скажите голосом что хотите заказать
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      "Сёмга 2 кг",
-                      "Форель полкило",
-                      "Три порции икры",
-                      "Как в прошлый раз",
-                    ].map((example) => (
-                      <button
-                        key={example}
-                        onClick={() => {
-                          setQuery(example);
-                          searchProducts(example);
-                        }}
-                        className="px-2.5 py-1 text-xs bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded-full transition-colors"
-                      >
-                        {example}
-                      </button>
-                    ))}
+                {/* Example commands - only show when no items yet */}
+                {!hasExistingItems && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground">
+                      Напишите или скажите голосом что хотите заказать
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        "Сёмга 2 кг",
+                        "Форель полкило",
+                        "Три порции икры",
+                        "Как в прошлый раз",
+                      ].map((example) => (
+                        <button
+                          key={example}
+                          onClick={() => {
+                            setQuery(example);
+                            searchProducts(example, false);
+                          }}
+                          className="px-2.5 py-1 text-xs bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded-full transition-colors"
+                        >
+                          {example}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
             {/* Processing state */}
             {state === "processing" && (
-              <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <div className="flex flex-col items-center justify-center py-8 gap-3">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <p className="text-sm text-muted-foreground">Ищу товары...</p>
               </div>
@@ -308,7 +318,7 @@ export function CustomerAIAssistantPanel({
 
                 {/* Summary with unavailable badge */}
                 <div className="flex items-start gap-2">
-                  <p className="text-sm font-medium flex-1">{response.summary}</p>
+                  <p className="text-sm font-medium flex-1 line-clamp-2">{response.summary}</p>
                   {response.unavailableCount > 0 && (
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 flex-shrink-0 whitespace-nowrap">
                       <AlertCircle className="w-3 h-3 mr-1" />
@@ -343,7 +353,7 @@ export function CustomerAIAssistantPanel({
                       }`}
                       onClick={() => item.available && toggleItem(item.productId)}
                     >
-                      {/* Row 1: Checkbox + Name + Price */}
+                      {/* Row 1: Checkbox + Name + Price + Remove */}
                       <div className="flex items-center gap-2">
                         {item.available ? (
                           <Checkbox
@@ -368,6 +378,17 @@ export function CustomerAIAssistantPanel({
                         }`}>
                           {formatPrice(item.totalPrice)}
                         </span>
+                        
+                        {/* Remove button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeItem(item.productId);
+                          }}
+                          className="w-5 h-5 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
                       </div>
                       
                       {/* Row 2: Quantity controls or info */}
@@ -432,7 +453,7 @@ export function CustomerAIAssistantPanel({
         </ScrollArea>
 
         {/* Footer with actions - compact */}
-        {state === "confirming" && response && response.items.length > 0 && (
+        {(state === "confirming" || hasExistingItems) && response && response.items.length > 0 && (
           <div className="px-4 py-3 border-t border-border bg-background flex-shrink-0 space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
@@ -445,9 +466,12 @@ export function CustomerAIAssistantPanel({
             </div>
             
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1 h-9" onClick={reset}>
-                <X className="w-3.5 h-3.5 mr-1.5" />
-                Отмена
+              <Button variant="ghost" size="sm" className="h-9 px-3" onClick={handleClearList}>
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                Очистить
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1 h-9" onClick={() => onOpenChange(false)}>
+                Свернуть
               </Button>
               <Button 
                 size="sm"
