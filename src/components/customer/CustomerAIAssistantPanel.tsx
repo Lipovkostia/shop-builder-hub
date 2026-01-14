@@ -243,9 +243,32 @@ export function CustomerAIAssistantPanel({
                     Говорите... (отпустите для отправки)
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  Напишите или скажите голосом что хотите заказать
-                </p>
+                
+                {/* Example commands */}
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground">
+                    Напишите или скажите голосом что хотите заказать
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      "Сёмга 2 кг",
+                      "Форель полкило",
+                      "Три порции икры",
+                      "Как в прошлый раз",
+                    ].map((example) => (
+                      <button
+                        key={example}
+                        onClick={() => {
+                          setQuery(example);
+                          searchProducts(example);
+                        }}
+                        className="px-2.5 py-1 text-xs bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded-full transition-colors"
+                      >
+                        {example}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
