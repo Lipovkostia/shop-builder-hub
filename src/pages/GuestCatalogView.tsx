@@ -802,6 +802,7 @@ const GuestCatalogView = () => {
               setCheckoutOpen(true);
             }} 
             className="w-full h-9 text-sm font-semibold"
+            data-demo="checkout-button"
           >
             Оформить {cart.length} поз. · {formatPrice(cartTotal)}
           </Button>
@@ -1108,7 +1109,12 @@ const GuestCatalogView = () => {
 
               // Если есть поисковый запрос - показать результаты без группировки
               if (searchQuery) {
-                return filteredProducts.map(renderProductCard);
+                return (
+                  <>
+                    {demoProductCard}
+                    {filteredProducts.map(renderProductCard)}
+                  </>
+                );
               }
 
               // Все категории - группировать продукты по категориям
@@ -1314,6 +1320,22 @@ const GuestCatalogView = () => {
         onClose={() => setFullscreenProduct(null)}
         onIndexChange={setFullscreenIndex}
       />
+
+      {/* Demo Tour */}
+      {showDemoTour && demoProduct && (
+        <DemoTour
+          steps={productCardDemoSteps}
+          onComplete={() => {
+            setShowDemoTour(false);
+            setDemoProduct(null);
+          }}
+          onSkip={() => {
+            setShowDemoTour(false);
+            setDemoProduct(null);
+          }}
+          autoPlay
+        />
+      )}
     </div>
   );
 };
