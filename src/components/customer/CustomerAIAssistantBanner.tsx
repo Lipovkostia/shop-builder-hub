@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Sparkles, Mic, X } from "lucide-react";
 import { CustomerAIAssistantPanel } from "./CustomerAIAssistantPanel";
-import { FoundItem } from "@/hooks/useCustomerAIAssistant";
+import { useCustomerAIAssistant, FoundItem } from "@/hooks/useCustomerAIAssistant";
 import { Order } from "@/hooks/useOrders";
 
 interface CustomerAIAssistantBannerProps {
@@ -17,6 +17,11 @@ export function CustomerAIAssistantBanner({
 }: CustomerAIAssistantBannerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
+  
+  // Hoist the hook here so state persists when panel closes
+  const assistant = useCustomerAIAssistant(catalogId);
+  
+  const hasItems = assistant.itemCount > 0;
 
   if (isDismissed) return null;
 
@@ -45,24 +50,39 @@ export function CustomerAIAssistantBanner({
             <div className="relative w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
               <Sparkles className="w-5 h-5" />
             </div>
+            {/* Badge with item count */}
+            {hasItems && (
+              <div className="absolute -top-1 -right-1 bg-white text-primary text-[10px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-sm">
+                {assistant.itemCount}
+              </div>
+            )}
           </div>
           
           {/* Text */}
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-sm flex items-center gap-2">
               Умный заказ
-              <span className="px-1.5 py-0.5 text-[10px] bg-white/20 rounded-full font-normal">
-                Новинка — протестируйте!
-              </span>
+              {hasItems ? (
+                <span className="px-1.5 py-0.5 text-[10px] bg-white/20 rounded-full font-normal">
+                  {assistant.itemCount} товар{assistant.itemCount === 1 ? '' : assistant.itemCount < 5 ? 'а' : 'ов'}
+                </span>
+              ) : (
+                <span className="px-1.5 py-0.5 text-[10px] bg-white/20 rounded-full font-normal">
+                  Новинка — протестируйте!
+                </span>
+              )}
             </h3>
             <p className="text-xs text-white/80 mt-0.5">
-              Скажите голосом или напишите «сёмга 2 кг, форель полкило» — AI соберёт заказ
+              {hasItems 
+                ? "Нажмите чтобы продолжить формирование заказа"
+                : "Скажите голосом или напишите «сёмга 2 кг, форель полкило» — AI соберёт заказ"
+              }
             </p>
           </div>
           
           {/* Mic icon */}
           <div className="flex-shrink-0 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center animate-pulse">
+            <div className={`w-8 h-8 rounded-full bg-white/20 flex items-center justify-center ${!hasItems ? 'animate-pulse' : ''}`}>
               <Mic className="w-4 h-4" />
             </div>
           </div>
@@ -73,7 +93,7 @@ export function CustomerAIAssistantBanner({
       <CustomerAIAssistantPanel
         open={isOpen}
         onOpenChange={setIsOpen}
-        catalogId={catalogId}
+        assistant={assistant}
         orders={orders}
         onAddToCart={onAddToCart}
       />
