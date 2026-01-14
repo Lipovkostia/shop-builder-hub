@@ -473,6 +473,32 @@ const GuestCatalogView = () => {
   const [showDemoTour, setShowDemoTour] = useState(false);
   const [demoProduct, setDemoProduct] = useState<GuestProduct | null>(null);
 
+  // Auto-launch demo on first visit
+  useEffect(() => {
+    if (!accessCode || loading || productsLoading) return;
+    
+    const storageKey = `demo_completed_${accessCode}`;
+    const hasSeenDemo = localStorage.getItem(storageKey);
+    
+    if (!hasSeenDemo && products.length > 0) {
+      // Small delay to let the page render
+      const timer = setTimeout(() => {
+        setDemoProduct(DEMO_PRODUCT as unknown as GuestProduct);
+        setShowDemoTour(true);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [accessCode, loading, productsLoading, products.length]);
+
+  // Mark demo as completed
+  const handleDemoComplete = () => {
+    if (accessCode) {
+      localStorage.setItem(`demo_completed_${accessCode}`, 'true');
+    }
+    setShowDemoTour(false);
+    setDemoProduct(null);
+  };
+
   // Detect mobile
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -1325,14 +1351,8 @@ const GuestCatalogView = () => {
       {showDemoTour && demoProduct && (
         <DemoTour
           steps={productCardDemoSteps}
-          onComplete={() => {
-            setShowDemoTour(false);
-            setDemoProduct(null);
-          }}
-          onSkip={() => {
-            setShowDemoTour(false);
-            setDemoProduct(null);
-          }}
+          onComplete={handleDemoComplete}
+          onSkip={handleDemoComplete}
           autoPlay
         />
       )}
