@@ -163,6 +163,8 @@ export function useGuestCatalog(accessCode: string | undefined) {
         }
 
         // Parse portion prices from JSON
+        // DB stores as: halfPricePerKg, quarterPricePerKg, portionPrice, fullPrice
+        // Map to: half, quarter, portion, full
         let portionPrices: GuestProduct['catalog_portion_prices'] = null;
         if (row.setting_portion_prices) {
           try {
@@ -170,11 +172,16 @@ export function useGuestCatalog(accessCode: string | undefined) {
               ? JSON.parse(row.setting_portion_prices) 
               : row.setting_portion_prices;
             portionPrices = {
-              portion: pp.portion != null ? Number(pp.portion) : null,
-              quarter: pp.quarter != null ? Number(pp.quarter) : null,
-              half: pp.half != null ? Number(pp.half) : null,
-              full: pp.full != null ? Number(pp.full) : null,
+              full: pp.fullPrice ?? pp.full ?? null,
+              half: pp.halfPricePerKg ?? pp.half ?? null,
+              quarter: pp.quarterPricePerKg ?? pp.quarter ?? null,
+              portion: pp.portionPrice ?? pp.portion ?? null,
             };
+            // Convert to numbers if present
+            if (portionPrices.full != null) portionPrices.full = Number(portionPrices.full);
+            if (portionPrices.half != null) portionPrices.half = Number(portionPrices.half);
+            if (portionPrices.quarter != null) portionPrices.quarter = Number(portionPrices.quarter);
+            if (portionPrices.portion != null) portionPrices.portion = Number(portionPrices.portion);
           } catch {
             portionPrices = null;
           }
