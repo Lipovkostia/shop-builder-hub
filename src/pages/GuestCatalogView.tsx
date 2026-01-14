@@ -409,6 +409,7 @@ const GuestCatalogView = () => {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
+  const [guestAddress, setGuestAddress] = useState("");
   const [guestComment, setGuestComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCartImages, setShowCartImages] = useState(true);
@@ -477,10 +478,10 @@ const GuestCatalogView = () => {
 
   // Handle checkout submission
   const handleCheckout = async () => {
-    if (!guestName.trim() || !guestPhone.trim()) {
+    if (!guestName.trim() || !guestPhone.trim() || !guestAddress.trim()) {
       toast({
         title: "Заполните данные",
-        description: "Укажите имя и телефон для оформления заказа",
+        description: "Укажите имя, телефон и адрес для оформления заказа",
         variant: "destructive",
       });
       return;
@@ -504,6 +505,7 @@ const GuestCatalogView = () => {
           accessCode,
           guestName: guestName.trim(),
           guestPhone: guestPhone.trim(),
+          guestAddress: guestAddress.trim(),
           guestComment: guestComment.trim() || undefined,
           items: cart.map(item => ({
             productId: item.productId,
@@ -668,6 +670,7 @@ const GuestCatalogView = () => {
       setRegisterPassword("");
       setGuestName("");
       setGuestPhone("");
+      setGuestAddress("");
       setGuestComment("");
 
       // Redirect to customer dashboard
@@ -691,6 +694,7 @@ const GuestCatalogView = () => {
     setRegisterPassword("");
     setGuestName("");
     setGuestPhone("");
+    setGuestAddress("");
     setGuestComment("");
   };
 
@@ -893,18 +897,18 @@ const GuestCatalogView = () => {
 
   // Checkout content JSX - inlined to prevent focus loss issues
   const checkoutContentJsx = (
-    <div className="space-y-4 p-4">
+    <div className="space-y-4 px-4 py-2">
       <div className="space-y-2">
-        <Label htmlFor="guest-name">Ваше имя *</Label>
+        <Label htmlFor="guest-name">Имя</Label>
         <Input
           id="guest-name"
-          placeholder="Как к вам обращаться?"
+          placeholder="Ваше имя"
           value={guestName}
           onChange={(e) => setGuestName(e.target.value)}
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="guest-phone">Телефон *</Label>
+        <Label htmlFor="guest-phone">Телефон</Label>
         <Input
           id="guest-phone"
           type="tel"
@@ -914,44 +918,31 @@ const GuestCatalogView = () => {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="guest-comment">Комментарий</Label>
+        <Label htmlFor="guest-address">Адрес доставки</Label>
+        <Input
+          id="guest-address"
+          placeholder="Город, улица, дом, квартира"
+          value={guestAddress}
+          onChange={(e) => setGuestAddress(e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="guest-comment">Комментарий (необязательно)</Label>
         <Input
           id="guest-comment"
-          placeholder="Пожелания к заказу"
+          placeholder="Дополнительные пожелания"
           value={guestComment}
           onChange={(e) => setGuestComment(e.target.value)}
         />
       </div>
       
-      <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-        <div className="text-sm font-medium">Ваш заказ:</div>
-        {cart.map((item, idx) => {
-          const variantLabels = ['Целая', '1/2', '1/4', 'Порция'];
-          return (
-            <div key={idx} className="flex justify-between text-sm">
-              <span className="truncate">{item.productName} ({variantLabels[item.variantIndex]}) × {item.quantity}</span>
-              <span className="font-medium ml-2">{formatPrice(item.price * item.quantity)}</span>
-            </div>
-          );
-        })}
-        <div className="border-t border-border pt-2 flex justify-between font-medium">
+      {/* Total only - matching CustomerDashboard */}
+      <div className="pt-4 border-t border-border">
+        <div className="flex justify-between text-lg font-semibold">
           <span>Итого:</span>
           <span>{formatPrice(cartTotal)}</span>
         </div>
       </div>
-
-      <Button 
-        onClick={handleCheckout} 
-        disabled={isSubmitting}
-        className="w-full"
-      >
-        {isSubmitting ? (
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-        ) : (
-          <Check className="w-4 h-4 mr-2" />
-        )}
-        Отправить заказ
-      </Button>
     </div>
   );
 
@@ -1162,27 +1153,56 @@ const GuestCatalogView = () => {
             <DrawerHeader>
               <DrawerTitle>Оформление заказа</DrawerTitle>
               <DrawerDescription>
-                Укажите контактные данные для связи
+                Заполните данные для доставки
               </DrawerDescription>
             </DrawerHeader>
-            <div className="overflow-auto max-h-[calc(90vh-120px)]">
+            <div className="overflow-auto max-h-[calc(90vh-180px)] px-0">
               {checkoutContentJsx}
             </div>
+            <DrawerFooter className="flex-row gap-2 pt-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setCheckoutOpen(false)} 
+                className="flex-1"
+              >
+                Отмена
+              </Button>
+              <Button 
+                onClick={handleCheckout}
+                disabled={!guestName.trim() || !guestPhone.trim() || !guestAddress.trim() || isSubmitting}
+                className="flex-1"
+              >
+                {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Подтвердить заказ
+              </Button>
+            </DrawerFooter>
           </DrawerContent>
         </Drawer>
       ) : (
         <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
           <DialogContent 
-            className="sm:max-w-md max-h-[90vh] overflow-auto"
+            className="sm:max-w-md"
             onOpenAutoFocus={(e) => e.preventDefault()}
           >
             <DialogHeader>
               <DialogTitle>Оформление заказа</DialogTitle>
               <DialogDescription>
-                Укажите контактные данные для связи
+                Заполните данные для доставки
               </DialogDescription>
             </DialogHeader>
             {checkoutContentJsx}
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setCheckoutOpen(false)}>
+                Отмена
+              </Button>
+              <Button 
+                onClick={handleCheckout}
+                disabled={!guestName.trim() || !guestPhone.trim() || !guestAddress.trim() || isSubmitting}
+              >
+                {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Подтвердить заказ
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
