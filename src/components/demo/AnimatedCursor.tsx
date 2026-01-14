@@ -9,98 +9,109 @@ interface AnimatedCursorProps {
 
 export function AnimatedCursor({ targetRect, action, isActive }: AnimatedCursorProps) {
   const [phase, setPhase] = useState<"moving" | "tapping" | "holding" | "done">("moving");
-  const [position, setPosition] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isVisible, setIsVisible] = useState(false);
 
-  // Target position (center of element)
+  // Target position - offset to point at element better
   const targetX = targetRect.left + targetRect.width / 2;
-  const targetY = targetRect.top + targetRect.height / 2;
+  const targetY = targetRect.top + targetRect.height / 2 + 5;
 
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive) {
+      setIsVisible(false);
+      return;
+    }
 
     // Reset phase
     setPhase("moving");
+    
+    // Start from slightly offset position
+    setPosition({ 
+      x: targetX + 50, 
+      y: targetY - 50 
+    });
 
-    // After cursor arrives (600ms), do action
+    // Show after brief delay
+    const showTimer = setTimeout(() => {
+      setIsVisible(true);
+    }, 50);
+
+    // After cursor arrives (500ms), do action
     const actionTimer = setTimeout(() => {
       if (action === "tap") {
         setPhase("tapping");
-        // Reset after tap animation
         setTimeout(() => setPhase("done"), 300);
       } else if (action === "hold") {
         setPhase("holding");
       } else {
         setPhase("done");
       }
-    }, 600);
+    }, 550);
 
-    return () => clearTimeout(actionTimer);
-  }, [isActive, action, targetRect]);
+    return () => {
+      clearTimeout(showTimer);
+      clearTimeout(actionTimer);
+    };
+  }, [isActive, action, targetX, targetY]);
 
   // Update position with animation
   useEffect(() => {
-    if (phase === "moving") {
-      // Start from center of screen
-      setPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-      
-      // Animate to target
+    if (phase === "moving" && isVisible) {
       requestAnimationFrame(() => {
-        setPosition({ x: targetX, y: targetY + 10 }); // Offset finger tip
+        setPosition({ x: targetX, y: targetY });
       });
     }
-  }, [phase, targetX, targetY]);
+  }, [phase, targetX, targetY, isVisible]);
+
+  if (!isVisible) return null;
 
   return (
-    <>
-      {/* Cursor */}
-      <div
-        className={`
-          absolute z-[10001] pointer-events-none
-          transition-all duration-[600ms] ease-out
-          ${phase === "tapping" ? "animate-demo-tap" : ""}
-          ${phase === "holding" ? "animate-demo-hold" : ""}
-        `}
-        style={{
-          left: position.x,
-          top: position.y,
-          transform: "translate(-50%, -50%)",
-        }}
-      >
-        {/* Finger icon with glow */}
-        <div className="relative">
-          <div className="w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center">
-            <Hand className="w-6 h-6 text-primary rotate-[20deg]" />
-          </div>
-          
-          {/* Ripple effect on tap */}
-          {phase === "tapping" && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-12 h-12 bg-primary/30 rounded-full animate-demo-ripple" />
-            </div>
-          )}
-          
-          {/* Hold indicator */}
-          {phase === "holding" && (
-            <svg className="absolute -inset-2 w-16 h-16" viewBox="0 0 64 64">
-              <circle
-                cx="32"
-                cy="32"
-                r="28"
-                fill="none"
-                stroke="hsl(var(--primary))"
-                strokeWidth="3"
-                strokeDasharray="176"
-                className="animate-demo-hold-progress"
-                style={{ 
-                  strokeLinecap: "round",
-                  transformOrigin: "center",
-                  transform: "rotate(-90deg)"
-                }}
-              />
-            </svg>
-          )}
+    <div
+      className={`
+        fixed z-[10001] pointer-events-none
+        transition-all duration-500 ease-out
+        ${phase === "tapping" ? "scale-90" : "scale-100"}
+      `}
+      style={{
+        left: position.x,
+        top: position.y,
+        transform: "translate(-50%, -50%)",
+      }}
+    >
+      {/* Finger icon */}
+      <div className="relative">
+        <div className="w-10 h-10 bg-white rounded-full shadow-xl flex items-center justify-center border-2 border-primary/20">
+          <Hand className="w-5 h-5 text-primary rotate-[20deg]" />
         </div>
+        
+        {/* Ripple effect on tap */}
+        {phase === "tapping" && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary/40 rounded-full animate-demo-ripple" />
+          </div>
+        )}
+        
+        {/* Hold indicator */}
+        {phase === "holding" && (
+          <svg className="absolute -inset-1.5 w-[52px] h-[52px]" viewBox="0 0 52 52">
+            <circle
+              cx="26"
+              cy="26"
+              r="22"
+              fill="none"
+              stroke="hsl(var(--primary))"
+              strokeWidth="2.5"
+              strokeDasharray="138"
+              className="animate-demo-hold-progress"
+              style={{ 
+                strokeLinecap: "round",
+                transformOrigin: "center",
+                transform: "rotate(-90deg)"
+              }}
+            />
+          </svg>
+        )}
       </div>
-    </>
+    </div>
   );
 }
