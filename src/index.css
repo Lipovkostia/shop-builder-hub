@@ -292,4 +292,94 @@
   .pb-safe {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
+
+  /* ========== Demo Tour Animations ========== */
+  
+  /* Spotlight border animation */
+  @keyframes demo-spotlight {
+    0%, 100% {
+      box-shadow: 0 0 0 4px hsl(var(--primary) / 0.3), 0 0 20px hsl(var(--primary) / 0.2);
+    }
+    50% {
+      box-shadow: 0 0 0 8px hsl(var(--primary) / 0.2), 0 0 30px hsl(var(--primary) / 0.3);
+    }
+  }
+
+  .animate-demo-spotlight {
+    animation: demo-spotlight 2s ease-in-out infinite;
+  }
+
+  /* Cursor tap animation */
+  @keyframes demo-tap {
+    0%, 100% {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(0.8);
+    }
+  }
+
+  .animate-demo-tap {
+    animation: demo-tap 0.3s ease-in-out;
+  }
+
+  /* Cursor hold animation */
+  @keyframes demo-hold {
+    0% {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(0.9);
+    }
+  }
+
+  .animate-demo-hold {
+    animation: demo-hold 0.5s ease-out forwards;
+  }
+
+  /* Ripple effect on tap */
+  @keyframes demo-ripple {
+    0% {
+      transform: scale(0);
+      opacity: 0.6;
+    }
+    100% {
+      transform: scale(2.5);
+      opacity: 0;
+    }
+  }
+
+  .animate-demo-ripple {
+    animation: demo-ripple 0.6s ease-out forwards;
+  }
+
+  /* Hold progress circle */
+  @keyframes demo-hold-progress {
+    0% {
+      stroke-dashoffset: 176;
+    }
+    100% {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  .animate-demo-hold-progress {
+    animation: demo-hold-progress 2s linear forwards;
+  }
+
+  /* Tooltip appear animation */
+  @keyframes demo-tooltip {
+    0% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-demo-tooltip {
+    animation: demo-tooltip 0.3s ease-out forwards;
+  }
 }

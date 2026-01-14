@@ -1,0 +1,93 @@
+import { DemoStep } from "../DemoTour";
+
+export const productCardDemoSteps: DemoStep[] = [
+  {
+    id: "price-per-unit",
+    targetSelector: "[data-demo='price-per-unit']",
+    action: "point",
+    tooltip: "💰 Это цена за единицу товара — за 1 кг или 1 шт. По ней удобно сравнивать товары",
+    tooltipPosition: "bottom",
+    duration: 3500,
+  },
+  {
+    id: "product-name",
+    targetSelector: "[data-demo='product-name']",
+    action: "tap",
+    tooltip: "📝 Нажмите на название чтобы увидеть подробное описание товара",
+    tooltipPosition: "bottom",
+    duration: 4000,
+  },
+  {
+    id: "product-image",
+    targetSelector: "[data-demo='product-image']",
+    action: "tap",
+    tooltip: "🖼️ Нажмите на фото чтобы посмотреть все фотографии товара в большом размере",
+    tooltipPosition: "right",
+    duration: 4000,
+  },
+  {
+    id: "buy-full",
+    targetSelector: "[data-demo='buy-full']",
+    action: "tap",
+    tooltip: "📦 Это цена за ЦЕЛУЮ упаковку (голову сыра, круг и т.д.). Нажмите чтобы добавить в корзину",
+    tooltipPosition: "top",
+    duration: 4500,
+  },
+  {
+    id: "buy-half",
+    targetSelector: "[data-demo='buy-half']",
+    action: "point",
+    tooltip: "½ А это цена за ПОЛОВИНУ упаковки — если целая слишком большая",
+    tooltipPosition: "top",
+    duration: 3500,
+  },
+  {
+    id: "cart-button",
+    targetSelector: "[data-demo='cart-button']",
+    action: "tap",
+    tooltip: "🛒 Здесь ваша корзина. Нажмите чтобы посмотреть добавленные товары и оформить заказ",
+    tooltipPosition: "bottom",
+    duration: 4000,
+  },
+  {
+    id: "checkout-info",
+    targetSelector: "[data-demo='checkout-button']",
+    action: "tap",
+    tooltip: "✅ После добавления товаров нажмите сюда чтобы оформить заказ и указать адрес доставки",
+    tooltipPosition: "top",
+    duration: 4000,
+  },
+];
+
+// Demo product data
+export const DEMO_PRODUCT = {
+  id: "demo-product-001",
+  name: "🎓 Демо — Сыр Пармезан",
+  description: "Это демонстрационный товар для обучения. Выдержка 24 месяца, насыщенный вкус с кристалликами. После завершения демо товар исчезнет.",
+  price: 1500,
+  unit: "кг",
+  unit_weight: 2.5,
+  images: [
+    "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1552767059-ce182ead6c1b?w=400&h=400&fit=crop",
+  ],
+  quantity: 100,
+  sku: "DEMO-001",
+  slug: "demo-parmesan",
+  catalog_status: "in_stock" as const,
+  catalog_portion_prices: {
+    full: 1500,
+    half: 1600,
+    quarter: 1700,
+  },
+  catalog_categories: [] as string[],
+  packaging_type: "head",
+  compare_price: null,
+  catalog_markup_type: null,
+  catalog_markup_value: null,
+  price_full: null,
+  price_half: null,
+  price_quarter: null,
+  price_portion: null,
+  portion_weight: null,
+};
