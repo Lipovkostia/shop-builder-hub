@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback } from "react";
+import { getSupportedAudioMimeType } from "@/lib/audioUtils";
 import {
   Sheet,
   SheetContent,
@@ -72,6 +73,7 @@ export function CustomerAIAssistantPanel({
   const [showOrders, setShowOrders] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const mimeTypeRef = useRef<string>('');
 
   // Check if we have existing items (for append mode)
   const hasExistingItems = (response?.items?.length ?? 0) > 0;
@@ -94,7 +96,10 @@ export function CustomerAIAssistantPanel({
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      const mimeType = getSupportedAudioMimeType();
+      mimeTypeRef.current = mimeType;
+      const options = mimeType ? { mimeType } : {};
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -106,7 +111,8 @@ export function CustomerAIAssistantPanel({
 
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach(track => track.stop());
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const blobType = mimeTypeRef.current || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: blobType });
         if (audioBlob.size > 0) {
           await searchWithAudio(audioBlob, hasExistingItems);
         }

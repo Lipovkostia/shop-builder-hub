@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import { getSupportedAudioMimeType } from "@/lib/audioUtils";
 import { 
   Sparkles, 
   Mic, 
@@ -49,6 +50,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const mimeTypeRef = useRef<string>('');
   
   const {
     state,
@@ -100,7 +102,10 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
   const handleStartRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      const mimeType = getSupportedAudioMimeType();
+      mimeTypeRef.current = mimeType;
+      const options = mimeType ? { mimeType } : {};
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -112,7 +117,8 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
 
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach(track => track.stop());
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const blobType = mimeTypeRef.current || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: blobType });
         if (audioBlob.size > 0) {
           await searchWithAudio(audioBlob);
         }

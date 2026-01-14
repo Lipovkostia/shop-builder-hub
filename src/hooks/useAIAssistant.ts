@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getAudioFileExtension } from "@/lib/audioUtils";
 
 export interface FoundProduct {
   id: string;
@@ -84,7 +85,8 @@ export function useAIAssistant(storeId: string | null) {
 
     try {
       const formData = new FormData();
-      formData.append("audio", audioBlob, "recording.webm");
+      const ext = getAudioFileExtension(audioBlob.type);
+      formData.append("audio", audioBlob, `recording.${ext}`);
       formData.append("storeId", storeId);
 
       const response = await fetch(
