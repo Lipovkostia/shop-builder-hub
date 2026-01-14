@@ -1236,6 +1236,16 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   // Calculate selected catalog name for display
   const selectedCatalogName = accessibleCatalogs.find((c) => c.id === selectedCatalog)?.name || "Все товары";
 
+  // State for share button animation
+  const [isSharePressed, setIsSharePressed] = useState(false);
+
+  // Trigger haptic feedback (vibration)
+  const triggerHapticFeedback = () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(50); // Short 50ms vibration
+    }
+  };
+
   // Share price function with Web Share API support
   const handleSharePrice = async () => {
     const catalog = accessibleCatalogs.find(c => c.id === selectedCatalog);
@@ -1248,6 +1258,10 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
       return;
     }
     
+    // Trigger press animation
+    setIsSharePressed(true);
+    setTimeout(() => setIsSharePressed(false), 200);
+    
     const url = `${window.location.origin}/catalog/${catalog.access_code}`;
     const shareTitle = `${store?.name} — ${selectedCatalogName}`;
     
@@ -1259,10 +1273,13 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
           text: `Прайс-лист: ${shareTitle}`,
           url: url,
         });
+        // Haptic feedback on successful share
+        triggerHapticFeedback();
       } catch (err) {
         // User cancelled or error - copy to clipboard
         if ((err as Error).name !== 'AbortError') {
           await navigator.clipboard.writeText(url);
+          triggerHapticFeedback();
           toast({
             title: "Ссылка скопирована",
             description: "Ссылка на прайс-лист скопирована в буфер обмена",
@@ -1272,6 +1289,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
     } else {
       // Fallback for browsers without Web Share API
       await navigator.clipboard.writeText(url);
+      triggerHapticFeedback();
       toast({
         title: "Ссылка скопирована",
         description: "Ссылка на прайс-лист скопирована в буфер обмена",
@@ -1719,13 +1737,17 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
           {/* Блок "Поделись прайсом" - с нативным шарингом */}
           <button
             onClick={handleSharePrice}
-            className="w-full px-3 py-2 border-t border-border bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-colors cursor-pointer group"
+            className={`w-full px-3 py-2 border-t border-border bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-all duration-150 cursor-pointer group ${
+              isSharePressed 
+                ? 'scale-[0.98] bg-primary/10 shadow-inner' 
+                : 'scale-100 active:scale-[0.98]'
+            }`}
             title="Нажмите чтобы поделиться прайс-листом"
           >
             <div className="flex items-center justify-between">
               {/* Левая часть - призыв к действию */}
               <div className="flex items-center gap-2">
-                <Link2 className="w-4 h-4 text-primary" />
+                <Link2 className={`w-4 h-4 text-primary transition-transform duration-150 ${isSharePressed ? 'scale-110' : ''}`} />
                 <span className="text-xs font-medium text-primary">Поделись прайсом</span>
               </div>
               
@@ -1734,7 +1756,11 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                 <span className="truncate max-w-[180px]">
                   {store.name} — {selectedCatalogName}
                 </span>
-                <Copy className="w-3 h-3 flex-shrink-0 opacity-50 group-hover:opacity-100" />
+                <Copy className={`w-3 h-3 flex-shrink-0 transition-all duration-150 ${
+                  isSharePressed 
+                    ? 'opacity-100 text-primary scale-125' 
+                    : 'opacity-50 group-hover:opacity-100'
+                }`} />
               </div>
             </div>
           </button>
