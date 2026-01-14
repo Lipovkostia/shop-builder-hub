@@ -730,7 +730,8 @@ const GuestCatalogView = () => {
     );
   }
 
-  const CartContent = () => (
+  // Cart content JSX - inlined to prevent focus loss issues
+  const cartContentJsx = (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-auto">
         {cart.length === 0 ? (
@@ -806,7 +807,8 @@ const GuestCatalogView = () => {
     </div>
   );
 
-  const CheckoutContent = () => (
+  // Checkout content JSX - inlined to prevent focus loss issues
+  const checkoutContentJsx = (
     <div className="space-y-4 p-4">
       <div className="space-y-2">
         <Label htmlFor="guest-name">Ваше имя *</Label>
@@ -1052,7 +1054,7 @@ const GuestCatalogView = () => {
                 {cartItemsCount} {cartItemsCount === 1 ? 'товар' : 'товаров'} на {formatPrice(cartTotal)}
               </DrawerDescription>
             </DrawerHeader>
-            <CartContent />
+            {cartContentJsx}
           </DrawerContent>
         </Drawer>
       ) : (
@@ -1064,110 +1066,221 @@ const GuestCatalogView = () => {
                 {cartItemsCount} {cartItemsCount === 1 ? 'товар' : 'товаров'} на {formatPrice(cartTotal)}
               </SheetDescription>
             </SheetHeader>
-            <CartContent />
+            {cartContentJsx}
           </SheetContent>
         </Sheet>
       )}
 
-      {/* Checkout Dialog */}
-      <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Оформление заказа</DialogTitle>
-            <DialogDescription>
-              Укажите контактные данные для связи
-            </DialogDescription>
-          </DialogHeader>
-          <CheckoutContent />
-        </DialogContent>
-      </Dialog>
-
-      {/* Success Dialog with Registration Option */}
-      <Dialog open={successDialogOpen} onOpenChange={(open) => !open && handleCloseSuccess()}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-              <Check className="h-6 w-6 text-green-600 dark:text-green-400" />
+      {/* Checkout Dialog/Drawer - mobile uses Drawer to prevent off-screen issues with keyboard */}
+      {isMobile ? (
+        <Drawer open={checkoutOpen} onOpenChange={setCheckoutOpen}>
+          <DrawerContent className="max-h-[90vh]">
+            <DrawerHeader>
+              <DrawerTitle>Оформление заказа</DrawerTitle>
+              <DrawerDescription>
+                Укажите контактные данные для связи
+              </DrawerDescription>
+            </DrawerHeader>
+            <div className="overflow-auto max-h-[calc(90vh-120px)]">
+              {checkoutContentJsx}
             </div>
-            <DialogTitle className="text-center">Заказ оформлен!</DialogTitle>
-            <DialogDescription className="text-center">
-              Номер заказа: <span className="font-mono font-semibold">{lastOrderNumber}</span>
-              <br />
-              Мы свяжемся с вами в ближайшее время.
-            </DialogDescription>
-          </DialogHeader>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
+          <DialogContent 
+            className="sm:max-w-md max-h-[90vh] overflow-auto"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
+            <DialogHeader>
+              <DialogTitle>Оформление заказа</DialogTitle>
+              <DialogDescription>
+                Укажите контактные данные для связи
+              </DialogDescription>
+            </DialogHeader>
+            {checkoutContentJsx}
+          </DialogContent>
+        </Dialog>
+      )}
 
-          {!showRegisterForm ? (
-            <div className="space-y-4 pt-4">
-              <div className="p-4 bg-muted/50 rounded-lg text-center">
-                <p className="text-sm text-muted-foreground mb-3">
-                  Хотите сохранять историю заказов и быстрее оформлять следующие покупки?
-                </p>
+      {/* Success Dialog/Drawer with Registration Option */}
+      {isMobile ? (
+        <Drawer open={successDialogOpen} onOpenChange={(open) => !open && handleCloseSuccess()}>
+          <DrawerContent className="max-h-[90vh]">
+            <DrawerHeader>
+              <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <Check className="h-6 w-6 text-green-600 dark:text-green-400" />
+              </div>
+              <DrawerTitle className="text-center">Заказ оформлен!</DrawerTitle>
+              <DrawerDescription className="text-center">
+                Номер заказа: <span className="font-mono font-semibold">{lastOrderNumber}</span>
+                <br />
+                Мы свяжемся с вами в ближайшее время.
+              </DrawerDescription>
+            </DrawerHeader>
+            <div className="overflow-auto max-h-[calc(90vh-160px)] px-4 pb-4">
+              {!showRegisterForm ? (
+                <div className="space-y-4 pt-4">
+                  <div className="p-4 bg-muted/50 rounded-lg text-center">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Хотите сохранять историю заказов и быстрее оформлять следующие покупки?
+                    </p>
+                    <Button 
+                      onClick={() => setShowRegisterForm(true)}
+                      className="w-full"
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      Создать аккаунт
+                    </Button>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleCloseSuccess}
+                    className="w-full"
+                  >
+                    Продолжить без регистрации
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4 pt-4">
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Имя:</span> {guestName}
+                    </p>
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Телефон:</span> {guestPhone}
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="register-password-mobile">Придумайте пароль</Label>
+                    <Input
+                      id="register-password-mobile"
+                      type="password"
+                      placeholder="Минимум 6 символов"
+                      value={registerPassword}
+                      onChange={(e) => setRegisterPassword(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Пароль нужен для входа в личный кабинет
+                    </p>
+                  </div>
+
+                  <Button 
+                    onClick={handleRegister}
+                    disabled={isRegistering}
+                    className="w-full"
+                  >
+                    {isRegistering ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4 mr-2" />
+                    )}
+                    Зарегистрироваться
+                  </Button>
+                  
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => setShowRegisterForm(false)}
+                    className="w-full"
+                  >
+                    Назад
+                  </Button>
+                </div>
+              )}
+            </div>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={successDialogOpen} onOpenChange={(open) => !open && handleCloseSuccess()}>
+          <DialogContent 
+            className="sm:max-w-md max-h-[90vh] overflow-auto"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
+            <DialogHeader>
+              <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <Check className="h-6 w-6 text-green-600 dark:text-green-400" />
+              </div>
+              <DialogTitle className="text-center">Заказ оформлен!</DialogTitle>
+              <DialogDescription className="text-center">
+                Номер заказа: <span className="font-mono font-semibold">{lastOrderNumber}</span>
+                <br />
+                Мы свяжемся с вами в ближайшее время.
+              </DialogDescription>
+            </DialogHeader>
+
+            {!showRegisterForm ? (
+              <div className="space-y-4 pt-4">
+                <div className="p-4 bg-muted/50 rounded-lg text-center">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Хотите сохранять историю заказов и быстрее оформлять следующие покупки?
+                  </p>
+                  <Button 
+                    onClick={() => setShowRegisterForm(true)}
+                    className="w-full"
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    Создать аккаунт
+                  </Button>
+                </div>
                 <Button 
-                  onClick={() => setShowRegisterForm(true)}
+                  variant="outline" 
+                  onClick={handleCloseSuccess}
                   className="w-full"
                 >
-                  <User className="w-4 h-4 mr-2" />
-                  Создать аккаунт
+                  Продолжить без регистрации
                 </Button>
               </div>
-              <Button 
-                variant="outline" 
-                onClick={handleCloseSuccess}
-                className="w-full"
-              >
-                Продолжить без регистрации
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4 pt-4">
-              <div className="p-3 bg-muted/50 rounded-lg">
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Имя:</span> {guestName}
-                </p>
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Телефон:</span> {guestPhone}
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="register-password">Придумайте пароль</Label>
-                <Input
-                  id="register-password"
-                  type="password"
-                  placeholder="Минимум 6 символов"
-                  value={registerPassword}
-                  onChange={(e) => setRegisterPassword(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Пароль нужен для входа в личный кабинет
-                </p>
-              </div>
+            ) : (
+              <div className="space-y-4 pt-4">
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-sm">
+                    <span className="text-muted-foreground">Имя:</span> {guestName}
+                  </p>
+                  <p className="text-sm">
+                    <span className="text-muted-foreground">Телефон:</span> {guestPhone}
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="register-password">Придумайте пароль</Label>
+                  <Input
+                    id="register-password"
+                    type="password"
+                    placeholder="Минимум 6 символов"
+                    value={registerPassword}
+                    onChange={(e) => setRegisterPassword(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Пароль нужен для входа в личный кабинет
+                  </p>
+                </div>
 
-              <Button 
-                onClick={handleRegister}
-                disabled={isRegistering}
-                className="w-full"
-              >
-                {isRegistering ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4 mr-2" />
-                )}
-                Зарегистрироваться
-              </Button>
-              
-              <Button 
-                variant="ghost" 
-                onClick={() => setShowRegisterForm(false)}
-                className="w-full"
-              >
-                Назад
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+                <Button 
+                  onClick={handleRegister}
+                  disabled={isRegistering}
+                  className="w-full"
+                >
+                  {isRegistering ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4 mr-2" />
+                  )}
+                  Зарегистрироваться
+                </Button>
+                
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setShowRegisterForm(false)}
+                  className="w-full"
+                >
+                  Назад
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Fullscreen Image Viewer */}
       <FullscreenImageViewer
