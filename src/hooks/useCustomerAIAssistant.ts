@@ -8,9 +8,13 @@ export interface FoundItem {
   variantIndex: number;
   variantLabel: string;
   quantity: number;
-  unitPrice: number;
+  unitPrice: number;       // цена за 1 порцию
+  pricePerUnit: number;    // цена за единицу измерения (кг/шт)
+  portionVolume: number;   // объём одной порции (например 4 кг для "Целый")
   totalPrice: number;
-  weight?: number;
+  totalWeight: number;     // общий вес (portionVolume * quantity)
+  unitLabel: string;       // "кг", "шт", и т.д.
+  imageUrl?: string;       // URL изображения товара
   available: boolean;
   matchReason: string;
   suggestion?: {
@@ -278,12 +282,12 @@ export function useCustomerAIAssistant(catalogId: string | null) {
         items: prev.items.map(item => {
           if (item.productId === productId) {
             const newTotalPrice = item.unitPrice * newQuantity;
-            const newWeight = item.weight ? (item.weight / item.quantity) * newQuantity : undefined;
+            const newTotalWeight = item.portionVolume * newQuantity;
             return {
               ...item,
               quantity: newQuantity,
               totalPrice: newTotalPrice,
-              weight: newWeight,
+              totalWeight: newTotalWeight,
             };
           }
           return item;
