@@ -1262,7 +1262,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
     setIsSharePressed(true);
     setTimeout(() => setIsSharePressed(false), 200);
     
-    const url = `${window.location.origin}/catalog/${catalog.access_code}`;
+    const url = `${window.location.origin}/catalog/${catalog.access_code}/view`;
     const shareTitle = `${store?.name} — ${selectedCatalogName}`;
     
     // Check for Web Share API support (works on mobile)
