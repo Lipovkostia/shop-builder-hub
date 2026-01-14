@@ -226,36 +226,72 @@ export function CustomerAIAssistantPanel({
                     disabled={isRecording}
                   />
                   <div className="absolute bottom-2 right-2 flex gap-1">
-                    <Button
-                      size="icon"
-                      variant={isRecording ? "destructive" : "ghost"}
-                      className="h-8 w-8"
-                      onMouseDown={startRecording}
-                      onMouseUp={stopRecording}
-                      onMouseLeave={stopRecording}
-                      onTouchStart={startRecording}
-                      onTouchEnd={stopRecording}
-                    >
-                      {isRecording ? (
-                        <MicOff className="h-4 w-4" />
-                      ) : (
-                        <Mic className="h-4 w-4" />
+                    <div className="relative">
+                      <Button
+                        size="icon"
+                        variant={isRecording ? "destructive" : "ghost"}
+                        className={`h-10 w-10 touch-none select-none transition-all duration-200 ${
+                          isRecording 
+                            ? 'bg-destructive scale-110 shadow-lg shadow-destructive/30' 
+                            : 'text-destructive hover:bg-destructive/10 hover:border-destructive border border-transparent'
+                        }`}
+                        style={{ 
+                          WebkitTouchCallout: 'none',
+                          WebkitUserSelect: 'none',
+                          userSelect: 'none'
+                        }}
+                        title="Зажмите для записи голоса"
+                        onContextMenu={(e) => e.preventDefault()}
+                        onMouseDown={startRecording}
+                        onMouseUp={stopRecording}
+                        onMouseLeave={stopRecording}
+                        onTouchStart={(e) => {
+                          e.preventDefault();
+                          startRecording();
+                        }}
+                        onTouchEnd={(e) => {
+                          e.preventDefault();
+                          stopRecording();
+                        }}
+                      >
+                        {isRecording ? (
+                          <MicOff className="h-5 w-5" />
+                        ) : (
+                          <Mic className="h-5 w-5" />
+                        )}
+                      </Button>
+                      {/* Recording indicator ping */}
+                      {isRecording && (
+                        <>
+                          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
+                          </span>
+                          <span className="absolute inset-0 rounded-md animate-pulse bg-destructive/20 pointer-events-none" />
+                        </>
                       )}
-                    </Button>
+                    </div>
                     <Button
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-10 w-10"
                       onClick={handleSubmit}
                       disabled={!query.trim()}
                     >
-                      <Send className="h-4 w-4" />
+                      <Send className="h-5 w-5" />
                     </Button>
                   </div>
                 </div>
                 {isRecording && (
-                  <div className="flex items-center gap-2 text-sm text-destructive animate-pulse">
-                    <div className="w-2 h-2 rounded-full bg-destructive" />
-                    Говорите... (отпустите для отправки)
+                  <div className="flex items-center gap-2 text-destructive mt-2">
+                    {/* Animated sound waves */}
+                    <div className="flex items-center gap-0.5">
+                      <div className="w-1 h-3 bg-destructive rounded-full animate-pulse" style={{animationDelay: '0ms'}} />
+                      <div className="w-1 h-4 bg-destructive rounded-full animate-pulse" style={{animationDelay: '150ms'}} />
+                      <div className="w-1 h-2 bg-destructive rounded-full animate-pulse" style={{animationDelay: '300ms'}} />
+                      <div className="w-1 h-5 bg-destructive rounded-full animate-pulse" style={{animationDelay: '75ms'}} />
+                      <div className="w-1 h-3 bg-destructive rounded-full animate-pulse" style={{animationDelay: '225ms'}} />
+                    </div>
+                    <span className="text-sm font-medium">Слушаю...</span>
                   </div>
                 )}
                 
@@ -514,36 +550,72 @@ export function CustomerAIAssistantPanel({
                     disabled={isRecording}
                   />
                   <div className="absolute bottom-2 right-2 flex gap-1">
-                    <Button
-                      size="icon"
-                      variant={isRecording ? "destructive" : "ghost"}
-                      className="h-8 w-8"
-                      onMouseDown={startRecording}
-                      onMouseUp={stopRecording}
-                      onMouseLeave={stopRecording}
-                      onTouchStart={startRecording}
-                      onTouchEnd={stopRecording}
-                    >
-                      {isRecording ? (
-                        <MicOff className="h-4 w-4" />
-                      ) : (
-                        <Mic className="h-4 w-4" />
+                    <div className="relative">
+                      <Button
+                        size="icon"
+                        variant={isRecording ? "destructive" : "ghost"}
+                        className={`h-10 w-10 touch-none select-none transition-all duration-200 ${
+                          isRecording 
+                            ? 'bg-destructive scale-110 shadow-lg shadow-destructive/30' 
+                            : 'text-destructive hover:bg-destructive/10 hover:border-destructive border border-transparent'
+                        }`}
+                        style={{ 
+                          WebkitTouchCallout: 'none',
+                          WebkitUserSelect: 'none',
+                          userSelect: 'none'
+                        }}
+                        title="Зажмите для записи голоса"
+                        onContextMenu={(e) => e.preventDefault()}
+                        onMouseDown={startRecording}
+                        onMouseUp={stopRecording}
+                        onMouseLeave={stopRecording}
+                        onTouchStart={(e) => {
+                          e.preventDefault();
+                          startRecording();
+                        }}
+                        onTouchEnd={(e) => {
+                          e.preventDefault();
+                          stopRecording();
+                        }}
+                      >
+                        {isRecording ? (
+                          <MicOff className="h-5 w-5" />
+                        ) : (
+                          <Mic className="h-5 w-5" />
+                        )}
+                      </Button>
+                      {/* Recording indicator ping */}
+                      {isRecording && (
+                        <>
+                          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
+                          </span>
+                          <span className="absolute inset-0 rounded-md animate-pulse bg-destructive/20 pointer-events-none" />
+                        </>
                       )}
-                    </Button>
+                    </div>
                     <Button
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-10 w-10"
                       onClick={handleSubmit}
                       disabled={!query.trim()}
                     >
-                      <Send className="h-4 w-4" />
+                      <Send className="h-5 w-5" />
                     </Button>
                   </div>
                 </div>
                 {isRecording && (
-                  <div className="flex items-center gap-2 text-sm text-destructive animate-pulse mt-1">
-                    <div className="w-2 h-2 rounded-full bg-destructive" />
-                    Говорите... (отпустите для отправки)
+                  <div className="flex items-center gap-2 text-destructive mt-2">
+                    {/* Animated sound waves */}
+                    <div className="flex items-center gap-0.5">
+                      <div className="w-1 h-3 bg-destructive rounded-full animate-pulse" style={{animationDelay: '0ms'}} />
+                      <div className="w-1 h-4 bg-destructive rounded-full animate-pulse" style={{animationDelay: '150ms'}} />
+                      <div className="w-1 h-2 bg-destructive rounded-full animate-pulse" style={{animationDelay: '300ms'}} />
+                      <div className="w-1 h-5 bg-destructive rounded-full animate-pulse" style={{animationDelay: '75ms'}} />
+                      <div className="w-1 h-3 bg-destructive rounded-full animate-pulse" style={{animationDelay: '225ms'}} />
+                    </div>
+                    <span className="text-sm font-medium">Слушаю...</span>
                   </div>
                 )}
               </div>
