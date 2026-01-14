@@ -36,10 +36,34 @@ interface AIAssistantPanelProps {
 }
 
 const quickCommands = [
-  { icon: EyeOff, label: "Скрыть товары", prompt: "скрыть ", inDevelopment: false },
-  { icon: Eye, label: "Показать товары", prompt: "показать ", inDevelopment: false },
-  { icon: DollarSign, label: "Изменить цены", prompt: "установить наценку ", inDevelopment: true },
-  { icon: Search, label: "Найти товары", prompt: "найти ", inDevelopment: false },
+  { 
+    icon: EyeOff, 
+    label: "Скрыть товары", 
+    prompt: "скрыть ", 
+    description: "Найти товары и скрыть из каталогов покупателей",
+    inDevelopment: false 
+  },
+  { 
+    icon: Eye, 
+    label: "Открыть скрытые", 
+    prompt: "открыть скрытые ", 
+    description: "Найти скрытые товары и вернуть в продажу",
+    inDevelopment: false 
+  },
+  { 
+    icon: DollarSign, 
+    label: "Изменить цены", 
+    prompt: "установить наценку ", 
+    description: "Установить наценку на группу товаров",
+    inDevelopment: true 
+  },
+  { 
+    icon: Search, 
+    label: "Найти товары", 
+    prompt: "найти ", 
+    description: "Поиск товаров по названию или категории",
+    inDevelopment: false 
+  },
 ];
 
 export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPanelProps) {
@@ -149,8 +173,11 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
     }
   }, [query, searchProducts]);
 
-  const handleQuickCommand = useCallback((prompt: string) => {
-    setQuery(prompt);
+  const [selectedCommand, setSelectedCommand] = useState<typeof quickCommands[0] | null>(null);
+
+  const handleQuickCommand = useCallback((cmd: typeof quickCommands[0]) => {
+    setQuery(cmd.prompt);
+    setSelectedCommand(cmd);
   }, []);
 
   const { products: storeProducts } = useStoreProducts(storeId);
@@ -204,7 +231,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
 
       toast({
         title: "Готово!",
-        description: `${response.action === "hide" ? "Скрыто" : response.action === "show" ? "Показано" : "Обновлено"} ${successCount} товаров`,
+        description: `${response.action === "hide" ? "Скрыто" : response.action === "show" ? "Открыто" : "Обновлено"} ${successCount} товаров`,
       });
 
       setState("done" as AssistantState);
@@ -232,7 +259,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
   const getActionLabel = (action: string) => {
     switch (action) {
       case "hide": return "Скрыть";
-      case "show": return "Показать";
+      case "show": return "Открыть скрытые";
       case "update_prices": return "Изменить цены";
       case "find": return "Найдено";
       default: return action;
@@ -269,7 +296,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
                     key={cmd.label}
                     variant="outline"
                     size="sm"
-                    onClick={() => handleQuickCommand(cmd.prompt)}
+                    onClick={() => handleQuickCommand(cmd)}
                     className={cn("text-xs relative", cmd.inDevelopment && "opacity-70")}
                   >
                     <cmd.icon className="h-3 w-3 mr-1" />
@@ -288,10 +315,23 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
           {/* Input area */}
           {(state === "idle" || state === "error") && (
             <div className="px-6 py-4 border-b space-y-3">
+              {/* Micro-description for selected command */}
+              {selectedCommand && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 rounded-lg border border-primary/20">
+                  <selectedCommand.icon className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-sm text-muted-foreground">{selectedCommand.description}</span>
+                </div>
+              )}
+              
               <Textarea
                 placeholder="Опишите что нужно сделать...&#10;Например: 'Скрыть всю рыбу' или 'Установить наценку 25% на сыры'"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  if (!e.target.value.trim()) {
+                    setSelectedCommand(null);
+                  }
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();

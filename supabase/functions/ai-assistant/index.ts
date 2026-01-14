@@ -148,6 +148,32 @@ serve(async (req) => {
       );
     }
 
+    // Fetch catalog IDs for the store
+    const { data: catalogs } = await supabase
+      .from("catalogs")
+      .select("id")
+      .eq("store_id", storeId);
+
+    const catalogIds = catalogs?.map(c => c.id) || [];
+
+    // Fetch product settings to get current statuses
+    let productSettings: { product_id: string; status: string | null }[] = [];
+    if (catalogIds.length > 0) {
+      const { data: settings } = await supabase
+        .from("catalog_product_settings")
+        .select("product_id, status")
+        .in("catalog_id", catalogIds);
+      productSettings = settings || [];
+    }
+
+    // Create a map of product_id -> status (use first found status)
+    const statusMap = new Map<string, string>();
+    for (const s of productSettings) {
+      if (!statusMap.has(s.product_id) && s.status) {
+        statusMap.set(s.product_id, s.status);
+      }
+    }
+
     // Build product list for AI context
     const productList = (products || []).map((p: Product) => ({
       id: p.id,
@@ -158,6 +184,7 @@ serve(async (req) => {
       markupType: p.markup_type || "percent",
       markupValue: p.markup_value || 0,
       isActive: p.is_active !== false,
+      status: statusMap.get(p.id) || "in_stock", // Add current catalog status
     }));
 
     // Call Lovable AI for product matching
@@ -173,14 +200,16 @@ serve(async (req) => {
 
 Доступные действия:
 - hide: скрыть товары (изменить статус на hidden)
-- show: показать товары (изменить статус на in_stock)
+- show: открыть скрытые товары (изменить статус на in_stock) - ТОЛЬКО для товаров со статусом hidden!
 - update_prices: изменить наценку на товары
 - find: найти товары по критериям
 - analyze: анализ и статистика по товарам
 
 Правила:
 1. Если пользователь просит "скрыть", "убрать", "спрятать" - используй action: "hide"
-2. Если пользователь просит "показать", "вернуть", "восстановить" - используй action: "show"
+2. Если пользователь просит "открыть скрытые", "вернуть в продажу", "восстановить", "показать скрытые" - используй action: "show"
+   ВАЖНО: для action "show" ищи ТОЛЬКО среди товаров со статусом hidden (status: "hidden")!
+   Цель - найти скрытые товары и перевести их в статус "В наличии" (in_stock)
 3. Если пользователь просит изменить цену, наценку - используй action: "update_prices"
 4. Если пользователь просит найти, показать список - используй action: "find"
 5. Ищи товары по частичному совпадению названия (fuzzy match)
