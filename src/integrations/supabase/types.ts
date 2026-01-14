@@ -1149,6 +1149,7 @@ export type Database = {
           product_sku: string
           product_slug: string
           product_unit: string
+          product_unit_weight: number
           setting_categories: string[]
           setting_markup_type: string
           setting_markup_value: number
