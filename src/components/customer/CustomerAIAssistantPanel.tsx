@@ -299,122 +299,130 @@ export function CustomerAIAssistantPanel({
               <div className="space-y-3">
                 {/* Recognized text */}
                 {response.recognized_text && (
-                  <div className="p-2 bg-muted/50 rounded-lg">
-                    <p className="text-xs text-muted-foreground">Распознано:</p>
-                    <p className="text-sm font-medium">"{response.recognized_text}"</p>
+                  <div className="px-3 py-2 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground line-clamp-1">
+                      Запрос: <span className="text-foreground">"{response.recognized_text}"</span>
+                    </p>
                   </div>
                 )}
 
-                {/* Summary */}
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">{response.summary}</p>
+                {/* Summary with unavailable badge */}
+                <div className="flex items-start gap-2">
+                  <p className="text-sm font-medium flex-1">{response.summary}</p>
                   {response.unavailableCount > 0 && (
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 flex-shrink-0 whitespace-nowrap">
                       <AlertCircle className="w-3 h-3 mr-1" />
-                      {response.unavailableCount} недоступно
+                      {response.unavailableCount} недост.
                     </Badge>
                   )}
                 </div>
 
                 {/* Select all / none */}
                 {response.items.length > 0 && (
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" className="text-xs h-7" onClick={selectAll}>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" className="text-xs h-6 px-2" onClick={selectAll}>
                       Выбрать все
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-xs h-7" onClick={deselectAll}>
+                    <Button variant="ghost" size="sm" className="text-xs h-6 px-2" onClick={deselectAll}>
                       Снять выбор
                     </Button>
                   </div>
                 )}
 
-                {/* Items list */}
-                <div className="space-y-2">
+                {/* Items list - compact cards */}
+                <div className="space-y-1.5">
                   {response.items.map((item, idx) => (
                     <div
                       key={`${item.productId}-${idx}`}
-                      className={`p-3 rounded-lg border transition-colors ${
+                      className={`p-2.5 rounded-lg border transition-colors ${
                         item.available 
                           ? selectedItems.has(item.productId)
                             ? 'border-primary bg-primary/5'
-                            : 'border-border hover:border-muted-foreground/50'
-                          : 'border-border bg-muted/30 opacity-60'
+                            : 'border-border hover:border-muted-foreground/30'
+                          : 'border-border/50 bg-muted/20 opacity-50'
                       }`}
+                      onClick={() => item.available && toggleItem(item.productId)}
                     >
-                      <div className="flex items-start gap-3">
-                        {item.available && (
+                      {/* Row 1: Checkbox + Name + Price */}
+                      <div className="flex items-center gap-2">
+                        {item.available ? (
                           <Checkbox
                             checked={selectedItems.has(item.productId)}
                             onCheckedChange={() => toggleItem(item.productId)}
-                            className="mt-0.5"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex-shrink-0"
                           />
-                        )}
-                        {!item.available && (
-                          <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-destructive/70 flex-shrink-0" />
                         )}
                         
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm truncate">{item.productName}</span>
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                              {item.variantLabel}
-                            </Badge>
-                          </div>
-                          
-                          {/* Quantity controls */}
-                          {item.available && (
-                            <div className="flex items-center gap-1 mt-2">
-                              <button
-                                onClick={() => updateItemQuantity(item.productId, item.quantity - 1)}
-                                disabled={item.quantity <= 1}
-                                className="w-6 h-6 flex items-center justify-center rounded bg-muted hover:bg-muted/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                              >
-                                <Minus className="w-3 h-3" />
-                              </button>
-                              <span className="w-8 text-center text-sm font-medium tabular-nums">
-                                {item.quantity}
-                              </span>
-                              <button
-                                onClick={() => updateItemQuantity(item.productId, item.quantity + 1)}
-                                className="w-6 h-6 flex items-center justify-center rounded bg-muted hover:bg-muted/80 transition-colors"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </button>
-                              <span className="text-xs text-muted-foreground ml-2">
-                                × {formatPrice(item.unitPrice)}
-                                {item.weight && ` · ${Number((item.weight).toFixed(2))} кг`}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {!item.available && (
-                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                              <span>{item.quantity} × {formatPrice(item.unitPrice)}</span>
-                              {item.weight && <span>· {item.weight} кг</span>}
-                            </div>
-                          )}
-                          
-                          {!item.available && item.suggestion && (
-                            <div className="mt-2 p-2 bg-amber-500/10 rounded text-xs">
-                              <span className="text-amber-600 dark:text-amber-400">
-                                → {item.suggestion.reason}: {item.suggestion.productName}
-                              </span>
-                            </div>
-                          )}
+                        <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                          <span className="font-medium text-sm truncate">{item.productName}</span>
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 flex-shrink-0">
+                            {item.variantLabel}
+                          </Badge>
                         </div>
                         
-                        <span className={`font-semibold text-sm ${item.available ? 'text-primary' : 'text-muted-foreground line-through'}`}>
+                        <span className={`font-semibold text-sm tabular-nums flex-shrink-0 ${
+                          item.available ? 'text-primary' : 'text-muted-foreground line-through'
+                        }`}>
                           {formatPrice(item.totalPrice)}
                         </span>
                       </div>
+                      
+                      {/* Row 2: Quantity controls or info */}
+                      {item.available ? (
+                        <div className="flex items-center gap-1.5 mt-1.5 ml-6">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateItemQuantity(item.productId, item.quantity - 1);
+                            }}
+                            disabled={item.quantity <= 1}
+                            className="w-5 h-5 flex items-center justify-center rounded bg-muted/80 hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <Minus className="w-2.5 h-2.5" />
+                          </button>
+                          <span className="w-6 text-center text-xs font-medium tabular-nums">
+                            {item.quantity}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateItemQuantity(item.productId, item.quantity + 1);
+                            }}
+                            className="w-5 h-5 flex items-center justify-center rounded bg-muted/80 hover:bg-muted transition-colors"
+                          >
+                            <Plus className="w-2.5 h-2.5" />
+                          </button>
+                          <span className="text-[11px] text-muted-foreground ml-1">
+                            × {formatPrice(item.unitPrice)}
+                            {item.weight != null && item.weight > 0 && (
+                              <span className="ml-1">· {Number(item.weight.toFixed(2))} кг</span>
+                            )}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center mt-1 ml-6 text-[11px] text-muted-foreground">
+                          <span>{item.quantity} × {formatPrice(item.unitPrice)}</span>
+                          {item.weight != null && item.weight > 0 && <span className="ml-1">· {item.weight} кг</span>}
+                        </div>
+                      )}
+                      
+                      {/* Suggestion for unavailable items */}
+                      {!item.available && item.suggestion && (
+                        <div className="mt-1.5 ml-6 px-2 py-1 bg-amber-500/10 rounded text-[11px] text-amber-600 dark:text-amber-400 line-clamp-1">
+                          → {item.suggestion.productName}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
 
                 {/* Empty state */}
                 {response.items.length === 0 && (
-                  <div className="text-center py-8">
-                    <Package className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
+                  <div className="text-center py-6">
+                    <Package className="w-10 h-10 mx-auto text-muted-foreground/40 mb-2" />
                     <p className="text-sm text-muted-foreground">Товары не найдены</p>
                   </div>
                 )}
@@ -423,31 +431,31 @@ export function CustomerAIAssistantPanel({
           </div>
         </ScrollArea>
 
-        {/* Footer with actions */}
+        {/* Footer with actions - compact */}
         {state === "confirming" && response && response.items.length > 0 && (
-          <div className="p-4 border-t border-border bg-background flex-shrink-0">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <span className="text-sm text-muted-foreground">Выбрано товаров: </span>
-                <span className="font-medium">{selectedItems.size}</span>
-              </div>
-              <div className="text-right">
-                <span className="text-sm text-muted-foreground">Итого: </span>
-                <span className="text-lg font-bold text-primary">{formatPrice(getSelectedTotal())}</span>
-              </div>
+          <div className="px-4 py-3 border-t border-border bg-background flex-shrink-0 space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Выбрано: <span className="font-medium text-foreground">{selectedItems.size}</span>
+              </span>
+              <span>
+                <span className="text-muted-foreground">Итого: </span>
+                <span className="font-bold text-primary">{formatPrice(getSelectedTotal())}</span>
+              </span>
             </div>
             
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={reset}>
-                <X className="w-4 h-4 mr-2" />
+              <Button variant="outline" size="sm" className="flex-1 h-9" onClick={reset}>
+                <X className="w-3.5 h-3.5 mr-1.5" />
                 Отмена
               </Button>
               <Button 
-                className="flex-1" 
+                size="sm"
+                className="flex-1 h-9" 
                 onClick={handleAddToCart}
                 disabled={selectedItems.size === 0}
               >
-                <ShoppingCart className="w-4 h-4 mr-2" />
+                <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
                 В корзину
               </Button>
             </div>
