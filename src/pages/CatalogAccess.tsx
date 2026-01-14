@@ -36,6 +36,21 @@ const CatalogAccess = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
+  // Fallback redirect for guests - if still on this page after 3 seconds without auth, force redirect to /view
+  useEffect(() => {
+    if (!accessCode) return;
+    
+    const fallbackTimer = setTimeout(() => {
+      // If after 3s we still don't have a user and catalogInfo loaded, redirect to guest view
+      if (!user && !authLoading && catalogInfo) {
+        console.log('[CatalogAccess] Fallback redirect to guest view');
+        navigate(`/catalog/${accessCode}/view`, { replace: true });
+      }
+    }, 3000);
+
+    return () => clearTimeout(fallbackTimer);
+  }, [accessCode, user, authLoading, catalogInfo, navigate]);
+
   // Fetch catalog info by access code
   useEffect(() => {
     const fetchCatalog = async () => {
@@ -83,8 +98,9 @@ const CatalogAccess = () => {
 
     const handleAuthState = async () => {
       if (!user || !session) {
-        // User not logged in - redirect to guest catalog view
-        navigate(`/catalog/${accessCode}/view`);
+        // User not logged in - redirect to guest catalog view immediately with replace
+        // Using replace: true prevents back-button loops
+        navigate(`/catalog/${accessCode}/view`, { replace: true });
         return;
       }
 
