@@ -250,7 +250,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-lg p-0 flex flex-col">
+      <SheetContent side="right" className="w-full sm:max-w-lg p-0 flex flex-col max-w-[100dvw] overflow-x-hidden">
         <SheetHeader className="px-6 py-4 border-b">
           <SheetTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -440,58 +440,67 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
               )}
 
               {/* Products list */}
-              <ScrollArea className="flex-1">
-                <div className="px-6 py-3 space-y-2">
+              <ScrollArea className="flex-1 w-full max-w-full overflow-x-hidden">
+                <div className="px-6 py-3 space-y-2 w-full max-w-full overflow-hidden">
                   {response.products.map((product) => (
                     <div
                       key={product.id}
                       className={cn(
-                        "flex items-start gap-3 p-3 rounded-lg border transition-colors",
+                        "w-full max-w-full p-3 rounded-lg border transition-colors overflow-hidden box-border",
                         selectedProducts.has(product.id) 
                           ? "bg-primary/5 border-primary/20" 
                           : "bg-muted/30 border-transparent opacity-60"
                       )}
                     >
-                      {state === "confirming" && (
-                        <Checkbox
-                          checked={selectedProducts.has(product.id)}
-                          onCheckedChange={() => toggleProduct(product.id)}
-                          className="mt-0.5"
-                        />
-                      )}
-                      {state === "done" && (
-                        <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{product.name}</p>
-                        <p className="text-xs text-muted-foreground">{product.reason}</p>
-                        {product.current_status && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Текущий статус: {product.current_status === "hidden" ? "Скрыт" : "Активен"}
-                          </p>
-                        )}
-                        {response.action === "update_prices" && product.target_price !== undefined && (
-                          (() => {
-                            const currentProduct = storeProducts?.find(p => p.id === product.id);
-                            const buyPrice = currentProduct?.buy_price || product.buy_price || 0;
-                            const calculatedMarkup = buyPrice > 0 ? product.target_price - buyPrice : null;
-                            return (
-                              <p className="text-xs text-primary mt-1">
-                                Целевая цена: {product.target_price.toLocaleString()}₽
-                                {calculatedMarkup !== null && (
-                                  <span className="text-muted-foreground">
-                                    {" "}(наценка: {calculatedMarkup >= 0 ? "+" : ""}{calculatedMarkup.toLocaleString()}₽)
-                                  </span>
-                                )}
-                              </p>
-                            );
-                          })()
-                        )}
-                        {response.action === "update_prices" && product.new_markup_type && product.new_markup_value !== undefined && !product.target_price && (
-                          <p className="text-xs text-primary mt-1">
-                            Наценка: {product.new_markup_type === "percent" ? `${product.new_markup_value}%` : `${product.new_markup_value.toLocaleString()}₽`}
-                          </p>
-                        )}
+                      <div className="grid grid-cols-[20px_minmax(0,1fr)] gap-3 items-start w-full">
+                        {/* Checkbox/Icon column */}
+                        <div className="flex-shrink-0 pt-0.5">
+                          {state === "confirming" && (
+                            <Checkbox
+                              checked={selectedProducts.has(product.id)}
+                              onCheckedChange={() => toggleProduct(product.id)}
+                            />
+                          )}
+                          {state === "done" && (
+                            <Check className="h-4 w-4 text-green-500" />
+                          )}
+                          {state === "applying" && (
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          )}
+                        </div>
+                        
+                        {/* Content column */}
+                        <div className="min-w-0 flex flex-col gap-0.5">
+                          <p className="font-medium text-sm truncate">{product.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{product.reason}</p>
+                          {product.current_status && (
+                            <p className="text-xs text-muted-foreground">
+                              Текущий статус: {product.current_status === "hidden" ? "Скрыт" : "Активен"}
+                            </p>
+                          )}
+                          {response.action === "update_prices" && product.target_price !== undefined && (
+                            (() => {
+                              const currentProduct = storeProducts?.find(p => p.id === product.id);
+                              const buyPrice = currentProduct?.buy_price || product.buy_price || 0;
+                              const calculatedMarkup = buyPrice > 0 ? product.target_price - buyPrice : null;
+                              return (
+                                <p className="text-xs text-primary truncate">
+                                  Целевая цена: {product.target_price.toLocaleString()}₽
+                                  {calculatedMarkup !== null && (
+                                    <span className="text-muted-foreground">
+                                      {" "}(наценка: {calculatedMarkup >= 0 ? "+" : ""}{calculatedMarkup.toLocaleString()}₽)
+                                    </span>
+                                  )}
+                                </p>
+                              );
+                            })()
+                          )}
+                          {response.action === "update_prices" && product.new_markup_type && product.new_markup_value !== undefined && !product.target_price && (
+                            <p className="text-xs text-primary truncate">
+                              Наценка: {product.new_markup_type === "percent" ? `${product.new_markup_value}%` : `${product.new_markup_value.toLocaleString()}₽`}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
