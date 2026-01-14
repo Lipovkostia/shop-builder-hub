@@ -21,6 +21,7 @@ interface CatalogProduct {
   price_portion: number | null;
   category_id: string | null;
   is_active: boolean;
+  images: string[] | null;
   catalog_status?: string;
   catalog_markup_type?: string;
   catalog_markup_value?: number;
@@ -72,9 +73,13 @@ interface FoundItem {
   variantIndex: number; // 0=full, 1=half, 2=quarter, 3=portion
   variantLabel: string;
   quantity: number;
-  unitPrice: number;
+  unitPrice: number;       // цена за 1 порцию
+  pricePerUnit: number;    // цена за единицу измерения (кг/шт)
+  portionVolume: number;   // объём одной порции
   totalPrice: number;
-  weight?: number;
+  totalWeight: number;     // общий вес
+  unitLabel: string;       // "кг", "шт"
+  imageUrl?: string;       // URL изображения
   available: boolean;
   matchReason: string;
   suggestion?: {
@@ -217,10 +222,10 @@ serve(async (req) => {
       );
     }
 
-    // Fetch products
+    // Fetch products (include images)
     const { data: products, error: productsError } = await supabase
       .from("products")
-      .select("id, name, price, buy_price, markup_type, markup_value, unit, unit_weight, price_full, price_half, price_quarter, price_portion, category_id, is_active")
+      .select("id, name, price, buy_price, markup_type, markup_value, unit, unit_weight, price_full, price_half, price_quarter, price_portion, category_id, is_active, images")
       .in("id", productIds);
 
     if (productsError) {
@@ -541,7 +546,12 @@ ${catalogProducts.length > 150 ? `\n... и ещё ${catalogProducts.length - 150
           variantLabel: variantLabels[variantIndex],
           quantity: quantity,
           unitPrice: 0,
+          pricePerUnit: 0,
+          portionVolume: 0,
           totalPrice: 0,
+          totalWeight: 0,
+          unitLabel: "кг",
+          imageUrl: undefined,
           available: false,
           matchReason: matchReason,
         };
@@ -570,27 +580,38 @@ ${catalogProducts.length > 150 ? `\n... и ещё ${catalogProducts.length - 150
       const quarterPricePerKg = applyMarkup(catalogPrices?.quarter) ?? applyMarkup(product.price_quarter) ?? basePrice;
       const portionPrice = applyMarkup(catalogPrices?.portion) ?? applyMarkup(product.price_portion) ?? null;
       
-      let unitPrice = 0;
-      let weight: number | undefined;
+      const unitLabel = product.unit || "кг";
+      const imageUrl = product.images?.[0] || undefined;
+      
+      let pricePerUnit = 0;  // цена за кг/шт
+      let unitPrice = 0;     // цена за порцию
+      let portionVolume = 0; // объём порции
       
       switch (variantIndex) {
         case 0: // full
-          unitPrice = Math.round(fullPricePerKg * unitWeight);
-          weight = unitWeight;
+          pricePerUnit = fullPricePerKg;
+          portionVolume = unitWeight;
+          unitPrice = Math.round(pricePerUnit * portionVolume);
           break;
         case 1: // half
-          unitPrice = Math.round(halfPricePerKg * (unitWeight / 2));
-          weight = unitWeight / 2;
+          pricePerUnit = halfPricePerKg;
+          portionVolume = unitWeight / 2;
+          unitPrice = Math.round(pricePerUnit * portionVolume);
           break;
         case 2: // quarter
-          unitPrice = Math.round(quarterPricePerKg * (unitWeight / 4));
-          weight = unitWeight / 4;
+          pricePerUnit = quarterPricePerKg;
+          portionVolume = unitWeight / 4;
+          unitPrice = Math.round(pricePerUnit * portionVolume);
           break;
         case 3: // portion
+          pricePerUnit = basePrice;
+          portionVolume = 1; // 1 порция
           unitPrice = Math.round(portionPrice || 0);
           break;
       }
+      
       const itemTotal = unitPrice * quantity;
+      const totalWeight = portionVolume * quantity;
       const available = product.catalog_status === "in_stock" || product.catalog_status === "pre_order";
       
       if (available) {
@@ -619,8 +640,12 @@ ${catalogProducts.length > 150 ? `\n... и ещё ${catalogProducts.length - 150
         variantLabel: variantLabels[variantIndex],
         quantity,
         unitPrice,
+        pricePerUnit: Math.round(pricePerUnit),
+        portionVolume,
         totalPrice: itemTotal,
-        weight,
+        totalWeight,
+        unitLabel,
+        imageUrl,
         available,
         matchReason: item.matchReason || "",
         suggestion,

@@ -343,7 +343,7 @@ export function CustomerAIAssistantPanel({
                   </div>
                 )}
 
-                {/* Items list - CSS Grid mobile-first */}
+                {/* Items list - CSS Grid mobile-first with image */}
                 <div className="space-y-2 w-full max-w-full overflow-hidden">
                   {response.items.map((item, idx) => (
                     <div
@@ -357,108 +357,135 @@ export function CustomerAIAssistantPanel({
                       }`}
                       onClick={() => item.available && toggleItem(item.productId)}
                     >
-                      {/* Row 1: Checkbox/Icon + Name + Badge - using CSS Grid */}
-                      <div className="grid grid-cols-[20px_minmax(0,1fr)] gap-2 items-start w-full">
-                        <div className="flex items-center justify-center pt-0.5">
-                          {item.available ? (
-                            <Checkbox
-                              checked={selectedItems.has(item.productId)}
-                              onCheckedChange={() => toggleItem(item.productId)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="flex-shrink-0"
+                      {/* Main grid: Image + Content */}
+                      <div className="grid grid-cols-[44px_minmax(0,1fr)] gap-3 items-start w-full">
+                        {/* Product image */}
+                        <div className="w-11 h-11 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+                          {item.imageUrl ? (
+                            <img 
+                              src={item.imageUrl} 
+                              alt={item.productName}
+                              className="w-full h-full object-cover"
                             />
                           ) : (
-                            <AlertCircle className="w-4 h-4 text-destructive/70 flex-shrink-0" />
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Package className="w-5 h-5 text-muted-foreground/40" />
+                            </div>
                           )}
                         </div>
                         
-                        {/* Name + Badge container */}
-                        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-1 items-center min-w-0">
-                          <span className="font-medium text-sm truncate min-w-0">{item.productName}</span>
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 whitespace-nowrap">
-                            {item.variantLabel}
-                          </Badge>
+                        {/* Content column */}
+                        <div className="min-w-0 flex flex-col gap-1.5">
+                          {/* Row 1: Checkbox + Name */}
+                          <div className="flex items-start gap-2">
+                            <div className="flex items-center justify-center pt-0.5 flex-shrink-0">
+                              {item.available ? (
+                                <Checkbox
+                                  checked={selectedItems.has(item.productId)}
+                                  onCheckedChange={() => toggleItem(item.productId)}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              ) : (
+                                <AlertCircle className="w-4 h-4 text-destructive/70" />
+                              )}
+                            </div>
+                            <span className="font-medium text-sm truncate min-w-0 leading-tight">
+                              {item.productName}
+                            </span>
+                          </div>
+                          
+                          {/* Row 2: Badge + Price per unit + Volume */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 whitespace-nowrap">
+                              {item.variantLabel}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {item.portionVolume > 0 && item.unitLabel !== 'шт' && (
+                                <>{item.portionVolume} {item.unitLabel} · </>
+                              )}
+                              {formatPrice(item.pricePerUnit)}/{item.unitLabel}
+                            </span>
+                          </div>
+                          
+                          {/* Row 3: Quantity controls + Total price/weight */}
+                          {item.available ? (
+                            <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2 items-center mt-0.5">
+                              {/* Quantity controls */}
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateItemQuantity(item.productId, item.quantity - 1);
+                                  }}
+                                  disabled={item.quantity <= 1}
+                                  className="w-7 h-7 flex items-center justify-center rounded-md bg-muted/80 hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  <Minus className="w-3.5 h-3.5" />
+                                </button>
+                                <span className="w-7 text-center text-sm font-medium tabular-nums">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateItemQuantity(item.productId, item.quantity + 1);
+                                  }}
+                                  className="w-7 h-7 flex items-center justify-center rounded-md bg-muted/80 hover:bg-muted transition-colors"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              
+                              {/* Total price + weight + Remove */}
+                              <div className="flex items-center justify-end gap-1 min-w-0">
+                                <div className="text-right">
+                                  <div className="font-bold text-primary text-sm tabular-nums whitespace-nowrap">
+                                    {formatPrice(item.totalPrice)}
+                                  </div>
+                                  {item.totalWeight > 0 && item.unitLabel !== 'шт' && (
+                                    <div className="text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
+                                      {item.totalWeight} {item.unitLabel}
+                                    </div>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeItem(item.productId);
+                                  }}
+                                  className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between mt-0.5">
+                              <span className="text-xs text-muted-foreground">
+                                {item.quantity} × {formatPrice(item.unitPrice)}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <span className="font-medium text-sm text-muted-foreground line-through tabular-nums whitespace-nowrap">
+                                  {formatPrice(item.totalPrice)}
+                                </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeItem(item.productId);
+                                  }}
+                                  className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                       
-                      {/* Row 2: Quantity controls + Price info + Total + Remove - using CSS Grid */}
-                      {item.available ? (
-                        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-2 items-center mt-2 pl-7">
-                          {/* Quantity controls */}
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                updateItemQuantity(item.productId, item.quantity - 1);
-                              }}
-                              disabled={item.quantity <= 1}
-                              className="w-6 h-6 flex items-center justify-center rounded bg-muted/80 hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="w-6 text-center text-xs font-medium tabular-nums">
-                              {item.quantity}
-                            </span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                updateItemQuantity(item.productId, item.quantity + 1);
-                              }}
-                              className="w-6 h-6 flex items-center justify-center rounded bg-muted/80 hover:bg-muted transition-colors"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          </div>
-                          
-                          {/* Price details - can truncate */}
-                          <span className="text-[11px] text-muted-foreground truncate min-w-0">
-                            × {formatPrice(item.unitPrice)}
-                            {item.weight != null && item.weight > 0 && (
-                              <span> · {Number(item.weight.toFixed(2))} кг</span>
-                            )}
-                          </span>
-                          
-                          {/* Total + Remove button */}
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <span className="font-semibold text-sm text-primary tabular-nums whitespace-nowrap">
-                              {formatPrice(item.totalPrice)}
-                            </span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeItem(item.productId);
-                              }}
-                              className="w-6 h-6 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 items-center mt-2 pl-7">
-                          <span className="text-[11px] text-muted-foreground truncate min-w-0">
-                            {item.quantity} × {formatPrice(item.unitPrice)}
-                          </span>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <span className="font-semibold text-sm text-muted-foreground line-through tabular-nums whitespace-nowrap">
-                              {formatPrice(item.totalPrice)}
-                            </span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeItem(item.productId);
-                              }}
-                              className="w-6 h-6 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      
                       {/* Suggestion for unavailable items */}
                       {!item.available && item.suggestion && (
-                        <div className="mt-2 ml-7 px-2 py-1 bg-amber-500/10 rounded text-[11px] text-amber-600 dark:text-amber-400 truncate">
+                        <div className="mt-2 ml-[56px] px-2 py-1 bg-amber-500/10 rounded text-[11px] text-amber-600 dark:text-amber-400 truncate">
                           → {item.suggestion.productName}
                         </div>
                       )}
