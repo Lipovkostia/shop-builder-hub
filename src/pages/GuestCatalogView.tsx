@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useGuestCatalog, GuestProduct, GuestCartItem } from "@/hooks/useGuestCatalog";
+import { useGuestCatalog, GuestProduct, GuestCartItem, StoreCategory } from "@/hooks/useGuestCatalog";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -382,6 +382,7 @@ const GuestCatalogView = () => {
   const {
     catalogInfo,
     products,
+    categories: storeCategories,
     cart,
     loading,
     productsLoading,
@@ -431,16 +432,29 @@ const GuestCatalogView = () => {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Get unique categories from products
-  const categories = useMemo(() => {
-    const categoryMap = new Map<string, string>();
-    products.forEach(p => {
-      if (p.category_id && p.category_name) {
-        categoryMap.set(p.category_id, p.category_name);
-      }
-    });
-    return Array.from(categoryMap.entries()).map(([id, name]) => ({ id, name }));
-  }, [products]);
+  // Get available categories from products' catalog_categories
+  const availableCategories = useMemo(() => {
+    // Collect unique category IDs from all products
+    const categoryIds = [...new Set(
+      products
+        .flatMap(p => p.catalog_categories || [])
+        .filter(Boolean)
+    )];
+    
+    // Map to category info and sort
+    return categoryIds
+      .map(id => {
+        const cat = storeCategories.find(c => c.id === id);
+        return cat ? { id: cat.id, name: cat.name, sort_order: cat.sort_order } : null;
+      })
+      .filter((c): c is { id: string; name: string; sort_order: number | null } => c !== null)
+      .sort((a, b) => {
+        const orderA = a.sort_order ?? 999999;
+        const orderB = b.sort_order ?? 999999;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.name.localeCompare(b.name, 'ru');
+      });
+  }, [products, storeCategories]);
 
   // Get unique statuses
   const availableStatuses = useMemo(() => {
@@ -460,7 +474,11 @@ const GuestCatalogView = () => {
   // Filter products
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      if (selectedCategory && p.category_id !== selectedCategory) return false;
+      // Filter by category - use catalog_categories array
+      if (selectedCategory) {
+        const productCategories = p.catalog_categories || [];
+        if (!productCategories.includes(selectedCategory)) return false;
+      }
       if (selectedStatus && p.catalog_status !== selectedStatus) return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -834,7 +852,7 @@ const GuestCatalogView = () => {
                     <span className={!selectedCategory ? "font-semibold" : ""}>Все категории</span>
                   </div>
                 </DropdownMenuItem>
-                {categories.map((cat) => (
+                {availableCategories.map((cat) => (
                   <DropdownMenuItem key={cat.id} onClick={() => setSelectedCategory(cat.id)} className="cursor-pointer">
                     <div className="flex items-center gap-2">
                       {selectedCategory === cat.id && <Check className="w-4 h-4 text-primary" />}
