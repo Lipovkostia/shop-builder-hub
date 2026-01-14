@@ -370,17 +370,18 @@ ${catalogProducts.length > 150 ? `\n... и ещё ${catalogProducts.length - 150
                 properties: {
                   items: {
                     type: "array",
+                    description: "List of found products",
                     items: {
                       type: "object",
                       properties: {
-                        productId: { type: "string", description: "Product ID from the catalog" },
-                        variantIndex: { type: "number", enum: [0, 1, 2, 3], description: "0=full, 1=half, 2=quarter, 3=portion" },
-                        quantity: { type: "number", description: "Number of items" },
-                        matchReason: { type: "string", description: "Why this product was matched" },
-                        suggestionProductId: { type: "string", description: "Alternative product ID if original unavailable" },
-                        suggestionReason: { type: "string", description: "Why suggesting this alternative" },
+                        product_id: { type: "string", description: "Product ID from the catalog" },
+                        variant_index: { type: "integer", description: "Variant: 0=full, 1=half, 2=quarter, 3=portion" },
+                        qty: { type: "integer", description: "Number of items" },
+                        match_reason: { type: "string", description: "Why this product was matched" },
+                        alt_product_id: { type: "string", description: "Alternative product ID if original unavailable" },
+                        alt_reason: { type: "string", description: "Why suggesting this alternative" },
                       },
-                      required: ["productId", "variantIndex", "quantity", "matchReason"],
+                      required: ["product_id", "variant_index", "qty", "match_reason"],
                     },
                   },
                   summary: {
@@ -465,19 +466,27 @@ ${catalogProducts.length > 150 ? `\n... и ещё ${catalogProducts.length - 150
     let unavailableCount = 0;
     
     const items: FoundItem[] = aiItems.map(item => {
-      const product = productMap.get(item.productId);
+      // Handle both snake_case (from AI) and camelCase field names
+      const productId = item.product_id || item.productId;
+      const variantIndex = item.variant_index ?? item.variantIndex ?? 0;
+      const quantity = item.qty || item.quantity || 1;
+      const matchReason = item.match_reason || item.matchReason || "";
+      const altProductId = item.alt_product_id || item.suggestionProductId;
+      const altReason = item.alt_reason || item.suggestionReason;
+      
+      const product = productMap.get(productId);
       if (!product) {
         unavailableCount++;
         return {
-          productId: item.productId,
+          productId: productId,
           productName: "Товар не найден",
-          variantIndex: item.variantIndex || 0,
-          variantLabel: variantLabels[item.variantIndex || 0],
-          quantity: item.quantity || 1,
+          variantIndex: variantIndex,
+          variantLabel: variantLabels[variantIndex],
+          quantity: quantity,
           unitPrice: 0,
           totalPrice: 0,
           available: false,
-          matchReason: item.matchReason || "",
+          matchReason: matchReason,
         };
       }
 
@@ -492,7 +501,6 @@ ${catalogProducts.length > 150 ? `\n... и ещё ${catalogProducts.length - 150
       
       let unitPrice = 0;
       let weight: number | undefined;
-      const variantIndex = item.variantIndex || 0;
       
       switch (variantIndex) {
         case 0: // full
@@ -511,8 +519,6 @@ ${catalogProducts.length > 150 ? `\n... и ещё ${catalogProducts.length - 150
           unitPrice = Math.round(portionPrice || 0);
           break;
       }
-
-      const quantity = item.quantity || 1;
       const itemTotal = unitPrice * quantity;
       const available = product.catalog_status === "in_stock" || product.catalog_status === "pre_order";
       
@@ -524,13 +530,13 @@ ${catalogProducts.length > 150 ? `\n... и ещё ${catalogProducts.length - 150
 
       // Build suggestion if provided
       let suggestion: FoundItem["suggestion"] | undefined;
-      if (item.suggestionProductId) {
-        const suggestionProduct = productMap.get(item.suggestionProductId);
+      if (altProductId) {
+        const suggestionProduct = productMap.get(altProductId);
         if (suggestionProduct) {
           suggestion = {
             productId: suggestionProduct.id,
             productName: suggestionProduct.name,
-            reason: item.suggestionReason || "Похожий товар в наличии",
+            reason: altReason || "Похожий товар в наличии",
           };
         }
       }
