@@ -323,35 +323,47 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
                   <Button
                     variant="outline"
                     size="icon"
+                    className={cn(
+                      "relative transition-all duration-200 touch-none select-none",
+                      isRecording 
+                        ? "bg-destructive hover:bg-destructive/90 border-destructive text-destructive-foreground scale-110 shadow-lg shadow-destructive/30" 
+                        : "border-destructive/30 hover:border-destructive hover:bg-destructive/10"
+                    )}
+                    style={{ 
+                      WebkitTouchCallout: 'none',
+                      WebkitUserSelect: 'none',
+                      userSelect: 'none'
+                    }}
+                    title="Зажмите для записи голоса"
+                    onContextMenu={(e) => e.preventDefault()}
                     onMouseDown={handleStartRecording}
                     onMouseUp={handleStopRecording}
                     onMouseLeave={isRecording ? handleStopRecording : undefined}
-                    onTouchStart={handleStartRecording}
-                    onTouchEnd={handleStopRecording}
-                    className={cn(
-                      "relative transition-all duration-200",
-                      isRecording 
-                        ? "bg-red-500 hover:bg-red-600 border-red-500 text-white scale-110 shadow-lg shadow-red-500/30" 
-                        : "border-red-200 hover:border-red-400 hover:bg-red-50 dark:border-red-800 dark:hover:border-red-600 dark:hover:bg-red-950"
-                    )}
-                    title="Зажмите для записи голоса"
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      handleStartRecording();
+                    }}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      handleStopRecording();
+                    }}
                   >
                     {isRecording ? (
                       <MicOff className="h-4 w-4 animate-pulse" />
                     ) : (
-                      <Mic className="h-4 w-4 text-red-500" />
+                      <Mic className="h-4 w-4 text-destructive" />
                     )}
                     
                     {/* Recording indicator */}
                     {isRecording && (
                       <>
                         <span className="absolute -top-2 -right-2 flex h-5 w-5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 items-center justify-center text-[9px] text-white font-medium">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-5 w-5 bg-destructive items-center justify-center text-[9px] text-destructive-foreground font-medium">
                             {formatTime(recordingTime)}
                           </span>
                         </span>
-                        <span className="absolute inset-0 rounded-md animate-pulse bg-red-500/20"></span>
+                        <span className="absolute inset-0 rounded-md animate-pulse bg-destructive/20 pointer-events-none"></span>
                       </>
                     )}
                   </Button>
@@ -371,12 +383,12 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
               
               {/* Recording status */}
               {isRecording && (
-                <div className="flex items-center justify-center gap-2 py-2 px-3 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800 animate-pulse">
+                <div className="flex items-center justify-center gap-2 py-2 px-3 bg-destructive/10 rounded-lg border border-destructive/30 animate-pulse">
                   <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
                   </span>
-                  <span className="text-sm text-red-600 dark:text-red-400 font-medium">
+                  <span className="text-sm text-destructive font-medium">
                     Идёт запись... Отпустите кнопку для отправки
                   </span>
                 </div>
