@@ -70,50 +70,62 @@ function loadStoredSelectedItems(catalogId: string | null): Set<string> {
 export function useCustomerAIAssistant(catalogId: string | null) {
   const { toast } = useToast();
   
-  // Initialize state from localStorage
-  const [state, setState] = useState<CustomerAssistantState>(() => {
-    const storedResponse = loadStoredResponse(catalogId);
-    return storedResponse?.items?.length ? "confirming" : "idle";
-  });
-  
-  const [response, setResponse] = useState<CustomerAIResponse | null>(() => 
-    loadStoredResponse(catalogId)
-  );
-  
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(() => 
-    loadStoredSelectedItems(catalogId)
-  );
-  
+  // Initialize state - will be loaded from localStorage when catalogId is available
+  const [state, setState] = useState<CustomerAssistantState>("idle");
+  const [response, setResponse] = useState<CustomerAIResponse | null>(null);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Save response to localStorage when it changes
+  // Save response to localStorage when it changes (only after initialization)
   useEffect(() => {
-    if (!catalogId) return;
+    if (!catalogId || !isInitialized) return;
     if (response && response.items.length > 0) {
+      console.log("[AI Assistant] Saving response to localStorage:", response.items.length, "items");
       localStorage.setItem(`${AI_DIALOG_STORAGE_KEY}_${catalogId}`, JSON.stringify(response));
     } else {
       localStorage.removeItem(`${AI_DIALOG_STORAGE_KEY}_${catalogId}`);
     }
-  }, [catalogId, response]);
+  }, [catalogId, response, isInitialized]);
 
-  // Save selected items to localStorage when they change
+  // Save selected items to localStorage when they change (only after initialization)
   useEffect(() => {
-    if (!catalogId) return;
+    if (!catalogId || !isInitialized) return;
     if (selectedItems.size > 0) {
+      console.log("[AI Assistant] Saving selected items to localStorage:", selectedItems.size, "items");
       localStorage.setItem(`${AI_DIALOG_STORAGE_KEY}_selected_${catalogId}`, JSON.stringify([...selectedItems]));
     } else {
       localStorage.removeItem(`${AI_DIALOG_STORAGE_KEY}_selected_${catalogId}`);
     }
-  }, [catalogId, selectedItems]);
+  }, [catalogId, selectedItems, isInitialized]);
 
-  // Reload from localStorage when catalogId changes
+  // Load from localStorage when catalogId becomes available or changes
   useEffect(() => {
+    if (!catalogId) {
+      // Reset when no catalogId
+      if (isInitialized) {
+        setState("idle");
+        setResponse(null);
+        setSelectedItems(new Set());
+        setError(null);
+      }
+      return;
+    }
+    
     const storedResponse = loadStoredResponse(catalogId);
     const storedSelectedItems = loadStoredSelectedItems(catalogId);
+    
+    console.log("[AI Assistant] Loading from localStorage for catalog:", catalogId, {
+      hasStoredResponse: !!storedResponse,
+      itemCount: storedResponse?.items?.length || 0,
+      selectedCount: storedSelectedItems.size
+    });
+    
     setResponse(storedResponse);
     setSelectedItems(storedSelectedItems);
     setState(storedResponse?.items?.length ? "confirming" : "idle");
     setError(null);
+    setIsInitialized(true);
   }, [catalogId]);
 
   const reset = useCallback(() => {
