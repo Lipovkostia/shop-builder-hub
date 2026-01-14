@@ -967,27 +967,85 @@ const GuestCatalogView = () => {
           </div>
         ) : (
           <div>
-            {filteredProducts.map((product) => (
-              <GuestProductCard
-                key={product.id}
-                product={product}
-                cart={cart}
-                onAddToCart={addToCart}
-                showImages={showImages}
-                isExpanded={expandedProductId === product.id}
-                onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
-                onOpenFullscreen={(idx) => {
-                  setFullscreenProduct(product);
-                  setFullscreenIndex(idx);
-                }}
-                isDescriptionExpanded={descriptionExpandedId === product.id}
-                onNameClick={() => {
-                  if (product.description) {
-                    setDescriptionExpandedId(descriptionExpandedId === product.id ? null : product.id);
-                  }
-                }}
-              />
-            ))}
+            {(() => {
+              const renderProductCard = (product: GuestProduct) => (
+                <GuestProductCard
+                  key={product.id}
+                  product={product}
+                  cart={cart}
+                  onAddToCart={addToCart}
+                  showImages={showImages}
+                  isExpanded={expandedProductId === product.id}
+                  onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
+                  onOpenFullscreen={(idx) => {
+                    setFullscreenProduct(product);
+                    setFullscreenIndex(idx);
+                  }}
+                  isDescriptionExpanded={descriptionExpandedId === product.id}
+                  onNameClick={() => {
+                    if (product.description) {
+                      setDescriptionExpandedId(descriptionExpandedId === product.id ? null : product.id);
+                    }
+                  }}
+                />
+              );
+
+              // Если выбрана конкретная категория - показать только её с заголовком
+              if (selectedCategory) {
+                const categoryName = availableCategories.find(c => c.id === selectedCategory)?.name || 'Категория';
+                return (
+                  <>
+                    <div className="px-3 py-2 bg-muted/50 border-b border-border sticky top-0 z-10">
+                      <span className="text-sm font-medium text-foreground">{categoryName}</span>
+                    </div>
+                    {filteredProducts.map(renderProductCard)}
+                  </>
+                );
+              }
+
+              // Если есть поисковый запрос - показать результаты без группировки
+              if (searchQuery) {
+                return filteredProducts.map(renderProductCard);
+              }
+
+              // Все категории - группировать продукты по категориям
+              return (
+                <>
+                  {availableCategories.map((category) => {
+                    const categoryProducts = filteredProducts.filter(
+                      (p) => p.catalog_categories && p.catalog_categories.includes(category.id)
+                    );
+                    if (categoryProducts.length === 0) return null;
+
+                    return (
+                      <div key={category.id}>
+                        <div className="px-3 py-2 bg-muted/50 border-b border-border sticky top-0 z-10">
+                          <span className="text-sm font-medium text-foreground">{category.name}</span>
+                        </div>
+                        {categoryProducts.map(renderProductCard)}
+                      </div>
+                    );
+                  })}
+
+                  {/* Товары без категории */}
+                  {(() => {
+                    const uncategorizedProducts = filteredProducts.filter(
+                      (p) => !p.catalog_categories || p.catalog_categories.length === 0
+                    );
+                    if (uncategorizedProducts.length === 0) return null;
+
+                    return (
+                      <div>
+                        <div className="px-3 py-2 bg-muted/50 border-b border-border sticky top-0 z-10">
+                          <span className="text-sm font-medium text-muted-foreground">Без категории</span>
+                        </div>
+                        {uncategorizedProducts.map(renderProductCard)}
+                      </div>
+                    );
+                  })()}
+                </>
+              );
+            })()}
           </div>
         )}
       </main>
