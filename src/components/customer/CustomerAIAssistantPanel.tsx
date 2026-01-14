@@ -174,8 +174,8 @@ export function CustomerAIAssistantPanel({
 
         <ScrollArea className="flex-1 w-full max-w-full overflow-x-hidden">
           <div className="p-4 space-y-4 w-full max-w-full overflow-x-hidden">
-            {/* Quick actions - repeat order */}
-            {(state === "idle" || state === "confirming") && recentOrders.length > 0 && (
+            {/* Quick actions - repeat order - ONLY when no items yet */}
+            {!hasExistingItems && (state === "idle" || state === "confirming") && recentOrders.length > 0 && (
               <div className="space-y-2">
                 <button
                   onClick={() => setShowOrders(!showOrders)}
@@ -213,12 +213,12 @@ export function CustomerAIAssistantPanel({
               </div>
             )}
 
-            {/* Input area - show in idle, recording, and confirming states */}
-            {showInput && (
+            {/* Input area - TOP position: show only when NO items yet */}
+            {showInput && !hasExistingItems && (
               <div className="space-y-2">
                 <div className="relative">
                   <Textarea
-                    placeholder={hasExistingItems ? "Добавить ещё..." : "Сёмга 2кг, форель полкило, икра 3 порции..."}
+                    placeholder="Сёмга 2кг, форель полкило, икра 3 порции..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -259,33 +259,31 @@ export function CustomerAIAssistantPanel({
                   </div>
                 )}
                 
-                {/* Example commands - only show when no items yet */}
-                {!hasExistingItems && (
-                  <div className="space-y-1.5">
-                    <p className="text-xs text-muted-foreground">
-                      Напишите или скажите голосом что хотите заказать
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {[
-                        "Сёмга 2 кг",
-                        "Форель полкило",
-                        "Три порции икры",
-                        "Как в прошлый раз",
-                      ].map((example) => (
-                        <button
-                          key={example}
-                          onClick={() => {
-                            setQuery(example);
-                            searchProducts(example, false);
-                          }}
-                          className="px-2.5 py-1 text-xs bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded-full transition-colors"
-                        >
-                          {example}
-                        </button>
-                      ))}
-                    </div>
+                {/* Example commands */}
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground">
+                    Напишите или скажите голосом что хотите заказать
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      "Сёмга 2 кг",
+                      "Форель полкило",
+                      "Три порции икры",
+                      "Как в прошлый раз",
+                    ].map((example) => (
+                      <button
+                        key={example}
+                        onClick={() => {
+                          setQuery(example);
+                          searchProducts(example, false);
+                        }}
+                        className="px-2.5 py-1 text-xs bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded-full transition-colors"
+                      >
+                        {example}
+                      </button>
+                    ))}
                   </div>
-                )}
+                </div>
               </div>
             )}
 
@@ -498,6 +496,54 @@ export function CustomerAIAssistantPanel({
                   <div className="text-center py-6">
                     <Package className="w-10 h-10 mx-auto text-muted-foreground/40 mb-2" />
                     <p className="text-sm text-muted-foreground">Товары не найдены</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Input area - BOTTOM position: show when items exist */}
+            {showInput && hasExistingItems && (
+              <div className="pt-3 border-t border-border/50">
+                <div className="relative">
+                  <Textarea
+                    placeholder="Добавить ещё..."
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="min-h-[50px] pr-24 resize-none text-sm"
+                    disabled={isRecording}
+                  />
+                  <div className="absolute bottom-2 right-2 flex gap-1">
+                    <Button
+                      size="icon"
+                      variant={isRecording ? "destructive" : "ghost"}
+                      className="h-8 w-8"
+                      onMouseDown={startRecording}
+                      onMouseUp={stopRecording}
+                      onMouseLeave={stopRecording}
+                      onTouchStart={startRecording}
+                      onTouchEnd={stopRecording}
+                    >
+                      {isRecording ? (
+                        <MicOff className="h-4 w-4" />
+                      ) : (
+                        <Mic className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={handleSubmit}
+                      disabled={!query.trim()}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                {isRecording && (
+                  <div className="flex items-center gap-2 text-sm text-destructive animate-pulse mt-1">
+                    <div className="w-2 h-2 rounded-full bg-destructive" />
+                    Говорите... (отпустите для отправки)
                   </div>
                 )}
               </div>
