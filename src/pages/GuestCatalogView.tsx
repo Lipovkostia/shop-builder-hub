@@ -1146,6 +1146,8 @@ const GuestCatalogView = () => {
               // Все категории - группировать продукты по категориям
               return (
                 <>
+                  {/* Демо-товар в самом верху при первом посещении */}
+                  {demoProductCard}
                   {availableCategories.map((category) => {
                     const categoryProducts = filteredProducts.filter(
                       (p) => p.catalog_categories && p.catalog_categories.includes(category.id)
