@@ -40,7 +40,8 @@ import {
 import { FullscreenImageViewer } from "@/components/ui/fullscreen-image-viewer";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerAIAssistantBanner } from "@/components/customer/CustomerAIAssistantBanner";
-import { FoundItem } from "@/hooks/useCustomerAIAssistant";
+import { CustomerAIAssistantPanel } from "@/components/customer/CustomerAIAssistantPanel";
+import { useCustomerAIAssistant, FoundItem } from "@/hooks/useCustomerAIAssistant";
 import { 
   ShoppingCart, 
   Plus, 
@@ -58,7 +59,8 @@ import {
   User,
   Store,
   Phone,
-  MessageCircle
+  MessageCircle,
+  Sparkles
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -444,6 +446,10 @@ const GuestCatalogView = () => {
   const [guestComment, setGuestComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCartImages, setShowCartImages] = useState(true);
+  const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
+  
+  // AI Assistant hook
+  const assistant = useCustomerAIAssistant(catalogInfo?.id || null);
 
   // Success state
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
@@ -894,16 +900,32 @@ const GuestCatalogView = () => {
             </DropdownMenu>
           </div>
 
-          {/* Login button - right */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate(`/?tab=customer&catalog=${accessCode}&store=${catalogInfo?.store_id}`)}
-            className="text-xs"
-          >
-            <LogIn className="w-4 h-4 mr-1" />
-            Войти
-          </Button>
+          {/* AI and Login buttons - right */}
+          <div className="flex items-center gap-2">
+            {/* AI Assistant Button */}
+            <button
+              onClick={() => setIsAIPanelOpen(true)}
+              className="relative flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 shadow-md shadow-purple-500/40 hover:shadow-purple-500/60 hover:scale-110 transition-all duration-300"
+              title="AI Помощник"
+            >
+              <Sparkles className="w-4 h-4 text-white" />
+              {assistant.itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-white text-primary text-[10px] font-bold min-w-[16px] h-[16px] px-0.5 rounded-full flex items-center justify-center shadow-sm">
+                  {assistant.itemCount}
+                </span>
+              )}
+            </button>
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(`/?tab=customer&catalog=${accessCode}&store=${catalogInfo?.store_id}`)}
+              className="text-xs"
+            >
+              <LogIn className="w-4 h-4 mr-1" />
+              Войти
+            </Button>
+          </div>
         </div>
 
         {/* Search and controls */}
@@ -985,13 +1007,20 @@ const GuestCatalogView = () => {
       {/* AI Assistant Banner */}
       {catalogInfo && (
         <CustomerAIAssistantBanner
-          catalogId={catalogInfo.id}
+          assistant={assistant}
           orders={[]}
-          onAddToCart={handleAIAddToCart}
+          onOpenPanel={() => setIsAIPanelOpen(true)}
         />
       )}
-
-      {/* Products */}
+      
+      {/* AI Assistant Panel */}
+      <CustomerAIAssistantPanel
+        open={isAIPanelOpen}
+        onOpenChange={setIsAIPanelOpen}
+        assistant={assistant}
+        orders={[]}
+        onAddToCart={handleAIAddToCart}
+      />
       <main className="flex-1 overflow-auto">
         {productsLoading ? (
           <div className="flex items-center justify-center py-12">

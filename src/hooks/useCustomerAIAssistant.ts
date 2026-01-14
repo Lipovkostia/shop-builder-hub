@@ -1,7 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getAudioFileExtension } from "@/lib/audioUtils";
+
+const AI_DIALOG_STORAGE_KEY = 'customer_ai_dialog';
 
 export interface FoundItem {
   productId: string;
@@ -43,19 +45,88 @@ export type CustomerAssistantState =
   | "done" 
   | "error";
 
+// Helper to load response from localStorage
+function loadStoredResponse(catalogId: string | null): CustomerAIResponse | null {
+  if (!catalogId) return null;
+  try {
+    const stored = localStorage.getItem(`${AI_DIALOG_STORAGE_KEY}_${catalogId}`);
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Helper to load selected items from localStorage
+function loadStoredSelectedItems(catalogId: string | null): Set<string> {
+  if (!catalogId) return new Set();
+  try {
+    const stored = localStorage.getItem(`${AI_DIALOG_STORAGE_KEY}_selected_${catalogId}`);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
 export function useCustomerAIAssistant(catalogId: string | null) {
   const { toast } = useToast();
-  const [state, setState] = useState<CustomerAssistantState>("idle");
-  const [response, setResponse] = useState<CustomerAIResponse | null>(null);
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  
+  // Initialize state from localStorage
+  const [state, setState] = useState<CustomerAssistantState>(() => {
+    const storedResponse = loadStoredResponse(catalogId);
+    return storedResponse?.items?.length ? "confirming" : "idle";
+  });
+  
+  const [response, setResponse] = useState<CustomerAIResponse | null>(() => 
+    loadStoredResponse(catalogId)
+  );
+  
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(() => 
+    loadStoredSelectedItems(catalogId)
+  );
+  
   const [error, setError] = useState<string | null>(null);
+
+  // Save response to localStorage when it changes
+  useEffect(() => {
+    if (!catalogId) return;
+    if (response && response.items.length > 0) {
+      localStorage.setItem(`${AI_DIALOG_STORAGE_KEY}_${catalogId}`, JSON.stringify(response));
+    } else {
+      localStorage.removeItem(`${AI_DIALOG_STORAGE_KEY}_${catalogId}`);
+    }
+  }, [catalogId, response]);
+
+  // Save selected items to localStorage when they change
+  useEffect(() => {
+    if (!catalogId) return;
+    if (selectedItems.size > 0) {
+      localStorage.setItem(`${AI_DIALOG_STORAGE_KEY}_selected_${catalogId}`, JSON.stringify([...selectedItems]));
+    } else {
+      localStorage.removeItem(`${AI_DIALOG_STORAGE_KEY}_selected_${catalogId}`);
+    }
+  }, [catalogId, selectedItems]);
+
+  // Reload from localStorage when catalogId changes
+  useEffect(() => {
+    const storedResponse = loadStoredResponse(catalogId);
+    const storedSelectedItems = loadStoredSelectedItems(catalogId);
+    setResponse(storedResponse);
+    setSelectedItems(storedSelectedItems);
+    setState(storedResponse?.items?.length ? "confirming" : "idle");
+    setError(null);
+  }, [catalogId]);
 
   const reset = useCallback(() => {
     setState("idle");
     setResponse(null);
     setSelectedItems(new Set());
     setError(null);
-  }, []);
+    // Clear localStorage
+    if (catalogId) {
+      localStorage.removeItem(`${AI_DIALOG_STORAGE_KEY}_${catalogId}`);
+      localStorage.removeItem(`${AI_DIALOG_STORAGE_KEY}_selected_${catalogId}`);
+    }
+  }, [catalogId]);
 
   // Merges new items into existing response, avoiding duplicates
   const mergeItems = useCallback((existingItems: FoundItem[], newItems: FoundItem[]): FoundItem[] => {
