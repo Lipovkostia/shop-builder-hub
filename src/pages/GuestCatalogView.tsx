@@ -27,7 +27,6 @@ import {
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
-  DrawerFooter,
 } from "@/components/ui/drawer";
 import {
   Dialog,
@@ -1148,124 +1147,33 @@ const GuestCatalogView = () => {
         </Sheet>
       )}
 
-      {/* Checkout Dialog/Drawer - mobile uses Drawer with inline buttons to prevent keyboard issues */}
-      {isMobile ? (
-        <Drawer open={checkoutOpen} onOpenChange={setCheckoutOpen}>
-          <DrawerContent className="max-h-[85vh] flex flex-col">
-            <DrawerHeader className="flex-shrink-0">
-              <DrawerTitle>Оформление заказа</DrawerTitle>
-              <DrawerDescription>
-                Заполните данные для доставки
-              </DrawerDescription>
-            </DrawerHeader>
-            
-            {/* Scrollable content with buttons INSIDE to prevent keyboard jump */}
-            <div className="flex-1 overflow-auto overscroll-contain px-4 pb-safe">
-              <div className="space-y-4 py-2">
-                <div className="space-y-2">
-                  <Label htmlFor="guest-name-mobile">Имя</Label>
-                  <Input
-                    id="guest-name-mobile"
-                    placeholder="Ваше имя"
-                    value={guestName}
-                    onChange={(e) => setGuestName(e.target.value)}
-                    autoComplete="name"
-                    enterKeyHint="next"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="guest-phone-mobile">Телефон</Label>
-                  <Input
-                    id="guest-phone-mobile"
-                    type="tel"
-                    inputMode="tel"
-                    placeholder="+7 (999) 123-45-67"
-                    value={guestPhone}
-                    onChange={(e) => setGuestPhone(e.target.value)}
-                    autoComplete="tel"
-                    enterKeyHint="next"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="guest-address-mobile">Адрес доставки</Label>
-                  <Input
-                    id="guest-address-mobile"
-                    placeholder="Город, улица, дом, квартира"
-                    value={guestAddress}
-                    onChange={(e) => setGuestAddress(e.target.value)}
-                    autoComplete="street-address"
-                    enterKeyHint="next"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="guest-comment-mobile">Комментарий (необязательно)</Label>
-                  <Input
-                    id="guest-comment-mobile"
-                    placeholder="Дополнительные пожелания"
-                    value={guestComment}
-                    onChange={(e) => setGuestComment(e.target.value)}
-                    enterKeyHint="done"
-                  />
-                </div>
-                
-                {/* Total */}
-                <div className="pt-4 border-t border-border">
-                  <div className="flex justify-between text-lg font-semibold">
-                    <span>Итого:</span>
-                    <span>{formatPrice(cartTotal)}</span>
-                  </div>
-                </div>
-                
-                {/* Buttons INSIDE scroll area - won't jump with keyboard */}
-                <div className="flex gap-2 pt-4 pb-4 sticky bottom-0 bg-background">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setCheckoutOpen(false)} 
-                    className="flex-1"
-                  >
-                    Отмена
-                  </Button>
-                  <Button 
-                    onClick={handleCheckout}
-                    disabled={!guestName.trim() || !guestPhone.trim() || !guestAddress.trim() || isSubmitting}
-                    className="flex-1"
-                  >
-                    {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Подтвердить
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </DrawerContent>
-        </Drawer>
-      ) : (
-        <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
-          <DialogContent 
-            className="sm:max-w-md"
-            onOpenAutoFocus={(e) => e.preventDefault()}
-          >
-            <DialogHeader>
-              <DialogTitle>Оформление заказа</DialogTitle>
-              <DialogDescription>
-                Заполните данные для доставки
-              </DialogDescription>
-            </DialogHeader>
-            {checkoutContentJsx}
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="outline" onClick={() => setCheckoutOpen(false)}>
-                Отмена
-              </Button>
-              <Button 
-                onClick={handleCheckout}
-                disabled={!guestName.trim() || !guestPhone.trim() || !guestAddress.trim() || isSubmitting}
-              >
-                {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Подтвердить заказ
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+      {/* Checkout Dialog (same behavior as registered customer; avoids mobile keyboard jump) */}
+      <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
+        <DialogContent 
+          className="sm:max-w-md"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>Оформление заказа</DialogTitle>
+            <DialogDescription>
+              Заполните данные для доставки
+            </DialogDescription>
+          </DialogHeader>
+          {checkoutContentJsx}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setCheckoutOpen(false)}>
+              Отмена
+            </Button>
+            <Button 
+              onClick={handleCheckout}
+              disabled={!guestName.trim() || !guestPhone.trim() || !guestAddress.trim() || isSubmitting}
+            >
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Подтвердить заказ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Success Dialog/Drawer */}
       {isMobile ? (
