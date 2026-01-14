@@ -76,9 +76,16 @@ function saveCart(catalogId: string, cart: GuestCartItem[]) {
   }
 }
 
+export interface StoreCategory {
+  id: string;
+  name: string;
+  sort_order: number | null;
+}
+
 export function useGuestCatalog(accessCode: string | undefined) {
   const [catalogInfo, setCatalogInfo] = useState<GuestCatalogInfo | null>(null);
   const [products, setProducts] = useState<GuestProduct[]>([]);
+  const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [cart, setCart] = useState<GuestCartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [productsLoading, setProductsLoading] = useState(false);
@@ -314,21 +321,42 @@ export function useGuestCatalog(accessCode: string | undefined) {
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  // Fetch categories for the store
+  const fetchCategories = useCallback(async () => {
+    if (!catalogInfo?.store_id) return;
+    
+    try {
+      const { data, error: catError } = await supabase
+        .from('categories')
+        .select('id, name, sort_order')
+        .eq('store_id', catalogInfo.store_id)
+        .order('sort_order', { ascending: true });
+        
+      if (!catError && data) {
+        setCategories(data);
+      }
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+    }
+  }, [catalogInfo?.store_id]);
+
   // Initial fetch
   useEffect(() => {
     fetchCatalogInfo();
   }, [fetchCatalogInfo]);
 
-  // Fetch products when catalog info is loaded
+  // Fetch products and categories when catalog info is loaded
   useEffect(() => {
     if (catalogInfo) {
       fetchProducts();
+      fetchCategories();
     }
-  }, [catalogInfo, fetchProducts]);
+  }, [catalogInfo, fetchProducts, fetchCategories]);
 
   return {
     catalogInfo,
     products,
+    categories,
     cart,
     loading,
     productsLoading,
