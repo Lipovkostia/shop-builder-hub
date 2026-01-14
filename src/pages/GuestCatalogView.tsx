@@ -101,7 +101,7 @@ function GuestProductCard({
 }: { 
   product: GuestProduct;
   cart: GuestCartItem[];
-  onAddToCart: (productId: string, productName: string, variantIndex: number, price: number, unit: string | null, unitWeight: number | null) => void;
+  onAddToCart: (productId: string, productName: string, variantIndex: number, price: number, unit: string | null, unitWeight: number | null, images: string[] | null, packagingType: string | null) => void;
   showImages?: boolean;
   isExpanded?: boolean;
   onImageClick?: () => void;
@@ -240,11 +240,11 @@ function GuestProductCard({
           <div className={`flex items-center gap-0.5 flex-wrap flex-shrink-0 ${showImages ? 'mt-0.5 justify-end ml-auto' : 'justify-end'}`}>
             {canOrder ? (
               <>
-                {hasPortionPrice && portionPrice && (() => {
+              {hasPortionPrice && portionPrice && (() => {
                   const qty = getCartQuantity(3);
                   return (
                     <button
-                      onClick={() => onAddToCart(product.id, product.name, 3, portionPrice, product.unit, unitWeight)}
+                      onClick={() => onAddToCart(product.id, product.name, 3, portionPrice, product.unit, unitWeight, product.images, product.packaging_type)}
                       className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all h-7 px-2`}
                     >
                       {qty > 0 && (
@@ -261,7 +261,7 @@ function GuestProductCard({
                   const qty = getCartQuantity(2);
                   return (
                     <button
-                      onClick={() => onAddToCart(product.id, product.name, 2, quarterPrice, product.unit, unitWeight)}
+                      onClick={() => onAddToCart(product.id, product.name, 2, quarterPrice, product.unit, unitWeight, product.images, product.packaging_type)}
                       className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all h-7 px-2`}
                     >
                       {qty > 0 && (
@@ -278,7 +278,7 @@ function GuestProductCard({
                   const qty = getCartQuantity(1);
                   return (
                     <button
-                      onClick={() => onAddToCart(product.id, product.name, 1, halfPrice, product.unit, unitWeight)}
+                      onClick={() => onAddToCart(product.id, product.name, 1, halfPrice, product.unit, unitWeight, product.images, product.packaging_type)}
                       className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all h-7 px-2`}
                     >
                       {qty > 0 && (
@@ -295,7 +295,7 @@ function GuestProductCard({
                   const qty = getCartQuantity(0);
                   return (
                     <button
-                      onClick={() => onAddToCart(product.id, product.name, 0, fullPrice, product.unit, unitWeight)}
+                      onClick={() => onAddToCart(product.id, product.name, 0, fullPrice, product.unit, unitWeight, product.images, product.packaging_type)}
                       className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all h-7 px-2`}
                     >
                       {qty > 0 && (
@@ -312,7 +312,7 @@ function GuestProductCard({
                   const qty = getCartQuantity(0);
                   return (
                     <button
-                      onClick={() => onAddToCart(product.id, product.name, 0, basePrice, product.unit, unitWeight)}
+                      onClick={() => onAddToCart(product.id, product.name, 0, basePrice, product.unit, unitWeight, product.images, product.packaging_type)}
                       className={`relative flex items-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all h-7 px-2`}
                     >
                       {qty > 0 && (
@@ -411,6 +411,7 @@ const GuestCatalogView = () => {
   const [guestPhone, setGuestPhone] = useState("");
   const [guestComment, setGuestComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCartImages, setShowCartImages] = useState(true);
 
   // Success & registration state
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
@@ -730,9 +731,56 @@ const GuestCatalogView = () => {
     );
   }
 
-  // Cart content JSX - inlined to prevent focus loss issues
+  // Helper functions for cart display (matching CustomerDashboard)
+  const getVariantLabel = (variantIndex: number): string => {
+    switch (variantIndex) {
+      case 0: return 'Целая';
+      case 1: return '½';
+      case 2: return '¼';
+      case 3: return 'Порция';
+      default: return 'Целая';
+    }
+  };
+
+  const getUnitLabel = (unit?: string | null): "кг" | "шт" => {
+    const u = (unit ?? "").toString().toLowerCase().trim();
+    if (u === "kg" || u === "кг" || u.includes("kg") || u.includes("кг")) return "кг";
+    return "шт";
+  };
+
+  const getPortionVolume = (variantIndex: number, unitWeight: number): number => {
+    switch (variantIndex) {
+      case 0: return unitWeight;
+      case 1: return unitWeight / 2;
+      case 2: return unitWeight / 4;
+      case 3: return 1;
+      default: return unitWeight;
+    }
+  };
+
+  // Cart content JSX - inlined to prevent focus loss issues (matching CustomerDashboard style)
   const cartContentJsx = (
     <div className="flex flex-col h-full">
+      {/* Cart header with image toggle and total */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+        <div className="flex items-center gap-2">
+          <ShoppingCart className="w-4 h-4 text-primary" />
+          <span className="font-semibold text-sm">Корзина</span>
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+            {cart.length}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowCartImages(!showCartImages)}
+            className="p-1 rounded hover:bg-muted transition-colors"
+          >
+            <Image className={`w-4 h-4 ${showCartImages ? 'text-primary' : 'text-muted-foreground'}`} />
+          </button>
+          <span className="text-sm font-bold text-primary">{formatPriceSpaced(cartTotal)} ₽</span>
+        </div>
+      </div>
+
       <div className="flex-1 overflow-auto">
         {cart.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full py-12 text-center">
@@ -740,37 +788,77 @@ const GuestCatalogView = () => {
             <p className="text-muted-foreground">Корзина пуста</p>
           </div>
         ) : (
-          <div className="space-y-2 p-4">
+          <div className="px-3 py-2 space-y-0.5">
             {cart.map((item, idx) => {
-              const variantLabels = ['Целая', '1/2', '1/4', 'Порция'];
+              const variantLabel = getVariantLabel(item.variantIndex);
+              const unitLabel = getUnitLabel(item.unit);
+              const unitWeight = item.unit_weight || 1;
+              const portionVolume = getPortionVolume(item.variantIndex, unitWeight);
+              const portionVolumeFormatted = Number.isInteger(portionVolume) 
+                ? portionVolume.toString() 
+                : portionVolume.toFixed(1).replace('.', ',');
+              const portionVolumeDisplay = `${portionVolumeFormatted} ${unitLabel}`;
+              
+              // Total volume for item
+              const itemTotalVolume = portionVolume * item.quantity;
+              const itemTotalVolumeFormatted = Number.isInteger(itemTotalVolume)
+                ? itemTotalVolume.toString()
+                : itemTotalVolume.toFixed(1).replace('.', ',');
+              const itemTotalVolumeDisplay = `${itemTotalVolumeFormatted} ${unitLabel}`;
+
               return (
-                <div key={idx} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{item.productName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {variantLabels[item.variantIndex]} · {formatPrice(item.price)}
+                <div key={`${item.productId}-${item.variantIndex}-${idx}`} className="flex gap-1.5 py-1.5 items-start">
+                  {/* Product image */}
+                  {showCartImages && (
+                    <div className="relative w-7 h-7 rounded bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {item.images?.[0] ? (
+                        <img src={item.images[0]} alt={item.productName} className="w-full h-full object-cover" />
+                      ) : (
+                        <Package className="h-3 w-3 text-muted-foreground" />
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Name + variant */}
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <p className="font-medium text-sm truncate leading-tight">
+                      {item.productName}
                     </p>
+                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground truncate">
+                      <span className="px-1 py-0.5 font-medium bg-primary/10 text-primary rounded flex-shrink-0">
+                        {variantLabel}
+                      </span>
+                      <span className="truncate">{portionVolumeDisplay} · {formatPriceSpaced(item.price)}₽</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => updateCartQuantity(item.productId, item.variantIndex, item.quantity - 1)}
-                      className="w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted"
-                    >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
-                    <button 
-                      onClick={() => updateCartQuantity(item.productId, item.variantIndex, item.quantity + 1)}
-                      className="w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
-                    <button 
-                      onClick={() => removeFromCart(item.productId, item.variantIndex)}
-                      className="w-7 h-7 rounded-full bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive/20"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                  
+                  {/* Quantity controls */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <div className="flex items-center">
+                      <button 
+                        className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-muted/80"
+                        onClick={() => updateCartQuantity(item.productId, item.variantIndex, item.quantity - 1)}
+                      >
+                        <Minus className="h-2.5 w-2.5" />
+                      </button>
+                      <span className="w-4 text-center text-xs font-semibold tabular-nums">{item.quantity}</span>
+                      <button 
+                        className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-muted/80"
+                        onClick={() => updateCartQuantity(item.productId, item.variantIndex, item.quantity + 1)}
+                      >
+                        <Plus className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+                    
+                    {/* Total + volume */}
+                    <div className="text-right min-w-[52px]">
+                      <div className="text-[11px] font-bold text-primary tabular-nums whitespace-nowrap">
+                        {formatPriceSpaced(item.price * item.quantity)}₽
+                      </div>
+                      <div className="text-[9px] text-muted-foreground tabular-nums whitespace-nowrap">
+                        {itemTotalVolumeDisplay}
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
@@ -780,26 +868,22 @@ const GuestCatalogView = () => {
       </div>
 
       {cart.length > 0 && (
-        <div className="border-t border-border p-4 space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="font-medium">Итого:</span>
-            <span className="text-lg font-bold">{formatPrice(cartTotal)}</span>
-          </div>
+        <div className="px-3 py-2 border-t border-border bg-muted/30 space-y-1.5">
           <Button 
             onClick={() => {
               setCartOpen(false);
               setCheckoutOpen(true);
             }} 
-            className="w-full"
+            className="w-full h-9 text-sm font-semibold"
           >
-            Оформить заказ
+            Оформить {cart.length} поз. · {formatPrice(cartTotal)}
           </Button>
           <Button 
             onClick={() => navigate(`/?tab=customer&catalog=${accessCode}&store=${catalogInfo?.store_id}`)} 
-            variant="outline"
-            className="w-full"
+            variant="ghost"
+            className="w-full h-8 text-xs text-muted-foreground"
           >
-            <LogIn className="w-4 h-4 mr-2" />
+            <LogIn className="w-3 h-3 mr-1" />
             Войти для сохранения заказов
           </Button>
         </div>
