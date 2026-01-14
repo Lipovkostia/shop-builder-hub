@@ -75,9 +75,12 @@ import {
   LayoutGrid,
   Search,
   Copy,
-  MessageCircle
+  MessageCircle,
+  Sparkles
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { CustomerAIAssistantPanel } from "@/components/customer/CustomerAIAssistantPanel";
+import { FoundItem } from "@/hooks/useCustomerAIAssistant";
 import { openWhatsAppWithOrder, WhatsAppOrderData } from "@/lib/whatsappUtils";
 
 // Функция для воспроизведения звука успеха
@@ -824,6 +827,7 @@ const CustomerDashboard = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
   
   // Extract unique category IDs from products and map to names
   // Keep the sort_order from storeCategories (already sorted by seller)
@@ -1386,6 +1390,51 @@ const CustomerDashboard = () => {
       toast({
         title: "Заказ добавлен в корзину",
         description: `Все ${availableCount} товаров доступны`,
+      });
+    }
+  };
+
+  // Add items from AI assistant to cart
+  const handleAIAddToCart = (items: FoundItem[]) => {
+    const newCartItems: LocalCartItem[] = [];
+    
+    items.forEach(item => {
+      const product = getProductById(item.productId);
+      if (!product) return;
+      
+      newCartItems.push({
+        productId: item.productId,
+        variantIndex: item.variantIndex,
+        quantity: item.quantity,
+        price: item.unitPrice,
+        isAvailable: true,
+      });
+    });
+
+    if (newCartItems.length > 0) {
+      setCart(prev => {
+        // Merge with existing cart - combine quantities for same product+variant
+        const merged = [...prev];
+        newCartItems.forEach(newItem => {
+          const existingIdx = merged.findIndex(
+            ci => ci.productId === newItem.productId && ci.variantIndex === newItem.variantIndex
+          );
+          if (existingIdx >= 0) {
+            merged[existingIdx] = {
+              ...merged[existingIdx],
+              quantity: merged[existingIdx].quantity + newItem.quantity,
+            };
+          } else {
+            merged.push(newItem);
+          }
+        });
+        return merged;
+      });
+      
+      setIsCartOpen(true);
+      toast({
+        title: "Товары добавлены в корзину",
+        description: `${items.length} ${items.length === 1 ? 'товар' : 'товаров'}`,
       });
     }
   };
@@ -2608,6 +2657,24 @@ const CustomerDashboard = () => {
         isOpen={fullscreenImages !== null}
         onClose={() => setFullscreenImages(null)}
         onIndexChange={(newIndex) => setFullscreenImages(prev => prev ? { ...prev, index: newIndex } : null)}
+      />
+      
+      {/* AI Assistant Floating Button */}
+      <Button
+        onClick={() => setIsAIPanelOpen(true)}
+        className="fixed bottom-20 right-4 h-12 w-12 rounded-full shadow-lg z-40"
+        size="icon"
+      >
+        <Sparkles className="h-5 w-5" />
+      </Button>
+      
+      {/* AI Assistant Panel */}
+      <CustomerAIAssistantPanel
+        open={isAIPanelOpen}
+        onOpenChange={setIsAIPanelOpen}
+        catalogId={currentCatalog?.catalog_id || null}
+        orders={myOrders}
+        onAddToCart={handleAIAddToCart}
       />
     </div>
   );
