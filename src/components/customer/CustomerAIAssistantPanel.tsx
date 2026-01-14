@@ -23,6 +23,8 @@ import {
   X,
   Package,
   ChevronDown,
+  Plus,
+  Minus,
 } from "lucide-react";
 import { useCustomerAIAssistant, FoundItem } from "@/hooks/useCustomerAIAssistant";
 import { Order } from "@/hooks/useOrders";
@@ -59,6 +61,7 @@ export function CustomerAIAssistantPanel({
     toggleItem,
     selectAll,
     deselectAll,
+    updateItemQuantity,
     getSelectedItems,
     getSelectedTotal,
   } = useCustomerAIAssistant(catalogId);
@@ -358,10 +361,38 @@ export function CustomerAIAssistantPanel({
                             </Badge>
                           </div>
                           
-                          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                            <span>{item.quantity} × {formatPrice(item.unitPrice)}</span>
-                            {item.weight && <span>· {item.weight} кг</span>}
-                          </div>
+                          {/* Quantity controls */}
+                          {item.available && (
+                            <div className="flex items-center gap-1 mt-2">
+                              <button
+                                onClick={() => updateItemQuantity(item.productId, item.quantity - 1)}
+                                disabled={item.quantity <= 1}
+                                className="w-6 h-6 flex items-center justify-center rounded bg-muted hover:bg-muted/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="w-8 text-center text-sm font-medium tabular-nums">
+                                {item.quantity}
+                              </span>
+                              <button
+                                onClick={() => updateItemQuantity(item.productId, item.quantity + 1)}
+                                className="w-6 h-6 flex items-center justify-center rounded bg-muted hover:bg-muted/80 transition-colors"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                              <span className="text-xs text-muted-foreground ml-2">
+                                × {formatPrice(item.unitPrice)}
+                                {item.weight && ` · ${Number((item.weight).toFixed(2))} кг`}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {!item.available && (
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              <span>{item.quantity} × {formatPrice(item.unitPrice)}</span>
+                              {item.weight && <span>· {item.weight} кг</span>}
+                            </div>
+                          )}
                           
                           {!item.available && item.suggestion && (
                             <div className="mt-2 p-2 bg-amber-500/10 rounded text-xs">
