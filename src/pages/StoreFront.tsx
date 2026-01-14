@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store as StoreIcon, Package, LayoutGrid, Plus, LogIn, Sparkles, Users, Link2, Copy } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store as StoreIcon, Package, LayoutGrid, Plus, LogIn, Sparkles, Users, Link2, Copy, Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 import { Badge } from "@/components/ui/badge";
@@ -697,6 +697,18 @@ function StoreHeader({
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const selectedCatalogName = catalogs.find((c) => c.id === selectedCatalog)?.name || "Все товары";
 
+  const handleCopyLink = async () => {
+    const catalog = catalogs.find(c => c.id === selectedCatalog);
+    if (!catalog?.access_code) return;
+    
+    const url = `${window.location.origin}/catalog/${catalog.access_code}`;
+    await navigator.clipboard.writeText(url);
+    toast({
+      title: "Ссылка скопирована",
+      description: "Ссылка на прайс-лист скопирована в буфер обмена",
+    });
+  };
+
   const handleSharePrice = async () => {
     const catalog = catalogs.find(c => c.id === selectedCatalog);
     if (!catalog?.access_code) return;
@@ -713,22 +725,11 @@ function StoreHeader({
           url: url,
         });
       } catch (err) {
-        // Пользователь отменил или ошибка - копируем в буфер
-        if ((err as Error).name !== 'AbortError') {
-          await navigator.clipboard.writeText(url);
-          toast({
-            title: "Ссылка скопирована",
-            description: "Ссылка на прайс-лист скопирована в буфер обмена",
-          });
-        }
+        // Пользователь отменил — ничего не делаем
       }
     } else {
       // Fallback для браузеров без Web Share API
-      await navigator.clipboard.writeText(url);
-      toast({
-        title: "Ссылка скопирована",
-        description: "Ссылка на прайс-лист скопирована в буфер обмена",
-      });
+      handleCopyLink();
     }
   };
 
@@ -854,27 +855,27 @@ function StoreHeader({
 
       {/* Блок "Поделись прайсом" - показывать только когда выбран каталог и есть товары */}
       {selectedCatalog && filteredProducts && filteredProducts.length > 0 && (
-        <button
-          onClick={handleSharePrice}
-          className="w-full px-3 py-2 border-t border-border bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-colors cursor-pointer group"
-          title="Нажмите чтобы поделиться прайс-листом"
-        >
-          <div className="flex items-center justify-between">
-            {/* Левая часть - призыв к действию */}
-            <div className="flex items-center gap-2">
-              <Link2 className="w-4 h-4 text-primary" />
-              <span className="text-xs font-medium text-primary">Поделись прайсом</span>
-            </div>
-            
-            {/* Правая часть - название прайса */}
-            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">
-              <span className="truncate max-w-[180px]">
-                {store.name} — {selectedCatalogName}
-              </span>
-              <Copy className="w-3 h-3 flex-shrink-0 opacity-50 group-hover:opacity-100" />
-            </div>
-          </div>
-        </button>
+        <div className="w-full grid grid-cols-2 border-t border-border">
+          {/* Левая кнопка — Отправить */}
+          <button
+            onClick={handleSharePrice}
+            className="flex items-center justify-center gap-2 px-3 py-2.5 bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-colors border-r border-border group active:scale-[0.98]"
+            title="Отправить прайс-лист"
+          >
+            <Share2 className="w-4 h-4 text-primary" />
+            <span className="text-xs font-medium text-primary">Отправить</span>
+          </button>
+          
+          {/* Правая кнопка — Копировать */}
+          <button
+            onClick={handleCopyLink}
+            className="flex items-center justify-center gap-2 px-3 py-2.5 hover:bg-muted/50 transition-colors group active:scale-[0.98]"
+            title="Копировать ссылку"
+          >
+            <Copy className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
+            <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">Копировать</span>
+          </button>
+        </div>
       )}
 
       {/* Выезжающий блок фильтров */}
@@ -1250,6 +1251,27 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
     }
   };
 
+  // Copy link function
+  const handleCopyLink = async () => {
+    const catalog = accessibleCatalogs.find(c => c.id === selectedCatalog);
+    if (!catalog?.access_code) {
+      toast({
+        title: "Не удалось получить ссылку",
+        description: "Выберите прайс-лист для получения ссылки",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const url = `${window.location.origin}/catalog/${catalog.access_code}/view`;
+    await navigator.clipboard.writeText(url);
+    triggerHapticFeedback();
+    toast({
+      title: "Ссылка скопирована",
+      description: "Ссылка на прайс-лист скопирована в буфер обмена",
+    });
+  };
+
   // Share price function with Web Share API support
   const handleSharePrice = async () => {
     const catalog = accessibleCatalogs.find(c => c.id === selectedCatalog);
@@ -1280,24 +1302,11 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
         // Haptic feedback on successful share
         triggerHapticFeedback();
       } catch (err) {
-        // User cancelled or error - copy to clipboard
-        if ((err as Error).name !== 'AbortError') {
-          await navigator.clipboard.writeText(url);
-          triggerHapticFeedback();
-          toast({
-            title: "Ссылка скопирована",
-            description: "Ссылка на прайс-лист скопирована в буфер обмена",
-          });
-        }
+        // User cancelled — do nothing
       }
     } else {
       // Fallback for browsers without Web Share API
-      await navigator.clipboard.writeText(url);
-      triggerHapticFeedback();
-      toast({
-        title: "Ссылка скопирована",
-        description: "Ссылка на прайс-лист скопирована в буфер обмена",
-      });
+      handleCopyLink();
     }
   };
 
@@ -1741,35 +1750,31 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
 
           {/* Блок "Поделись прайсом" - показывать только когда выбран каталог и есть товары */}
           {selectedCatalog && filteredProducts.length > 0 && (
-            <button
-              onClick={handleSharePrice}
-              className={`w-full px-3 py-2 border-t border-border bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-all duration-150 cursor-pointer group ${
-                isSharePressed 
-                  ? 'scale-[0.98] bg-primary/10 shadow-inner' 
-                  : 'scale-100 active:scale-[0.98]'
-              }`}
-              title="Нажмите чтобы поделиться прайс-листом"
-            >
-              <div className="flex items-center justify-between">
-                {/* Левая часть - призыв к действию */}
-                <div className="flex items-center gap-2">
-                  <Link2 className={`w-4 h-4 text-primary transition-transform duration-150 ${isSharePressed ? 'scale-110' : ''}`} />
-                  <span className="text-xs font-medium text-primary">Поделись прайсом</span>
-                </div>
-                
-                {/* Правая часть - название прайса */}
-                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">
-                  <span className="truncate max-w-[180px]">
-                    {store.name} — {selectedCatalogName}
-                  </span>
-                  <Copy className={`w-3 h-3 flex-shrink-0 transition-all duration-150 ${
-                    isSharePressed 
-                      ? 'opacity-100 text-primary scale-125' 
-                      : 'opacity-50 group-hover:opacity-100'
-                  }`} />
-                </div>
-              </div>
-            </button>
+            <div className="w-full grid grid-cols-2 border-t border-border">
+              {/* Левая кнопка — Отправить */}
+              <button
+                onClick={handleSharePrice}
+                className={`flex items-center justify-center gap-2 px-3 py-2.5 bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-all duration-150 border-r border-border group ${
+                  isSharePressed 
+                    ? 'scale-[0.98] bg-primary/10' 
+                    : 'active:scale-[0.98]'
+                }`}
+                title="Отправить прайс-лист"
+              >
+                <Share2 className={`w-4 h-4 text-primary transition-transform duration-150 ${isSharePressed ? 'scale-110' : ''}`} />
+                <span className="text-xs font-medium text-primary">Отправить</span>
+              </button>
+              
+              {/* Правая кнопка — Копировать */}
+              <button
+                onClick={handleCopyLink}
+                className="flex items-center justify-center gap-2 px-3 py-2.5 hover:bg-muted/50 transition-colors group active:scale-[0.98]"
+                title="Копировать ссылку"
+              >
+                <Copy className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
+                <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">Копировать</span>
+              </button>
+            </div>
           )}
 
           {/* Выезжающий блок фильтров */}
