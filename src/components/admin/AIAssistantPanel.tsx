@@ -531,11 +531,17 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
                               onCheckedChange={() => toggleProduct(product.id)}
                             />
                           )}
-                          {state === "done" && (
+                          {state === "done" && selectedProducts.has(product.id) && (
                             <Check className="h-4 w-4 text-green-500" />
                           )}
-                          {state === "applying" && (
+                          {state === "done" && !selectedProducts.has(product.id) && (
+                            <div className="h-4 w-4" />
+                          )}
+                          {state === "applying" && selectedProducts.has(product.id) && (
                             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          )}
+                          {state === "applying" && !selectedProducts.has(product.id) && (
+                            <div className="h-4 w-4" />
                           )}
                         </div>
                         
