@@ -196,6 +196,30 @@ export function useCustomerAIAssistant(catalogId: string | null) {
     setSelectedItems(new Set());
   }, []);
 
+  const updateItemQuantity = useCallback((productId: string, newQuantity: number) => {
+    if (!response || newQuantity < 1) return;
+    
+    setResponse(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map(item => {
+          if (item.productId === productId) {
+            const newTotalPrice = item.unitPrice * newQuantity;
+            const newWeight = item.weight ? (item.weight / item.quantity) * newQuantity : undefined;
+            return {
+              ...item,
+              quantity: newQuantity,
+              totalPrice: newTotalPrice,
+              weight: newWeight,
+            };
+          }
+          return item;
+        }),
+      };
+    });
+  }, [response]);
+
   const getSelectedItems = useCallback(() => {
     if (!response) return [];
     return response.items.filter(i => selectedItems.has(i.productId));
@@ -218,6 +242,7 @@ export function useCustomerAIAssistant(catalogId: string | null) {
     toggleItem,
     selectAll,
     deselectAll,
+    updateItemQuantity,
     getSelectedItems,
     getSelectedTotal,
   };
