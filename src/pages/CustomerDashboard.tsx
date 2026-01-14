@@ -79,7 +79,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { CustomerAIAssistantPanel } from "@/components/customer/CustomerAIAssistantPanel";
+import { CustomerAIAssistantBanner } from "@/components/customer/CustomerAIAssistantBanner";
 import { FoundItem } from "@/hooks/useCustomerAIAssistant";
 import { openWhatsAppWithOrder, WhatsAppOrderData } from "@/lib/whatsappUtils";
 
@@ -827,7 +827,7 @@ const CustomerDashboard = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-  const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
+  // isAIPanelOpen state removed - now managed inside CustomerAIAssistantBanner
   
   // Extract unique category IDs from products and map to names
   // Keep the sort_order from storeCategories (already sorted by seller)
@@ -1927,6 +1927,15 @@ const CustomerDashboard = () => {
       />
       
       <main className="flex-1 overflow-auto">
+        {/* AI Assistant Banner above products */}
+        {currentCatalog && (
+          <CustomerAIAssistantBanner
+            catalogId={currentCatalog.catalog_id}
+            orders={myOrders}
+            onAddToCart={handleAIAddToCart}
+          />
+        )}
+        
         {productsLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -2659,23 +2668,7 @@ const CustomerDashboard = () => {
         onIndexChange={(newIndex) => setFullscreenImages(prev => prev ? { ...prev, index: newIndex } : null)}
       />
       
-      {/* AI Assistant Floating Button */}
-      <Button
-        onClick={() => setIsAIPanelOpen(true)}
-        className="fixed bottom-20 right-4 h-12 w-12 rounded-full shadow-lg z-40"
-        size="icon"
-      >
-        <Sparkles className="h-5 w-5" />
-      </Button>
-      
-      {/* AI Assistant Panel */}
-      <CustomerAIAssistantPanel
-        open={isAIPanelOpen}
-        onOpenChange={setIsAIPanelOpen}
-        catalogId={currentCatalog?.catalog_id || null}
-        orders={myOrders}
-        onAddToCart={handleAIAddToCart}
-      />
+      {/* AI Assistant is now shown as banner above products */}
     </div>
   );
 };
