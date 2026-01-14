@@ -53,6 +53,8 @@ export interface GuestCartItem {
   price: number;
   unit: string | null;
   unit_weight: number | null;
+  images: string[] | null;
+  packaging_type: string | null;
 }
 
 const CART_STORAGE_KEY = 'guest_cart';
@@ -232,7 +234,9 @@ export function useGuestCatalog(accessCode: string | undefined) {
     variantIndex: number, 
     price: number,
     unit: string | null,
-    unitWeight: number | null
+    unitWeight: number | null,
+    images: string[] | null = null,
+    packagingType: string | null = null
   ) => {
     if (!catalogInfo) return;
 
@@ -257,6 +261,8 @@ export function useGuestCatalog(accessCode: string | undefined) {
           price,
           unit,
           unit_weight: unitWeight,
+          images,
+          packaging_type: packagingType,
         }];
       }
 
