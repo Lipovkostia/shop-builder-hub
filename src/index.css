@@ -287,4 +287,9 @@
     background-size: 200% 100%;
     animation: shimmer 2s infinite;
   }
+
+  /* Safe area padding for iOS devices with notch/home indicator */
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
 }

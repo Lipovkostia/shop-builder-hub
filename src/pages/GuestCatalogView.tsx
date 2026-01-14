@@ -804,7 +804,7 @@ const GuestCatalogView = () => {
     </div>
   );
 
-  // Checkout content JSX - inlined to prevent focus loss issues
+  // Checkout content JSX for desktop - inlined to prevent focus loss issues
   const checkoutContentJsx = (
     <div className="space-y-4 px-4 py-2">
       <div className="space-y-2">
@@ -814,6 +814,7 @@ const GuestCatalogView = () => {
           placeholder="Ваше имя"
           value={guestName}
           onChange={(e) => setGuestName(e.target.value)}
+          autoComplete="name"
         />
       </div>
       <div className="space-y-2">
@@ -824,6 +825,7 @@ const GuestCatalogView = () => {
           placeholder="+7 (999) 123-45-67"
           value={guestPhone}
           onChange={(e) => setGuestPhone(e.target.value)}
+          autoComplete="tel"
         />
       </div>
       <div className="space-y-2">
@@ -833,6 +835,7 @@ const GuestCatalogView = () => {
           placeholder="Город, улица, дом, квартира"
           value={guestAddress}
           onChange={(e) => setGuestAddress(e.target.value)}
+          autoComplete="street-address"
         />
       </div>
       <div className="space-y-2">
@@ -1145,36 +1148,94 @@ const GuestCatalogView = () => {
         </Sheet>
       )}
 
-      {/* Checkout Dialog/Drawer - mobile uses Drawer to prevent off-screen issues with keyboard */}
+      {/* Checkout Dialog/Drawer - mobile uses Drawer with inline buttons to prevent keyboard issues */}
       {isMobile ? (
         <Drawer open={checkoutOpen} onOpenChange={setCheckoutOpen}>
-          <DrawerContent className="max-h-[90vh]">
-            <DrawerHeader>
+          <DrawerContent className="max-h-[85vh] flex flex-col">
+            <DrawerHeader className="flex-shrink-0">
               <DrawerTitle>Оформление заказа</DrawerTitle>
               <DrawerDescription>
                 Заполните данные для доставки
               </DrawerDescription>
             </DrawerHeader>
-            <div className="overflow-auto max-h-[calc(90vh-180px)] px-0">
-              {checkoutContentJsx}
+            
+            {/* Scrollable content with buttons INSIDE to prevent keyboard jump */}
+            <div className="flex-1 overflow-auto overscroll-contain px-4 pb-safe">
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label htmlFor="guest-name-mobile">Имя</Label>
+                  <Input
+                    id="guest-name-mobile"
+                    placeholder="Ваше имя"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    autoComplete="name"
+                    enterKeyHint="next"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="guest-phone-mobile">Телефон</Label>
+                  <Input
+                    id="guest-phone-mobile"
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="+7 (999) 123-45-67"
+                    value={guestPhone}
+                    onChange={(e) => setGuestPhone(e.target.value)}
+                    autoComplete="tel"
+                    enterKeyHint="next"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="guest-address-mobile">Адрес доставки</Label>
+                  <Input
+                    id="guest-address-mobile"
+                    placeholder="Город, улица, дом, квартира"
+                    value={guestAddress}
+                    onChange={(e) => setGuestAddress(e.target.value)}
+                    autoComplete="street-address"
+                    enterKeyHint="next"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="guest-comment-mobile">Комментарий (необязательно)</Label>
+                  <Input
+                    id="guest-comment-mobile"
+                    placeholder="Дополнительные пожелания"
+                    value={guestComment}
+                    onChange={(e) => setGuestComment(e.target.value)}
+                    enterKeyHint="done"
+                  />
+                </div>
+                
+                {/* Total */}
+                <div className="pt-4 border-t border-border">
+                  <div className="flex justify-between text-lg font-semibold">
+                    <span>Итого:</span>
+                    <span>{formatPrice(cartTotal)}</span>
+                  </div>
+                </div>
+                
+                {/* Buttons INSIDE scroll area - won't jump with keyboard */}
+                <div className="flex gap-2 pt-4 pb-4 sticky bottom-0 bg-background">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setCheckoutOpen(false)} 
+                    className="flex-1"
+                  >
+                    Отмена
+                  </Button>
+                  <Button 
+                    onClick={handleCheckout}
+                    disabled={!guestName.trim() || !guestPhone.trim() || !guestAddress.trim() || isSubmitting}
+                    className="flex-1"
+                  >
+                    {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Подтвердить
+                  </Button>
+                </div>
+              </div>
             </div>
-            <DrawerFooter className="flex-row gap-2 pt-2">
-              <Button 
-                variant="outline" 
-                onClick={() => setCheckoutOpen(false)} 
-                className="flex-1"
-              >
-                Отмена
-              </Button>
-              <Button 
-                onClick={handleCheckout}
-                disabled={!guestName.trim() || !guestPhone.trim() || !guestAddress.trim() || isSubmitting}
-                className="flex-1"
-              >
-                {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Подтвердить заказ
-              </Button>
-            </DrawerFooter>
           </DrawerContent>
         </Drawer>
       ) : (
