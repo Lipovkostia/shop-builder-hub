@@ -421,18 +421,36 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
                 </div>
               </div>
               
-              {/* Recording status */}
+              {/* Recording status with animated waveform */}
               {isRecording && (
-                <div className="flex items-center justify-center gap-2 py-2 px-3 bg-destructive/10 rounded-lg border border-destructive/30 animate-pulse">
-                  <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
-                  </span>
+                <div className="flex items-center justify-center gap-3 py-3 px-4 bg-destructive/10 rounded-lg border border-destructive/30">
+                  {/* Animated waveform bars */}
+                  <div className="flex items-center gap-1 h-6">
+                    {[...Array(12)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-1 bg-destructive rounded-full"
+                        style={{
+                          animation: 'soundWave 0.8s ease-in-out infinite',
+                          animationDelay: `${i * 0.05}s`,
+                          height: '100%',
+                        }}
+                      />
+                    ))}
+                  </div>
                   <span className="text-sm text-destructive font-medium">
-                    Идёт запись... Отпустите кнопку для отправки
+                    Говорите... Отпустите для отправки
                   </span>
                 </div>
               )}
+              
+              {/* CSS for waveform animation */}
+              <style>{`
+                @keyframes soundWave {
+                  0%, 100% { transform: scaleY(0.3); }
+                  50% { transform: scaleY(1); }
+                }
+              `}</style>
             </div>
           )}
 

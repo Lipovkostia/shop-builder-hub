@@ -288,18 +288,34 @@ export function CustomerAIAssistantPanel({
                   </div>
                 </div>
                 {isRecording && (
-                  <div className="flex items-center gap-2 text-destructive mt-2">
-                    {/* Animated sound waves */}
-                    <div className="flex items-center gap-0.5">
-                      <div className="w-1 h-3 bg-destructive rounded-full animate-pulse" style={{animationDelay: '0ms'}} />
-                      <div className="w-1 h-4 bg-destructive rounded-full animate-pulse" style={{animationDelay: '150ms'}} />
-                      <div className="w-1 h-2 bg-destructive rounded-full animate-pulse" style={{animationDelay: '300ms'}} />
-                      <div className="w-1 h-5 bg-destructive rounded-full animate-pulse" style={{animationDelay: '75ms'}} />
-                      <div className="w-1 h-3 bg-destructive rounded-full animate-pulse" style={{animationDelay: '225ms'}} />
+                  <div className="flex items-center justify-center gap-3 py-3 px-4 bg-destructive/10 rounded-lg border border-destructive/30">
+                    {/* Animated waveform bars */}
+                    <div className="flex items-center gap-1 h-6">
+                      {[...Array(12)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="w-1 bg-destructive rounded-full"
+                          style={{
+                            animation: 'soundWave 0.8s ease-in-out infinite',
+                            animationDelay: `${i * 0.05}s`,
+                            height: '100%',
+                          }}
+                        />
+                      ))}
                     </div>
-                    <span className="text-sm font-medium">Слушаю...</span>
+                    <span className="text-sm text-destructive font-medium">
+                      Говорите... Отпустите для отправки
+                    </span>
                   </div>
                 )}
+                
+                {/* CSS for waveform animation */}
+                <style>{`
+                  @keyframes soundWave {
+                    0%, 100% { transform: scaleY(0.3); }
+                    50% { transform: scaleY(1); }
+                  }
+                `}</style>
                 
                 {/* Example commands */}
                 <div className="space-y-1.5">
