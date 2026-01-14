@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useCustomerCatalogs, CartItem, CatalogProduct, CustomerCatalog } from "@/hooks/useCustomerCatalogs";
@@ -80,9 +80,35 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerAIAssistantBanner } from "@/components/customer/CustomerAIAssistantBanner";
-import { FoundItem } from "@/hooks/useCustomerAIAssistant";
+import { CustomerAIAssistantPanel } from "@/components/customer/CustomerAIAssistantPanel";
+import { useCustomerAIAssistant, FoundItem } from "@/hooks/useCustomerAIAssistant";
 import { openWhatsAppWithOrder, WhatsAppOrderData } from "@/lib/whatsappUtils";
 
+// Storage key for cart persistence
+const CART_STORAGE_KEY = 'customer_cart';
+
+// Helper to load cart from localStorage
+function getStoredCart(catalogId: string): LocalCartItem[] {
+  try {
+    const stored = localStorage.getItem(`${CART_STORAGE_KEY}_${catalogId}`);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Helper to save cart to localStorage
+function saveCart(catalogId: string, cart: LocalCartItem[]) {
+  try {
+    if (cart.length > 0) {
+      localStorage.setItem(`${CART_STORAGE_KEY}_${catalogId}`, JSON.stringify(cart));
+    } else {
+      localStorage.removeItem(`${CART_STORAGE_KEY}_${catalogId}`);
+    }
+  } catch (e) {
+    console.error('Failed to save cart:', e);
+  }
+}
 // Функция для воспроизведения звука успеха
 function playSuccessSound() {
   try {
@@ -532,7 +558,9 @@ function CustomerHeader({
   onSearchChange,
   availableStatuses,
   selectedStatus,
-  onSelectStatus
+  onSelectStatus,
+  onOpenAI,
+  aiItemCount = 0
 }: { 
   cart: LocalCartItem[];
   catalogs: CustomerCatalog[];
@@ -551,6 +579,8 @@ function CustomerHeader({
   availableStatuses: { value: string; label: string }[];
   selectedStatus: string | null;
   onSelectStatus: (status: string | null) => void;
+  onOpenAI?: () => void;
+  aiItemCount?: number;
 }) {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -616,6 +646,21 @@ function CustomerHeader({
         </div>
 
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          {/* AI Assistant Button */}
+          {onOpenAI && (
+            <button
+              onClick={onOpenAI}
+              className="relative flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 shadow-md shadow-purple-500/40 hover:shadow-purple-500/60 hover:scale-110 transition-all duration-300"
+              title="AI Помощник"
+            >
+              <Sparkles className="w-4 h-4 text-white" />
+              {aiItemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-white text-primary text-[10px] font-bold min-w-[16px] h-[16px] px-0.5 rounded-full flex items-center justify-center shadow-sm">
+                  {aiItemCount}
+                </span>
+              )}
+            </button>
+          )}
           <button
             onClick={onOpenOrders}
             className="p-1.5 bg-muted hover:bg-muted/80 transition-colors rounded-full"
@@ -812,7 +857,7 @@ const CustomerDashboard = () => {
   const currentStoreId = currentCatalog?.store_id || null;
   const { categories: storeCategories } = useStoreCategories(currentStoreId);
   
-  const [cart, setCart] = useState<LocalCartItem[]>([]);
+  const [cart, setCartState] = useState<LocalCartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
@@ -827,7 +872,29 @@ const CustomerDashboard = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-  // isAIPanelOpen state removed - now managed inside CustomerAIAssistantBanner
+  const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
+  
+  // AI Assistant hook - lifted here so state persists and can be accessed from header
+  const assistant = useCustomerAIAssistant(currentCatalog?.catalog_id || null);
+  
+  // Wrapper for setCart that also saves to localStorage
+  const setCart = useCallback((updater: LocalCartItem[] | ((prev: LocalCartItem[]) => LocalCartItem[])) => {
+    setCartState(prev => {
+      const newCart = typeof updater === 'function' ? updater(prev) : updater;
+      if (currentCatalog?.catalog_id) {
+        saveCart(currentCatalog.catalog_id, newCart);
+      }
+      return newCart;
+    });
+  }, [currentCatalog?.catalog_id]);
+  
+  // Load cart from localStorage when catalog changes
+  useEffect(() => {
+    if (currentCatalog?.catalog_id) {
+      const stored = getStoredCart(currentCatalog.catalog_id);
+      setCartState(stored);
+    }
+  }, [currentCatalog?.catalog_id]);
   
   // Extract unique category IDs from products and map to names
   // Keep the sort_order from storeCategories (already sorted by seller)
@@ -1924,17 +1991,28 @@ const CustomerDashboard = () => {
         availableStatuses={availableStatuses}
         selectedStatus={selectedStatus}
         onSelectStatus={setSelectedStatus}
+        onOpenAI={() => setIsAIPanelOpen(true)}
+        aiItemCount={assistant.itemCount}
       />
       
       <main className="flex-1 overflow-auto">
         {/* AI Assistant Banner above products */}
         {currentCatalog && (
           <CustomerAIAssistantBanner
-            catalogId={currentCatalog.catalog_id}
+            assistant={assistant}
             orders={myOrders}
-            onAddToCart={handleAIAddToCart}
+            onOpenPanel={() => setIsAIPanelOpen(true)}
           />
         )}
+        
+        {/* AI Assistant Panel - controlled from header and banner */}
+        <CustomerAIAssistantPanel
+          open={isAIPanelOpen}
+          onOpenChange={setIsAIPanelOpen}
+          assistant={assistant}
+          orders={myOrders}
+          onAddToCart={handleAIAddToCart}
+        />
         
         {productsLoading ? (
           <div className="flex items-center justify-center h-full">
