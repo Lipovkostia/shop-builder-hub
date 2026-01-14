@@ -154,7 +154,11 @@ export function CustomerAIAssistantPanel({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl p-0 flex flex-col">
+      <SheetContent 
+        side="bottom" 
+        className="h-[85vh] rounded-t-2xl p-0 flex flex-col w-full max-w-[100dvw] overflow-x-hidden"
+        style={{ maxWidth: '100dvw', width: '100%' }}
+      >
         {/* Header */}
         <SheetHeader className="px-4 py-3 border-b border-border flex-shrink-0">
           <SheetTitle className="flex items-center gap-2 text-lg">
@@ -168,8 +172,8 @@ export function CustomerAIAssistantPanel({
           </SheetTitle>
         </SheetHeader>
 
-        <ScrollArea className="flex-1 overflow-hidden">
-          <div className="p-4 space-y-4 overflow-hidden">
+        <ScrollArea className="flex-1 w-full max-w-full overflow-x-hidden">
+          <div className="p-4 space-y-4 w-full max-w-full overflow-x-hidden">
             {/* Quick actions - repeat order */}
             {(state === "idle" || state === "confirming") && recentOrders.length > 0 && (
               <div className="space-y-2">
@@ -306,7 +310,7 @@ export function CustomerAIAssistantPanel({
 
             {/* Results */}
             {state === "confirming" && response && (
-              <div className="space-y-3">
+              <div className="space-y-3 w-full max-w-full overflow-x-hidden">
                 {/* Recognized text */}
                 {response.recognized_text && (
                   <div className="px-3 py-2 bg-muted/50 rounded-lg">
@@ -339,12 +343,12 @@ export function CustomerAIAssistantPanel({
                   </div>
                 )}
 
-                {/* Items list - compact cards */}
-                <div className="space-y-1.5 overflow-hidden">
+                {/* Items list - CSS Grid mobile-first */}
+                <div className="space-y-2 w-full max-w-full overflow-hidden">
                   {response.items.map((item, idx) => (
                     <div
                       key={`${item.productId}-${idx}`}
-                      className={`w-full max-w-full p-2.5 rounded-lg border transition-colors overflow-hidden ${
+                      className={`w-full max-w-full p-3 rounded-lg border transition-colors overflow-hidden box-border ${
                         item.available 
                           ? selectedItems.has(item.productId)
                             ? 'border-primary bg-primary/5'
@@ -353,44 +357,46 @@ export function CustomerAIAssistantPanel({
                       }`}
                       onClick={() => item.available && toggleItem(item.productId)}
                     >
-                      {/* Row 1: Checkbox + Name + Variant badge */}
-                      <div className="flex items-center gap-2 min-w-0">
-                        {item.available ? (
-                          <Checkbox
-                            checked={selectedItems.has(item.productId)}
-                            onCheckedChange={() => toggleItem(item.productId)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex-shrink-0"
-                          />
-                        ) : (
-                          <AlertCircle className="w-4 h-4 text-destructive/70 flex-shrink-0" />
-                        )}
+                      {/* Row 1: Checkbox/Icon + Name + Badge - using CSS Grid */}
+                      <div className="grid grid-cols-[20px_minmax(0,1fr)] gap-2 items-start w-full">
+                        <div className="flex items-center justify-center pt-0.5">
+                          {item.available ? (
+                            <Checkbox
+                              checked={selectedItems.has(item.productId)}
+                              onCheckedChange={() => toggleItem(item.productId)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex-shrink-0"
+                            />
+                          ) : (
+                            <AlertCircle className="w-4 h-4 text-destructive/70 flex-shrink-0" />
+                          )}
+                        </div>
                         
-                        <div className="flex-1 min-w-0 overflow-hidden">
-                          <div className="flex items-center gap-1.5 min-w-0 max-w-full">
-                            <span className="font-medium text-sm truncate flex-1 min-w-0">{item.productName}</span>
-                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 flex-shrink-0 whitespace-nowrap">
-                              {item.variantLabel}
-                            </Badge>
-                          </div>
+                        {/* Name + Badge container */}
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-1 items-center min-w-0">
+                          <span className="font-medium text-sm truncate min-w-0">{item.productName}</span>
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 whitespace-nowrap">
+                            {item.variantLabel}
+                          </Badge>
                         </div>
                       </div>
                       
-                      {/* Row 2: Quantity controls + Price + Remove */}
+                      {/* Row 2: Quantity controls + Price info + Total + Remove - using CSS Grid */}
                       {item.available ? (
-                        <div className="flex items-center justify-between mt-1.5 ml-6 gap-2">
-                          <div className="flex items-center gap-1.5 min-w-0 flex-shrink">
+                        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-2 items-center mt-2 pl-7">
+                          {/* Quantity controls */}
+                          <div className="flex items-center gap-1 flex-shrink-0">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 updateItemQuantity(item.productId, item.quantity - 1);
                               }}
                               disabled={item.quantity <= 1}
-                              className="w-5 h-5 flex items-center justify-center rounded bg-muted/80 hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                              className="w-6 h-6 flex items-center justify-center rounded bg-muted/80 hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                             >
-                              <Minus className="w-2.5 h-2.5" />
+                              <Minus className="w-3 h-3" />
                             </button>
-                            <span className="w-6 text-center text-xs font-medium tabular-nums flex-shrink-0">
+                            <span className="w-6 text-center text-xs font-medium tabular-nums">
                               {item.quantity}
                             </span>
                             <button
@@ -398,20 +404,23 @@ export function CustomerAIAssistantPanel({
                                 e.stopPropagation();
                                 updateItemQuantity(item.productId, item.quantity + 1);
                               }}
-                              className="w-5 h-5 flex items-center justify-center rounded bg-muted/80 hover:bg-muted transition-colors flex-shrink-0"
+                              className="w-6 h-6 flex items-center justify-center rounded bg-muted/80 hover:bg-muted transition-colors"
                             >
-                              <Plus className="w-2.5 h-2.5" />
+                              <Plus className="w-3 h-3" />
                             </button>
-                            <span className="text-[11px] text-muted-foreground truncate">
-                              × {formatPrice(item.unitPrice)}
-                              {item.weight != null && item.weight > 0 && (
-                                <span> · {Number(item.weight.toFixed(2))} кг</span>
-                              )}
-                            </span>
                           </div>
                           
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className="font-semibold text-sm text-primary tabular-nums">
+                          {/* Price details - can truncate */}
+                          <span className="text-[11px] text-muted-foreground truncate min-w-0">
+                            × {formatPrice(item.unitPrice)}
+                            {item.weight != null && item.weight > 0 && (
+                              <span> · {Number(item.weight.toFixed(2))} кг</span>
+                            )}
+                          </span>
+                          
+                          {/* Total + Remove button */}
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <span className="font-semibold text-sm text-primary tabular-nums whitespace-nowrap">
                               {formatPrice(item.totalPrice)}
                             </span>
                             <button
@@ -419,19 +428,19 @@ export function CustomerAIAssistantPanel({
                                 e.stopPropagation();
                                 removeItem(item.productId);
                               }}
-                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                              className="w-6 h-6 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                             >
                               <X className="w-3 h-3" />
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-between mt-1.5 ml-6 gap-2">
-                          <span className="text-[11px] text-muted-foreground truncate">
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 items-center mt-2 pl-7">
+                          <span className="text-[11px] text-muted-foreground truncate min-w-0">
                             {item.quantity} × {formatPrice(item.unitPrice)}
                           </span>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className="font-semibold text-sm text-muted-foreground line-through tabular-nums">
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <span className="font-semibold text-sm text-muted-foreground line-through tabular-nums whitespace-nowrap">
                               {formatPrice(item.totalPrice)}
                             </span>
                             <button
@@ -439,7 +448,7 @@ export function CustomerAIAssistantPanel({
                                 e.stopPropagation();
                                 removeItem(item.productId);
                               }}
-                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                              className="w-6 h-6 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                             >
                               <X className="w-3 h-3" />
                             </button>
@@ -449,7 +458,7 @@ export function CustomerAIAssistantPanel({
                       
                       {/* Suggestion for unavailable items */}
                       {!item.available && item.suggestion && (
-                        <div className="mt-1.5 ml-6 px-2 py-1 bg-amber-500/10 rounded text-[11px] text-amber-600 dark:text-amber-400 line-clamp-1">
+                        <div className="mt-2 ml-7 px-2 py-1 bg-amber-500/10 rounded text-[11px] text-amber-600 dark:text-amber-400 truncate">
                           → {item.suggestion.productName}
                         </div>
                       )}
@@ -469,35 +478,36 @@ export function CustomerAIAssistantPanel({
           </div>
         </ScrollArea>
 
-        {/* Footer with actions - compact */}
-          {(state === "confirming" || hasExistingItems) && response && response.items.length > 0 && (
-          <div className="px-4 py-3 border-t border-border bg-background flex-shrink-0 space-y-2 overflow-x-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-sm min-w-0">
-              <span className="text-muted-foreground min-w-0">
+        {/* Footer with actions - CSS Grid mobile-first */}
+        {(state === "confirming" || hasExistingItems) && response && response.items.length > 0 && (
+          <div className="px-4 py-3 border-t border-border bg-background flex-shrink-0 space-y-2 w-full max-w-full overflow-hidden box-border">
+            {/* Stats row - CSS Grid */}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 items-center text-sm w-full">
+              <span className="text-muted-foreground truncate min-w-0">
                 Выбрано: <span className="font-medium text-foreground">{selectedItems.size}</span>
               </span>
-              <span className="whitespace-nowrap">
+              <span className="whitespace-nowrap flex-shrink-0">
                 <span className="text-muted-foreground">Итого: </span>
-                <span className="font-bold text-primary">{formatPrice(getSelectedTotal())}</span>
+                <span className="font-bold text-primary tabular-nums">{formatPrice(getSelectedTotal())}</span>
               </span>
             </div>
             
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" className="h-9 px-3" onClick={handleClearList}>
-                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                Очистить
+            {/* Buttons row - CSS Grid */}
+            <div className="grid grid-cols-[auto_1fr_1fr] gap-2 w-full">
+              <Button variant="ghost" size="sm" className="h-9 px-2" onClick={handleClearList}>
+                <Trash2 className="w-4 h-4" />
               </Button>
-              <Button variant="outline" size="sm" className="flex-1 h-9" onClick={() => onOpenChange(false)}>
-                Свернуть
+              <Button variant="outline" size="sm" className="h-9 min-w-0" onClick={() => onOpenChange(false)}>
+                <span className="truncate">Свернуть</span>
               </Button>
               <Button 
                 size="sm"
-                className="flex-1 h-9" 
+                className="h-9 min-w-0" 
                 onClick={handleAddToCart}
                 disabled={selectedItems.size === 0}
               >
-                <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
-                В корзину
+                <ShoppingCart className="w-4 h-4 mr-1 flex-shrink-0" />
+                <span className="truncate">В корзину</span>
               </Button>
             </div>
           </div>
