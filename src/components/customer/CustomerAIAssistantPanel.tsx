@@ -168,8 +168,8 @@ export function CustomerAIAssistantPanel({
           </SheetTitle>
         </SheetHeader>
 
-        <ScrollArea className="flex-1">
-          <div className="p-4 space-y-4">
+        <ScrollArea className="flex-1 overflow-hidden">
+          <div className="p-4 space-y-4 overflow-hidden">
             {/* Quick actions - repeat order */}
             {(state === "idle" || state === "confirming") && recentOrders.length > 0 && (
               <div className="space-y-2">
@@ -340,11 +340,11 @@ export function CustomerAIAssistantPanel({
                 )}
 
                 {/* Items list - compact cards */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 overflow-hidden">
                   {response.items.map((item, idx) => (
                     <div
                       key={`${item.productId}-${idx}`}
-                      className={`p-2.5 rounded-lg border transition-colors ${
+                      className={`p-2.5 rounded-lg border transition-colors overflow-hidden ${
                         item.available 
                           ? selectedItems.has(item.productId)
                             ? 'border-primary bg-primary/5'
@@ -353,8 +353,8 @@ export function CustomerAIAssistantPanel({
                       }`}
                       onClick={() => item.available && toggleItem(item.productId)}
                     >
-                      {/* Row 1: Checkbox + Name + Price + Remove */}
-                      <div className="flex items-center gap-2">
+                      {/* Row 1: Checkbox + Name + Variant badge */}
+                      <div className="flex items-center gap-2 min-w-0">
                         {item.available ? (
                           <Checkbox
                             checked={selectedItems.has(item.productId)}
@@ -366,67 +366,84 @@ export function CustomerAIAssistantPanel({
                           <AlertCircle className="w-4 h-4 text-destructive/70 flex-shrink-0" />
                         )}
                         
-                        <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                          <span className="font-medium text-sm truncate">{item.productName}</span>
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 flex-shrink-0">
-                            {item.variantLabel}
-                          </Badge>
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="flex items-center gap-1.5 max-w-full">
+                            <span className="font-medium text-sm truncate block">{item.productName}</span>
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 flex-shrink-0 whitespace-nowrap">
+                              {item.variantLabel}
+                            </Badge>
+                          </div>
                         </div>
-                        
-                        <span className={`font-semibold text-sm tabular-nums flex-shrink-0 ${
-                          item.available ? 'text-primary' : 'text-muted-foreground line-through'
-                        }`}>
-                          {formatPrice(item.totalPrice)}
-                        </span>
-                        
-                        {/* Remove button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeItem(item.productId);
-                          }}
-                          className="w-5 h-5 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
                       </div>
                       
-                      {/* Row 2: Quantity controls or info */}
+                      {/* Row 2: Quantity controls + Price + Remove */}
                       {item.available ? (
-                        <div className="flex items-center gap-1.5 mt-1.5 ml-6">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateItemQuantity(item.productId, item.quantity - 1);
-                            }}
-                            disabled={item.quantity <= 1}
-                            className="w-5 h-5 flex items-center justify-center rounded bg-muted/80 hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <Minus className="w-2.5 h-2.5" />
-                          </button>
-                          <span className="w-6 text-center text-xs font-medium tabular-nums">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateItemQuantity(item.productId, item.quantity + 1);
-                            }}
-                            className="w-5 h-5 flex items-center justify-center rounded bg-muted/80 hover:bg-muted transition-colors"
-                          >
-                            <Plus className="w-2.5 h-2.5" />
-                          </button>
-                          <span className="text-[11px] text-muted-foreground ml-1">
-                            × {formatPrice(item.unitPrice)}
-                            {item.weight != null && item.weight > 0 && (
-                              <span className="ml-1">· {Number(item.weight.toFixed(2))} кг</span>
-                            )}
-                          </span>
+                        <div className="flex items-center justify-between mt-1.5 ml-6 gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-shrink">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateItemQuantity(item.productId, item.quantity - 1);
+                              }}
+                              disabled={item.quantity <= 1}
+                              className="w-5 h-5 flex items-center justify-center rounded bg-muted/80 hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                            >
+                              <Minus className="w-2.5 h-2.5" />
+                            </button>
+                            <span className="w-6 text-center text-xs font-medium tabular-nums flex-shrink-0">
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateItemQuantity(item.productId, item.quantity + 1);
+                              }}
+                              className="w-5 h-5 flex items-center justify-center rounded bg-muted/80 hover:bg-muted transition-colors flex-shrink-0"
+                            >
+                              <Plus className="w-2.5 h-2.5" />
+                            </button>
+                            <span className="text-[11px] text-muted-foreground truncate">
+                              × {formatPrice(item.unitPrice)}
+                              {item.weight != null && item.weight > 0 && (
+                                <span> · {Number(item.weight.toFixed(2))} кг</span>
+                              )}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="font-semibold text-sm text-primary tabular-nums">
+                              {formatPrice(item.totalPrice)}
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeItem(item.productId);
+                              }}
+                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       ) : (
-                        <div className="flex items-center mt-1 ml-6 text-[11px] text-muted-foreground">
-                          <span>{item.quantity} × {formatPrice(item.unitPrice)}</span>
-                          {item.weight != null && item.weight > 0 && <span className="ml-1">· {item.weight} кг</span>}
+                        <div className="flex items-center justify-between mt-1.5 ml-6 gap-2">
+                          <span className="text-[11px] text-muted-foreground truncate">
+                            {item.quantity} × {formatPrice(item.unitPrice)}
+                          </span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="font-semibold text-sm text-muted-foreground line-through tabular-nums">
+                              {formatPrice(item.totalPrice)}
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeItem(item.productId);
+                              }}
+                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       )}
                       
