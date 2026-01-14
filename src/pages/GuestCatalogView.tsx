@@ -377,7 +377,7 @@ const GuestCatalogView = () => {
   const { accessCode } = useParams<{ accessCode: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
 
   const {
     catalogInfo,
@@ -693,12 +693,16 @@ const GuestCatalogView = () => {
     setGuestComment("");
   };
 
-  // Redirect authenticated users to customer dashboard
+  // Redirect authenticated CUSTOMERS to the access flow (sellers can stay here for testing)
   useEffect(() => {
-    if (user && catalogInfo) {
-      navigate(`/catalog/${accessCode}`);
+    if (!user) return;
+    if (authLoading) return;
+    if (!catalogInfo) return;
+
+    if (profile?.role === "customer") {
+      navigate(`/catalog/${accessCode}`, { replace: true });
     }
-  }, [user, catalogInfo, accessCode, navigate]);
+  }, [user, profile, authLoading, catalogInfo, accessCode, navigate]);
 
   if (loading) {
     return (
