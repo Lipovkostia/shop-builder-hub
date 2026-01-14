@@ -979,6 +979,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const { subdomain } = useParams<{ subdomain: string }>();
   const navigate = useNavigate();
   const { user, profile, isSuperAdmin, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   
   // В режиме workspace используем переданные данные магазина
   const { store: fetchedStore, loading: storeLoading, error: storeError } = useStoreBySubdomain(workspaceMode ? undefined : subdomain);
@@ -1234,6 +1235,49 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   
   // Calculate selected catalog name for display
   const selectedCatalogName = accessibleCatalogs.find((c) => c.id === selectedCatalog)?.name || "Все товары";
+
+  // Share price function with Web Share API support
+  const handleSharePrice = async () => {
+    const catalog = accessibleCatalogs.find(c => c.id === selectedCatalog);
+    if (!catalog?.access_code) {
+      toast({
+        title: "Не удалось получить ссылку",
+        description: "Выберите прайс-лист для получения ссылки",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const url = `${window.location.origin}/catalog/${catalog.access_code}`;
+    const shareTitle = `${store?.name} — ${selectedCatalogName}`;
+    
+    // Check for Web Share API support (works on mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: `Прайс-лист: ${shareTitle}`,
+          url: url,
+        });
+      } catch (err) {
+        // User cancelled or error - copy to clipboard
+        if ((err as Error).name !== 'AbortError') {
+          await navigator.clipboard.writeText(url);
+          toast({
+            title: "Ссылка скопирована",
+            description: "Ссылка на прайс-лист скопирована в буфер обмена",
+          });
+        }
+      }
+    } else {
+      // Fallback for browsers without Web Share API
+      await navigator.clipboard.writeText(url);
+      toast({
+        title: "Ссылка скопирована",
+        description: "Ссылка на прайс-лист скопирована в буфер обмена",
+      });
+    }
+  };
 
   // Get product catalog IDs for a specific product
   const getProductCatalogIds = (productId: string): string[] => {
@@ -1672,12 +1716,28 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
           {/* Баннер онбординга - под блоком с иконками */}
           <OnboardingBanner />
 
-          {/* Название магазина и прайс-листа - под блоком с иконками */}
-          <div className="px-3 py-1 border-t border-border bg-background">
-            <p className="text-[10px] text-muted-foreground text-right truncate">
-              {store.name} — {selectedCatalogName}
-            </p>
-          </div>
+          {/* Блок "Поделись прайсом" - с нативным шарингом */}
+          <button
+            onClick={handleSharePrice}
+            className="w-full px-3 py-2 border-t border-border bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-colors cursor-pointer group"
+            title="Нажмите чтобы поделиться прайс-листом"
+          >
+            <div className="flex items-center justify-between">
+              {/* Левая часть - призыв к действию */}
+              <div className="flex items-center gap-2">
+                <Link2 className="w-4 h-4 text-primary" />
+                <span className="text-xs font-medium text-primary">Поделись прайсом</span>
+              </div>
+              
+              {/* Правая часть - название прайса */}
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">
+                <span className="truncate max-w-[180px]">
+                  {store.name} — {selectedCatalogName}
+                </span>
+                <Copy className="w-3 h-3 flex-shrink-0 opacity-50 group-hover:opacity-100" />
+              </div>
+            </div>
+          </button>
 
           {/* Выезжающий блок фильтров */}
           <Collapsible open={filtersOpen}>
