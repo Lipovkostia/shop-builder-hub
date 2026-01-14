@@ -858,26 +858,36 @@ function StoreHeader({
 
       {/* Блок "Поделись прайсом" - показывать только когда выбран каталог и есть товары */}
       {selectedCatalog && filteredProducts && filteredProducts.length > 0 && (
-        <div className="w-full grid grid-cols-2 border-t border-border">
-          {/* Левая кнопка — Отправить */}
-          <button
-            onClick={handleSharePrice}
-            className="flex items-center justify-center gap-2 px-3 py-2.5 bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-colors border-r border-border group active:scale-[0.98]"
-            title="Отправить прайс-лист"
-          >
-            <Share2 className="w-4 h-4 text-primary" />
-            <span className="text-xs font-medium text-primary">Отправить</span>
-          </button>
+        <div className="w-full border-t border-border">
+          {/* Название прайс-листа */}
+          <div className="px-3 py-1 bg-muted/30">
+            <p className="text-[10px] text-muted-foreground text-left truncate">
+              {selectedCatalogName}
+            </p>
+          </div>
           
-          {/* Правая кнопка — Копировать */}
-          <button
-            onClick={handleCopyLink}
-            className="flex items-center justify-center gap-2 px-3 py-2.5 hover:bg-muted/50 transition-colors group active:scale-[0.98]"
-            title="Копировать ссылку"
-          >
-            <Copy className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
-            <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">Копировать</span>
-          </button>
+          {/* Кнопки Отправить/Копировать */}
+          <div className="grid grid-cols-2 border-t border-border/50">
+            {/* Левая кнопка — Отправить */}
+            <button
+              onClick={handleSharePrice}
+              className="flex items-center justify-center gap-2 px-3 py-2.5 bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-colors border-r border-border group active:scale-[0.98]"
+              title="Отправить прайс-лист"
+            >
+              <Share2 className="w-4 h-4 text-primary" />
+              <span className="text-xs font-medium text-primary">Отправить</span>
+            </button>
+            
+            {/* Правая кнопка — Копировать */}
+            <button
+              onClick={handleCopyLink}
+              className="flex items-center justify-center gap-2 px-3 py-2.5 hover:bg-muted/50 transition-colors group active:scale-[0.98]"
+              title="Копировать ссылку"
+            >
+              <Copy className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
+              <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">Копировать</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -1797,30 +1807,40 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
 
           {/* Блок "Поделись прайсом" - показывать только когда выбран каталог и есть товары */}
           {selectedCatalog && filteredProducts.length > 0 && (
-            <div className="w-full grid grid-cols-2 border-t border-border">
-              {/* Левая кнопка — Отправить */}
-              <button
-                onClick={handleSharePrice}
-                className={`flex items-center justify-center gap-2 px-3 py-2.5 bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-all duration-150 border-r border-border group ${
-                  isSharePressed 
-                    ? 'scale-[0.98] bg-primary/10' 
-                    : 'active:scale-[0.98]'
-                }`}
-                title="Отправить прайс-лист"
-              >
-                <Share2 className={`w-4 h-4 text-primary transition-transform duration-150 ${isSharePressed ? 'scale-110' : ''}`} />
-                <span className="text-xs font-medium text-primary">Отправить</span>
-              </button>
+            <div className="w-full border-t border-border">
+              {/* Название прайс-листа */}
+              <div className="px-3 py-1 bg-muted/30">
+                <p className="text-[10px] text-muted-foreground text-left truncate">
+                  {catalogs.find(c => c.id === selectedCatalog)?.name || ''}
+                </p>
+              </div>
               
-              {/* Правая кнопка — Копировать */}
-              <button
-                onClick={handleCopyLink}
-                className="flex items-center justify-center gap-2 px-3 py-2.5 hover:bg-muted/50 transition-colors group active:scale-[0.98]"
-                title="Копировать ссылку"
-              >
-                <Copy className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
-                <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">Копировать</span>
-              </button>
+              {/* Кнопки Отправить/Копировать */}
+              <div className="grid grid-cols-2 border-t border-border/50">
+                {/* Левая кнопка — Отправить */}
+                <button
+                  onClick={handleSharePrice}
+                  className={`flex items-center justify-center gap-2 px-3 py-2.5 bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-all duration-150 border-r border-border group ${
+                    isSharePressed 
+                      ? 'scale-[0.98] bg-primary/10' 
+                      : 'active:scale-[0.98]'
+                  }`}
+                  title="Отправить прайс-лист"
+                >
+                  <Share2 className={`w-4 h-4 text-primary transition-transform duration-150 ${isSharePressed ? 'scale-110' : ''}`} />
+                  <span className="text-xs font-medium text-primary">Отправить</span>
+                </button>
+                
+                {/* Правая кнопка — Копировать */}
+                <button
+                  onClick={handleCopyLink}
+                  className="flex items-center justify-center gap-2 px-3 py-2.5 hover:bg-muted/50 transition-colors group active:scale-[0.98]"
+                  title="Копировать ссылку"
+                >
+                  <Copy className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">Копировать</span>
+                </button>
+              </div>
             </div>
           )}
 
