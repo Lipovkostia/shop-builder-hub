@@ -130,12 +130,14 @@ export function useGuestCatalog(accessCode: string | undefined) {
     if (!accessCode || !catalogInfo) return;
 
     setProductsLoading(true);
+    setError(null);
     try {
       const { data, error: rpcError } = await supabase
         .rpc('get_catalog_products_public', { _access_code: accessCode });
 
       if (rpcError) {
         console.error('Error fetching products:', rpcError);
+        setError('Не удалось загрузить товары. Попробуйте обновить страницу.');
         setProductsLoading(false);
         return;
       }
