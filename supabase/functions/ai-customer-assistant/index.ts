@@ -151,8 +151,23 @@ serve(async (req) => {
         );
       }
 
+      // Determine file extension from MIME type
+      const mimeType = audioBlob.type || 'audio/webm';
+      const extMap: Record<string, string> = {
+        'audio/webm': 'webm',
+        'audio/mp4': 'm4a',
+        'audio/aac': 'aac',
+        'audio/ogg': 'ogg',
+        'audio/wav': 'wav',
+        'audio/mpeg': 'mp3',
+      };
+      const fileExt = extMap[mimeType] || 'webm';
+      const fileName = `audio.${fileExt}`;
+      
+      console.log(`Processing audio: mimeType=${mimeType}, fileName=${fileName}, size=${audioBlob.size}`);
+
       const audioFormData = new FormData();
-      audioFormData.append("file", audioBlob, "audio.webm");
+      audioFormData.append("file", audioBlob, fileName);
       audioFormData.append("model_id", "scribe_v1");
       audioFormData.append("language_code", "rus");
 
