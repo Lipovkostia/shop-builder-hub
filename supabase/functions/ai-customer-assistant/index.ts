@@ -10,6 +10,9 @@ interface CatalogProduct {
   id: string;
   name: string;
   price: number;
+  buy_price: number | null;
+  markup_type: string | null;
+  markup_value: number | null;
   unit: string;
   unit_weight: number | null;
   price_full: number | null;
@@ -27,6 +30,33 @@ interface CatalogProduct {
     quarter?: number;
     portion?: number;
   };
+  effective_price?: number;
+}
+
+// Calculate effective price with catalog/product markup
+function calculateEffectivePrice(
+  price: number,
+  buyPrice: number | null,
+  markupType: string | null | undefined,
+  markupValue: number | null | undefined
+): number {
+  const bp = buyPrice || 0;
+  
+  // If we have buy_price and markup, calculate price with markup
+  if (bp > 0 && markupType && markupValue != null) {
+    if (markupType === 'percent') {
+      return bp * (1 + markupValue / 100);
+    } else if (markupType === 'fixed') {
+      return bp + markupValue;
+    }
+  }
+  
+  // If price is 0 but we have buy_price, use buy_price as fallback
+  if (price === 0 && bp > 0) {
+    return bp;
+  }
+  
+  return price;
 }
 
 interface OrderItem {
@@ -190,7 +220,7 @@ serve(async (req) => {
     // Fetch products
     const { data: products, error: productsError } = await supabase
       .from("products")
-      .select("id, name, price, unit, unit_weight, price_full, price_half, price_quarter, price_portion, category_id, is_active")
+      .select("id, name, price, buy_price, markup_type, markup_value, unit, unit_weight, price_full, price_half, price_quarter, price_portion, category_id, is_active")
       .in("id", productIds);
 
     if (productsError) {
@@ -224,11 +254,25 @@ serve(async (req) => {
     // Build enriched product list
     const catalogProducts: CatalogProduct[] = (products || []).map(p => {
       const settings = settingsMap.get(p.id);
+      
+      // Determine markup: catalog settings take priority over product settings
+      const effectiveMarkupType = settings?.markup_type || p.markup_type;
+      const effectiveMarkupValue = settings?.markup_value ?? p.markup_value;
+      
+      // Calculate effective price with markup
+      const effectivePrice = calculateEffectivePrice(
+        p.price,
+        p.buy_price,
+        effectiveMarkupType,
+        effectiveMarkupValue
+      );
+      
       return {
         ...p,
+        effective_price: effectivePrice,
         catalog_status: settings?.status || "in_stock",
-        catalog_markup_type: settings?.markup_type,
-        catalog_markup_value: settings?.markup_value,
+        catalog_markup_type: effectiveMarkupType,
+        catalog_markup_value: effectiveMarkupValue,
         catalog_portion_prices: settings?.portion_prices as any,
         category_name: p.category_id ? categoryMap.get(p.category_id) : null,
       };
@@ -268,16 +312,29 @@ ${orderItems.map((i: OrderItem) => `- ${i.product_name}: ${i.quantity} ед. п�
       );
     }
 
-    // Calculate prices for products
+    // Calculate prices for products - use effective_price with markup applied
     const productListForAI = catalogProducts.slice(0, 150).map(p => {
-      const basePrice = p.price;
+      const basePrice = p.effective_price || p.price;
       const unitWeight = p.unit_weight || 1;
       const catalogPrices = p.catalog_portion_prices;
+      const markupType = p.catalog_markup_type;
+      const markupValue = p.catalog_markup_value;
       
-      const fullPricePerKg = catalogPrices?.full || p.price_full || basePrice;
-      const halfPricePerKg = catalogPrices?.half || p.price_half || basePrice;
-      const quarterPricePerKg = catalogPrices?.quarter || p.price_quarter || basePrice;
-      const portionPrice = catalogPrices?.portion || p.price_portion || null;
+      // Helper to apply markup to portion prices
+      const applyMarkup = (price: number | null | undefined): number | null => {
+        if (price == null) return null;
+        if (markupType === 'percent' && markupValue != null) {
+          return price * (1 + markupValue / 100);
+        } else if (markupType === 'fixed' && markupValue != null) {
+          return price + markupValue;
+        }
+        return price;
+      };
+      
+      const fullPricePerKg = applyMarkup(catalogPrices?.full) ?? applyMarkup(p.price_full) ?? basePrice;
+      const halfPricePerKg = applyMarkup(catalogPrices?.half) ?? applyMarkup(p.price_half) ?? basePrice;
+      const quarterPricePerKg = applyMarkup(catalogPrices?.quarter) ?? applyMarkup(p.price_quarter) ?? basePrice;
+      const portionPrice = applyMarkup(catalogPrices?.portion) ?? applyMarkup(p.price_portion) ?? null;
       
       const fullPrice = fullPricePerKg * unitWeight;
       const halfPrice = halfPricePerKg * (unitWeight / 2);
@@ -490,14 +547,28 @@ ${catalogProducts.length > 150 ? `\n... и ещё ${catalogProducts.length - 150
         };
       }
 
-      const basePrice = product.price;
+      // Use effective_price which already has markup applied
+      const basePrice = product.effective_price || product.price;
       const unitWeight = product.unit_weight || 1;
       const catalogPrices = product.catalog_portion_prices;
+      const markupType = product.catalog_markup_type;
+      const markupValue = product.catalog_markup_value;
       
-      const fullPricePerKg = catalogPrices?.full || product.price_full || basePrice;
-      const halfPricePerKg = catalogPrices?.half || product.price_half || basePrice;
-      const quarterPricePerKg = catalogPrices?.quarter || product.price_quarter || basePrice;
-      const portionPrice = catalogPrices?.portion || product.price_portion || null;
+      // Helper to apply markup to portion prices
+      const applyMarkup = (price: number | null | undefined): number | null => {
+        if (price == null) return null;
+        if (markupType === 'percent' && markupValue != null) {
+          return price * (1 + markupValue / 100);
+        } else if (markupType === 'fixed' && markupValue != null) {
+          return price + markupValue;
+        }
+        return price;
+      };
+      
+      const fullPricePerKg = applyMarkup(catalogPrices?.full) ?? applyMarkup(product.price_full) ?? basePrice;
+      const halfPricePerKg = applyMarkup(catalogPrices?.half) ?? applyMarkup(product.price_half) ?? basePrice;
+      const quarterPricePerKg = applyMarkup(catalogPrices?.quarter) ?? applyMarkup(product.price_quarter) ?? basePrice;
+      const portionPrice = applyMarkup(catalogPrices?.portion) ?? applyMarkup(product.price_portion) ?? null;
       
       let unitPrice = 0;
       let weight: number | undefined;
