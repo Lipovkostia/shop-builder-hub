@@ -9,19 +9,19 @@ interface DemoProgressProps {
 
 export function DemoProgress({ currentStep, totalSteps, onSkip }: DemoProgressProps) {
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10003] flex items-center gap-4 bg-background/90 backdrop-blur-sm rounded-full px-4 py-2 border border-border shadow-lg">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[10003] flex items-center gap-3 bg-background/95 backdrop-blur-sm rounded-full px-3 py-2 border border-border shadow-lg max-w-[90vw]">
       {/* Progress dots */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1">
         {Array.from({ length: totalSteps }).map((_, idx) => (
           <div
             key={idx}
             className={`
-              w-2 h-2 rounded-full transition-all duration-300
+              h-2 rounded-full transition-all duration-300
               ${idx === currentStep 
-                ? "bg-primary w-4" 
+                ? "bg-primary w-3" 
                 : idx < currentStep 
-                  ? "bg-primary/50" 
-                  : "bg-muted-foreground/30"
+                  ? "bg-primary/50 w-2" 
+                  : "bg-muted-foreground/30 w-2"
               }
             `}
           />
@@ -29,17 +29,17 @@ export function DemoProgress({ currentStep, totalSteps, onSkip }: DemoProgressPr
       </div>
       
       {/* Step counter */}
-      <span className="text-xs text-muted-foreground tabular-nums">
-        {currentStep + 1} / {totalSteps}
+      <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+        {currentStep + 1}/{totalSteps}
       </span>
 
       {/* Skip button */}
       <button
         onClick={onSkip}
-        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
       >
         <X className="w-3 h-3" />
-        Пропустить
+        <span className="hidden sm:inline">Пропустить</span>
       </button>
     </div>
   );
