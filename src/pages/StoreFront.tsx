@@ -664,6 +664,7 @@ function StoreHeader({
   onStoreClick,
   catalogDropdownOpen,
   setCatalogDropdownOpen,
+  filteredProducts,
 }: {
   store: any;
   cart: CartItem[];
@@ -687,6 +688,7 @@ function StoreHeader({
   onStoreClick?: () => void;
   catalogDropdownOpen?: boolean;
   setCatalogDropdownOpen?: (open: boolean) => void;
+  filteredProducts?: any[];
 }) {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
@@ -850,28 +852,30 @@ function StoreHeader({
       </div>
       </div>
 
-      {/* Блок "Поделись прайсом" - с нативным шарингом */}
-      <button
-        onClick={handleSharePrice}
-        className="w-full px-3 py-2 border-t border-border bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-colors cursor-pointer group"
-        title="Нажмите чтобы поделиться прайс-листом"
-      >
-        <div className="flex items-center justify-between">
-          {/* Левая часть - призыв к действию */}
-          <div className="flex items-center gap-2">
-            <Link2 className="w-4 h-4 text-primary" />
-            <span className="text-xs font-medium text-primary">Поделись прайсом</span>
+      {/* Блок "Поделись прайсом" - показывать только когда выбран каталог и есть товары */}
+      {selectedCatalog && filteredProducts && filteredProducts.length > 0 && (
+        <button
+          onClick={handleSharePrice}
+          className="w-full px-3 py-2 border-t border-border bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-colors cursor-pointer group"
+          title="Нажмите чтобы поделиться прайс-листом"
+        >
+          <div className="flex items-center justify-between">
+            {/* Левая часть - призыв к действию */}
+            <div className="flex items-center gap-2">
+              <Link2 className="w-4 h-4 text-primary" />
+              <span className="text-xs font-medium text-primary">Поделись прайсом</span>
+            </div>
+            
+            {/* Правая часть - название прайса */}
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">
+              <span className="truncate max-w-[180px]">
+                {store.name} — {selectedCatalogName}
+              </span>
+              <Copy className="w-3 h-3 flex-shrink-0 opacity-50 group-hover:opacity-100" />
+            </div>
           </div>
-          
-          {/* Правая часть - название прайса */}
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">
-            <span className="truncate max-w-[180px]">
-              {store.name} — {selectedCatalogName}
-            </span>
-            <Copy className="w-3 h-3 flex-shrink-0 opacity-50 group-hover:opacity-100" />
-          </div>
-        </div>
-      </button>
+        </button>
+      )}
 
       {/* Выезжающий блок фильтров */}
       <Collapsible open={filtersOpen}>
@@ -1525,6 +1529,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
           ordersCount={orders.length}
           viewMode={viewMode}
           onStoreClick={handleStoreClick}
+          filteredProducts={filteredProducts}
         />
       )}
 
@@ -1734,36 +1739,38 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
           {/* Баннер онбординга - под блоком с иконками */}
           <OnboardingBanner />
 
-          {/* Блок "Поделись прайсом" - с нативным шарингом */}
-          <button
-            onClick={handleSharePrice}
-            className={`w-full px-3 py-2 border-t border-border bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-all duration-150 cursor-pointer group ${
-              isSharePressed 
-                ? 'scale-[0.98] bg-primary/10 shadow-inner' 
-                : 'scale-100 active:scale-[0.98]'
-            }`}
-            title="Нажмите чтобы поделиться прайс-листом"
-          >
-            <div className="flex items-center justify-between">
-              {/* Левая часть - призыв к действию */}
-              <div className="flex items-center gap-2">
-                <Link2 className={`w-4 h-4 text-primary transition-transform duration-150 ${isSharePressed ? 'scale-110' : ''}`} />
-                <span className="text-xs font-medium text-primary">Поделись прайсом</span>
+          {/* Блок "Поделись прайсом" - показывать только когда выбран каталог и есть товары */}
+          {selectedCatalog && filteredProducts.length > 0 && (
+            <button
+              onClick={handleSharePrice}
+              className={`w-full px-3 py-2 border-t border-border bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-all duration-150 cursor-pointer group ${
+                isSharePressed 
+                  ? 'scale-[0.98] bg-primary/10 shadow-inner' 
+                  : 'scale-100 active:scale-[0.98]'
+              }`}
+              title="Нажмите чтобы поделиться прайс-листом"
+            >
+              <div className="flex items-center justify-between">
+                {/* Левая часть - призыв к действию */}
+                <div className="flex items-center gap-2">
+                  <Link2 className={`w-4 h-4 text-primary transition-transform duration-150 ${isSharePressed ? 'scale-110' : ''}`} />
+                  <span className="text-xs font-medium text-primary">Поделись прайсом</span>
+                </div>
+                
+                {/* Правая часть - название прайса */}
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">
+                  <span className="truncate max-w-[180px]">
+                    {store.name} — {selectedCatalogName}
+                  </span>
+                  <Copy className={`w-3 h-3 flex-shrink-0 transition-all duration-150 ${
+                    isSharePressed 
+                      ? 'opacity-100 text-primary scale-125' 
+                      : 'opacity-50 group-hover:opacity-100'
+                  }`} />
+                </div>
               </div>
-              
-              {/* Правая часть - название прайса */}
-              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">
-                <span className="truncate max-w-[180px]">
-                  {store.name} — {selectedCatalogName}
-                </span>
-                <Copy className={`w-3 h-3 flex-shrink-0 transition-all duration-150 ${
-                  isSharePressed 
-                    ? 'opacity-100 text-primary scale-125' 
-                    : 'opacity-50 group-hover:opacity-100'
-                }`} />
-              </div>
-            </div>
-          </button>
+            </button>
+          )}
 
           {/* Выезжающий блок фильтров */}
           <Collapsible open={filtersOpen}>
