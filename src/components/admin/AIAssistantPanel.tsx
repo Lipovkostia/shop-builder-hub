@@ -91,7 +91,9 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
   
   // Excel import state
   const [isImporting, setIsImporting] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
   const [importProgress, setImportProgress] = useState<PriceListImportProgress | null>(null);
+  const [importStatus, setImportStatus] = useState<string>('');
   
   // Column mapping state
   const [excelPreview, setExcelPreview] = useState<ExcelPreviewData | null>(null);
@@ -124,7 +126,9 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       setIsRecording(false);
       setRecordingTime(0);
       setIsImporting(false);
+      setIsParsing(false);
       setImportProgress(null);
+      setImportStatus('');
       setExcelPreview(null);
       setColumnMapping({ nameColumn: null, priceColumn: null });
       setSelectedFile(null);
@@ -315,6 +319,13 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     if (!excelPreview || !selectedFile || !storeId || !catalogId) return;
     if (columnMapping.nameColumn === null || columnMapping.priceColumn === null) return;
     
+    // Show parsing status
+    setIsParsing(true);
+    setImportStatus('Анализ данных из файла...');
+    
+    // Small delay to ensure UI updates
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     // Parse products with the selected mapping
     const products = parseProductsWithMapping(
       excelPreview,
@@ -323,6 +334,8 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     );
     
     if (products.length === 0) {
+      setIsParsing(false);
+      setImportStatus('');
       toast({
         title: "Нет товаров для импорта",
         description: "Проверьте правильность сопоставления колонок",
@@ -333,15 +346,32 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     
     // Clear preview and start import
     setExcelPreview(null);
+    setIsParsing(false);
     setIsImporting(true);
-    setImportProgress(null);
+    setImportStatus(`Импорт ${products.length} товаров...`);
+    setImportProgress({
+      total: products.length,
+      current: 0,
+      currentProduct: 'Подготовка...',
+      status: 'processing',
+      matched: 0,
+      created: 0,
+      hidden: 0,
+      errors: []
+    });
     
     try {
       const result = await importProductsToCatalog(products, storeId, catalogId, (progress) => {
         setImportProgress({ ...progress });
+        if (progress.status === 'processing') {
+          setImportStatus(`Обработка: ${progress.current} из ${progress.total}`);
+        } else if (progress.status === 'complete') {
+          setImportStatus('Импорт завершён!');
+        }
       });
       
       if (result.success) {
+        setImportStatus('Готово!');
         toast({
           title: "Импорт завершён!",
           description: `Обновлено: ${result.matched}, Создано: ${result.created}, Скрыто: ${result.hidden}`,
@@ -352,6 +382,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
           onOpenChange(false);
         }, 2000);
       } else {
+        setImportStatus('Ошибка');
         toast({
           title: "Ошибка импорта",
           description: result.errors[0] || "Не удалось импортировать файл",
@@ -359,6 +390,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
         });
       }
     } catch (err) {
+      setImportStatus('Ошибка');
       toast({
         title: "Ошибка",
         description: err instanceof Error ? err.message : "Неизвестная ошибка",
@@ -473,33 +505,83 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
             </div>
           )}
 
-          {/* Import Progress */}
-          {isImporting && importProgress && (
-            <div className="px-6 py-6 flex-1 flex flex-col items-center justify-center">
-              <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-              <p className="font-medium">{importProgress.currentProduct || 'Обработка...'}</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {importProgress.current} из {importProgress.total}
-              </p>
-              <div className="mt-4 grid grid-cols-3 gap-4 text-center text-xs">
-                <div>
-                  <p className="font-medium text-emerald-600">{importProgress.matched}</p>
-                  <p className="text-muted-foreground">Обновлено</p>
-                </div>
-                <div>
-                  <p className="font-medium text-blue-600">{importProgress.created}</p>
-                  <p className="text-muted-foreground">Создано</p>
-                </div>
-                <div>
-                  <p className="font-medium text-orange-600">{importProgress.hidden}</p>
-                  <p className="text-muted-foreground">Скрыто</p>
-                </div>
+          {/* Parsing Status */}
+          {isParsing && (
+            <div className="px-6 py-8 flex-1 flex flex-col items-center justify-center">
+              <div className="relative">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <FileSpreadsheet className="h-5 w-5 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
               </div>
+              <p className="font-medium mt-4">{importStatus || 'Анализ файла...'}</p>
+              <p className="text-sm text-muted-foreground mt-1">Пожалуйста, подождите</p>
+            </div>
+          )}
+
+          {/* Import Progress */}
+          {isImporting && (
+            <div className="px-6 py-8 flex-1 flex flex-col items-center justify-center">
+              <div className="relative mb-4">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <FileSpreadsheet className="h-5 w-5 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+              </div>
+              
+              {/* Status message */}
+              <p className="font-semibold text-lg">{importStatus || 'Импорт...'}</p>
+              
+              {importProgress && (
+                <>
+                  <p className="text-sm text-muted-foreground mt-1 max-w-[200px] truncate text-center">
+                    {importProgress.currentProduct || 'Обработка товаров...'}
+                  </p>
+                  
+                  {/* Progress bar */}
+                  <div className="w-full max-w-xs mt-4">
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary transition-all duration-300 ease-out rounded-full"
+                        style={{ width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center mt-1">
+                      {importProgress.current} из {importProgress.total}
+                    </p>
+                  </div>
+                  
+                  {/* Stats */}
+                  <div className="mt-6 grid grid-cols-3 gap-6 text-center">
+                    <div className="flex flex-col items-center">
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-1">
+                        <Check className="h-5 w-5 text-emerald-600" />
+                      </div>
+                      <p className="font-bold text-lg text-emerald-600">{importProgress.matched}</p>
+                      <p className="text-xs text-muted-foreground">Обновлено</p>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-1">
+                        <Sparkles className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <p className="font-bold text-lg text-blue-600">{importProgress.created}</p>
+                      <p className="text-xs text-muted-foreground">Создано</p>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mb-1">
+                        <EyeOff className="h-5 w-5 text-orange-600" />
+                      </div>
+                      <p className="font-bold text-lg text-orange-600">{importProgress.hidden}</p>
+                      <p className="text-xs text-muted-foreground">Скрыто</p>
+                    </div>
+                  </div>
+                </>
+              )}
+              
+              {!importProgress && (
+                <p className="text-sm text-muted-foreground mt-2">Подготовка к импорту...</p>
+              )}
             </div>
           )}
 
           {/* Quick commands */}
-          {state === "idle" && !isImporting && !excelPreview && (
+          {state === "idle" && !isImporting && !isParsing && !excelPreview && (
             <div className="px-6 py-4 border-b">
               <p className="text-sm text-muted-foreground mb-3">Быстрые команды:</p>
               <div className="flex flex-wrap gap-2">
@@ -525,7 +607,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
           )}
 
           {/* Input area */}
-          {(state === "idle" || state === "error") && !excelPreview && (
+          {(state === "idle" || state === "error") && !excelPreview && !isParsing && !isImporting && (
             <div className="px-6 py-4 border-b space-y-3">
               {/* Micro-description for selected command */}
               {selectedCommand && (
