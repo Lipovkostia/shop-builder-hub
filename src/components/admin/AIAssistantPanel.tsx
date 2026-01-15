@@ -30,7 +30,14 @@ import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { importPriceListToCatalog, PriceListImportProgress } from "@/lib/priceListImport";
+import { 
+  previewPriceListExcel, 
+  parseProductsWithMapping, 
+  importProductsToCatalog, 
+  PriceListImportProgress,
+  ExcelPreviewData,
+} from "@/lib/priceListImport";
+import { ExcelColumnMapping, ColumnMapping } from "./ExcelColumnMapping";
 
 interface AIAssistantPanelProps {
   open: boolean;
@@ -86,6 +93,11 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<PriceListImportProgress | null>(null);
   
+  // Column mapping state
+  const [excelPreview, setExcelPreview] = useState<ExcelPreviewData | null>(null);
+  const [columnMapping, setColumnMapping] = useState<ColumnMapping>({ nameColumn: null, priceColumn: null });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
   const {
     state,
     setState,
@@ -113,6 +125,9 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       setRecordingTime(0);
       setIsImporting(false);
       setImportProgress(null);
+      setExcelPreview(null);
+      setColumnMapping({ nameColumn: null, priceColumn: null });
+      setSelectedFile(null);
     }
   }, [open, reset]);
 
@@ -262,16 +277,67 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     }
   }, [response, selectedProducts, catalogs, storeProducts, updateProductSettings, updateProduct, toast, setState, onOpenChange]);
 
-  // Excel import handler
-  const handleExcelImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Excel file selection handler - shows column mapping
+  const handleExcelFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !storeId || !catalogId) return;
+    if (!file) return;
     
+    setSelectedFile(file);
+    
+    try {
+      const preview = await previewPriceListExcel(file);
+      setExcelPreview(preview);
+      setColumnMapping({
+        nameColumn: preview.suggestedNameColumn,
+        priceColumn: preview.suggestedPriceColumn,
+      });
+    } catch (err) {
+      toast({
+        title: "Ошибка чтения файла",
+        description: err instanceof Error ? err.message : "Не удалось прочитать файл",
+        variant: "destructive",
+      });
+      setSelectedFile(null);
+    }
+    
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [toast]);
+
+  // Cancel column mapping
+  const handleCancelMapping = useCallback(() => {
+    setExcelPreview(null);
+    setColumnMapping({ nameColumn: null, priceColumn: null });
+    setSelectedFile(null);
+  }, []);
+
+  // Confirm column mapping and start import
+  const handleConfirmMapping = useCallback(async () => {
+    if (!excelPreview || !selectedFile || !storeId || !catalogId) return;
+    if (columnMapping.nameColumn === null || columnMapping.priceColumn === null) return;
+    
+    // Parse products with the selected mapping
+    const products = parseProductsWithMapping(
+      excelPreview,
+      columnMapping.nameColumn,
+      columnMapping.priceColumn
+    );
+    
+    if (products.length === 0) {
+      toast({
+        title: "Нет товаров для импорта",
+        description: "Проверьте правильность сопоставления колонок",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Clear preview and start import
+    setExcelPreview(null);
     setIsImporting(true);
     setImportProgress(null);
     
     try {
-      const result = await importPriceListToCatalog(file, storeId, catalogId, (progress) => {
+      const result = await importProductsToCatalog(products, storeId, catalogId, (progress) => {
         setImportProgress({ ...progress });
       });
       
@@ -300,9 +366,9 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       });
     } finally {
       setIsImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setSelectedFile(null);
     }
-  }, [storeId, catalogId, toast, onOpenChange, refetchProducts, refetchCatalogs]);
+  }, [excelPreview, selectedFile, storeId, catalogId, columnMapping, toast, onOpenChange, refetchProducts, refetchCatalogs]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -340,8 +406,21 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
         </SheetHeader>
 
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Excel Import Section - only show when catalog is selected */}
-          {state === "idle" && catalogId && !isImporting && (
+        {/* Column Mapping Step */}
+          {excelPreview && selectedFile && (
+            <ExcelColumnMapping
+              columns={excelPreview.columns}
+              mapping={columnMapping}
+              onMappingChange={setColumnMapping}
+              onConfirm={handleConfirmMapping}
+              onCancel={handleCancelMapping}
+              fileName={selectedFile.name}
+              rowCount={excelPreview.rowCount}
+            />
+          )}
+
+          {/* Excel Import Section - only show when catalog is selected and not in mapping mode */}
+          {state === "idle" && catalogId && !isImporting && !excelPreview && (
             <div className="px-6 py-4 border-b bg-gradient-to-r from-emerald-500/10 to-teal-500/10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
@@ -366,7 +445,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                   ref={fileInputRef}
                   type="file"
                   accept=".xlsx,.xls"
-                  onChange={handleExcelImport}
+                  onChange={handleExcelFileSelect}
                   className="hidden"
                 />
               </div>
@@ -402,7 +481,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
           )}
 
           {/* Quick commands */}
-          {state === "idle" && !isImporting && (
+          {state === "idle" && !isImporting && !excelPreview && (
             <div className="px-6 py-4 border-b">
               <p className="text-sm text-muted-foreground mb-3">Быстрые команды:</p>
               <div className="flex flex-wrap gap-2">
@@ -428,7 +507,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
           )}
 
           {/* Input area */}
-          {(state === "idle" || state === "error") && (
+          {(state === "idle" || state === "error") && !excelPreview && (
             <div className="px-6 py-4 border-b space-y-3">
               {/* Micro-description for selected command */}
               {selectedCommand && (
