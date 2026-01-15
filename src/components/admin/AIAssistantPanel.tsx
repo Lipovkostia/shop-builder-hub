@@ -419,27 +419,42 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
             />
           )}
 
-          {/* Excel Import Section - only show when catalog is selected and not in mapping mode */}
-          {state === "idle" && catalogId && !isImporting && !excelPreview && (
-            <div className="px-6 py-4 border-b bg-gradient-to-r from-emerald-500/10 to-teal-500/10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                  <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+          {/* Excel Import Section - prominent button at the top */}
+          {state === "idle" && !isImporting && !excelPreview && (
+            <div className="px-6 py-5 border-b">
+              <div className="rounded-xl border-2 border-dashed border-emerald-300 dark:border-emerald-700 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 p-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
+                    <FileSpreadsheet className="h-6 w-6 text-emerald-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm mb-1">Загрузить прайс-лист из Excel</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Загрузите файл с названиями товаров и ценами. Система автоматически:
+                    </p>
+                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                        <span><strong className="text-foreground">Обновит</strong> себестоимость совпавших товаров</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+                        <span><strong className="text-foreground">Создаст</strong> новые товары с наценкой 0%</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0"></span>
+                        <span><strong className="text-foreground">Скроет</strong> товары, которых нет в файле</span>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">Загрузить прайс-лист</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {catalogName || 'Текущий каталог'}
-                  </p>
-                </div>
+                
                 <Button
-                  size="sm"
-                  variant="outline"
-                  className="shrink-0"
+                  className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <Upload className="h-4 w-4 mr-1" />
-                  Excel
+                  <Upload className="h-4 w-4 mr-2" />
+                  Выбрать Excel файл
                 </Button>
                 <input
                   ref={fileInputRef}
@@ -448,10 +463,13 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                   onChange={handleExcelFileSelect}
                   className="hidden"
                 />
+                
+                {catalogId && catalogName && (
+                  <p className="text-[10px] text-center text-muted-foreground mt-2">
+                    Импорт в каталог: <span className="font-medium">{catalogName}</span>
+                  </p>
+                )}
               </div>
-              <p className="text-[10px] text-muted-foreground mt-2">
-                Совпавшие товары обновятся, новые создадутся, отсутствующие скроются
-              </p>
             </div>
           )}
 
