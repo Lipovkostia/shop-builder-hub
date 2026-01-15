@@ -3795,6 +3795,8 @@ export default function AdminPanel({
                 open={aiAssistantOpen}
                 onOpenChange={setAiAssistantOpen}
                 storeId={effectiveStoreId}
+                catalogId={currentCatalog?.id}
+                catalogName={currentCatalog?.name}
               />
             </>
           )}

@@ -15,6 +15,8 @@ import {
   CheckSquare,
   Square,
   AlertCircle,
+  FileSpreadsheet,
+  Upload,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -28,11 +30,14 @@ import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { importPriceListToCatalog, PriceListImportProgress } from "@/lib/priceListImport";
 
 interface AIAssistantPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   storeId: string | null;
+  catalogId?: string | null;
+  catalogName?: string;
 }
 
 const quickCommands = [
@@ -66,7 +71,7 @@ const quickCommands = [
   },
 ];
 
-export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPanelProps) {
+export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catalogName }: AIAssistantPanelProps) {
   const { toast } = useToast();
   const [query, setQuery] = useState("");
   const [isRecording, setIsRecording] = useState(false);
@@ -75,6 +80,11 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const mimeTypeRef = useRef<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Excel import state
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<PriceListImportProgress | null>(null);
   
   const {
     state,
@@ -90,9 +100,9 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
     deselectAll,
   } = useAIAssistant(storeId);
 
-  const { catalogs } = useStoreCatalogs(storeId);
+  const { catalogs, refetch: refetchCatalogs } = useStoreCatalogs(storeId);
   const { updateProductSettings } = useCatalogProductSettings(storeId);
-  const { updateProduct } = useStoreProducts(storeId);
+  const { updateProduct, refetch: refetchProducts } = useStoreProducts(storeId);
 
   // Reset on close
   useEffect(() => {
@@ -101,6 +111,8 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
       setQuery("");
       setIsRecording(false);
       setRecordingTime(0);
+      setIsImporting(false);
+      setImportProgress(null);
     }
   }, [open, reset]);
 
@@ -250,6 +262,48 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
     }
   }, [response, selectedProducts, catalogs, storeProducts, updateProductSettings, updateProduct, toast, setState, onOpenChange]);
 
+  // Excel import handler
+  const handleExcelImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !storeId || !catalogId) return;
+    
+    setIsImporting(true);
+    setImportProgress(null);
+    
+    try {
+      const result = await importPriceListToCatalog(file, storeId, catalogId, (progress) => {
+        setImportProgress({ ...progress });
+      });
+      
+      if (result.success) {
+        toast({
+          title: "Импорт завершён!",
+          description: `Обновлено: ${result.matched}, Создано: ${result.created}, Скрыто: ${result.hidden}`,
+        });
+        refetchProducts();
+        refetchCatalogs();
+        setTimeout(() => {
+          onOpenChange(false);
+        }, 2000);
+      } else {
+        toast({
+          title: "Ошибка импорта",
+          description: result.errors[0] || "Не удалось импортировать файл",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Ошибка",
+        description: err instanceof Error ? err.message : "Неизвестная ошибка",
+        variant: "destructive",
+      });
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [storeId, catalogId, toast, onOpenChange, refetchProducts, refetchCatalogs]);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -286,8 +340,69 @@ export function AIAssistantPanel({ open, onOpenChange, storeId }: AIAssistantPan
         </SheetHeader>
 
         <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Excel Import Section - only show when catalog is selected */}
+          {state === "idle" && catalogId && !isImporting && (
+            <div className="px-6 py-4 border-b bg-gradient-to-r from-emerald-500/10 to-teal-500/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                  <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm">Загрузить прайс-лист</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {catalogName || 'Текущий каталог'}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="h-4 w-4 mr-1" />
+                  Excel
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleExcelImport}
+                  className="hidden"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">
+                Совпавшие товары обновятся, новые создадутся, отсутствующие скроются
+              </p>
+            </div>
+          )}
+
+          {/* Import Progress */}
+          {isImporting && importProgress && (
+            <div className="px-6 py-6 flex-1 flex flex-col items-center justify-center">
+              <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+              <p className="font-medium">{importProgress.currentProduct || 'Обработка...'}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {importProgress.current} из {importProgress.total}
+              </p>
+              <div className="mt-4 grid grid-cols-3 gap-4 text-center text-xs">
+                <div>
+                  <p className="font-medium text-emerald-600">{importProgress.matched}</p>
+                  <p className="text-muted-foreground">Обновлено</p>
+                </div>
+                <div>
+                  <p className="font-medium text-blue-600">{importProgress.created}</p>
+                  <p className="text-muted-foreground">Создано</p>
+                </div>
+                <div>
+                  <p className="font-medium text-orange-600">{importProgress.hidden}</p>
+                  <p className="text-muted-foreground">Скрыто</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Quick commands */}
-          {state === "idle" && (
+          {state === "idle" && !isImporting && (
             <div className="px-6 py-4 border-b">
               <p className="text-sm text-muted-foreground mb-3">Быстрые команды:</p>
               <div className="flex flex-wrap gap-2">
