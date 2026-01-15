@@ -336,6 +336,57 @@ export function parseProductsWithMapping(
   return products;
 }
 
+export interface ProductAnalysis {
+  matchingProducts: Array<{
+    excel: PriceListProduct;
+    existing: { id: string; name: string; buy_price: number | null };
+  }>;
+  newProducts: PriceListProduct[];
+}
+
+/**
+ * Analyze products before import - separate matching and new products
+ */
+export async function analyzeProductsForImport(
+  products: PriceListProduct[],
+  storeId: string
+): Promise<ProductAnalysis> {
+  // Fetch existing products for the store
+  const { data: existingProducts, error: fetchError } = await supabase
+    .from('products')
+    .select('id, name, buy_price')
+    .eq('store_id', storeId);
+  
+  if (fetchError) throw fetchError;
+  
+  // Create a map for quick lookup (lowercase name -> product)
+  const productMap = new Map<string, { id: string; name: string; buy_price: number | null }>();
+  existingProducts?.forEach(p => {
+    productMap.set(p.name.toLowerCase().trim(), p);
+  });
+  
+  const matchingProducts: ProductAnalysis['matchingProducts'] = [];
+  const newProducts: PriceListProduct[] = [];
+  
+  for (const excelProduct of products) {
+    const nameLower = excelProduct.name.toLowerCase().trim();
+    const existingProduct = productMap.get(nameLower);
+    
+    if (existingProduct) {
+      matchingProducts.push({
+        excel: excelProduct,
+        existing: existingProduct
+      });
+    } else {
+      newProducts.push(excelProduct);
+    }
+  }
+  
+  console.log(`[PriceList] Analysis: ${matchingProducts.length} matching, ${newProducts.length} new`);
+  
+  return { matchingProducts, newProducts };
+}
+
 /**
  * Import products from parsed list to catalog
  * 

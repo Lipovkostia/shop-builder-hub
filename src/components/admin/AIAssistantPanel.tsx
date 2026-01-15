@@ -34,10 +34,14 @@ import {
   previewPriceListExcel, 
   parseProductsWithMapping, 
   importProductsToCatalog, 
+  analyzeProductsForImport,
   PriceListImportProgress,
+  PriceListProduct,
+  ProductAnalysis,
   ExcelPreviewData,
 } from "@/lib/priceListImport";
 import { ExcelColumnMapping, ColumnMapping } from "./ExcelColumnMapping";
+import { NewProductsConfirmDialog } from "./NewProductsConfirmDialog";
 
 interface AIAssistantPanelProps {
   open: boolean;
@@ -100,6 +104,11 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
   const [columnMapping, setColumnMapping] = useState<ColumnMapping>({ nameColumn: null, priceColumn: null });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
+  // New products confirmation state
+  const [showNewProductsDialog, setShowNewProductsDialog] = useState(false);
+  const [productAnalysis, setProductAnalysis] = useState<ProductAnalysis | null>(null);
+  const [parsedProducts, setParsedProducts] = useState<PriceListProduct[]>([]);
+  
   const {
     state,
     setState,
@@ -132,6 +141,9 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       setExcelPreview(null);
       setColumnMapping({ nameColumn: null, priceColumn: null });
       setSelectedFile(null);
+      setShowNewProductsDialog(false);
+      setProductAnalysis(null);
+      setParsedProducts([]);
     }
   }, [open, reset]);
 
@@ -314,14 +326,33 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     setSelectedFile(null);
   }, []);
 
-  // Confirm column mapping and start import
+  // Confirm column mapping and analyze products
   const handleConfirmMapping = useCallback(async () => {
-    if (!excelPreview || !selectedFile || !storeId || !catalogId) return;
+    // Check if catalog is selected
+    if (!catalogId) {
+      toast({
+        title: "Не выбран прайс-лист",
+        description: "Сначала откройте прайс-лист, в который хотите загрузить товары",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!storeId) {
+      toast({
+        title: "Ошибка",
+        description: "Не определён магазин",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!excelPreview || !selectedFile) return;
     if (columnMapping.nameColumn === null || columnMapping.priceColumn === null) return;
     
     // Show parsing status
     setIsParsing(true);
-    setImportStatus('Анализ данных из файла...');
+    setImportStatus('Чтение данных из файла...');
     
     // Small delay to ensure UI updates
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -344,13 +375,68 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       return;
     }
     
-    // Clear preview and start import
-    setExcelPreview(null);
-    setIsParsing(false);
+    setImportStatus('Анализ товаров...');
+    
+    try {
+      // Analyze products - find matching and new
+      const analysis = await analyzeProductsForImport(products, storeId);
+      
+      setParsedProducts(products);
+      setProductAnalysis(analysis);
+      setExcelPreview(null);
+      setIsParsing(false);
+      
+      // If there are new products, show confirmation dialog
+      if (analysis.newProducts.length > 0) {
+        setImportStatus(`Найдено ${analysis.matchingProducts.length} совпадений, ${analysis.newProducts.length} новых`);
+        setShowNewProductsDialog(true);
+      } else {
+        // No new products - proceed with import directly
+        setImportStatus(`Обновление ${analysis.matchingProducts.length} товаров...`);
+        await startImport(products, true);
+      }
+    } catch (err) {
+      setIsParsing(false);
+      setImportStatus('');
+      toast({
+        title: "Ошибка анализа",
+        description: err instanceof Error ? err.message : "Не удалось проанализировать файл",
+        variant: "destructive",
+      });
+    }
+  }, [excelPreview, selectedFile, storeId, catalogId, columnMapping, toast]);
+
+  // Start the actual import process
+  const startImport = useCallback(async (products: PriceListProduct[], includeNew: boolean) => {
+    if (!storeId || !catalogId) return;
+    
+    // Filter products if not including new
+    let productsToImport = products;
+    if (!includeNew && productAnalysis) {
+      const matchingNames = new Set(
+        productAnalysis.matchingProducts.map(m => m.excel.name.toLowerCase().trim())
+      );
+      productsToImport = products.filter(p => 
+        matchingNames.has(p.name.toLowerCase().trim())
+      );
+    }
+    
+    if (productsToImport.length === 0) {
+      toast({
+        title: "Нет товаров для импорта",
+        description: "Все товары из файла отсутствуют в ассортименте",
+      });
+      setSelectedFile(null);
+      setParsedProducts([]);
+      setProductAnalysis(null);
+      return;
+    }
+    
+    setShowNewProductsDialog(false);
     setIsImporting(true);
-    setImportStatus(`Импорт ${products.length} товаров...`);
+    setImportStatus(`Импорт ${productsToImport.length} товаров...`);
     setImportProgress({
-      total: products.length,
+      total: productsToImport.length,
       current: 0,
       currentProduct: 'Подготовка...',
       status: 'processing',
@@ -361,7 +447,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     });
     
     try {
-      const result = await importProductsToCatalog(products, storeId, catalogId, (progress) => {
+      const result = await importProductsToCatalog(productsToImport, storeId, catalogId, (progress) => {
         setImportProgress({ ...progress });
         if (progress.status === 'processing') {
           setImportStatus(`Обработка: ${progress.current} из ${progress.total}`);
@@ -399,8 +485,19 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     } finally {
       setIsImporting(false);
       setSelectedFile(null);
+      setParsedProducts([]);
+      setProductAnalysis(null);
     }
-  }, [excelPreview, selectedFile, storeId, catalogId, columnMapping, toast, onOpenChange, refetchProducts, refetchCatalogs]);
+  }, [storeId, catalogId, productAnalysis, toast, onOpenChange, refetchProducts, refetchCatalogs]);
+
+  // Handle dialog actions
+  const handleAddAllAndImport = useCallback(() => {
+    startImport(parsedProducts, true);
+  }, [parsedProducts, startImport]);
+
+  const handleUpdateExistingOnly = useCallback(() => {
+    startImport(parsedProducts, false);
+  }, [parsedProducts, startImport]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -428,6 +525,18 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
   };
 
   return (
+    <>
+    {/* New Products Confirmation Dialog */}
+    <NewProductsConfirmDialog
+      open={showNewProductsDialog}
+      onOpenChange={setShowNewProductsDialog}
+      newProducts={productAnalysis?.newProducts || []}
+      matchingCount={productAnalysis?.matchingProducts.length || 0}
+      onAddAllAndImport={handleAddAllAndImport}
+      onUpdateExistingOnly={handleUpdateExistingOnly}
+      catalogName={catalogName}
+    />
+    
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-lg p-0 flex flex-col max-w-[100dvw] overflow-x-hidden">
         <SheetHeader className="px-6 py-4 border-b">
@@ -924,5 +1033,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
         </div>
       </SheetContent>
     </Sheet>
+    </>
   );
 }
