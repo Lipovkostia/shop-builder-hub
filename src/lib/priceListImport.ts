@@ -94,6 +94,72 @@ function generateSlug(name: string): string {
 }
 
 /**
+ * Check if a row looks like a data row (has product name and price pattern)
+ */
+function isDataRow(row: unknown[], minNonEmpty: number = 2): boolean {
+  if (!row) return false;
+  
+  let hasTextValue = false;
+  let hasNumericValue = false;
+  let nonEmptyCount = 0;
+  
+  for (const cell of row) {
+    if (cell === undefined || cell === null || cell === '') continue;
+    nonEmptyCount++;
+    
+    const str = String(cell).trim();
+    
+    // Check for numeric value (potential price) - patterns like "1 550,00" or "2500.00"
+    if (/^\d[\d\s]*[,.]?\d*$/.test(str.replace(/\s/g, '')) && parseFloat(str.replace(/\s/g, '').replace(',', '.')) > 0) {
+      hasNumericValue = true;
+    }
+    
+    // Check for text value (potential product name) - at least 3 chars, contains letters
+    if (str.length >= 3 && /[а-яА-Яa-zA-Z]/.test(str)) {
+      // Exclude header-like values
+      const lowerStr = str.toLowerCase();
+      if (!lowerStr.includes('номенклатура') && 
+          !lowerStr.includes('артикул') && 
+          !lowerStr.includes('прайс') && 
+          !lowerStr.includes('наименование') &&
+          !lowerStr.includes('изображение') &&
+          !lowerStr.includes('упаковка') &&
+          !lowerStr.includes('rub') &&
+          !lowerStr.includes('ндс') &&
+          !lowerStr.includes('цена')) {
+        hasTextValue = true;
+      }
+    }
+  }
+  
+  return nonEmptyCount >= minNonEmpty && hasTextValue && hasNumericValue;
+}
+
+/**
+ * Find the data start row by looking for the first row that has actual product data
+ */
+function findDataStartRow(data: unknown[][], maxRowsToCheck: number = 20): number {
+  // Look for the first row that looks like actual data
+  for (let i = 0; i < Math.min(maxRowsToCheck, data.length); i++) {
+    if (isDataRow(data[i])) {
+      return i;
+    }
+  }
+  
+  // Fallback: find first row with at least 2 non-empty cells
+  for (let i = 0; i < Math.min(maxRowsToCheck, data.length); i++) {
+    const row = data[i];
+    if (!row) continue;
+    const nonEmptyCells = row.filter(cell => cell !== undefined && cell !== null && cell !== '').length;
+    if (nonEmptyCells >= 2) {
+      return i;
+    }
+  }
+  
+  return 0;
+}
+
+/**
  * Preview Excel file - extract column info for user to map
  */
 export async function previewPriceListExcel(file: File): Promise<ExcelPreviewData> {
@@ -106,21 +172,15 @@ export async function previewPriceListExcel(file: File): Promise<ExcelPreviewDat
   // Get all data as array of arrays
   const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
   
-  // Find the first row with meaningful data (likely header)
-  let headerRowIdx = 0;
-  for (let i = 0; i < Math.min(10, data.length); i++) {
-    const row = data[i];
-    if (!row) continue;
-    const nonEmptyCells = row.filter(cell => cell !== undefined && cell !== null && cell !== '').length;
-    if (nonEmptyCells >= 2) {
-      headerRowIdx = i;
-      break;
-    }
-  }
+  // Find the first row with actual product data
+  const dataStartRowIdx = findDataStartRow(data);
   
-  const headerRow = data[headerRowIdx] || [];
+  console.log('[PriceList] Data starts at row:', dataStartRowIdx + 1);
   
-  // Build column info with sample values
+  // Get first data row to extract column names from it
+  const firstDataRow = data[dataStartRowIdx] || [];
+  
+  // Build column info with sample values from actual data rows
   const columns: ExcelColumnInfo[] = [];
   let suggestedNameColumn: number | null = null;
   let suggestedPriceColumn: number | null = null;
@@ -132,11 +192,9 @@ export async function previewPriceListExcel(file: File): Promise<ExcelPreviewDat
   }
   
   for (let colIdx = 0; colIdx < maxCols; colIdx++) {
-    const header = String(headerRow[colIdx] || '').trim();
-    
-    // Get sample values from next 5 rows after header
+    // Get sample values from data rows
     const sampleValues: string[] = [];
-    for (let rowIdx = headerRowIdx + 1; rowIdx < Math.min(headerRowIdx + 6, data.length); rowIdx++) {
+    for (let rowIdx = dataStartRowIdx; rowIdx < Math.min(dataStartRowIdx + 5, data.length); rowIdx++) {
       const row = data[rowIdx];
       if (row && row[colIdx] !== undefined && row[colIdx] !== null && row[colIdx] !== '') {
         sampleValues.push(String(row[colIdx]));
@@ -144,24 +202,40 @@ export async function previewPriceListExcel(file: File): Promise<ExcelPreviewDat
     }
     
     // Skip completely empty columns
-    if (!header && sampleValues.length === 0) continue;
+    if (sampleValues.length === 0) continue;
+    
+    // Determine column header by looking at sample values pattern
+    let header = `Колонка ${colIdx + 1}`;
+    
+    // Check if this looks like a name column (text values)
+    const hasTextValues = sampleValues.some(v => {
+      const str = String(v).trim();
+      return str.length >= 3 && /[а-яА-Яa-zA-Z]/.test(str) && !/^\d+[,.\s]*\d*$/.test(str.replace(/\s/g, ''));
+    });
+    
+    // Check if this looks like a price column (numeric values)
+    const hasNumericValues = sampleValues.some(v => {
+      const parsed = parsePrice(v);
+      return parsed > 0 && parsed < 10000000;
+    });
+    
+    if (hasTextValues && !hasNumericValues) {
+      header = 'Название товара';
+      if (suggestedNameColumn === null) {
+        suggestedNameColumn = colIdx;
+      }
+    } else if (hasNumericValues && !hasTextValues) {
+      header = 'Цена';
+      if (suggestedPriceColumn === null) {
+        suggestedPriceColumn = colIdx;
+      }
+    }
     
     columns.push({
       index: colIdx,
-      header: header || `Колонка ${colIdx + 1}`,
+      header,
       sampleValues,
     });
-    
-    // Try to auto-detect name column
-    const headerLower = header.toLowerCase();
-    if (headerLower.includes('номенклатура') || headerLower.includes('название') || headerLower.includes('наименование')) {
-      suggestedNameColumn = colIdx;
-    }
-    
-    // Try to auto-detect price column
-    if (headerLower.includes('прайс') || headerLower === 'цена' || headerLower.includes('стоимость')) {
-      suggestedPriceColumn = colIdx;
-    }
   }
   
   // If no suggested columns found, try to detect by data pattern
@@ -189,9 +263,9 @@ export async function previewPriceListExcel(file: File): Promise<ExcelPreviewDat
     }
   }
   
-  // Count actual data rows (excluding header and empty rows)
+  // Count actual data rows (from data start)
   let rowCount = 0;
-  for (let i = headerRowIdx + 1; i < data.length; i++) {
+  for (let i = dataStartRowIdx; i < data.length; i++) {
     const row = data[i];
     if (row && row.some(cell => cell !== undefined && cell !== null && cell !== '')) {
       rowCount++;
@@ -225,20 +299,11 @@ export function parseProductsWithMapping(
   const products: PriceListProduct[] = [];
   const data = previewData.rawData;
   
-  // Find header row (same logic as preview)
-  let headerRowIdx = 0;
-  for (let i = 0; i < Math.min(10, data.length); i++) {
-    const row = data[i];
-    if (!row) continue;
-    const nonEmptyCells = row.filter(cell => cell !== undefined && cell !== null && cell !== '').length;
-    if (nonEmptyCells >= 2) {
-      headerRowIdx = i;
-      break;
-    }
-  }
+  // Find first data row using the same logic as preview
+  const dataStartRowIdx = findDataStartRow(data);
   
-  // Parse data rows
-  for (let i = headerRowIdx + 1; i < data.length; i++) {
+  // Parse data rows starting from data start
+  for (let i = dataStartRowIdx; i < data.length; i++) {
     const row = data[i];
     if (!row) continue;
     
