@@ -17,6 +17,8 @@ import {
   AlertCircle,
   FileSpreadsheet,
   Upload,
+  ChevronDown,
+  BookOpen,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -93,6 +95,11 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
   const mimeTypeRef = useRef<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Internal catalog selection state
+  const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(catalogId || null);
+  const [selectedCatalogName, setSelectedCatalogName] = useState<string>(catalogName || '');
+  const [showCatalogSelector, setShowCatalogSelector] = useState(false);
+  
   // Excel import state
   const [isImporting, setIsImporting] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
@@ -126,6 +133,37 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
   const { catalogs, refetch: refetchCatalogs } = useStoreCatalogs(storeId);
   const { updateProductSettings } = useCatalogProductSettings(storeId);
   const { updateProduct, refetch: refetchProducts } = useStoreProducts(storeId);
+  
+  // Effective catalog values (internal state or from props)
+  const effectiveCatalogId = selectedCatalogId;
+  const effectiveCatalogName = selectedCatalogName;
+  
+  // Update internal state when props change
+  useEffect(() => {
+    if (catalogId) {
+      setSelectedCatalogId(catalogId);
+      setSelectedCatalogName(catalogName || '');
+    }
+  }, [catalogId, catalogName]);
+  
+  // Handle catalog selection
+  const handleSelectCatalog = useCallback((catalog: { id: string; name: string }) => {
+    setSelectedCatalogId(catalog.id);
+    setSelectedCatalogName(catalog.name);
+    setShowCatalogSelector(false);
+  }, []);
+  
+  // Handle catalog change (reset import state)
+  const handleChangeCatalog = useCallback(() => {
+    setShowCatalogSelector(true);
+    // Reset any in-progress import
+    setExcelPreview(null);
+    setColumnMapping({ nameColumn: null, priceColumn: null });
+    setSelectedFile(null);
+    setShowNewProductsDialog(false);
+    setProductAnalysis(null);
+    setParsedProducts([]);
+  }, []);
 
   // Reset on close
   useEffect(() => {
@@ -144,8 +182,14 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       setShowNewProductsDialog(false);
       setProductAnalysis(null);
       setParsedProducts([]);
+      // Reset catalog selection only if no catalogId prop was passed
+      if (!catalogId) {
+        setSelectedCatalogId(null);
+        setSelectedCatalogName('');
+      }
+      setShowCatalogSelector(false);
     }
-  }, [open, reset]);
+  }, [open, reset, catalogId]);
 
   // Recording timer
   useEffect(() => {
@@ -329,10 +373,10 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
   // Confirm column mapping and analyze products
   const handleConfirmMapping = useCallback(async () => {
     // Check if catalog is selected
-    if (!catalogId) {
+    if (!effectiveCatalogId) {
       toast({
         title: "Не выбран прайс-лист",
-        description: "Сначала откройте прайс-лист, в который хотите загрузить товары",
+        description: "Сначала выберите прайс-лист для импорта",
         variant: "destructive",
       });
       return;
@@ -404,11 +448,11 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
         variant: "destructive",
       });
     }
-  }, [excelPreview, selectedFile, storeId, catalogId, columnMapping, toast]);
+  }, [excelPreview, selectedFile, storeId, effectiveCatalogId, columnMapping, toast]);
 
   // Start the actual import process
   const startImport = useCallback(async (products: PriceListProduct[], includeNew: boolean) => {
-    if (!storeId || !catalogId) return;
+    if (!storeId || !effectiveCatalogId) return;
     
     // Filter products if not including new
     let productsToImport = products;
@@ -447,7 +491,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     });
     
     try {
-      const result = await importProductsToCatalog(productsToImport, storeId, catalogId, (progress) => {
+      const result = await importProductsToCatalog(productsToImport, storeId, effectiveCatalogId, (progress) => {
         setImportProgress({ ...progress });
         if (progress.status === 'processing') {
           setImportStatus(`Обработка: ${progress.current} из ${progress.total}`);
@@ -488,7 +532,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       setParsedProducts([]);
       setProductAnalysis(null);
     }
-  }, [storeId, catalogId, productAnalysis, toast, onOpenChange, refetchProducts, refetchCatalogs]);
+  }, [storeId, effectiveCatalogId, productAnalysis, toast, onOpenChange, refetchProducts, refetchCatalogs]);
 
   // Handle dialog actions
   const handleAddAllAndImport = useCallback(() => {
@@ -534,7 +578,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       matchingCount={productAnalysis?.matchingProducts.length || 0}
       onAddAllAndImport={handleAddAllAndImport}
       onUpdateExistingOnly={handleUpdateExistingOnly}
-      catalogName={catalogName}
+      catalogName={effectiveCatalogName}
     />
     
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -547,6 +591,82 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
         </SheetHeader>
 
         <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Catalog Selection Step - shown when no catalog selected or user wants to change */}
+          {(!effectiveCatalogId || showCatalogSelector) && !isImporting && !isParsing && (
+            <div className="px-6 py-6 flex-1 flex flex-col">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <BookOpen className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="font-semibold text-lg mb-2">Выберите прайс-лист</h3>
+                <p className="text-sm text-muted-foreground">
+                  Для работы AI помощника выберите прайс-лист, в котором будут производиться изменения
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                {catalogs.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Прайс-листы не найдены</p>
+                    <p className="text-xs mt-1">Сначала создайте прайс-лист</p>
+                  </div>
+                ) : (
+                  catalogs.map((catalog) => (
+                    <Button
+                      key={catalog.id}
+                      variant={selectedCatalogId === catalog.id ? "default" : "outline"}
+                      className="w-full justify-start h-auto py-3"
+                      onClick={() => handleSelectCatalog({ id: catalog.id, name: catalog.name })}
+                    >
+                      <BookOpen className="h-4 w-4 mr-3 shrink-0" />
+                      <div className="text-left">
+                        <p className="font-medium">{catalog.name}</p>
+                        {catalog.description && (
+                          <p className="text-xs text-muted-foreground font-normal">{catalog.description}</p>
+                        )}
+                      </div>
+                      {catalog.is_default && (
+                        <Badge variant="secondary" className="ml-auto text-xs">По умолчанию</Badge>
+                      )}
+                    </Button>
+                  ))
+                )}
+              </div>
+              
+              {showCatalogSelector && effectiveCatalogId && (
+                <Button
+                  variant="ghost"
+                  className="mt-4"
+                  onClick={() => setShowCatalogSelector(false)}
+                >
+                  Отмена
+                </Button>
+              )}
+            </div>
+          )}
+          
+          {/* Selected catalog indicator - shown when catalog is selected and not in selector mode */}
+          {effectiveCatalogId && !showCatalogSelector && !isImporting && !isParsing && !excelPreview && (
+            <div className="px-6 py-2 border-b bg-muted/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm">
+                  <BookOpen className="h-4 w-4 text-primary" />
+                  <span className="text-muted-foreground">Работа в:</span>
+                  <span className="font-medium">{effectiveCatalogName}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={handleChangeCatalog}
+                >
+                  <ChevronDown className="h-3 w-3 mr-1" />
+                  Сменить
+                </Button>
+              </div>
+            </div>
+          )}
+          
         {/* Column Mapping Step */}
           {excelPreview && selectedFile && (
             <ExcelColumnMapping
@@ -561,7 +681,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
           )}
 
           {/* Excel Import Section - prominent button at the top */}
-          {state === "idle" && !isImporting && !excelPreview && (
+          {effectiveCatalogId && !showCatalogSelector && state === "idle" && !isImporting && !excelPreview && (
             <div className="px-6 py-5 border-b">
               <div className="rounded-xl border-2 border-dashed border-emerald-300 dark:border-emerald-700 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 p-4">
                 <div className="flex items-start gap-4">
@@ -605,11 +725,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                   className="hidden"
                 />
                 
-                {catalogId && catalogName && (
-                  <p className="text-[10px] text-center text-muted-foreground mt-2">
-                    Импорт в каталог: <span className="font-medium">{catalogName}</span>
-                  </p>
-                )}
               </div>
             </div>
           )}
@@ -690,7 +805,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
           )}
 
           {/* Quick commands */}
-          {state === "idle" && !isImporting && !isParsing && !excelPreview && (
+          {effectiveCatalogId && !showCatalogSelector && state === "idle" && !isImporting && !isParsing && !excelPreview && (
             <div className="px-6 py-4 border-b">
               <p className="text-sm text-muted-foreground mb-3">Быстрые команды:</p>
               <div className="flex flex-wrap gap-2">
@@ -716,7 +831,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
           )}
 
           {/* Input area */}
-          {(state === "idle" || state === "error") && !excelPreview && !isParsing && !isImporting && (
+          {effectiveCatalogId && !showCatalogSelector && (state === "idle" || state === "error") && !excelPreview && !isParsing && !isImporting && (
             <div className="px-6 py-4 border-b space-y-3">
               {/* Micro-description for selected command */}
               {selectedCommand && (
