@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useVisibilityRefetch } from "@/hooks/useVisibilityRefetch";
+import { logActivity } from "@/hooks/useActivityLogs";
 
 export interface StoreProduct {
   id: string;
@@ -174,6 +175,17 @@ export function useStoreProducts(storeId: string | null) {
 
         // NOTE: local state will be updated by realtime too, but we keep this for snappy UI
         setProducts((prev) => [data, ...prev]);
+        
+        // Log activity
+        logActivity({
+          storeId,
+          actionType: 'create',
+          entityType: 'product',
+          entityId: data.id,
+          entityName: data.name,
+          details: { price: data.price },
+        });
+        
         toast({
           title: "Товар создан",
           description: `"${data.name}" добавлен в каталог`,
@@ -246,6 +258,28 @@ export function useStoreProducts(storeId: string | null) {
         setProducts((prev) =>
           prev.map((p) => (p.id === productId ? updatedProduct : p))
         );
+        
+        // Log activity for significant updates (price, name)
+        if (storeId && (updates.price !== undefined || updates.name !== undefined || updates.buy_price !== undefined)) {
+          const product = products.find(p => p.id === productId);
+          const details: Record<string, any> = {};
+          if (updates.price !== undefined && product?.price !== updates.price) {
+            details.field = 'price';
+            details.old_value = product?.price;
+            details.new_value = updates.price;
+          }
+          if (Object.keys(details).length > 0) {
+            logActivity({
+              storeId,
+              actionType: 'update',
+              entityType: 'product',
+              entityId: productId,
+              entityName: updatedProduct.name,
+              details,
+            });
+          }
+        }
+        
         return updatedProduct;
       } catch (error: any) {
         console.error("Error updating product:", error);
@@ -263,6 +297,7 @@ export function useStoreProducts(storeId: string | null) {
   // Delete a product
   const deleteProduct = useCallback(
     async (productId: string) => {
+      const product = products.find(p => p.id === productId);
       try {
         const { error } = await supabase
           .from("products")
@@ -272,6 +307,18 @@ export function useStoreProducts(storeId: string | null) {
         if (error) throw error;
 
         setProducts((prev) => prev.filter((p) => p.id !== productId));
+        
+        // Log activity
+        if (storeId && product) {
+          logActivity({
+            storeId,
+            actionType: 'delete',
+            entityType: 'product',
+            entityId: productId,
+            entityName: product.name,
+          });
+        }
+        
         toast({
           title: "Товар удалён",
         });
@@ -286,7 +333,7 @@ export function useStoreProducts(storeId: string | null) {
         return false;
       }
     },
-    [toast]
+    [storeId, products, toast]
   );
 
   // Delete multiple products
