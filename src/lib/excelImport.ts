@@ -1164,6 +1164,7 @@ export async function importProductsToCatalog(
 
       try {
         const name = row['Название*']?.toString().trim();
+        const sku = row['Код товара']?.toString().trim() || null;
         if (!name) {
           progress.errors.push(`Строка ${originalIndex}: Отсутствует название товара`);
           continue;
@@ -1197,6 +1198,7 @@ export async function importProductsToCatalog(
             .insert({
               store_id: storeId,
               name,
+              sku,
               description: row['Описание']?.toString().trim() || null,
               price: 0,
               buy_price: buyPrice,
@@ -1237,7 +1239,7 @@ export async function importProductsToCatalog(
           }
         } else {
           // Update existing product's base fields if needed
-          if (buyPrice !== null || unitWeight !== null) {
+          if (buyPrice !== null || unitWeight !== null || sku) {
             await supabase
               .from('products')
               .update({
@@ -1245,6 +1247,7 @@ export async function importProductsToCatalog(
                 unit_weight: unitWeight ?? undefined,
                 unit: mapUnit(row['Ед. изм.']),
                 packaging_type: mapPackagingType(row['Вид (тип фасовки)']),
+                sku: sku ?? undefined,
                 updated_at: new Date().toISOString()
               })
               .eq('id', productId);
