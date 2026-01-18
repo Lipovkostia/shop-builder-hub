@@ -18,6 +18,7 @@ export interface CatalogExportColumn {
 }
 
 export const CATALOG_EXPORT_COLUMNS: CatalogExportColumn[] = [
+  { id: 'sku', label: 'Номенклатура', enabled: true },
   { id: 'photo', label: 'Фото', enabled: true },
   { id: 'name', label: 'Название', enabled: true },
   { id: 'description', label: 'Описание', enabled: true },
