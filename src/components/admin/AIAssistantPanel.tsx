@@ -719,43 +719,29 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
             />
           )}
 
-          {/* Excel Import Section - prominent button at the top */}
+          {/* Excel Import Section - compact design */}
           {effectiveCatalogId && !showCatalogSelector && state === "idle" && !isImporting && !excelPreview && (
-            <div className="px-6 py-5 border-b">
-              <div className="rounded-xl border-2 border-dashed border-emerald-300 dark:border-emerald-700 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 p-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
-                    <FileSpreadsheet className="h-6 w-6 text-emerald-600" />
+            <div className="px-4 py-3 border-b">
+              <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 p-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
+                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm mb-1">Загрузить прайс-лист из Excel</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Загрузите файл с названиями товаров и ценами. Система автоматически:
+                    <p className="font-medium text-sm">Загрузить прайс-лист</p>
+                    <p className="text-xs text-muted-foreground">
+                      Обновить цены из Excel файла
                     </p>
-                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                        <span><strong className="text-foreground">Обновит</strong> себестоимость совпавших товаров</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
-                        <span><strong className="text-foreground">Создаст</strong> новые товары с наценкой 0%</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0"></span>
-                        <span><strong className="text-foreground">Скроет</strong> товары, которых нет в файле</span>
-                      </li>
-                    </ul>
                   </div>
+                  <Button
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-3.5 w-3.5 mr-1.5" />
+                    Выбрать
+                  </Button>
                 </div>
-                
-                <Button
-                  className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Выбрать Excel файл
-                </Button>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -763,7 +749,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                   onChange={handleExcelFileSelect}
                   className="hidden"
                 />
-                
               </div>
             </div>
           )}
