@@ -44,7 +44,7 @@ export function useStoreProducts(storeId: string | null) {
   const [loading, setLoading] = useState(false);
   const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
-  // Fetch all products for the store
+  // Fetch all products for the store (excluding deleted)
   const fetchProducts = useCallback(async () => {
     if (!storeId) return;
 
@@ -54,6 +54,7 @@ export function useStoreProducts(storeId: string | null) {
         .from("products")
         .select("*")
         .eq("store_id", storeId)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -88,17 +89,34 @@ export function useStoreProducts(storeId: string | null) {
           const eventType = payload.eventType;
 
           if (eventType === "INSERT") {
-            const row = payload.new as StoreProduct;
-            setProducts((prev) => {
-              if (prev.some((p) => p.id === row.id)) return prev;
-              return [row, ...prev];
-            });
+            const row = payload.new as StoreProduct & { deleted_at?: string | null };
+            // Only add if not deleted
+            if (!row.deleted_at) {
+              setProducts((prev) => {
+                if (prev.some((p) => p.id === row.id)) return prev;
+                return [row, ...prev];
+              });
+            }
             return;
           }
 
           if (eventType === "UPDATE") {
-            const row = payload.new as StoreProduct;
-            setProducts((prev) => prev.map((p) => (p.id === row.id ? row : p)));
+            const row = payload.new as StoreProduct & { deleted_at?: string | null };
+            // If product was soft-deleted, remove from list
+            if (row.deleted_at) {
+              setProducts((prev) => prev.filter((p) => p.id !== row.id));
+            } else {
+              // If product was restored or updated, update in list
+              setProducts((prev) => {
+                const exists = prev.some((p) => p.id === row.id);
+                if (exists) {
+                  return prev.map((p) => (p.id === row.id ? row : p));
+                } else {
+                  // Product was restored - add it back
+                  return [row, ...prev];
+                }
+              });
+            }
             return;
           }
 
@@ -294,14 +312,14 @@ export function useStoreProducts(storeId: string | null) {
     [toast]
   );
 
-  // Delete a product
+  // Soft delete a product (move to trash)
   const deleteProduct = useCallback(
     async (productId: string) => {
       const product = products.find(p => p.id === productId);
       try {
         const { error } = await supabase
           .from("products")
-          .delete()
+          .update({ deleted_at: new Date().toISOString() })
           .eq("id", productId);
 
         if (error) throw error;
@@ -312,7 +330,7 @@ export function useStoreProducts(storeId: string | null) {
         if (storeId && product) {
           logActivity({
             storeId,
-            actionType: 'delete',
+            actionType: 'trash',
             entityType: 'product',
             entityId: productId,
             entityName: product.name,
@@ -320,7 +338,8 @@ export function useStoreProducts(storeId: string | null) {
         }
         
         toast({
-          title: "Товар удалён",
+          title: "Товар перемещён в корзину",
+          description: product ? `"${product.name}" можно восстановить из корзины` : undefined,
         });
         return true;
       } catch (error: any) {
@@ -336,21 +355,21 @@ export function useStoreProducts(storeId: string | null) {
     [storeId, products, toast]
   );
 
-  // Delete multiple products
+  // Soft delete multiple products (move to trash)
   const deleteProducts = useCallback(
     async (productIds: string[]) => {
       try {
         const { error } = await supabase
           .from("products")
-          .delete()
+          .update({ deleted_at: new Date().toISOString() })
           .in("id", productIds);
 
         if (error) throw error;
 
         setProducts((prev) => prev.filter((p) => !productIds.includes(p.id)));
         toast({
-          title: "Товары удалены",
-          description: `Удалено ${productIds.length} товаров`,
+          title: "Товары перемещены в корзину",
+          description: `${productIds.length} товаров можно восстановить`,
         });
         return true;
       } catch (error: any) {

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export type ActionType = 'create' | 'update' | 'delete' | 'import' | 'export' | 'sync' | 'status_change' | 'access_grant' | 'access_revoke';
+export type ActionType = 'create' | 'update' | 'delete' | 'trash' | 'restore' | 'permanent_delete' | 'import' | 'export' | 'sync' | 'status_change' | 'access_grant' | 'access_revoke';
 export type EntityType = 'product' | 'catalog' | 'order' | 'customer' | 'settings' | 'category' | 'role';
 
 export interface ActivityLog {
@@ -153,6 +153,9 @@ export function getActionLabel(actionType: ActionType): string {
     create: 'Создание',
     update: 'Обновление',
     delete: 'Удаление',
+    trash: 'В корзину',
+    restore: 'Восстановление',
+    permanent_delete: 'Удалено навсегда',
     import: 'Импорт',
     export: 'Экспорт',
     sync: 'Синхронизация',
@@ -181,6 +184,9 @@ export function getActionColor(actionType: ActionType): string {
     create: 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400',
     update: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400',
     delete: 'text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400',
+    trash: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400',
+    restore: 'text-teal-600 bg-teal-100 dark:bg-teal-900/30 dark:text-teal-400',
+    permanent_delete: 'text-red-700 bg-red-200 dark:bg-red-900/50 dark:text-red-300',
     import: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400',
     export: 'text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400',
     sync: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400',
@@ -196,6 +202,9 @@ export function getActionIcon(actionType: ActionType): string {
     create: '🟢',
     update: '✏️',
     delete: '🗑️',
+    trash: '📥',
+    restore: '♻️',
+    permanent_delete: '💀',
     import: '📥',
     export: '📤',
     sync: '🔄',
