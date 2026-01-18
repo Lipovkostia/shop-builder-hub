@@ -3596,6 +3596,16 @@ export default function AdminPanel({
                             />
                           </ResizableTableCell>
                         ),
+                        sku: (
+                          <ResizableTableCell key="sku" columnId="sku">
+                            <InlineEditableCell
+                              value={product.sku || ""}
+                              onSave={(newSku) => updateProduct({ ...product, sku: newSku })}
+                              placeholder="—"
+                              className="font-mono text-xs text-muted-foreground"
+                            />
+                          </ResizableTableCell>
+                        ),
                         desc: (
                           <ResizableTableCell key="desc" columnId="desc">
                             <InlineEditableCell
