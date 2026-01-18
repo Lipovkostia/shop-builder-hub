@@ -54,6 +54,10 @@ export interface ExtendedColumnMapping {
     buyPrice: number | null;
     unit: number | null;
     name: number | null;
+    description: number | null;
+    group: number | null;
+    volume: number | null;
+    photos: number | null;
   };
 }
 
@@ -780,4 +784,465 @@ export async function importProductsToCatalog(
     ['buyPrice'],
     onProgress
   );
+}
+
+// Import options for full assortment import
+export interface AssortmentImportOptions {
+  createNewProducts: boolean;
+  hideNotInFile: boolean;
+}
+
+/**
+ * Import products using column mapping for assortment (store-level import, not catalog)
+ */
+export async function importProductsWithMapping(
+  file: File,
+  storeId: string,
+  mapping: ExtendedColumnMapping,
+  options: AssortmentImportOptions,
+  onProgress: (progress: PriceListImportProgress) => void
+): Promise<PriceListImportResult> {
+  const progress: PriceListImportProgress = {
+    total: 0,
+    current: 0,
+    currentProduct: '',
+    status: 'parsing',
+    matched: 0,
+    created: 0,
+    hidden: 0,
+    errors: []
+  };
+  
+  onProgress(progress);
+  
+  try {
+    // Preview and parse file
+    const preview = await previewPriceListExcel(file);
+    const data = preview.rawData;
+    
+    // Find first data row
+    const dataStartRowIdx = findDataStartRowInternal(data);
+    
+    // Parse products based on mapping
+    const parsedProducts: ParsedAssortmentProduct[] = [];
+    
+    for (let i = dataStartRowIdx; i < data.length; i++) {
+      const row = data[i] as unknown[];
+      if (!row) continue;
+      
+      // Get identifier value
+      const identifierValue = mapping.identifierColumn !== null 
+        ? String(row[mapping.identifierColumn] || '').trim() 
+        : '';
+      
+      // Skip rows without valid identifier
+      if (!identifierValue || identifierValue.length < 1) continue;
+      
+      // Skip header-like rows
+      const identifierLower = identifierValue.toLowerCase();
+      if (identifierLower.includes('номенклатура') || 
+          identifierLower.includes('артикул') ||
+          identifierLower.includes('название') ||
+          identifierLower.includes('наименование') ||
+          identifierLower.includes('код товара') ||
+          identifierLower.includes('sku')) {
+        continue;
+      }
+      
+      // Build product object
+      const product: ParsedAssortmentProduct = {
+        identifier: identifierValue,
+        identifierType: mapping.identifierType,
+        rowIndex: i + 1,
+      };
+      
+      // Parse fields to update
+      const { fieldsToUpdate } = mapping;
+      
+      if (fieldsToUpdate.buyPrice !== null) {
+        const priceRaw = row[fieldsToUpdate.buyPrice];
+        const price = parsePrice(priceRaw as string | number);
+        if (price > 0) {
+          product.buyPrice = price;
+        }
+      }
+      
+      if (fieldsToUpdate.unit !== null) {
+        const unitRaw = row[fieldsToUpdate.unit];
+        const unit = String(unitRaw || '').trim();
+        if (unit) {
+          product.unit = unit;
+        }
+      }
+      
+      if (fieldsToUpdate.name !== null) {
+        const nameRaw = row[fieldsToUpdate.name];
+        const name = String(nameRaw || '').trim();
+        if (name) {
+          product.name = name;
+        }
+      }
+      
+      if (fieldsToUpdate.description !== null) {
+        const descRaw = row[fieldsToUpdate.description];
+        const desc = String(descRaw || '').trim();
+        if (desc) {
+          product.description = desc;
+        }
+      }
+      
+      if (fieldsToUpdate.group !== null) {
+        const groupRaw = row[fieldsToUpdate.group];
+        const group = String(groupRaw || '').trim();
+        if (group) {
+          product.group = group;
+        }
+      }
+      
+      if (fieldsToUpdate.volume !== null) {
+        const volumeRaw = row[fieldsToUpdate.volume];
+        const volume = parseFloat(String(volumeRaw || '0').replace(',', '.'));
+        if (volume > 0) {
+          product.volume = volume;
+        }
+      }
+      
+      if (fieldsToUpdate.photos !== null) {
+        const photosRaw = row[fieldsToUpdate.photos];
+        const photos = String(photosRaw || '').trim();
+        if (photos) {
+          product.photos = photos.split(';').map(s => s.trim()).filter(Boolean);
+        }
+      }
+      
+      parsedProducts.push(product);
+    }
+    
+    progress.total = parsedProducts.length;
+    progress.status = 'processing';
+    onProgress(progress);
+    
+    if (parsedProducts.length === 0) {
+      progress.status = 'error';
+      progress.errors.push('Не найдено товаров для импорта. Проверьте сопоставление колонок.');
+      onProgress(progress);
+      return {
+        success: false,
+        matched: 0,
+        created: 0,
+        hidden: 0,
+        errors: progress.errors
+      };
+    }
+    
+    // Fetch existing products
+    const { data: existingProducts, error: fetchError } = await supabase
+      .from('products')
+      .select('id, name, sku, buy_price, unit, is_active')
+      .eq('store_id', storeId)
+      .is('deleted_at', null);
+    
+    if (fetchError) throw fetchError;
+    
+    // Create lookup maps
+    const skuMap = new Map<string, ExistingProduct>();
+    const nameMap = new Map<string, ExistingProduct>();
+    existingProducts?.forEach(p => {
+      if (p.sku) skuMap.set(p.sku.toLowerCase().trim(), p);
+      nameMap.set(p.name.toLowerCase().trim(), p);
+    });
+    
+    // Fetch existing groups
+    const { data: existingGroups } = await supabase
+      .from('product_groups')
+      .select('id, name')
+      .eq('store_id', storeId);
+    
+    const groupCache = new Map<string, string>();
+    existingGroups?.forEach(g => {
+      groupCache.set(g.name.toLowerCase().trim(), g.id);
+    });
+    
+    // Track products in file for hiding logic
+    const productsInFile = new Set<string>();
+    
+    // Process each product
+    for (let i = 0; i < parsedProducts.length; i++) {
+      const product = parsedProducts[i];
+      progress.current = i + 1;
+      progress.currentProduct = product.name || product.identifier;
+      onProgress(progress);
+      
+      // Find existing product
+      let existing: ExistingProduct | undefined;
+      if (product.identifierType === 'sku') {
+        existing = skuMap.get(product.identifier.toLowerCase().trim());
+      } else {
+        existing = nameMap.get(product.identifier.toLowerCase().trim());
+      }
+      
+      if (existing) {
+        // Update existing product
+        productsInFile.add(existing.id);
+        
+        const updateData: Record<string, unknown> = {};
+        
+        if (product.buyPrice !== undefined) {
+          updateData.buy_price = product.buyPrice;
+        }
+        
+        if (product.unit !== undefined) {
+          updateData.unit = product.unit;
+        }
+        
+        if (product.name !== undefined && product.identifierType === 'sku') {
+          updateData.name = product.name;
+        }
+        
+        if (product.description !== undefined) {
+          updateData.description = product.description;
+        }
+        
+        if (product.volume !== undefined) {
+          updateData.unit_weight = product.volume;
+        }
+        
+        // Handle photos
+        if (product.photos && product.photos.length > 0) {
+          // For now, just set images directly (TODO: upload via edge function)
+          updateData.images = product.photos;
+        }
+        
+        if (Object.keys(updateData).length > 0) {
+          const { error: updateError } = await supabase
+            .from('products')
+            .update(updateData)
+            .eq('id', existing.id);
+          
+          if (updateError) {
+            progress.errors.push(`Строка ${product.rowIndex}: Ошибка обновления "${product.identifier}" - ${updateError.message}`);
+          } else {
+            progress.matched++;
+            
+            // Handle group assignment
+            if (product.group) {
+              const groupId = await getOrCreateGroupInternal(product.group, storeId, groupCache);
+              if (groupId) {
+                await assignProductToGroupInternal(existing.id, groupId);
+              }
+            }
+          }
+        }
+      } else if (options.createNewProducts) {
+        // Create new product
+        const productName = product.name || product.identifier;
+        const slug = generateSlug(productName) + '-' + Date.now().toString(36);
+        
+        const { data: newProduct, error: createError } = await supabase
+          .from('products')
+          .insert({
+            store_id: storeId,
+            name: productName,
+            sku: product.identifierType === 'sku' ? product.identifier : null,
+            slug: slug,
+            price: product.buyPrice || 0,
+            buy_price: product.buyPrice || 0,
+            markup_type: 'percent',
+            markup_value: 0,
+            is_active: true,
+            quantity: 0,
+            unit: product.unit || 'шт',
+            description: product.description || null,
+            unit_weight: product.volume || null,
+            images: product.photos || null,
+            source: 'excel'
+          })
+          .select('id')
+          .single();
+        
+        if (createError) {
+          progress.errors.push(`Строка ${product.rowIndex}: Ошибка создания "${productName}" - ${createError.message}`);
+        } else if (newProduct) {
+          progress.created++;
+          productsInFile.add(newProduct.id);
+          
+          // Handle group assignment
+          if (product.group) {
+            const groupId = await getOrCreateGroupInternal(product.group, storeId, groupCache);
+            if (groupId) {
+              await assignProductToGroupInternal(newProduct.id, groupId);
+            }
+          }
+        }
+      }
+    }
+    
+    // Hide products not in file
+    if (options.hideNotInFile && existingProducts) {
+      for (const existing of existingProducts) {
+        if (!productsInFile.has(existing.id) && existing.is_active) {
+          const { error: hideError } = await supabase
+            .from('products')
+            .update({ is_active: false })
+            .eq('id', existing.id);
+          
+          if (!hideError) {
+            progress.hidden++;
+          }
+        }
+      }
+    }
+    
+    progress.status = 'complete';
+    onProgress(progress);
+    
+    return {
+      success: true,
+      matched: progress.matched,
+      created: progress.created,
+      hidden: progress.hidden,
+      errors: progress.errors
+    };
+    
+  } catch (error) {
+    console.error('[AssortmentImport] Error:', error);
+    progress.status = 'error';
+    progress.errors.push(error instanceof Error ? error.message : 'Неизвестная ошибка');
+    onProgress(progress);
+    
+    return {
+      success: false,
+      matched: progress.matched,
+      created: progress.created,
+      hidden: progress.hidden,
+      errors: progress.errors
+    };
+  }
+}
+
+// Internal types
+interface ParsedAssortmentProduct {
+  identifier: string;
+  identifierType: 'sku' | 'name';
+  rowIndex: number;
+  buyPrice?: number;
+  unit?: string;
+  name?: string;
+  description?: string;
+  group?: string;
+  volume?: number;
+  photos?: string[];
+}
+
+interface ExistingProduct {
+  id: string;
+  name: string;
+  sku: string | null;
+  buy_price: number | null;
+  unit: string | null;
+  is_active: boolean | null;
+}
+
+// Internal helpers (to avoid conflicts with excelImport.ts)
+function findDataStartRowInternal(data: unknown[][], maxRowsToCheck: number = 20): number {
+  for (let i = 0; i < Math.min(maxRowsToCheck, data.length); i++) {
+    const row = data[i] as unknown[];
+    if (!row) continue;
+    
+    let hasTextValue = false;
+    let hasNumericValue = false;
+    let nonEmptyCount = 0;
+    
+    for (const cell of row) {
+      if (cell === undefined || cell === null || cell === '') continue;
+      nonEmptyCount++;
+      
+      const str = String(cell).trim();
+      
+      if (/^\d[\d\s]*[,.]?\d*$/.test(str.replace(/\s/g, '')) && parseFloat(str.replace(/\s/g, '').replace(',', '.')) > 0) {
+        hasNumericValue = true;
+      }
+      
+      if (str.length >= 3 && /[а-яА-Яa-zA-Z]/.test(str)) {
+        const lowerStr = str.toLowerCase();
+        if (!lowerStr.includes('номенклатура') && 
+            !lowerStr.includes('артикул') && 
+            !lowerStr.includes('прайс') && 
+            !lowerStr.includes('наименование') &&
+            !lowerStr.includes('изображение') &&
+            !lowerStr.includes('упаковка') &&
+            !lowerStr.includes('rub') &&
+            !lowerStr.includes('ндс') &&
+            !lowerStr.includes('цена')) {
+          hasTextValue = true;
+        }
+      }
+    }
+    
+    if (nonEmptyCount >= 2 && hasTextValue && hasNumericValue) {
+      return i;
+    }
+  }
+  
+  for (let i = 0; i < Math.min(maxRowsToCheck, data.length); i++) {
+    const row = data[i] as unknown[];
+    if (!row) continue;
+    const nonEmptyCells = row.filter(cell => cell !== undefined && cell !== null && cell !== '').length;
+    if (nonEmptyCells >= 2) {
+      return i;
+    }
+  }
+  
+  return 0;
+}
+
+async function getOrCreateGroupInternal(
+  groupName: string,
+  storeId: string,
+  groupCache: Map<string, string>
+): Promise<string | null> {
+  if (!groupName || !groupName.trim()) return null;
+  
+  const normalizedName = groupName.trim();
+  const normalizedLower = normalizedName.toLowerCase();
+  
+  if (groupCache.has(normalizedLower)) {
+    return groupCache.get(normalizedLower)!;
+  }
+  
+  const { data, error } = await supabase
+    .from('product_groups')
+    .insert({
+      store_id: storeId,
+      name: normalizedName,
+      sort_order: groupCache.size
+    })
+    .select('id')
+    .single();
+    
+  if (error) {
+    console.error('Error creating group:', error);
+    return null;
+  }
+  
+  groupCache.set(normalizedLower, data.id);
+  return data.id;
+}
+
+async function assignProductToGroupInternal(productId: string, groupId: string): Promise<void> {
+  await supabase
+    .from('product_group_assignments')
+    .delete()
+    .eq('product_id', productId);
+
+  const { error } = await supabase
+    .from('product_group_assignments')
+    .insert({
+      product_id: productId,
+      group_id: groupId
+    });
+    
+  if (error) {
+    console.error('Error assigning product to group:', error);
+  }
 }

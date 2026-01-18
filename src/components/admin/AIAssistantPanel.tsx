@@ -115,6 +115,10 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       buyPrice: null,
       unit: null,
       name: null,
+      description: null,
+      group: null,
+      volume: null,
+      photos: null,
     }
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -169,6 +173,10 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       buyPrice: null,
       unit: null,
       name: null,
+      description: null,
+      group: null,
+      volume: null,
+      photos: null,
     }
   }), []);
 
@@ -374,6 +382,10 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
           buyPrice: preview.suggestedPriceColumn,
           unit: null,
           name: preview.suggestedSkuColumn !== null ? preview.suggestedNameColumn : null,
+          description: null,
+          group: null,
+          volume: null,
+          photos: null,
         }
       });
     } catch (err) {
