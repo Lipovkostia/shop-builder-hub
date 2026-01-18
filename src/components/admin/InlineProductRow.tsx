@@ -123,6 +123,21 @@ export function InlineProductRow({
         )}
       </TableCell>
 
+      {/* Номенклатура (SKU) */}
+      <TableCell className="text-sm text-muted-foreground">
+        {isEditing ? (
+          <Input
+            value={editedProduct.sku || ""}
+            onChange={(e) => setEditedProduct({ ...editedProduct, sku: e.target.value })}
+            onKeyDown={handleKeyDown}
+            className="h-8 w-[100px]"
+            placeholder="SKU"
+          />
+        ) : (
+          <span className="font-mono text-xs">{product.sku || "—"}</span>
+        )}
+      </TableCell>
+
       {/* Источник */}
       <TableCell>
         {product.source === "moysklad" ? (
@@ -309,20 +324,6 @@ export function InlineProductRow({
         </Badge>
       </TableCell>
 
-      {/* Номенклатура (SKU) */}
-      <TableCell className="text-sm text-muted-foreground">
-        {isEditing ? (
-          <Input
-            value={editedProduct.sku || ""}
-            onChange={(e) => setEditedProduct({ ...editedProduct, sku: e.target.value })}
-            onKeyDown={handleKeyDown}
-            className="h-8 w-[100px]"
-            placeholder="SKU"
-          />
-        ) : (
-          <span className="font-mono text-xs">{product.sku || "—"}</span>
-        )}
-      </TableCell>
 
       {/* Синхр. */}
       <TableCell>

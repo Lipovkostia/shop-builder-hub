@@ -753,6 +753,7 @@ export default function AdminPanel({
   // Filters for "All Products" table
   const [allProductsFilters, setAllProductsFilters] = useState({
     name: "",
+    sku: "",
     desc: "",
     source: "all",
     unit: "all",
@@ -897,6 +898,7 @@ export default function AdminPanel({
     checkbox: true,
     photo: true,
     name: true,
+    sku: true,
     desc: true,
     source: true,
     unit: true,
@@ -913,6 +915,7 @@ export default function AdminPanel({
     checkbox: "Выбор",
     photo: "Фото",
     name: "Название",
+    sku: "Номенкл.",
     desc: "Описание",
     source: "Источник",
     unit: "Ед.",
@@ -2977,6 +2980,9 @@ export default function AdminPanel({
       if (allProductsFilters.name && !product.name.toLowerCase().includes(allProductsFilters.name.toLowerCase())) {
         return false;
       }
+      if (allProductsFilters.sku && !(product.sku || '').toLowerCase().includes(allProductsFilters.sku.toLowerCase())) {
+        return false;
+      }
       if (allProductsFilters.desc && !(product.description || '').toLowerCase().includes(allProductsFilters.desc.toLowerCase())) {
         return false;
       }
@@ -3326,6 +3332,7 @@ export default function AdminPanel({
                     { id: "drag", minWidth: 32, defaultWidth: 32 },
                     { id: "photo", minWidth: 50, defaultWidth: 50 },
                     { id: "name", minWidth: 120, defaultWidth: 180 },
+                    { id: "sku", minWidth: 80, defaultWidth: 100 },
                     { id: "desc", minWidth: 100, defaultWidth: 150 },
                     { id: "source", minWidth: 80, defaultWidth: 90 },
                     { id: "unit", minWidth: 60, defaultWidth: 70 },
@@ -3360,6 +3367,9 @@ export default function AdminPanel({
                       )}
                       {visibleColumns.name && (
                         <ResizableTableHead columnId="name" minWidth={120}>Название</ResizableTableHead>
+                      )}
+                      {visibleColumns.sku && (
+                        <ResizableTableHead columnId="sku" minWidth={80}>Номенкл.</ResizableTableHead>
                       )}
                       {visibleColumns.desc && (
                         <ResizableTableHead columnId="desc" minWidth={100}>Описание</ResizableTableHead>
@@ -3407,6 +3417,15 @@ export default function AdminPanel({
                           <ColumnFilter 
                             value={allProductsFilters.name} 
                             onChange={(v) => setAllProductsFilters(f => ({...f, name: v}))}
+                            placeholder="Поиск..."
+                          />
+                        </ResizableTableHead>
+                      )}
+                      {visibleColumns.sku && (
+                        <ResizableTableHead columnId="sku" minWidth={80} resizable={false}>
+                          <ColumnFilter 
+                            value={allProductsFilters.sku || ""} 
+                            onChange={(v) => setAllProductsFilters(f => ({...f, sku: v}))}
                             placeholder="Поиск..."
                           />
                         </ResizableTableHead>
