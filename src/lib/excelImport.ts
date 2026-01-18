@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Template column headers (Russian)
 export const EXCEL_TEMPLATE_HEADERS = [
+  'Номенклатура',
   'Название*',
   'Описание',
   'Закупочная цена',
@@ -15,6 +16,7 @@ export const EXCEL_TEMPLATE_HEADERS = [
 
 // Example row for template
 const EXAMPLE_ROW = [
+  'SYR-001',
   'Сыр Голландский',
   'Твёрдый сыр высокого качества, выдержка 12 месяцев',
   300,
@@ -27,6 +29,7 @@ const EXAMPLE_ROW = [
 
 // Default instructions (will be dynamically updated for groups)
 const DEFAULT_INSTRUCTIONS = [
+  'Уникальный код товара (опционально)',
   'Обязательное поле',
   'Опционально',
   'Опционально (число)',
@@ -73,6 +76,7 @@ export async function downloadExcelTemplate(storeId: string): Promise<void> {
 
   // Set column widths
   ws['!cols'] = [
+    { wch: 15 }, // Номенклатура
     { wch: 25 }, // Название
     { wch: 40 }, // Описание
     { wch: 15 }, // Закупочная цена
@@ -143,6 +147,7 @@ export interface ImportProgress {
 }
 
 export interface ExcelRow {
+  'Номенклатура'?: string;
   'Название*'?: string;
   'Описание'?: string;
   'Закупочная цена'?: number | string;
@@ -157,15 +162,18 @@ export interface ExcelRow {
 export interface DuplicateProduct {
   excelRowIndex: number;
   excelName: string;
+  excelSku?: string;
   excelRow: ExcelRow;
   existingProduct: {
     id: string;
     name: string;
+    sku: string | null;
     description: string | null;
     buy_price: number | null;
     quantity: number;
   };
   shouldUpdate: boolean;
+  matchedBy: 'sku' | 'name';
 }
 
 // Pre-import check result
@@ -177,6 +185,7 @@ export interface PreImportCheck {
 
 /**
  * Check for duplicate products before import
+ * Priority: first match by SKU, then by name
  */
 export async function checkForDuplicates(
   file: File,
@@ -213,11 +222,20 @@ export async function checkForDuplicates(
     return { newProducts: [], duplicates: [], totalRows: 0 };
   }
 
-  // Get existing products from database
+  // Get existing products from database (include sku)
   const { data: existingProducts } = await supabase
     .from('products')
-    .select('id, name, description, buy_price, quantity')
-    .eq('store_id', storeId);
+    .select('id, name, sku, description, buy_price, quantity')
+    .eq('store_id', storeId)
+    .is('deleted_at', null);
+
+  // Create maps for quick lookup
+  const skuMap = new Map<string, typeof existingProducts[0]>();
+  const nameMap = new Map<string, typeof existingProducts[0]>();
+  existingProducts?.forEach(p => {
+    if (p.sku) skuMap.set(p.sku.toLowerCase(), p);
+    nameMap.set(p.name.toLowerCase(), p);
+  });
 
   // Find duplicates
   const duplicates: DuplicateProduct[] = [];
@@ -225,17 +243,31 @@ export async function checkForDuplicates(
 
   validRows.forEach(({ row, rowIndex }) => {
     const excelName = row['Название*']?.toString().trim() || '';
-    const existing = existingProducts?.find(
-      p => p.name.toLowerCase() === excelName.toLowerCase()
-    );
+    const excelSku = row['Номенклатура']?.toString().trim() || '';
+    
+    // Priority: match by SKU first, then by name
+    let existing: typeof existingProducts[0] | undefined;
+    let matchedBy: 'sku' | 'name' = 'name';
+    
+    if (excelSku) {
+      existing = skuMap.get(excelSku.toLowerCase());
+      if (existing) matchedBy = 'sku';
+    }
+    
+    if (!existing) {
+      existing = nameMap.get(excelName.toLowerCase());
+      matchedBy = 'name';
+    }
 
     if (existing) {
       duplicates.push({
         excelRowIndex: rowIndex,
         excelName,
+        excelSku,
         excelRow: row,
         existingProduct: existing,
         shouldUpdate: true,
+        matchedBy,
       });
     } else {
       newProducts.push({ row, rowIndex });
@@ -375,11 +407,14 @@ export async function importProductsFromExcel(
       groupCache.set(g.name.toLowerCase(), g.id);
     });
 
-    // Create a map of duplicates to update for quick lookup
+    // Create a map of duplicates to update for quick lookup (by sku and name)
     const duplicateMap = new Map<string, DuplicateProduct>();
     duplicatesToUpdate.forEach(d => {
       if (d.shouldUpdate) {
-        duplicateMap.set(d.excelName.toLowerCase(), d);
+        if (d.excelSku) {
+          duplicateMap.set(`sku:${d.excelSku.toLowerCase()}`, d);
+        }
+        duplicateMap.set(`name:${d.excelName.toLowerCase()}`, d);
       }
     });
 
@@ -393,6 +428,7 @@ export async function importProductsFromExcel(
       try {
         // Validate required fields
         const name = row['Название*']?.toString().trim();
+        const sku = row['Номенклатура']?.toString().trim() || null;
 
         if (!name) {
           progress.errors.push(`Строка ${i + 3}: Отсутствует название товара`);
@@ -403,21 +439,36 @@ export async function importProductsFromExcel(
         const buyPrice = parseFloat(row['Закупочная цена']?.toString() || '0') || null;
         const unitWeight = parseFloat(row['Объём']?.toString() || '0') || null;
 
-        // Check if this is a duplicate to update
-        const duplicateInfo = duplicateMap.get(name.toLowerCase());
+        // Check if this is a duplicate to update (by sku first, then by name)
+        let duplicateInfo = sku ? duplicateMap.get(`sku:${sku.toLowerCase()}`) : undefined;
+        if (!duplicateInfo) {
+          duplicateInfo = duplicateMap.get(`name:${name.toLowerCase()}`);
+        }
 
         if (duplicateInfo) {
-          // UPDATE existing product
+          // UPDATE existing product (update name if matched by sku, update sku if provided)
+          const updateData: any = {
+            description: row['Описание']?.toString().trim() || null,
+            buy_price: buyPrice,
+            unit: mapUnit(row['Единица измерения']),
+            unit_weight: unitWeight,
+            packaging_type: mapPackagingType(row['Тип фасовки']),
+            updated_at: new Date().toISOString()
+          };
+          
+          // If matched by SKU, we can also update the name
+          if (duplicateInfo.matchedBy === 'sku') {
+            updateData.name = name;
+          }
+          
+          // Update SKU if provided in Excel
+          if (sku) {
+            updateData.sku = sku;
+          }
+          
           const { error: updateError } = await supabase
             .from('products')
-            .update({
-              description: row['Описание']?.toString().trim() || null,
-              buy_price: buyPrice,
-              unit: mapUnit(row['Единица измерения']),
-              unit_weight: unitWeight,
-              packaging_type: mapPackagingType(row['Тип фасовки']),
-              updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', duplicateInfo.existingProduct.id);
 
           if (updateError) {
@@ -449,9 +500,14 @@ export async function importProductsFromExcel(
 
           progress.updatedCount = (progress.updatedCount || 0) + 1;
         } else {
-          // Check if this is a duplicate that was skipped
-          const allDuplicates = duplicatesToUpdate.map(d => d.excelName.toLowerCase());
-          if (allDuplicates.includes(name.toLowerCase())) {
+          // Check if this is a duplicate that was skipped (by sku or name)
+          const allDuplicateNames = duplicatesToUpdate.map(d => d.excelName.toLowerCase());
+          const allDuplicateSkus = duplicatesToUpdate
+            .filter(d => d.excelSku)
+            .map(d => d.excelSku!.toLowerCase());
+          
+          if (allDuplicateNames.includes(name.toLowerCase()) || 
+              (sku && allDuplicateSkus.includes(sku.toLowerCase()))) {
             // This duplicate was not selected for update, skip it
             continue;
           }
@@ -462,6 +518,7 @@ export async function importProductsFromExcel(
             .insert({
               store_id: storeId,
               name,
+              sku,
               description: row['Описание']?.toString().trim() || null,
               price: 0,
               buy_price: buyPrice,
@@ -587,7 +644,8 @@ export async function exportProductsToExcel(
   storeId: string,
   products: { 
     id: string; 
-    name: string; 
+    name: string;
+    sku: string | null;
     description: string | null; 
     buy_price: number | null; 
     unit: string | null; 
@@ -616,6 +674,7 @@ export async function exportProductsToExcel(
       : '';
 
     return [
+      product.sku || '',                              // Номенклатура
       product.name || '',                              // Название*
       product.description || '',                       // Описание
       product.buy_price ?? '',                         // Закупочная цена
@@ -638,6 +697,7 @@ export async function exportProductsToExcel(
 
   // Set column widths
   ws['!cols'] = [
+    { wch: 15 }, // Номенклатура
     { wch: 30 }, // Название
     { wch: 50 }, // Описание
     { wch: 15 }, // Закупочная цена
@@ -684,6 +744,7 @@ const STATUS_LABELS_REVERSE: Record<string, string> = {
 
 // Template column headers for catalog import (Russian)
 export const CATALOG_IMPORT_TEMPLATE_HEADERS = [
+  'Номенклатура',
   'Название*',
   'Описание',
   'Категории',
@@ -703,6 +764,7 @@ export const CATALOG_IMPORT_TEMPLATE_HEADERS = [
 
 // Instructions for catalog import template
 const CATALOG_IMPORT_INSTRUCTIONS = [
+  'Уникальный код товара',
   'Обязательное',
   'Опционально',
   'Через ; (Сыры; Твердые)',
@@ -722,6 +784,7 @@ const CATALOG_IMPORT_INSTRUCTIONS = [
 
 // Example row for catalog import template
 const CATALOG_IMPORT_EXAMPLE = [
+  'SYR-001',
   'Сыр Голландский',
   'Твёрдый сыр высокого качества',
   'Сыры; Твёрдые сыры',
@@ -751,6 +814,7 @@ export interface CatalogImportProgress {
 }
 
 export interface CatalogExcelRow {
+  'Номенклатура'?: string;
   'Название*'?: string;
   'Описание'?: string;
   'Категории'?: string;
@@ -789,6 +853,7 @@ export interface CatalogImportCheck {
 
 /**
  * Check which products exist in the assortment before catalog import
+ * Priority: match by SKU first, then by name
  */
 export async function checkCatalogImportProducts(
   file: File,
@@ -820,16 +885,19 @@ export async function checkCatalogImportProducts(
     return { existingProducts: [], newProducts: [], errors: [], totalRows: 0 };
   }
 
-  // Get existing products from database
+  // Get existing products from database (include sku)
   const { data: existingProducts } = await supabase
     .from('products')
-    .select('id, name')
-    .eq('store_id', storeId);
+    .select('id, name, sku')
+    .eq('store_id', storeId)
+    .is('deleted_at', null);
 
-  // Create map for quick lookup
-  const productMap = new Map<string, string>();
+  // Create maps for quick lookup
+  const skuMap = new Map<string, { id: string; name: string }>();
+  const nameMap = new Map<string, { id: string; name: string }>();
   existingProducts?.forEach(p => {
-    productMap.set(p.name.toLowerCase(), p.id);
+    if (p.sku) skuMap.set(p.sku.toLowerCase(), { id: p.id, name: p.name });
+    nameMap.set(p.name.toLowerCase(), { id: p.id, name: p.name });
   });
 
   // Categorize rows
@@ -842,19 +910,30 @@ export async function checkCatalogImportProducts(
 
   validRows.forEach(({ row, rowIndex }) => {
     const name = row['Название*']?.toString().trim();
+    const sku = row['Номенклатура']?.toString().trim();
+    
     if (!name) {
       result.errors.push(`Строка ${rowIndex}: Отсутствует название товара`);
       return;
     }
 
-    const productId = productMap.get(name.toLowerCase());
+    // Priority: match by SKU first, then by name
+    let existing: { id: string; name: string } | undefined;
     
-    if (productId) {
+    if (sku) {
+      existing = skuMap.get(sku.toLowerCase());
+    }
+    
+    if (!existing) {
+      existing = nameMap.get(name.toLowerCase());
+    }
+    
+    if (existing) {
       result.existingProducts.push({
         row,
         rowIndex,
-        productId,
-        productName: name
+        productId: existing.id,
+        productName: existing.name
       });
     } else {
       result.newProducts.push({
@@ -918,6 +997,7 @@ export async function downloadCatalogImportTemplate(storeId: string, catalogId: 
 
   // Set column widths
   ws['!cols'] = [
+    { wch: 15 }, // Номенклатура
     { wch: 25 }, // Название
     { wch: 35 }, // Описание
     { wch: 25 }, // Категории

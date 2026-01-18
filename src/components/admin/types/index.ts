@@ -38,6 +38,7 @@ export interface Product {
   description: string;
   pricePerUnit: number;
   unit: string;
+  sku?: string;  // Уникальный идентификатор (Номенклатура)
   image: string;
   imageFull?: string;
   images?: string[];  // Все изображения товара (полные URL или base64)
