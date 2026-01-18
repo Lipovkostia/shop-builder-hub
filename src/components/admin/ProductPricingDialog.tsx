@@ -178,6 +178,22 @@ export function ProductPricingDialog({
                 />
               </div>
               <div className="space-y-2">
+                <Label>Номенклатура (SKU)</Label>
+                <Input
+                  value={editedProduct.sku || ""}
+                  onChange={(e) =>
+                    setEditedProduct((prev) =>
+                      prev ? { ...prev, sku: e.target.value } : prev
+                    )
+                  }
+                  placeholder="Уникальный идентификатор"
+                  className="font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label>Единица измерения</Label>
                 <Select
                   value={editedProduct.unit}
@@ -199,9 +215,6 @@ export function ProductPricingDialog({
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Вид товара / упаковка</Label>
                 <Select
@@ -224,26 +237,26 @@ export function ProductPricingDialog({
                   </SelectContent>
                 </Select>
               </div>
-
-              {editedProduct.packagingType === "head" && (
-                <div className="space-y-2">
-                  <Label>Вес единицы (кг)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={editedProduct.unitWeight || ""}
-                    onChange={(e) =>
-                      setEditedProduct((prev) =>
-                        prev
-                          ? { ...prev, unitWeight: parseFloat(e.target.value) || 0 }
-                          : prev
-                      )
-                    }
-                    placeholder="Например: 5.5"
-                  />
-                </div>
-              )}
             </div>
+
+            {editedProduct.packagingType === "head" && (
+              <div className="space-y-2">
+                <Label>Вес единицы (кг)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={editedProduct.unitWeight || ""}
+                  onChange={(e) =>
+                    setEditedProduct((prev) =>
+                      prev
+                        ? { ...prev, unitWeight: parseFloat(e.target.value) || 0 }
+                        : prev
+                    )
+                  }
+                  placeholder="Например: 5.5"
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
