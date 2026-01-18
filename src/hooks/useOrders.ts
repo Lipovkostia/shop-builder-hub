@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { logActivity } from "@/hooks/useActivityLogs";
 
 export interface OrderItem {
   id: string;
@@ -158,6 +159,8 @@ export function useStoreOrders(storeId: string | null) {
   }, [storeId, toast]);
 
   const updateOrderStatus = useCallback(async (orderId: string, status: Order["status"]) => {
+    const order = orders.find(o => o.id === orderId);
+    const oldStatus = order?.status;
     try {
       const { error } = await supabase
         .from("orders")
@@ -167,6 +170,18 @@ export function useStoreOrders(storeId: string | null) {
       if (error) throw error;
 
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+      
+      // Log activity
+      if (storeId && order) {
+        logActivity({
+          storeId,
+          actionType: 'status_change',
+          entityType: 'order',
+          entityId: orderId,
+          entityName: order.order_number,
+          details: { old_status: oldStatus, new_status: status },
+        });
+      }
       
       toast({
         title: "Статус обновлён",
@@ -179,7 +194,7 @@ export function useStoreOrders(storeId: string | null) {
         variant: "destructive",
       });
     }
-  }, [toast]);
+  }, [storeId, orders, toast]);
 
   useEffect(() => {
     fetchOrders();

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useVisibilityRefetch } from "@/hooks/useVisibilityRefetch";
+import { logActivity } from "@/hooks/useActivityLogs";
 
 export interface Catalog {
   id: string;
@@ -103,6 +104,16 @@ export function useStoreCatalogs(storeId: string | null) {
       if (error) throw error;
       
       setCatalogs(prev => [...prev, data]);
+      
+      // Log activity
+      logActivity({
+        storeId,
+        actionType: 'create',
+        entityType: 'catalog',
+        entityId: data.id,
+        entityName: name,
+      });
+      
       toast({
         title: "Каталог создан",
         description: `Прайс-лист "${name}" успешно создан`,
@@ -121,6 +132,7 @@ export function useStoreCatalogs(storeId: string | null) {
 
   // Update a catalog
   const updateCatalog = useCallback(async (catalogId: string, updates: Partial<Catalog>) => {
+    const catalog = catalogs.find(c => c.id === catalogId);
     try {
       const { data, error } = await supabase
         .from("catalogs")
@@ -132,6 +144,19 @@ export function useStoreCatalogs(storeId: string | null) {
       if (error) throw error;
       
       setCatalogs(prev => prev.map(c => c.id === catalogId ? data : c));
+      
+      // Log activity for name changes
+      if (storeId && updates.name && catalog?.name !== updates.name) {
+        logActivity({
+          storeId,
+          actionType: 'update',
+          entityType: 'catalog',
+          entityId: catalogId,
+          entityName: data.name,
+          details: { field: 'name', old_value: catalog?.name, new_value: updates.name },
+        });
+      }
+      
       return data;
     } catch (error: any) {
       console.error("Error updating catalog:", error);
@@ -142,10 +167,11 @@ export function useStoreCatalogs(storeId: string | null) {
       });
       return null;
     }
-  }, [toast]);
+  }, [storeId, catalogs, toast]);
 
   // Delete a catalog
   const deleteCatalog = useCallback(async (catalogId: string) => {
+    const catalog = catalogs.find(c => c.id === catalogId);
     try {
       const { error } = await supabase
         .from("catalogs")
@@ -155,6 +181,18 @@ export function useStoreCatalogs(storeId: string | null) {
       if (error) throw error;
       
       setCatalogs(prev => prev.filter(c => c.id !== catalogId));
+      
+      // Log activity
+      if (storeId && catalog) {
+        logActivity({
+          storeId,
+          actionType: 'delete',
+          entityType: 'catalog',
+          entityId: catalogId,
+          entityName: catalog.name,
+        });
+      }
+      
       toast({
         title: "Каталог удалён",
       });
@@ -168,7 +206,7 @@ export function useStoreCatalogs(storeId: string | null) {
       });
       return false;
     }
-  }, [toast]);
+  }, [storeId, catalogs, toast]);
 
   // Toggle product visibility in a catalog
   const toggleProductVisibility = useCallback(async (productId: string, catalogId: string) => {
