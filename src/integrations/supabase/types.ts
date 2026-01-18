@@ -709,6 +709,7 @@ export type Database = {
           category_id: string | null
           compare_price: number | null
           created_at: string
+          deleted_at: string | null
           description: string | null
           id: string
           images: string[] | null
@@ -741,6 +742,7 @@ export type Database = {
           category_id?: string | null
           compare_price?: number | null
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           id?: string
           images?: string[] | null
@@ -773,6 +775,7 @@ export type Database = {
           category_id?: string | null
           compare_price?: number | null
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           id?: string
           images?: string[] | null
