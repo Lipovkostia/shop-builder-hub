@@ -16,6 +16,7 @@ export interface CustomerCatalog {
 export interface CatalogProduct {
   id: string;
   name: string;
+  sku?: string | null;
   description: string | null;
   price: number;
   compare_price: number | null;
@@ -263,6 +264,7 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
         return {
           id: p.id,
           name: p.name,
+          sku: (p as any).sku ?? null,
           description: p.description,
           price: finalPrice,
           compare_price: p.compare_price,
