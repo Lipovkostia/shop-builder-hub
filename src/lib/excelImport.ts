@@ -1363,6 +1363,7 @@ export async function importProductsToCatalog(
 
 // Catalog export product interface
 export interface CatalogExportProduct {
+  sku: string | null;
   name: string;
   description: string | null;
   categories: string[] | null;
@@ -1390,6 +1391,7 @@ export function exportCatalogToExcel(
 ): void {
   // Define column mappings
   const columnMappings: { id: string; header: string; getValue: (p: CatalogExportProduct) => string | number }[] = [
+    { id: 'sku', header: 'Номенклатура', getValue: p => p.sku || '' },
     { id: 'photo', header: 'Фото', getValue: p => (p.images || []).join('; ') },
     { id: 'name', header: 'Название', getValue: p => p.name || '' },
     { id: 'description', header: 'Описание', getValue: p => p.description || '' },
