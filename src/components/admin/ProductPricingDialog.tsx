@@ -178,7 +178,7 @@ export function ProductPricingDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Номенклатура (SKU)</Label>
+                <Label>Код товара (SKU)</Label>
                 <Input
                   value={editedProduct.sku || ""}
                   onChange={(e) =>

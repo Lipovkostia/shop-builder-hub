@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Template column headers (Russian)
 export const EXCEL_TEMPLATE_HEADERS = [
-  'Номенклатура',
+  'Код товара',
   'Название*',
   'Описание',
   'Закупочная цена',
@@ -76,7 +76,7 @@ export async function downloadExcelTemplate(storeId: string): Promise<void> {
 
   // Set column widths
   ws['!cols'] = [
-    { wch: 15 }, // Номенклатура
+    { wch: 15 }, // Код товара
     { wch: 25 }, // Название
     { wch: 40 }, // Описание
     { wch: 15 }, // Закупочная цена
@@ -147,7 +147,7 @@ export interface ImportProgress {
 }
 
 export interface ExcelRow {
-  'Номенклатура'?: string;
+  'Код товара'?: string;
   'Название*'?: string;
   'Описание'?: string;
   'Закупочная цена'?: number | string;
@@ -243,7 +243,7 @@ export async function checkForDuplicates(
 
   validRows.forEach(({ row, rowIndex }) => {
     const excelName = row['Название*']?.toString().trim() || '';
-    const excelSku = row['Номенклатура']?.toString().trim() || '';
+    const excelSku = row['Код товара']?.toString().trim() || '';
     
     // Priority: match by SKU first, then by name
     let existing: typeof existingProducts[0] | undefined;
@@ -428,7 +428,7 @@ export async function importProductsFromExcel(
       try {
         // Validate required fields
         const name = row['Название*']?.toString().trim();
-        const sku = row['Номенклатура']?.toString().trim() || null;
+        const sku = row['Код товара']?.toString().trim() || null;
 
         if (!name) {
           progress.errors.push(`Строка ${i + 3}: Отсутствует название товара`);
@@ -674,7 +674,7 @@ export async function exportProductsToExcel(
       : '';
 
     return [
-      product.sku || '',                              // Номенклатура
+      product.sku || '',                              // Код товара
       product.name || '',                              // Название*
       product.description || '',                       // Описание
       product.buy_price ?? '',                         // Закупочная цена
@@ -697,7 +697,7 @@ export async function exportProductsToExcel(
 
   // Set column widths
   ws['!cols'] = [
-    { wch: 15 }, // Номенклатура
+    { wch: 15 }, // Код товара
     { wch: 30 }, // Название
     { wch: 50 }, // Описание
     { wch: 15 }, // Закупочная цена
@@ -744,7 +744,7 @@ const STATUS_LABELS_REVERSE: Record<string, string> = {
 
 // Template column headers for catalog import (Russian)
 export const CATALOG_IMPORT_TEMPLATE_HEADERS = [
-  'Номенклатура',
+  'Код товара',
   'Название*',
   'Описание',
   'Категории',
@@ -814,7 +814,7 @@ export interface CatalogImportProgress {
 }
 
 export interface CatalogExcelRow {
-  'Номенклатура'?: string;
+  'Код товара'?: string;
   'Название*'?: string;
   'Описание'?: string;
   'Категории'?: string;
@@ -910,7 +910,7 @@ export async function checkCatalogImportProducts(
 
   validRows.forEach(({ row, rowIndex }) => {
     const name = row['Название*']?.toString().trim();
-    const sku = row['Номенклатура']?.toString().trim();
+    const sku = row['Код товара']?.toString().trim();
     
     if (!name) {
       result.errors.push(`Строка ${rowIndex}: Отсутствует название товара`);
@@ -997,7 +997,7 @@ export async function downloadCatalogImportTemplate(storeId: string, catalogId: 
 
   // Set column widths
   ws['!cols'] = [
-    { wch: 15 }, // Номенклатура
+    { wch: 15 }, // Код товара
     { wch: 25 }, // Название
     { wch: 35 }, // Описание
     { wch: 25 }, // Категории
@@ -1391,7 +1391,7 @@ export function exportCatalogToExcel(
 ): void {
   // Define column mappings
   const columnMappings: { id: string; header: string; getValue: (p: CatalogExportProduct) => string | number }[] = [
-    { id: 'sku', header: 'Номенклатура', getValue: p => p.sku || '' },
+    { id: 'sku', header: 'Код товара', getValue: p => p.sku || '' },
     { id: 'photo', header: 'Фото', getValue: p => (p.images || []).join('; ') },
     { id: 'name', header: 'Название', getValue: p => p.name || '' },
     { id: 'description', header: 'Описание', getValue: p => p.description || '' },

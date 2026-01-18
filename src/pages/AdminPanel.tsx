@@ -915,7 +915,7 @@ export default function AdminPanel({
     checkbox: "Выбор",
     photo: "Фото",
     name: "Название",
-    sku: "Номенкл.",
+    sku: "Код",
     desc: "Описание",
     source: "Источник",
     unit: "Ед.",
@@ -3369,7 +3369,7 @@ export default function AdminPanel({
                         <ResizableTableHead columnId="name" minWidth={120}>Название</ResizableTableHead>
                       )}
                       {visibleColumns.sku && (
-                        <ResizableTableHead columnId="sku" minWidth={80}>Номенкл.</ResizableTableHead>
+                        <ResizableTableHead columnId="sku" minWidth={80}>Код товара</ResizableTableHead>
                       )}
                       {visibleColumns.desc && (
                         <ResizableTableHead columnId="desc" minWidth={100}>Описание</ResizableTableHead>
