@@ -34,8 +34,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { 
   previewPriceListExcel, 
-  parseProductsWithMapping, 
-  importProductsToCatalog, 
+  parseProductsWithExtendedMapping, 
+  importProductsToCatalogExtended, 
   analyzeProductsForImport,
   PriceListImportProgress,
   PriceListProduct,
@@ -106,9 +106,17 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
   const [importProgress, setImportProgress] = useState<PriceListImportProgress | null>(null);
   const [importStatus, setImportStatus] = useState<string>('');
   
-  // Column mapping state
+  // Column mapping state - using extended mapping interface
   const [excelPreview, setExcelPreview] = useState<ExcelPreviewData | null>(null);
-  const [columnMapping, setColumnMapping] = useState<ColumnMapping>({ nameColumn: null, priceColumn: null });
+  const [columnMapping, setColumnMapping] = useState<ColumnMapping>({
+    identifierType: 'name',
+    identifierColumn: null,
+    fieldsToUpdate: {
+      buyPrice: null,
+      unit: null,
+      name: null,
+    }
+  });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
   // New products confirmation state
@@ -153,17 +161,28 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     setShowCatalogSelector(false);
   }, []);
   
+  // Helper to get default column mapping
+  const getDefaultColumnMapping = useCallback((): ColumnMapping => ({
+    identifierType: 'name',
+    identifierColumn: null,
+    fieldsToUpdate: {
+      buyPrice: null,
+      unit: null,
+      name: null,
+    }
+  }), []);
+
   // Handle catalog change (reset import state)
   const handleChangeCatalog = useCallback(() => {
     setShowCatalogSelector(true);
     // Reset any in-progress import
     setExcelPreview(null);
-    setColumnMapping({ nameColumn: null, priceColumn: null });
+    setColumnMapping(getDefaultColumnMapping());
     setSelectedFile(null);
     setShowNewProductsDialog(false);
     setProductAnalysis(null);
     setParsedProducts([]);
-  }, []);
+  }, [getDefaultColumnMapping]);
 
   // Reset on close
   useEffect(() => {
@@ -177,7 +196,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       setImportProgress(null);
       setImportStatus('');
       setExcelPreview(null);
-      setColumnMapping({ nameColumn: null, priceColumn: null });
+      setColumnMapping(getDefaultColumnMapping());
       setSelectedFile(null);
       setShowNewProductsDialog(false);
       setProductAnalysis(null);
@@ -189,7 +208,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       }
       setShowCatalogSelector(false);
     }
-  }, [open, reset, catalogId]);
+  }, [open, reset, catalogId, getDefaultColumnMapping]);
 
   // Recording timer
   useEffect(() => {
@@ -347,9 +366,15 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     try {
       const preview = await previewPriceListExcel(file);
       setExcelPreview(preview);
+      // Set initial mapping based on suggestions
       setColumnMapping({
-        nameColumn: preview.suggestedNameColumn,
-        priceColumn: preview.suggestedPriceColumn,
+        identifierType: preview.suggestedSkuColumn !== null ? 'sku' : 'name',
+        identifierColumn: preview.suggestedSkuColumn ?? preview.suggestedNameColumn,
+        fieldsToUpdate: {
+          buyPrice: preview.suggestedPriceColumn,
+          unit: null,
+          name: preview.suggestedSkuColumn !== null ? preview.suggestedNameColumn : null,
+        }
       });
     } catch (err) {
       toast({
@@ -366,9 +391,9 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
   // Cancel column mapping
   const handleCancelMapping = useCallback(() => {
     setExcelPreview(null);
-    setColumnMapping({ nameColumn: null, priceColumn: null });
+    setColumnMapping(getDefaultColumnMapping());
     setSelectedFile(null);
-  }, []);
+  }, [getDefaultColumnMapping]);
 
   // Confirm column mapping and analyze products
   const handleConfirmMapping = useCallback(async () => {
@@ -392,7 +417,12 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     }
     
     if (!excelPreview || !selectedFile) return;
-    if (columnMapping.nameColumn === null || columnMapping.priceColumn === null) return;
+    if (columnMapping.identifierColumn === null) return;
+    
+    // Check that at least one update field is selected
+    const { fieldsToUpdate } = columnMapping;
+    const hasFieldToUpdate = fieldsToUpdate.buyPrice !== null || fieldsToUpdate.unit !== null || fieldsToUpdate.name !== null;
+    if (!hasFieldToUpdate) return;
     
     // Show parsing status
     setIsParsing(true);
@@ -401,12 +431,8 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     // Small delay to ensure UI updates
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    // Parse products with the selected mapping
-    const products = parseProductsWithMapping(
-      excelPreview,
-      columnMapping.nameColumn,
-      columnMapping.priceColumn
-    );
+    // Parse products with the extended mapping
+    const products = parseProductsWithExtendedMapping(excelPreview, columnMapping);
     
     if (products.length === 0) {
       setIsParsing(false);
@@ -423,7 +449,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     
     try {
       // Analyze products - find matching and new
-      const analysis = await analyzeProductsForImport(products, storeId);
+      const analysis = await analyzeProductsForImport(products, storeId, columnMapping.identifierType);
       
       setParsedProducts(products);
       setProductAnalysis(analysis);
@@ -490,15 +516,28 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       errors: []
     });
     
+    // Determine which fields to update based on mapping
+    const fieldsToUpdateArray: ('buyPrice' | 'unit' | 'name')[] = [];
+    if (columnMapping.fieldsToUpdate.buyPrice !== null) fieldsToUpdateArray.push('buyPrice');
+    if (columnMapping.fieldsToUpdate.unit !== null) fieldsToUpdateArray.push('unit');
+    if (columnMapping.fieldsToUpdate.name !== null) fieldsToUpdateArray.push('name');
+    
     try {
-      const result = await importProductsToCatalog(productsToImport, storeId, effectiveCatalogId, (progress) => {
-        setImportProgress({ ...progress });
-        if (progress.status === 'processing') {
-          setImportStatus(`Обработка: ${progress.current} из ${progress.total}`);
-        } else if (progress.status === 'complete') {
-          setImportStatus('Импорт завершён!');
+      const result = await importProductsToCatalogExtended(
+        productsToImport, 
+        storeId, 
+        effectiveCatalogId, 
+        columnMapping.identifierType,
+        fieldsToUpdateArray,
+        (progress) => {
+          setImportProgress({ ...progress });
+          if (progress.status === 'processing') {
+            setImportStatus(`Обработка: ${progress.current} из ${progress.total}`);
+          } else if (progress.status === 'complete') {
+            setImportStatus('Импорт завершён!');
+          }
         }
-      });
+      );
       
       if (result.success) {
         setImportStatus('Готово!');
