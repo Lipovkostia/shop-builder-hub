@@ -1702,6 +1702,7 @@ export default function AdminPanel({
           const portionPrices = catalogPricing?.portionPrices;
           
           return {
+            sku: product.sku || null,
             name: product.name,
             description: product.description,
             categories: catalogPricing?.categories || null,
@@ -2836,6 +2837,7 @@ export default function AdminPanel({
     return supabaseProducts.map(sp => ({
       id: sp.id,
       name: sp.name,
+      sku: sp.sku || undefined,
       description: sp.description || "",
       pricePerUnit: sp.price,
       buyPrice: sp.buy_price || undefined,
@@ -2875,6 +2877,7 @@ export default function AdminPanel({
 
     const result = await updateSupabaseProduct(updatedProduct.id, {
       name: updatedProduct.name,
+      sku: updatedProduct.sku || null,
       description: updatedProduct.description || null,
       price: updatedProduct.pricePerUnit,
       buy_price: updatedProduct.buyPrice || null,
