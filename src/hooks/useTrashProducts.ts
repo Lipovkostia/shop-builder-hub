@@ -162,111 +162,6 @@ export function useTrashProducts(storeId: string | null) {
     [toast]
   );
 
-  // Permanently delete a product
-  const permanentlyDeleteProduct = useCallback(
-    async (productId: string) => {
-      const product = trashedProducts.find((p) => p.id === productId);
-      try {
-        const { error } = await supabase
-          .from("products")
-          .delete()
-          .eq("id", productId);
-
-        if (error) throw error;
-
-        setTrashedProducts((prev) => prev.filter((p) => p.id !== productId));
-
-        // Log activity
-        if (storeId && product) {
-          logActivity({
-            storeId,
-            actionType: "permanent_delete",
-            entityType: "product",
-            entityId: productId,
-            entityName: product.name,
-          });
-        }
-
-        toast({
-          title: "Товар удалён навсегда",
-        });
-        return true;
-      } catch (error: any) {
-        console.error("Error permanently deleting product:", error);
-        toast({
-          title: "Ошибка удаления",
-          description: error.message,
-          variant: "destructive",
-        });
-        return false;
-      }
-    },
-    [storeId, trashedProducts, toast]
-  );
-
-  // Permanently delete multiple products
-  const permanentlyDeleteProducts = useCallback(
-    async (productIds: string[]) => {
-      try {
-        const { error } = await supabase
-          .from("products")
-          .delete()
-          .in("id", productIds);
-
-        if (error) throw error;
-
-        setTrashedProducts((prev) => prev.filter((p) => !productIds.includes(p.id)));
-        
-        toast({
-          title: "Товары удалены навсегда",
-          description: `Удалено ${productIds.length} товаров`,
-        });
-        return true;
-      } catch (error: any) {
-        console.error("Error permanently deleting products:", error);
-        toast({
-          title: "Ошибка удаления",
-          description: error.message,
-          variant: "destructive",
-        });
-        return false;
-      }
-    },
-    [toast]
-  );
-
-  // Empty the entire trash
-  const emptyTrash = useCallback(async () => {
-    if (!storeId) return false;
-    
-    try {
-      const { error } = await supabase
-        .from("products")
-        .delete()
-        .eq("store_id", storeId)
-        .not("deleted_at", "is", null);
-
-      if (error) throw error;
-
-      const count = trashedProducts.length;
-      setTrashedProducts([]);
-      
-      toast({
-        title: "Корзина очищена",
-        description: `Удалено ${count} товаров навсегда`,
-      });
-      return true;
-    } catch (error: any) {
-      console.error("Error emptying trash:", error);
-      toast({
-        title: "Ошибка очистки корзины",
-        description: error.message,
-        variant: "destructive",
-      });
-      return false;
-    }
-  }, [storeId, trashedProducts.length, toast]);
-
   // Initial fetch
   useEffect(() => {
     fetchTrashedProducts();
@@ -277,9 +172,6 @@ export function useTrashProducts(storeId: string | null) {
     loading,
     restoreProduct,
     restoreProducts,
-    permanentlyDeleteProduct,
-    permanentlyDeleteProducts,
-    emptyTrash,
     refetch: fetchTrashedProducts,
   };
 }
