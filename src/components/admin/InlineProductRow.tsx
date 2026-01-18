@@ -123,7 +123,7 @@ export function InlineProductRow({
         )}
       </TableCell>
 
-      {/* Номенклатура (SKU) */}
+      {/* Код товара (SKU) */}
       <TableCell className="text-sm text-muted-foreground">
         {isEditing ? (
           <Input
