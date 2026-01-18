@@ -2,9 +2,14 @@ import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface PriceListProduct {
-  name: string;
-  buyPrice: number;
-  rawPrice: string;
+  // Identifier fields
+  sku?: string;           // Product code (if identifying by SKU)
+  name: string;           // Product name
+  
+  // Fields to update
+  buyPrice?: number;      // Buy price (optional)
+  unit?: string;          // Unit of measurement (optional)
+  rawPrice?: string;      // Original price string
 }
 
 export interface PriceListImportProgress {
@@ -37,7 +42,19 @@ export interface ExcelPreviewData {
   rowCount: number;
   suggestedNameColumn: number | null;
   suggestedPriceColumn: number | null;
+  suggestedSkuColumn: number | null;
   rawData: unknown[][];
+}
+
+// Extended column mapping interface
+export interface ExtendedColumnMapping {
+  identifierType: 'sku' | 'name';
+  identifierColumn: number | null;
+  fieldsToUpdate: {
+    buyPrice: number | null;
+    unit: number | null;
+    name: number | null;
+  };
 }
 
 /**
@@ -184,6 +201,7 @@ export async function previewPriceListExcel(file: File): Promise<ExcelPreviewDat
   const columns: ExcelColumnInfo[] = [];
   let suggestedNameColumn: number | null = null;
   let suggestedPriceColumn: number | null = null;
+  let suggestedSkuColumn: number | null = null;
   
   // Find max column count
   let maxCols = 0;
@@ -207,6 +225,13 @@ export async function previewPriceListExcel(file: File): Promise<ExcelPreviewDat
     // Determine column header by looking at sample values pattern
     let header = `Колонка ${colIdx + 1}`;
     
+    // Check if this looks like a SKU column (short codes, alphanumeric)
+    const looksLikeSku = sampleValues.some(v => {
+      const str = String(v).trim();
+      // SKU typically: short (< 20 chars), alphanumeric, may have dashes
+      return str.length > 0 && str.length < 30 && /^[a-zA-Z0-9\-_.]+$/.test(str);
+    });
+    
     // Check if this looks like a name column (text values)
     const hasTextValues = sampleValues.some(v => {
       const str = String(v).trim();
@@ -219,7 +244,20 @@ export async function previewPriceListExcel(file: File): Promise<ExcelPreviewDat
       return parsed > 0 && parsed < 10000000;
     });
     
-    if (hasTextValues && !hasNumericValues) {
+    // Check for unit column (short text like "кг", "шт", "л")
+    const looksLikeUnit = sampleValues.some(v => {
+      const str = String(v).trim().toLowerCase();
+      return ['кг', 'шт', 'л', 'м', 'уп', 'бут', 'пач', 'kg', 'pcs', 'pc'].includes(str);
+    });
+    
+    if (looksLikeSku && !hasNumericValues) {
+      header = 'Код товара';
+      if (suggestedSkuColumn === null) {
+        suggestedSkuColumn = colIdx;
+      }
+    } else if (looksLikeUnit) {
+      header = 'Единица измерения';
+    } else if (hasTextValues && !hasNumericValues && !looksLikeSku) {
       header = 'Название товара';
       if (suggestedNameColumn === null) {
         suggestedNameColumn = colIdx;
@@ -276,7 +314,8 @@ export async function previewPriceListExcel(file: File): Promise<ExcelPreviewDat
     columns: columns.length, 
     rowCount, 
     suggestedNameColumn, 
-    suggestedPriceColumn 
+    suggestedPriceColumn,
+    suggestedSkuColumn
   });
   
   return {
@@ -284,12 +323,98 @@ export async function previewPriceListExcel(file: File): Promise<ExcelPreviewDat
     rowCount,
     suggestedNameColumn,
     suggestedPriceColumn,
+    suggestedSkuColumn,
     rawData: data,
   };
 }
 
 /**
- * Parse products from Excel using specified column mapping
+ * Parse products from Excel using extended column mapping
+ */
+export function parseProductsWithExtendedMapping(
+  previewData: ExcelPreviewData,
+  mapping: ExtendedColumnMapping
+): PriceListProduct[] {
+  const products: PriceListProduct[] = [];
+  const data = previewData.rawData;
+  
+  // Find first data row using the same logic as preview
+  const dataStartRowIdx = findDataStartRow(data);
+  
+  // Parse data rows starting from data start
+  for (let i = dataStartRowIdx; i < data.length; i++) {
+    const row = data[i];
+    if (!row) continue;
+    
+    // Get identifier value
+    const identifierValue = mapping.identifierColumn !== null 
+      ? String(row[mapping.identifierColumn] || '').trim() 
+      : '';
+    
+    // Skip rows without valid identifier
+    if (!identifierValue || identifierValue.length < 1) continue;
+    
+    // Skip header-like rows
+    const identifierLower = identifierValue.toLowerCase();
+    if (identifierLower.includes('номенклатура') || 
+        identifierLower.includes('артикул') ||
+        identifierLower.includes('название') ||
+        identifierLower.includes('наименование') ||
+        identifierLower.includes('код товара') ||
+        identifierLower.includes('sku')) {
+      continue;
+    }
+    
+    // Build product object
+    const product: PriceListProduct = {
+      name: mapping.identifierType === 'name' ? identifierValue : '',
+      sku: mapping.identifierType === 'sku' ? identifierValue : undefined,
+    };
+    
+    // Add fields to update
+    const { fieldsToUpdate } = mapping;
+    
+    if (fieldsToUpdate.buyPrice !== null) {
+      const priceRaw = row[fieldsToUpdate.buyPrice];
+      const price = parsePrice(priceRaw as string | number);
+      if (price > 0) {
+        product.buyPrice = price;
+        product.rawPrice = String(priceRaw);
+      }
+    }
+    
+    if (fieldsToUpdate.unit !== null) {
+      const unitRaw = row[fieldsToUpdate.unit];
+      const unit = String(unitRaw || '').trim();
+      if (unit) {
+        product.unit = unit;
+      }
+    }
+    
+    if (fieldsToUpdate.name !== null && mapping.identifierType === 'sku') {
+      const nameRaw = row[fieldsToUpdate.name];
+      const name = String(nameRaw || '').trim();
+      if (name) {
+        product.name = name;
+      }
+    }
+    
+    // For name-based identification, we need at least one field to update
+    if (mapping.identifierType === 'name') {
+      if (product.buyPrice === undefined && product.unit === undefined) {
+        continue;
+      }
+    }
+    
+    products.push(product);
+  }
+  
+  console.log(`[PriceList] Parsed ${products.length} products with extended mapping`);
+  return products;
+}
+
+/**
+ * Parse products from Excel using legacy column mapping (backward compatibility)
  */
 export function parseProductsWithMapping(
   previewData: ExcelPreviewData,
@@ -339,7 +464,7 @@ export function parseProductsWithMapping(
 export interface ProductAnalysis {
   matchingProducts: Array<{
     excel: PriceListProduct;
-    existing: { id: string; name: string; buy_price: number | null };
+    existing: { id: string; name: string; sku: string | null; buy_price: number | null; unit: string | null };
   }>;
   newProducts: PriceListProduct[];
 }
@@ -349,28 +474,40 @@ export interface ProductAnalysis {
  */
 export async function analyzeProductsForImport(
   products: PriceListProduct[],
-  storeId: string
+  storeId: string,
+  identifierType: 'sku' | 'name' = 'name'
 ): Promise<ProductAnalysis> {
   // Fetch existing products for the store
   const { data: existingProducts, error: fetchError } = await supabase
     .from('products')
-    .select('id, name, buy_price')
+    .select('id, name, sku, buy_price, unit')
     .eq('store_id', storeId);
   
   if (fetchError) throw fetchError;
   
-  // Create a map for quick lookup (lowercase name -> product)
-  const productMap = new Map<string, { id: string; name: string; buy_price: number | null }>();
+  // Create a map for quick lookup based on identifier type
+  const productMap = new Map<string, { id: string; name: string; sku: string | null; buy_price: number | null; unit: string | null }>();
   existingProducts?.forEach(p => {
-    productMap.set(p.name.toLowerCase().trim(), p);
+    if (identifierType === 'sku' && p.sku) {
+      productMap.set(p.sku.toLowerCase().trim(), p);
+    } else {
+      productMap.set(p.name.toLowerCase().trim(), p);
+    }
   });
   
   const matchingProducts: ProductAnalysis['matchingProducts'] = [];
   const newProducts: PriceListProduct[] = [];
   
   for (const excelProduct of products) {
-    const nameLower = excelProduct.name.toLowerCase().trim();
-    const existingProduct = productMap.get(nameLower);
+    let lookupKey: string;
+    
+    if (identifierType === 'sku' && excelProduct.sku) {
+      lookupKey = excelProduct.sku.toLowerCase().trim();
+    } else {
+      lookupKey = excelProduct.name.toLowerCase().trim();
+    }
+    
+    const existingProduct = productMap.get(lookupKey);
     
     if (existingProduct) {
       matchingProducts.push({
@@ -382,23 +519,20 @@ export async function analyzeProductsForImport(
     }
   }
   
-  console.log(`[PriceList] Analysis: ${matchingProducts.length} matching, ${newProducts.length} new`);
+  console.log(`[PriceList] Analysis (${identifierType}): ${matchingProducts.length} matching, ${newProducts.length} new`);
   
   return { matchingProducts, newProducts };
 }
 
 /**
- * Import products from parsed list to catalog
- * 
- * Logic:
- * 1. If product name 100% matches - update only buy_price
- * 2. If no match - create new product with 0% markup
- * 3. Products NOT in the Excel file - set status to "hidden"
+ * Import products from parsed list to catalog with extended field support
  */
-export async function importProductsToCatalog(
+export async function importProductsToCatalogExtended(
   products: PriceListProduct[],
   storeId: string,
   catalogId: string,
+  identifierType: 'sku' | 'name',
+  fieldsToUpdate: ('buyPrice' | 'unit' | 'name')[],
   onProgress: (progress: PriceListImportProgress) => void
 ): Promise<PriceListImportResult> {
   const progress: PriceListImportProgress = {
@@ -431,15 +565,19 @@ export async function importProductsToCatalog(
     // Fetch existing products for the store
     const { data: existingProducts, error: fetchError } = await supabase
       .from('products')
-      .select('id, name, buy_price')
+      .select('id, name, sku, buy_price, unit')
       .eq('store_id', storeId);
     
     if (fetchError) throw fetchError;
     
-    // Create a map for quick lookup (lowercase name -> product)
-    const productMap = new Map<string, { id: string; name: string; buy_price: number | null }>();
+    // Create a map for quick lookup based on identifier type
+    const productMap = new Map<string, { id: string; name: string; sku: string | null; buy_price: number | null; unit: string | null }>();
     existingProducts?.forEach(p => {
-      productMap.set(p.name.toLowerCase().trim(), p);
+      if (identifierType === 'sku' && p.sku) {
+        productMap.set(p.sku.toLowerCase().trim(), p);
+      } else {
+        productMap.set(p.name.toLowerCase().trim(), p);
+      }
     });
     
     // Track which products are in the Excel file
@@ -449,51 +587,80 @@ export async function importProductsToCatalog(
     for (let i = 0; i < products.length; i++) {
       const excelProduct = products[i];
       progress.current = i + 1;
-      progress.currentProduct = excelProduct.name;
+      progress.currentProduct = excelProduct.sku || excelProduct.name;
       onProgress(progress);
       
-      const nameLower = excelProduct.name.toLowerCase().trim();
-      const existingProduct = productMap.get(nameLower);
+      let lookupKey: string;
+      if (identifierType === 'sku' && excelProduct.sku) {
+        lookupKey = excelProduct.sku.toLowerCase().trim();
+      } else {
+        lookupKey = excelProduct.name.toLowerCase().trim();
+      }
+      
+      const existingProduct = productMap.get(lookupKey);
       
       if (existingProduct) {
-        // 100% match found - update only buy_price
+        // Match found - update only selected fields
         productsInExcel.add(existingProduct.id);
         
-        const { error: updateError } = await supabase
-          .from('products')
-          .update({ 
-            buy_price: excelProduct.buyPrice,
-            markup_type: 'percent',
-            markup_value: 0
-          })
-          .eq('id', existingProduct.id);
+        // Build update object with only selected fields
+        const updateData: Record<string, unknown> = {};
         
-        if (updateError) {
-          progress.errors.push(`Ошибка обновления "${excelProduct.name}": ${updateError.message}`);
-        } else {
-          progress.matched++;
+        if (fieldsToUpdate.includes('buyPrice') && excelProduct.buyPrice !== undefined) {
+          updateData.buy_price = excelProduct.buyPrice;
+          updateData.markup_type = 'percent';
+          updateData.markup_value = 0;
+          // Update price to match buy_price (0% markup)
+          updateData.price = excelProduct.buyPrice;
+        }
+        
+        if (fieldsToUpdate.includes('unit') && excelProduct.unit) {
+          updateData.unit = excelProduct.unit;
+        }
+        
+        if (fieldsToUpdate.includes('name') && excelProduct.name && identifierType === 'sku') {
+          updateData.name = excelProduct.name;
+        }
+        
+        // Only update if there's something to update
+        if (Object.keys(updateData).length > 0) {
+          const { error: updateError } = await supabase
+            .from('products')
+            .update(updateData)
+            .eq('id', existingProduct.id);
           
-          // Ensure product is visible in this catalog
-          await supabase
-            .from('product_catalog_visibility')
-            .upsert({
-              product_id: existingProduct.id,
-              catalog_id: catalogId
-            }, { onConflict: 'product_id,catalog_id' });
-          
-          // Update status to in_stock in catalog settings
-          await supabase
-            .from('catalog_product_settings')
-            .upsert({
-              product_id: existingProduct.id,
-              catalog_id: catalogId,
-              status: 'in_stock',
-              markup_type: 'percent',
-              markup_value: 0
-            }, { onConflict: 'product_id,catalog_id' });
+          if (updateError) {
+            progress.errors.push(`Ошибка обновления "${excelProduct.name || excelProduct.sku}": ${updateError.message}`);
+          } else {
+            progress.matched++;
+            
+            // Ensure product is visible in this catalog
+            await supabase
+              .from('product_catalog_visibility')
+              .upsert({
+                product_id: existingProduct.id,
+                catalog_id: catalogId
+              }, { onConflict: 'product_id,catalog_id' });
+            
+            // Update status to in_stock in catalog settings
+            await supabase
+              .from('catalog_product_settings')
+              .upsert({
+                product_id: existingProduct.id,
+                catalog_id: catalogId,
+                status: 'in_stock',
+                markup_type: 'percent',
+                markup_value: 0
+              }, { onConflict: 'product_id,catalog_id' });
+          }
         }
       } else {
-        // No match - create new product
+        // No match - create new product (only if we have name)
+        if (!excelProduct.name) {
+          progress.errors.push(`Не указано название для товара с кодом "${excelProduct.sku}"`);
+          continue;
+        }
+        
         const slug = generateSlug(excelProduct.name) + '-' + Date.now().toString(36);
         
         const { data: newProduct, error: createError } = await supabase
@@ -501,14 +668,15 @@ export async function importProductsToCatalog(
           .insert({
             store_id: storeId,
             name: excelProduct.name,
+            sku: excelProduct.sku || null,
             slug: slug,
-            price: excelProduct.buyPrice, // Set price same as buy price (0% markup)
-            buy_price: excelProduct.buyPrice,
+            price: excelProduct.buyPrice || 0,
+            buy_price: excelProduct.buyPrice || 0,
             markup_type: 'percent',
             markup_value: 0,
             is_active: true,
             quantity: 0,
-            unit: 'кг'
+            unit: excelProduct.unit || 'кг'
           })
           .select('id')
           .single();
@@ -592,4 +760,24 @@ export async function importProductsToCatalog(
       errors: progress.errors
     };
   }
+}
+
+/**
+ * Import products from parsed list to catalog (legacy function for backward compatibility)
+ */
+export async function importProductsToCatalog(
+  products: PriceListProduct[],
+  storeId: string,
+  catalogId: string,
+  onProgress: (progress: PriceListImportProgress) => void
+): Promise<PriceListImportResult> {
+  // Use extended import with name identification and buyPrice update
+  return importProductsToCatalogExtended(
+    products,
+    storeId,
+    catalogId,
+    'name',
+    ['buyPrice'],
+    onProgress
+  );
 }
