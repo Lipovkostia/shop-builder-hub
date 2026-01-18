@@ -31,6 +31,10 @@ export interface ColumnMapping {
     buyPrice: number | null;
     unit: number | null;
     name: number | null;
+    description: number | null;
+    group: number | null;
+    volume: number | null;
+    photos: number | null;
   };
 }
 
@@ -38,6 +42,12 @@ export interface ColumnMapping {
 export interface LegacyColumnMapping {
   nameColumn: number | null;
   priceColumn: number | null;
+}
+
+// Import options for full import mode
+export interface ImportOptions {
+  createNewProducts: boolean;
+  hideNotInFile: boolean;
 }
 
 interface ExcelColumnMappingProps {
@@ -48,13 +58,28 @@ interface ExcelColumnMappingProps {
   onCancel: () => void;
   fileName: string;
   rowCount: number;
+  // Extended mode props (for assortment import)
+  mode?: 'price-list' | 'assortment';
+  importOptions?: ImportOptions;
+  onImportOptionsChange?: (options: ImportOptions) => void;
 }
 
-// Field definitions for "what to update"
-const updateFields = [
+// Base update fields (shown in price-list mode)
+const baseUpdateFields = [
   { key: 'buyPrice', label: 'Себестоимость', description: 'Закупочная цена товара' },
   { key: 'unit', label: 'Единица измерения', description: 'кг, шт, л и т.д.' },
   { key: 'name', label: 'Название', description: 'Обновить название товара' },
+] as const;
+
+// Additional fields for assortment mode
+const assortmentFields = [
+  { key: 'buyPrice', label: 'Себестоимость', description: 'Закупочная цена товара' },
+  { key: 'unit', label: 'Единица измерения', description: 'кг, шт, л и т.д.' },
+  { key: 'name', label: 'Название', description: 'Обновить название товара' },
+  { key: 'description', label: 'Описание', description: 'Описание товара' },
+  { key: 'group', label: 'Группа', description: 'Группа товара' },
+  { key: 'volume', label: 'Объём', description: 'Вес или количество в упаковке' },
+  { key: 'photos', label: 'Фото', description: 'Ссылки на изображения через ;' },
 ] as const;
 
 export function ExcelColumnMapping({
@@ -65,12 +90,22 @@ export function ExcelColumnMapping({
   onCancel,
   fileName,
   rowCount,
+  mode = 'price-list',
+  importOptions,
+  onImportOptionsChange,
 }: ExcelColumnMappingProps) {
+  // Get the appropriate field list based on mode
+  const updateFields = mode === 'assortment' ? assortmentFields : baseUpdateFields;
+  
   // Track which update fields are enabled
   const [enabledFields, setEnabledFields] = useState<Record<string, boolean>>({
     buyPrice: mapping.fieldsToUpdate.buyPrice !== null,
     unit: mapping.fieldsToUpdate.unit !== null,
     name: mapping.fieldsToUpdate.name !== null,
+    description: mapping.fieldsToUpdate.description !== null,
+    group: mapping.fieldsToUpdate.group !== null,
+    volume: mapping.fieldsToUpdate.volume !== null,
+    photos: mapping.fieldsToUpdate.photos !== null,
   });
 
   // Validation: identifier must be selected and at least one update field
@@ -324,6 +359,56 @@ export function ExcelColumnMapping({
               })}
             </div>
           </div>
+          {/* Import options for assortment mode */}
+          {mode === 'assortment' && importOptions && onImportOptionsChange && (
+            <>
+              <div className="border-t" />
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                  </div>
+                  <p className="text-sm font-medium">Дополнительные действия</p>
+                </div>
+                
+                <div className="pl-8 space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <Checkbox 
+                      id="create-new"
+                      checked={importOptions.createNewProducts}
+                      onCheckedChange={(checked) => onImportOptionsChange({
+                        ...importOptions,
+                        createNewProducts: !!checked
+                      })}
+                    />
+                    <Label htmlFor="create-new" className="cursor-pointer">
+                      <span className="font-medium">Создать новые товары</span>
+                      <span className="text-xs text-muted-foreground block">
+                        Если товар не найден — создать с наценкой 0%
+                      </span>
+                    </Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <Checkbox 
+                      id="hide-missing"
+                      checked={importOptions.hideNotInFile}
+                      onCheckedChange={(checked) => onImportOptionsChange({
+                        ...importOptions,
+                        hideNotInFile: !!checked
+                      })}
+                    />
+                    <Label htmlFor="hide-missing" className="cursor-pointer">
+                      <span className="font-medium">Скрыть отсутствующие</span>
+                      <span className="text-xs text-muted-foreground block">
+                        Деактивировать товары которых нет в файле
+                      </span>
+                    </Label>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </ScrollArea>
 
