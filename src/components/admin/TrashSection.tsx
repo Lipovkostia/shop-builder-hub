@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Trash2, RotateCcw, AlertTriangle, Package, Search, Loader2 } from "lucide-react";
+import { Trash2, RotateCcw, Package, Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,17 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { useTrashProducts, TrashedProduct } from "@/hooks/useTrashProducts";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -37,15 +26,10 @@ export function TrashSection({ storeId }: TrashSectionProps) {
     loading,
     restoreProduct,
     restoreProducts,
-    permanentlyDeleteProduct,
-    permanentlyDeleteProducts,
-    emptyTrash,
   } = useTrashProducts(storeId);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [isEmptyingTrash, setIsEmptyingTrash] = useState(false);
-  const [isDeletingSelected, setIsDeletingSelected] = useState(false);
   const [isRestoringSelected, setIsRestoringSelected] = useState(false);
 
   // Filter products by search
@@ -81,20 +65,6 @@ export function TrashSection({ storeId }: TrashSectionProps) {
     setIsRestoringSelected(false);
   };
 
-  const handleDeleteSelected = async () => {
-    setIsDeletingSelected(true);
-    await permanentlyDeleteProducts(Array.from(selectedIds));
-    setSelectedIds(new Set());
-    setIsDeletingSelected(false);
-  };
-
-  const handleEmptyTrash = async () => {
-    setIsEmptyingTrash(true);
-    await emptyTrash();
-    setSelectedIds(new Set());
-    setIsEmptyingTrash(false);
-  };
-
   const formatDeletedAt = (deletedAt: string) => {
     try {
       return formatDistanceToNow(new Date(deletedAt), { addSuffix: true, locale: ru });
@@ -123,42 +93,6 @@ export function TrashSection({ storeId }: TrashSectionProps) {
             <Badge variant="secondary">{trashedProducts.length}</Badge>
           )}
         </div>
-
-        {trashedProducts.length > 0 && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" disabled={isEmptyingTrash}>
-                {isEmptyingTrash ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Trash2 className="h-4 w-4 mr-2" />
-                )}
-                Очистить корзину
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-destructive" />
-                  Очистить корзину?
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  Все {trashedProducts.length} товаров будут удалены навсегда. 
-                  Это действие нельзя отменить.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Отмена</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleEmptyTrash}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Удалить всё
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
       </div>
 
       {trashedProducts.length === 0 ? (
@@ -196,40 +130,6 @@ export function TrashSection({ storeId }: TrashSectionProps) {
                   )}
                   Восстановить ({selectedIds.size})
                 </Button>
-                
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" disabled={isDeletingSelected}>
-                      {isDeletingSelected ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Trash2 className="h-4 w-4 mr-2" />
-                      )}
-                      Удалить ({selectedIds.size})
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-destructive" />
-                        Удалить навсегда?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {selectedIds.size} товаров будут удалены безвозвратно. 
-                        Это действие нельзя отменить.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Отмена</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDeleteSelected}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Удалить навсегда
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
               </div>
             )}
           </div>
@@ -249,7 +149,7 @@ export function TrashSection({ storeId }: TrashSectionProps) {
                   <TableHead>Название</TableHead>
                   <TableHead className="hidden sm:table-cell">Цена</TableHead>
                   <TableHead className="hidden md:table-cell">Удалено</TableHead>
-                  <TableHead className="w-24 text-right">Действия</TableHead>
+                  <TableHead className="w-20 text-right">Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -284,41 +184,14 @@ export function TrashSection({ storeId }: TrashSectionProps) {
                       {formatDeletedAt(product.deleted_at)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => restoreProduct(product.id)}
-                          title="Восстановить"
-                        >
-                          <RotateCcw className="h-4 w-4 text-green-600" />
-                        </Button>
-                        
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" title="Удалить навсегда">
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Удалить навсегда?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Товар "{product.name}" будет удалён безвозвратно.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Отмена</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => permanentlyDeleteProduct(product.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Удалить
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => restoreProduct(product.id)}
+                        title="Восстановить"
+                      >
+                        <RotateCcw className="h-4 w-4 text-green-600" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
