@@ -299,6 +299,46 @@ export function useStoreCatalogs(storeId: string | null) {
     }
   }, [productVisibility, toast]);
 
+  // Bulk remove products from a catalog
+  const removeProductsFromCatalog = useCallback(async (productIds: string[], catalogId: string) => {
+    if (productIds.length === 0) return;
+    
+    try {
+      const { error } = await supabase
+        .from("product_catalog_visibility")
+        .delete()
+        .in("product_id", productIds)
+        .eq("catalog_id", catalogId);
+
+      if (error) throw error;
+
+      // Update local state
+      setProductVisibility(prev => {
+        const updated = { ...prev };
+        productIds.forEach(productId => {
+          if (updated[productId]) {
+            const newSet = new Set(updated[productId]);
+            newSet.delete(catalogId);
+            updated[productId] = newSet;
+          }
+        });
+        return updated;
+      });
+
+      toast({
+        title: "Товары убраны из прайс-листа",
+        description: `Убрано ${productIds.length} товар(ов)`,
+      });
+    } catch (error: any) {
+      console.error("Error removing products from catalog:", error);
+      toast({
+        title: "Ошибка удаления из прайс-листа",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
   // Initial fetch
   useEffect(() => {
     fetchCatalogs();
@@ -320,6 +360,7 @@ export function useStoreCatalogs(storeId: string | null) {
     deleteCatalog,
     toggleProductVisibility,
     setProductCatalogs,
+    removeProductsFromCatalog,
     refetch: () => {
       fetchCatalogs();
       fetchProductVisibility();
