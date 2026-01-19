@@ -145,7 +145,9 @@ function GuestProductCard({
   const quarterPrice = quarterPricePerKg * (unitWeight / 4);
 
   const catalogStatus = product.catalog_status;
-  const canOrder = catalogStatus ? catalogStatus === "in_stock" || catalogStatus === "pre_order" : product.quantity > 0;
+  // If catalog_status is not set, treat as "in_stock" (available for order)
+  // Only explicitly set statuses like "out_of_stock" should block ordering
+  const canOrder = !catalogStatus || catalogStatus === "in_stock" || catalogStatus === "pre_order" || catalogStatus === "visible";
 
   const statusLabels: Record<string, string> = {
     in_stock: "В наличии",
