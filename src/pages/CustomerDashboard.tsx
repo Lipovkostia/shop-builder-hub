@@ -365,13 +365,6 @@ function ProductCard({
                 </span>
               )}
             </p>
-
-            {/* Код товара */}
-            {!!product.sku && (
-              <p className={`font-mono text-muted-foreground leading-tight ${showImages ? 'text-[11px]' : 'text-[10px]'}`}>
-                Код товара: {product.sku}
-              </p>
-            )}
           </div>
           
           {/* Описание (раскрывается при клике на название) - только в режиме с картинками */}
