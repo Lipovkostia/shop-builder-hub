@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store as StoreIcon, Package, LayoutGrid, Plus, LogIn, Sparkles, Users, Link2, Copy, Share2 } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store as StoreIcon, Package, LayoutGrid, Plus, LogIn, Sparkles, Users, Link2, Copy, Share2, ArrowDownAZ } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 import { Badge } from "@/components/ui/badge";
@@ -1136,6 +1136,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInputValue, setSearchInputValue] = useState("");
+  const [sortOrder, setSortOrder] = useState<'default' | 'asc' | 'desc'>('default');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -1443,8 +1444,15 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
       );
     }
 
+    // Sort by name if sortOrder is set
+    if (sortOrder === 'asc') {
+      filtered.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+    } else if (sortOrder === 'desc') {
+      filtered.sort((a, b) => b.name.localeCompare(a.name, 'ru'));
+    }
+
     return filtered;
-  }, [displayProducts, selectedCatalog, productVisibility, getProductSettings, isOwner, statusFilter, categoryFilter, searchQuery]);
+  }, [displayProducts, selectedCatalog, productVisibility, getProductSettings, isOwner, statusFilter, categoryFilter, searchQuery, sortOrder]);
 
   // Show catalog hint when no catalog selected and there are catalogs to choose from
   const showCatalogHint = !selectedCatalog && accessibleCatalogs.length > 0 && displayProducts.length > 0;
@@ -1905,6 +1913,33 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                     </div>
                   </div>
                 )}
+
+                {/* Сортировка по алфавиту */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground uppercase flex items-center gap-1">
+                    <ArrowDownAZ className="w-3 h-3" />
+                    Сортировка:
+                  </span>
+                  <div className="flex gap-1">
+                    {[
+                      { value: "default", label: "По умолчанию" },
+                      { value: "asc", label: "А-Я" },
+                      { value: "desc", label: "Я-А" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setSortOrder(opt.value as 'default' | 'asc' | 'desc')}
+                        className={`px-2 py-0.5 text-[10px] rounded-full transition-colors ${
+                          sortOrder === opt.value
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 {/* Фильтр по статусу (только для владельца) */}
                 {isOwner && (
