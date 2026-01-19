@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Trash2, Package, Tag, Check, FolderPlus } from "lucide-react";
+import { X, Trash2, Package, Tag, Check, FolderPlus, FolderMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +37,8 @@ interface BulkEditPanelProps {
   catalogs?: Catalog[];
   onAddToCatalog?: (catalogId: string) => void;
   onCreateCatalogAndAdd?: (catalogName: string) => void;
+  onRemoveFromCatalog?: () => void;
+  currentCatalogName?: string;
 }
 
 export function BulkEditPanel({
@@ -50,11 +52,14 @@ export function BulkEditPanel({
   catalogs = [],
   onAddToCatalog,
   onCreateCatalogAndAdd,
+  onRemoveFromCatalog,
+  currentCatalogName,
 }: BulkEditPanelProps) {
   const [editField, setEditField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
   const [markupValue, setMarkupValue] = useState<MarkupSettings | undefined>();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRemoveFromCatalogConfirm, setShowRemoveFromCatalogConfirm] = useState(false);
   const [showAddToCatalogDialog, setShowAddToCatalogDialog] = useState(false);
   const [selectedCatalogId, setSelectedCatalogId] = useState<string>("");
   const [newCatalogName, setNewCatalogName] = useState("");
@@ -100,6 +105,11 @@ export function BulkEditPanel({
     onBulkDelete?.();
   };
 
+  const handleRemoveFromCatalog = () => {
+    setShowRemoveFromCatalogConfirm(false);
+    onRemoveFromCatalog?.();
+  };
+
   const handleAddToCatalog = () => {
     if (isCreatingNew && newCatalogName.trim()) {
       onCreateCatalogAndAdd?.(newCatalogName.trim());
@@ -142,6 +152,22 @@ export function BulkEditPanel({
 
         <div className="flex items-center gap-2 flex-wrap">
           {/* Add to catalog button */}
+          {/* Remove from catalog button */}
+          {onRemoveFromCatalog && (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowRemoveFromCatalogConfirm(true)}
+                className="h-8 bg-destructive/20 hover:bg-destructive/30 text-primary-foreground"
+              >
+                <FolderMinus className="h-4 w-4 mr-1" />
+                Убрать из прайс-листа
+              </Button>
+              <div className="w-px h-6 bg-primary-foreground/20 mx-1" />
+            </>
+          )}
+
           {(onAddToCatalog || onCreateCatalogAndAdd) && (
             <>
               <Button
@@ -281,6 +307,27 @@ export function BulkEditPanel({
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
               Удалить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove from catalog confirmation dialog */}
+      <Dialog open={showRemoveFromCatalogConfirm} onOpenChange={setShowRemoveFromCatalogConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Убрать товары из прайс-листа?</DialogTitle>
+            <DialogDescription>
+              Вы уверены, что хотите убрать {selectedCount} товар(ов) из прайс-листа{currentCatalogName ? ` "${currentCatalogName}"` : ""}? 
+              Товары останутся в ассортименте и других прайс-листах.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRemoveFromCatalogConfirm(false)}>
+              Отмена
+            </Button>
+            <Button variant="destructive" onClick={handleRemoveFromCatalog}>
+              Убрать
             </Button>
           </DialogFooter>
         </DialogContent>

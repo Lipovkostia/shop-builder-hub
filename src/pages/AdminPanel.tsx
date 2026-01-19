@@ -482,6 +482,7 @@ export default function AdminPanel({
     deleteCatalog: deleteSupabaseCatalog,
     toggleProductVisibility: toggleSupabaseProductVisibility,
     setProductCatalogs: setSupabaseProductCatalogs,
+    removeProductsFromCatalog: removeSupabaseProductsFromCatalog,
     refetch: refetchCatalogs
   } = useStoreCatalogs(effectiveStoreId);
   
@@ -5051,6 +5052,20 @@ export default function AdminPanel({
                         description: `Обновлено ${selectedCatalogBulkProducts.size} товаров`,
                       });
                     }}
+                    onRemoveFromCatalog={() => {
+                      if (currentCatalog) {
+                        const productIds = Array.from(selectedCatalogBulkProducts);
+                        removeSupabaseProductsFromCatalog(productIds, currentCatalog.id);
+                        // Update local state
+                        setSelectedCatalogProducts(prev => {
+                          const newSet = new Set(prev);
+                          productIds.forEach(id => newSet.delete(id));
+                          return newSet;
+                        });
+                        setSelectedCatalogBulkProducts(new Set());
+                      }
+                    }}
+                    currentCatalogName={currentCatalog?.name}
                     unitOptions={allUnitOptions}
                     packagingOptions={allPackagingOptions}
                     showDelete={false}
