@@ -159,7 +159,7 @@ export default function RetailStore() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex">
+      <div className="retail-theme min-h-screen bg-background flex">
         {/* Sidebar skeleton */}
         <div className="hidden lg:block w-64 border-r p-6 space-y-4">
           <Skeleton className="h-12 w-32" />
@@ -189,7 +189,7 @@ export default function RetailStore() {
   // Error state
   if (error || !store) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="retail-theme min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">Магазин не найден</h1>
           <p className="text-muted-foreground">{error || "Розничный магазин не активирован"}</p>
@@ -199,7 +199,7 @@ export default function RetailStore() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="retail-theme min-h-screen bg-background flex">
       {/* Desktop sidebar */}
       <div className="hidden lg:block">
         <RetailLayoutSidebar

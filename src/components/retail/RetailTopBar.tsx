@@ -37,9 +37,9 @@ export function RetailTopBar({
   const nextDeliveryTime = "14:00";
 
   return (
-    <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <div className="sticky top-0 z-40 bg-background">
       {/* Main top bar */}
-      <div className="border-b px-4 lg:px-6 py-3">
+      <div className="px-4 lg:px-8 py-4">
         <div className="flex items-center justify-between gap-4">
           {/* Left side - Mobile menu + Phone */}
           <div className="flex items-center gap-3">
@@ -48,7 +48,7 @@ export function RetailTopBar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden"
+                className="lg:hidden text-foreground"
                 onClick={onMobileMenuClick}
               >
                 <Menu className="h-5 w-5" />
@@ -59,9 +59,8 @@ export function RetailTopBar({
             {store.contact_phone && (
               <a
                 href={`tel:${store.contact_phone}`}
-                className="hidden sm:flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors"
+                className="hidden sm:flex items-center gap-2 text-base font-medium text-foreground hover:text-muted-foreground transition-colors"
               >
-                <Phone className="h-4 w-4" />
                 <span>{store.contact_phone}</span>
               </a>
             )}
@@ -70,68 +69,62 @@ export function RetailTopBar({
           {/* Center - Delivery info (desktop) */}
           <button
             onClick={() => setDeliveryExpanded(!deliveryExpanded)}
-            className="hidden md:flex items-center gap-2 px-4 py-1.5 rounded-full bg-muted/50 hover:bg-muted transition-colors"
+            className="hidden md:flex items-center gap-2.5 text-sm font-medium text-foreground hover:text-muted-foreground transition-colors"
           >
-            <span className="relative flex h-2.5 w-2.5">
+            <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--delivery))] opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[hsl(var(--delivery))]"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[hsl(var(--delivery))]"></span>
             </span>
-            <span className="text-sm font-medium">
+            <span className="uppercase tracking-wide text-xs">
               Ближайшая доставка в {nextDeliveryTime}
             </span>
           </button>
 
           {/* Right side - Icons */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             {/* Search toggle (mobile) */}
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="md:hidden text-foreground hover:text-muted-foreground"
               onClick={() => setSearchOpen(!searchOpen)}
             >
               {searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
             </Button>
 
-            {/* Desktop search */}
-            <div className="hidden md:block relative w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Поиск товаров..."
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-9 h-9"
-              />
-            </div>
-
             {/* Favorites */}
-            <Button variant="ghost" size="icon" className="hidden sm:flex">
+            <Button variant="ghost" size="icon" className="hidden sm:flex text-foreground hover:text-muted-foreground">
               <Star className="h-5 w-5" />
             </Button>
 
             {/* Wishlist */}
-            <Button variant="ghost" size="icon" className="hidden sm:flex">
+            <Button variant="ghost" size="icon" className="hidden sm:flex text-foreground hover:text-muted-foreground">
               <Heart className="h-5 w-5" />
             </Button>
 
             {/* View mode toggle */}
-            <div className="hidden sm:flex border rounded-lg ml-2">
+            <div className="hidden sm:flex items-center gap-0.5 ml-2">
               <Button
-                variant={viewMode === "grid" ? "secondary" : "ghost"}
+                variant="ghost"
                 size="icon"
-                className="h-9 w-9 rounded-r-none"
+                className={cn(
+                  "h-9 w-9",
+                  viewMode === "grid" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
                 onClick={() => onViewModeChange("grid")}
               >
-                <Grid className="h-4 w-4" />
+                <Grid className="h-5 w-5" />
               </Button>
               <Button
-                variant={viewMode === "list" ? "secondary" : "ghost"}
+                variant="ghost"
                 size="icon"
-                className="h-9 w-9 rounded-l-none"
+                className={cn(
+                  "h-9 w-9",
+                  viewMode === "list" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
                 onClick={() => onViewModeChange("list")}
               >
-                <List className="h-4 w-4" />
+                <List className="h-5 w-5" />
               </Button>
             </div>
 
@@ -139,13 +132,13 @@ export function RetailTopBar({
             <Button
               variant="ghost"
               size="icon"
-              className="relative ml-1"
+              className="relative ml-1 text-foreground hover:text-muted-foreground"
               onClick={onCartClick}
             >
               <ShoppingCart className="h-5 w-5" />
               {cartItemsCount > 0 && (
                 <Badge
-                  className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center p-0 text-xs"
+                  className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center p-0 text-xs bg-primary text-primary-foreground"
                 >
                   {cartItemsCount > 99 ? "99+" : cartItemsCount}
                 </Badge>
@@ -164,7 +157,7 @@ export function RetailTopBar({
                 placeholder="Поиск товаров..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-9 w-full"
+                className="pl-9 w-full bg-muted border-0"
                 autoFocus
               />
             </div>

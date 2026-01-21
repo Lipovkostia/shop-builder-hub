@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
         display: ["Space Grotesk", "system-ui", "sans-serif"],
+        serif: ["Cormorant Garamond", "Georgia", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -68,6 +69,14 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+        },
+        // Retail-specific colors
+        retail: {
+          category: "hsl(var(--retail-category-accent, 30 40% 55%))",
+          button: {
+            DEFAULT: "hsl(var(--retail-button-bg, 45 20% 30%))",
+            foreground: "hsl(var(--retail-button-fg, 40 25% 98%))",
+          },
         },
       },
       borderRadius: {
