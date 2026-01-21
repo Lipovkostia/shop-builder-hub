@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Heart, Check, ImageOff } from "lucide-react";
+import { Heart, ImageOff, Plus, Minus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -9,6 +9,8 @@ import type { RetailProduct } from "@/hooks/useRetailStore";
 interface RetailProductCardProps {
   product: RetailProduct;
   onAddToCart: (product: RetailProduct) => void;
+  onUpdateQuantity?: (productId: string, quantity: number) => void;
+  cartQuantity?: number;
   isFavorite?: boolean;
   onToggleFavorite?: (productId: string) => void;
 }
@@ -22,13 +24,14 @@ function formatPrice(price: number): string {
 
 function formatUnit(unit: string | null): string {
   if (!unit) return "";
-  // Return unit as-is for display (e.g., "1 кг", "150г", "шт")
   return unit;
 }
 
 export function RetailProductCard({ 
   product, 
   onAddToCart,
+  onUpdateQuantity,
+  cartQuantity = 0,
   isFavorite = false,
   onToggleFavorite,
 }: RetailProductCardProps) {
@@ -36,7 +39,6 @@ export function RetailProductCard({
   const isMobile = useIsMobile();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
-  const [isAdded, setIsAdded] = useState(false);
   
   // Touch/swipe handling for mobile
   const touchStartX = useRef<number>(0);
@@ -51,6 +53,8 @@ export function RetailProductCard({
   
   const hasDiscount = product.compare_price && product.compare_price > product.price;
   const isOutOfStock = product.catalog_status === 'out_of_stock';
+  const isInCart = cartQuantity > 0;
+  const cartItemTotal = cartQuantity * product.price;
 
   const handleAddToCart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -58,9 +62,24 @@ export function RetailProductCard({
     if (isOutOfStock) return;
     
     onAddToCart(product);
-    setIsAdded(true);
-    setTimeout(() => setIsAdded(false), 1500);
   }, [product, onAddToCart, isOutOfStock]);
+
+  const handleIncrement = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isOutOfStock) return;
+    
+    onAddToCart(product);
+  }, [product, onAddToCart, isOutOfStock]);
+
+  const handleDecrement = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!onUpdateQuantity) return;
+    
+    const newQuantity = cartQuantity - 1;
+    onUpdateQuantity(product.id, newQuantity);
+  }, [product.id, cartQuantity, onUpdateQuantity]);
 
   const handleFavorite = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -83,14 +102,12 @@ export function RetailProductCard({
     if (!hasMultipleImages || !isMobile) return;
     
     const diff = touchStartX.current - touchEndX.current;
-    const threshold = 50; // minimum swipe distance
+    const threshold = 50;
     
     if (Math.abs(diff) > threshold) {
       if (diff > 0) {
-        // Swipe left - next image
         setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
       } else {
-        // Swipe right - previous image
         setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
       }
     }
@@ -107,7 +124,6 @@ export function RetailProductCard({
     const x = e.clientX - rect.left;
     const width = rect.width;
     
-    // Divide the image area into sections based on number of images
     const sectionWidth = width / images.length;
     const newIndex = Math.min(Math.floor(x / sectionWidth), images.length - 1);
     
@@ -179,7 +195,7 @@ export function RetailProductCard({
           </div>
         )}
 
-        {/* Image indicators (dots for mobile, sections for desktop) */}
+        {/* Image indicators */}
         {hasMultipleImages && !isOutOfStock && (
           <div className="absolute bottom-3 left-3 flex gap-1">
             {images.map((_, idx) => (
@@ -204,33 +220,71 @@ export function RetailProductCard({
         </h3>
       </div>
 
+      {/* Cart info micro-block - appears when item is in cart */}
+      {isInCart && (
+        <div className="px-3 pb-2">
+          <div className="flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg bg-primary/10 text-primary text-xs font-medium">
+            <span>В корзине: {cartQuantity} шт</span>
+            <span className="text-primary/60">•</span>
+            <span>{formatPrice(cartItemTotal)}</span>
+          </div>
+        </div>
+      )}
+
       {/* Buy button - fills bottom of card */}
       <div className="mt-auto">
-        <button
-          onClick={handleAddToCart}
-          disabled={isOutOfStock}
-          className={cn(
-            "w-full h-12 rounded-none text-sm font-medium transition-all flex items-center justify-center gap-2",
-            isAdded 
-              ? "bg-success text-success-foreground"
-              : "bg-primary text-primary-foreground hover:opacity-90",
-            isOutOfStock && "opacity-50 cursor-not-allowed"
-          )}
-        >
-          {isAdded ? (
-            <span className="flex items-center gap-2">
-              <Check className="h-4 w-4" />
-              Добавлено
-            </span>
-          ) : (
+        {isInCart ? (
+          /* Quantity controls when in cart */
+          <div className="flex h-12">
+            {/* Minus button */}
+            <button
+              onClick={handleDecrement}
+              className="w-12 h-full flex items-center justify-center bg-muted hover:bg-muted/80 transition-colors text-foreground"
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            
+            {/* Price display */}
+            <div 
+              className="flex-1 h-full flex items-center justify-center bg-primary text-primary-foreground text-sm font-medium"
+              onClick={handleAddToCart}
+            >
+              <span className="flex items-center gap-2">
+                <span className="font-semibold">{formatPrice(product.price)}</span>
+                {product.unit && (
+                  <span className="text-xs opacity-80">/ {formatUnit(product.unit)}</span>
+                )}
+              </span>
+            </div>
+            
+            {/* Plus button */}
+            <button
+              onClick={handleIncrement}
+              disabled={isOutOfStock}
+              className="w-12 h-full flex items-center justify-center bg-primary hover:bg-primary/90 transition-colors text-primary-foreground"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          /* Default buy button */
+          <button
+            onClick={handleAddToCart}
+            disabled={isOutOfStock}
+            className={cn(
+              "w-full h-12 rounded-none text-sm font-medium transition-all flex items-center justify-center gap-2",
+              "bg-primary text-primary-foreground hover:opacity-90",
+              isOutOfStock && "opacity-50 cursor-not-allowed"
+            )}
+          >
             <span className="flex items-center gap-2">
               <span className="font-semibold">{formatPrice(product.price)}</span>
               {product.unit && (
                 <span className="text-xs opacity-80">/ {formatUnit(product.unit)}</span>
               )}
             </span>
-          )}
-        </button>
+          </button>
+        )}
       </div>
     </Link>
   );
