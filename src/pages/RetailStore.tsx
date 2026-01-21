@@ -12,6 +12,7 @@ import { RetailTopBar } from "@/components/retail/RetailTopBar";
 import { RetailProductCard } from "@/components/retail/RetailProductCard";
 import { RetailSidebar } from "@/components/retail/RetailSidebar";
 import { RetailCartDrawer } from "@/components/retail/RetailCartDrawer";
+import { RetailCartSheet } from "@/components/retail/RetailCartSheet";
 import { RetailFooter } from "@/components/retail/RetailFooter";
 import { CategoryHeader } from "@/components/retail/CategoryHeader";
 import { RetailMobileNav } from "@/components/retail/RetailMobileNav";
@@ -382,8 +383,20 @@ export default function RetailStore() {
         </SheetContent>
       </Sheet>
 
-      {/* Cart drawer */}
-      <RetailCartDrawer
+      {/* Cart drawer - desktop */}
+      <div className="hidden lg:block">
+        <RetailCartDrawer
+          open={isOpen}
+          onOpenChange={setIsOpen}
+          cart={cart}
+          cartTotal={cartTotal}
+          onUpdateQuantity={updateQuantity}
+          onRemove={removeFromCart}
+        />
+      </div>
+
+      {/* Cart sheet - mobile (slides from bottom) */}
+      <RetailCartSheet
         open={isOpen}
         onOpenChange={setIsOpen}
         cart={cart}
