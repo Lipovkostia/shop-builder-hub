@@ -42,6 +42,7 @@ export interface RetailProduct {
   category_id: string | null;
   category_name?: string;
   is_active: boolean;
+  catalog_status: string | null; // Status from catalog_product_settings
 }
 
 export interface RetailCategory {
@@ -188,6 +189,7 @@ export function useRetailStore(subdomain: string | undefined) {
             category_id: p.category_id,
             category_name: p.categories?.name,
             is_active: p.is_active,
+            catalog_status: status, // Pass catalog status
           };
         })
         .filter(Boolean) as RetailProduct[];
