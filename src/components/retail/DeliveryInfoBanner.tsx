@@ -20,7 +20,7 @@ export function DeliveryInfoBanner({
       {/* Mobile delivery trigger */}
       <button
         onClick={onToggle}
-        className="md:hidden w-full flex items-center justify-center gap-2 px-4 py-2 bg-muted/30 border-b text-sm"
+        className="md:hidden w-full flex items-center justify-center gap-2 px-4 py-1 bg-muted/30 border-b text-xs"
       >
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--delivery))] opacity-75"></span>
