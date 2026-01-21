@@ -639,67 +639,71 @@ export function RetailProductCard({
           </div>
         </div>
 
-        {/* Buy button - fills bottom of card */}
+        {/* Buy button - fixed height with reserved space for cart info */}
         <div className="mt-auto">
-          {isInCart ? (
-            <>
-              {/* Compact cart info - numbers only */}
-              <div className="text-[10px] text-center text-muted-foreground leading-none pb-0.5">
-                {cartQuantity} × {formatPrice(cartItemTotal)}
-              </div>
-              
-              {/* Quantity controls when in cart */}
-              <div className="flex h-12 overflow-hidden rounded-b-xl">
-                {/* Minus button */}
-                <button
-                  onClick={handleDecrement}
-                  className="w-8 h-full flex items-center justify-center bg-muted hover:bg-muted/80 transition-colors text-foreground"
-                >
-                  <Minus className="h-3 w-3" />
-                </button>
-                
-                {/* Price display */}
-                <div 
-                  className="flex-1 h-full flex items-center justify-center bg-primary text-primary-foreground text-xs font-medium"
-                  onClick={handleAddToCart}
-                >
-                  <span className="flex items-center gap-1">
-                    <span className="font-semibold">{formatPrice(product.price)}</span>
-                    {product.unit && (
-                      <span className="text-[10px] opacity-80">/ {formatUnit(product.unit)}</span>
-                    )}
-                  </span>
-                </div>
-                
-                {/* Plus button */}
-                <button
-                  onClick={handleIncrement}
-                  disabled={isOutOfStock}
-                  className="w-8 h-full flex items-center justify-center bg-primary hover:bg-primary/90 transition-colors text-primary-foreground"
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
-              </div>
-            </>
-          ) : (
-            /* Default buy button */
+          <div className={cn(
+            "flex h-14 overflow-hidden rounded-b-xl",
+            isInCart ? "" : ""
+          )}>
+            {/* Minus button - only visible when in cart */}
+            <button
+              onClick={handleDecrement}
+              className={cn(
+                "flex items-center justify-center transition-all text-foreground overflow-hidden",
+                isInCart 
+                  ? "w-10 bg-muted hover:bg-muted/80" 
+                  : "w-0"
+              )}
+              style={{ transition: 'width 0.2s ease-out' }}
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            
+            {/* Main button area with price and cart info */}
             <button
               onClick={handleAddToCart}
               disabled={isOutOfStock}
               className={cn(
-                "w-full h-12 rounded-b-xl text-sm font-medium transition-all flex items-center justify-center gap-2",
-                "bg-primary text-primary-foreground hover:opacity-90",
-                isOutOfStock && "opacity-50 cursor-not-allowed"
+                "flex-1 h-full flex flex-col items-center justify-center transition-all",
+                "bg-primary text-primary-foreground",
+                isOutOfStock && "opacity-50 cursor-not-allowed",
+                !isInCart && "hover:opacity-90"
               )}
             >
-              <span className="flex items-center gap-2">
-                <span className="font-semibold">{formatPrice(product.price)}</span>
-                {product.unit && (
-                  <span className="text-xs opacity-80">/ {formatUnit(product.unit)}</span>
+              {/* Cart info row - always takes space, content only when in cart */}
+              <div className={cn(
+                "text-[10px] leading-tight transition-opacity h-3 flex items-center",
+                isInCart ? "opacity-70" : "opacity-0"
+              )}>
+                {isInCart && (
+                  <span>{cartQuantity} × {formatPrice(cartItemTotal)}</span>
                 )}
-              </span>
+              </div>
+              
+              {/* Price row */}
+              <div className="flex items-center gap-1">
+                <span className="font-semibold text-sm">{formatPrice(product.price)}</span>
+                {product.unit && (
+                  <span className="text-[10px] opacity-80">/ {formatUnit(product.unit)}</span>
+                )}
+              </div>
             </button>
-          )}
+            
+            {/* Plus button - only visible when in cart */}
+            <button
+              onClick={handleIncrement}
+              disabled={isOutOfStock}
+              className={cn(
+                "flex items-center justify-center transition-all text-primary-foreground overflow-hidden",
+                isInCart 
+                  ? "w-10 bg-primary/80 hover:bg-primary/70" 
+                  : "w-0"
+              )}
+              style={{ transition: 'width 0.2s ease-out' }}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
