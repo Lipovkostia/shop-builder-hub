@@ -24,6 +24,7 @@ export interface RetailStore {
   seo_description: string | null;
   favicon_url: string | null;
   custom_domain: string | null;
+  retail_catalog_id: string | null;
 }
 
 export interface RetailProduct {
@@ -96,56 +97,137 @@ export function useRetailStore(subdomain: string | undefined) {
     if (!store?.id) return;
 
     try {
-      const { data, error: productsError } = await supabase
-        .from("products")
-        .select(`
-          id,
-          name,
-          description,
-          price,
-          compare_price,
-          images,
-          unit,
-          sku,
-          quantity,
-          slug,
-          packaging_type,
-          category_id,
-          is_active,
-          categories!products_category_id_fkey (
-            name
+      let formattedProducts: RetailProduct[] = [];
+
+      // If a specific catalog is selected, fetch products from that catalog
+      if (store.retail_catalog_id) {
+        const { data, error: productsError } = await supabase
+          .from("product_catalog_visibility")
+          .select(`
+            products!inner (
+              id,
+              name,
+              description,
+              price,
+              buy_price,
+              compare_price,
+              images,
+              unit,
+              sku,
+              quantity,
+              slug,
+              packaging_type,
+              category_id,
+              is_active,
+              deleted_at,
+              categories!products_category_id_fkey (
+                name
+              )
+            ),
+            catalog_product_settings (
+              markup_type,
+              markup_value,
+              status
+            )
+          `)
+          .eq("catalog_id", store.retail_catalog_id);
+
+        if (productsError) throw productsError;
+
+        formattedProducts = (data || [])
+          .filter((item: any) => 
+            item.products?.is_active && 
+            !item.products?.deleted_at &&
+            (!item.catalog_product_settings?.[0]?.status || item.catalog_product_settings[0].status !== 'hidden')
           )
-        `)
-        .eq("store_id", store.id)
-        .eq("is_active", true)
-        .is("deleted_at", null)
-        .gt("price", 0)
-        .order("name");
+          .map((item: any) => {
+            const p = item.products;
+            const settings = item.catalog_product_settings?.[0];
+            
+            // Calculate price with catalog markup
+            let calculatedPrice = p.price;
+            if (p.buy_price && p.buy_price > 0 && settings) {
+              if (settings.markup_type === 'percent') {
+                calculatedPrice = p.buy_price * (1 + (settings.markup_value || 0) / 100);
+              } else if (settings.markup_type === 'fixed' || settings.markup_type === 'rubles') {
+                calculatedPrice = p.buy_price + (settings.markup_value || 0);
+              }
+            }
+            // Use product price if it's set and higher than 0, otherwise use calculated price
+            const finalPrice = p.price > 0 ? p.price : calculatedPrice;
 
-      if (productsError) throw productsError;
+            return {
+              id: p.id,
+              name: p.name,
+              description: p.description,
+              price: finalPrice,
+              compare_price: p.compare_price,
+              images: p.images || [],
+              unit: p.unit || "шт",
+              sku: p.sku,
+              quantity: p.quantity,
+              slug: p.slug,
+              packaging_type: p.packaging_type || "piece",
+              category_id: p.category_id,
+              category_name: p.categories?.name,
+              is_active: p.is_active,
+            };
+          })
+          .filter((p: RetailProduct) => p.price > 0);
 
-      const formattedProducts: RetailProduct[] = (data || []).map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        price: p.price,
-        compare_price: p.compare_price,
-        images: p.images || [],
-        unit: p.unit || "шт",
-        sku: p.sku,
-        quantity: p.quantity,
-        slug: p.slug,
-        packaging_type: p.packaging_type || "piece",
-        category_id: p.category_id,
-        category_name: p.categories?.name,
-        is_active: p.is_active,
-      }));
+      } else {
+        // Fetch all active products (original behavior)
+        const { data, error: productsError } = await supabase
+          .from("products")
+          .select(`
+            id,
+            name,
+            description,
+            price,
+            compare_price,
+            images,
+            unit,
+            sku,
+            quantity,
+            slug,
+            packaging_type,
+            category_id,
+            is_active,
+            categories!products_category_id_fkey (
+              name
+            )
+          `)
+          .eq("store_id", store.id)
+          .eq("is_active", true)
+          .is("deleted_at", null)
+          .gt("price", 0)
+          .order("name");
+
+        if (productsError) throw productsError;
+
+        formattedProducts = (data || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          price: p.price,
+          compare_price: p.compare_price,
+          images: p.images || [],
+          unit: p.unit || "шт",
+          sku: p.sku,
+          quantity: p.quantity,
+          slug: p.slug,
+          packaging_type: p.packaging_type || "piece",
+          category_id: p.category_id,
+          category_name: p.categories?.name,
+          is_active: p.is_active,
+        }));
+      }
 
       setProducts(formattedProducts);
     } catch (err) {
       console.error("Error fetching products:", err);
     }
-  }, [store?.id]);
+  }, [store?.id, store?.retail_catalog_id]);
 
   const fetchCategories = useCallback(async () => {
     if (!store?.id) return;

@@ -18,6 +18,7 @@ export interface RetailSettings {
   favicon_url: string | null;
   custom_domain: string | null;
   subdomain: string;
+  retail_catalog_id: string | null;
 }
 
 export function useRetailSettings(storeId: string | null) {
@@ -35,7 +36,7 @@ export function useRetailSettings(storeId: string | null) {
     try {
       const { data, error } = await supabase
         .from("stores")
-        .select("retail_enabled, retail_theme, retail_logo_url, seo_title, seo_description, favicon_url, custom_domain, subdomain")
+        .select("retail_enabled, retail_theme, retail_logo_url, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id")
         .eq("id", storeId)
         .single();
 
@@ -50,6 +51,7 @@ export function useRetailSettings(storeId: string | null) {
         favicon_url: data.favicon_url,
         custom_domain: data.custom_domain,
         subdomain: data.subdomain,
+        retail_catalog_id: data.retail_catalog_id,
       });
     } catch (err) {
       console.error("Error fetching retail settings:", err);
@@ -183,6 +185,35 @@ export function useRetailSettings(storeId: string | null) {
         variant: "destructive",
         title: "Ошибка",
         description: "Не удалось сохранить домен",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [storeId, toast]);
+
+  const updateRetailCatalog = useCallback(async (catalogId: string | null) => {
+    if (!storeId) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("stores")
+        .update({ retail_catalog_id: catalogId || null })
+        .eq("id", storeId);
+
+      if (error) throw error;
+
+      setSettings(prev => prev ? { ...prev, retail_catalog_id: catalogId } : null);
+      toast({
+        title: "Прайс-лист обновлён",
+        description: catalogId ? "Товары из выбранного прайс-листа будут отображаться в магазине" : "Все активные товары будут отображаться в магазине",
+      });
+    } catch (err) {
+      console.error("Error updating retail_catalog_id:", err);
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Не удалось обновить прайс-лист",
       });
     } finally {
       setSaving(false);
@@ -337,6 +368,7 @@ export function useRetailSettings(storeId: string | null) {
     updateRetailTheme,
     updateSeoSettings,
     updateCustomDomain,
+    updateRetailCatalog,
     uploadRetailLogo,
     uploadFavicon,
     deleteRetailLogo,
