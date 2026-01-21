@@ -12,6 +12,7 @@ import SuperAdmin from "./pages/SuperAdmin";
 import StoreFront from "./pages/StoreFront";
 import SellerWorkspace from "./pages/SellerWorkspace";
 import NotFound from "./pages/NotFound";
+import RetailStore from "./pages/RetailStore";
 import CatalogAccess from "./pages/CatalogAccess";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import GuestCatalogView from "./pages/GuestCatalogView";
@@ -69,6 +70,10 @@ const App = () => (
             {/* Store routes - SellerWorkspace for seamless transitions */}
             <Route path="/store/:subdomain" element={<SellerWorkspace />} />
             <Route path="/store/:subdomain/admin" element={<StoreAdminWrapper />} />
+            {/* Retail store routes */}
+            <Route path="/retail/:subdomain" element={<RetailStore />} />
+            <Route path="/retail/:subdomain/product/:productId" element={<RetailStore />} />
+            <Route path="/retail/:subdomain/checkout" element={<RetailStore />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
