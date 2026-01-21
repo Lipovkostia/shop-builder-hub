@@ -135,6 +135,13 @@ export default {
             boxShadow: "0 0 0 8px hsl(var(--primary) / 0)",
           },
         },
+        "heartbeat": {
+          "0%, 100%": { transform: "scale(1)" },
+          "14%": { transform: "scale(1.15)" },
+          "28%": { transform: "scale(1)" },
+          "42%": { transform: "scale(1.15)" },
+          "70%": { transform: "scale(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -148,6 +155,7 @@ export default {
         "slide-in-from-right": "slide-in-from-right 0.3s ease-in-out forwards",
         "bounce-arrow": "bounce-arrow 0.6s ease-in-out infinite",
         "attention-pulse": "attention-pulse 1.2s ease-in-out infinite",
+        "heartbeat": "heartbeat 1.2s ease-in-out infinite",
       },
     },
   },

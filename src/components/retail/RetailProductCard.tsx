@@ -149,11 +149,28 @@ export function RetailProductCard({
         className={cn(
           "absolute -top-2 -right-2 p-1 transition-all z-20",
           isFavorite 
-            ? "text-destructive drop-shadow-[0_3px_6px_rgba(0,0,0,0.4)]" 
-            : "text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]"
+            ? "drop-shadow-[0_3px_6px_rgba(139,0,0,0.5)] animate-heartbeat" 
+            : "drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
         )}
       >
-        <Heart className="h-7 w-7 fill-current" />
+        {isFavorite ? (
+          <svg width="28" height="28" viewBox="0 0 24 24" className="h-7 w-7">
+            <defs>
+              <linearGradient id="heartGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#8B0000" />
+                <stop offset="50%" stopColor="#A52A2A" />
+                <stop offset="100%" stopColor="#6B0000" />
+              </linearGradient>
+            </defs>
+            <path 
+              d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"
+              fill="url(#heartGradient)"
+              stroke="none"
+            />
+          </svg>
+        ) : (
+          <Heart className="h-7 w-7 fill-none stroke-foreground/40 stroke-[1.5]" />
+        )}
       </button>
 
       {/* Image section */}
