@@ -1,0 +1,529 @@
+import React, { useState, useRef } from "react";
+import { 
+  Store, 
+  Palette, 
+  Search, 
+  Globe, 
+  ExternalLink, 
+  Copy, 
+  Check, 
+  Upload, 
+  Trash2, 
+  Loader2,
+  Info
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useRetailSettings, RetailTheme } from "@/hooks/useRetailSettings";
+import { cn } from "@/lib/utils";
+
+interface RetailSettingsSectionProps {
+  storeId: string | null;
+}
+
+export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
+  const { 
+    settings, 
+    loading, 
+    saving,
+    updateRetailEnabled,
+    updateRetailTheme,
+    updateSeoSettings,
+    updateCustomDomain,
+    uploadRetailLogo,
+    uploadFavicon,
+    deleteRetailLogo,
+    deleteFavicon,
+  } = useRetailSettings(storeId);
+
+  const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState("general");
+  
+  // Form states
+  const [theme, setTheme] = useState<RetailTheme>({});
+  const [seoTitle, setSeoTitle] = useState("");
+  const [seoDescription, setSeoDescription] = useState("");
+  const [customDomain, setCustomDomain] = useState("");
+  
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync form states with settings
+  React.useEffect(() => {
+    if (settings) {
+      setTheme(settings.retail_theme || {});
+      setSeoTitle(settings.seo_title || "");
+      setSeoDescription(settings.seo_description || "");
+      setCustomDomain(settings.custom_domain || "");
+    }
+  }, [settings]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!settings) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        Не удалось загрузить настройки
+      </div>
+    );
+  }
+
+  const storeUrl = `/retail/${settings.subdomain}`;
+  const fullUrl = `${window.location.origin}${storeUrl}`;
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(fullUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleOpenStore = () => {
+    window.open(storeUrl, "_blank");
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadRetailLogo(file);
+    }
+  };
+
+  const handleFaviconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadFavicon(file);
+    }
+  };
+
+  const handleSaveTheme = () => {
+    updateRetailTheme(theme);
+  };
+
+  const handleSaveSeo = () => {
+    updateSeoSettings({
+      seo_title: seoTitle || null,
+      seo_description: seoDescription || null,
+    });
+  };
+
+  const handleSaveDomain = () => {
+    updateCustomDomain(customDomain || null);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="mb-4">
+        <h2 className="text-xl font-semibold text-foreground">Розничный магазин</h2>
+        <p className="text-sm text-muted-foreground">
+          Настройте витрину для розничных покупателей
+        </p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="w-full grid grid-cols-4 mb-6">
+          <TabsTrigger value="general" className="gap-1.5">
+            <Store className="h-4 w-4" />
+            <span className="hidden sm:inline">Общее</span>
+          </TabsTrigger>
+          <TabsTrigger value="design" className="gap-1.5">
+            <Palette className="h-4 w-4" />
+            <span className="hidden sm:inline">Дизайн</span>
+          </TabsTrigger>
+          <TabsTrigger value="seo" className="gap-1.5">
+            <Search className="h-4 w-4" />
+            <span className="hidden sm:inline">SEO</span>
+          </TabsTrigger>
+          <TabsTrigger value="domain" className="gap-1.5">
+            <Globe className="h-4 w-4" />
+            <span className="hidden sm:inline">Домен</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* General Tab */}
+        <TabsContent value="general" className="space-y-6">
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="font-semibold text-foreground">Статус магазина</h3>
+                <p className="text-sm text-muted-foreground">
+                  Включите, чтобы розничный магазин стал доступен по ссылке
+                </p>
+              </div>
+              <Switch
+                checked={settings.retail_enabled}
+                onCheckedChange={updateRetailEnabled}
+                disabled={saving}
+              />
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">
+                  Ссылка на магазин
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={fullUrl}
+                    readOnly
+                    className="flex-1 font-mono text-sm bg-muted"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleCopyLink}
+                    title="Скопировать ссылку"
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleOpenStore}
+                    title="Открыть магазин"
+                    disabled={!settings.retail_enabled}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 text-sm">
+                <div className={cn(
+                  "w-2 h-2 rounded-full",
+                  settings.retail_enabled ? "bg-green-500" : "bg-muted-foreground"
+                )} />
+                <span className={cn(
+                  settings.retail_enabled ? "text-green-600" : "text-muted-foreground"
+                )}>
+                  {settings.retail_enabled ? "Активен" : "Выключен"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Design Tab */}
+        <TabsContent value="design" className="space-y-6">
+          <div className="bg-card border border-border rounded-lg p-6">
+            <h3 className="font-semibold text-foreground mb-4">Логотип магазина</h3>
+            
+            <div className="flex items-start gap-4">
+              <div className="w-24 h-24 border border-dashed border-border rounded-lg flex items-center justify-center bg-muted/50 overflow-hidden">
+                {settings.retail_logo_url ? (
+                  <img 
+                    src={settings.retail_logo_url} 
+                    alt="Logo" 
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <Store className="h-8 w-8 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoUpload}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={saving}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Загрузить
+                </Button>
+                {settings.retail_logo_url && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={deleteRetailLogo}
+                    disabled={saving}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Удалить
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+            <h3 className="font-semibold text-foreground">Цветовая схема</h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">
+                  Основной цвет
+                </Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={theme.primaryColor || "#000000"}
+                    onChange={(e) => setTheme({ ...theme, primaryColor: e.target.value })}
+                    className="w-10 h-10 rounded cursor-pointer border border-border"
+                  />
+                  <Input
+                    value={theme.primaryColor || "#000000"}
+                    onChange={(e) => setTheme({ ...theme, primaryColor: e.target.value })}
+                    className="flex-1 font-mono text-sm"
+                    placeholder="#000000"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">
+                  Акцентный цвет
+                </Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={theme.accentColor || "#6366f1"}
+                    onChange={(e) => setTheme({ ...theme, accentColor: e.target.value })}
+                    className="w-10 h-10 rounded cursor-pointer border border-border"
+                  />
+                  <Input
+                    value={theme.accentColor || "#6366f1"}
+                    onChange={(e) => setTheme({ ...theme, accentColor: e.target.value })}
+                    className="flex-1 font-mono text-sm"
+                    placeholder="#6366f1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm text-muted-foreground mb-2 block">
+                Стиль шапки
+              </Label>
+              <div className="flex gap-2">
+                {(["minimal", "full", "centered"] as const).map((style) => (
+                  <Button
+                    key={style}
+                    variant={theme.headerStyle === style ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTheme({ ...theme, headerStyle: style })}
+                  >
+                    {style === "minimal" ? "Минимум" : style === "full" ? "Полная" : "По центру"}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm text-muted-foreground mb-2 block">
+                Стиль карточек товаров
+              </Label>
+              <div className="flex gap-2">
+                {(["modern", "classic", "compact"] as const).map((style) => (
+                  <Button
+                    key={style}
+                    variant={theme.productCardStyle === style ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTheme({ ...theme, productCardStyle: style })}
+                  >
+                    {style === "modern" ? "Современный" : style === "classic" ? "Классика" : "Компакт"}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <Button onClick={handleSaveTheme} disabled={saving}>
+                {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Сохранить дизайн
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* SEO Tab */}
+        <TabsContent value="seo" className="space-y-6">
+          <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+            <h3 className="font-semibold text-foreground">Мета-теги</h3>
+            
+            <div>
+              <Label className="text-sm text-muted-foreground mb-2 block">
+                Заголовок страницы (title)
+              </Label>
+              <Input
+                value={seoTitle}
+                onChange={(e) => setSeoTitle(e.target.value)}
+                placeholder="Мой магазин — доставка продуктов"
+                maxLength={60}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {seoTitle.length}/60 символов
+              </p>
+            </div>
+
+            <div>
+              <Label className="text-sm text-muted-foreground mb-2 block">
+                Описание (description)
+              </Label>
+              <Textarea
+                value={seoDescription}
+                onChange={(e) => setSeoDescription(e.target.value)}
+                placeholder="Широкий ассортимент продуктов с доставкой по городу..."
+                maxLength={160}
+                rows={3}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {seoDescription.length}/160 символов
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <Button onClick={handleSaveSeo} disabled={saving}>
+                {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Сохранить SEO
+              </Button>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-6">
+            <h3 className="font-semibold text-foreground mb-4">Favicon</h3>
+            
+            <div className="flex items-start gap-4">
+              <div className="w-16 h-16 border border-dashed border-border rounded-lg flex items-center justify-center bg-muted/50 overflow-hidden">
+                {settings.favicon_url ? (
+                  <img 
+                    src={settings.favicon_url} 
+                    alt="Favicon" 
+                    className="w-8 h-8 object-contain"
+                  />
+                ) : (
+                  <Globe className="h-6 w-6 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <input
+                  ref={faviconInputRef}
+                  type="file"
+                  accept="image/png,image/x-icon,image/svg+xml"
+                  className="hidden"
+                  onChange={handleFaviconUpload}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => faviconInputRef.current?.click()}
+                  disabled={saving}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Загрузить
+                </Button>
+                {settings.favicon_url && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={deleteFavicon}
+                    disabled={saving}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Удалить
+                  </Button>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  PNG, ICO или SVG, 32×32 px
+                </p>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Domain Tab */}
+        <TabsContent value="domain" className="space-y-6">
+          <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+            <h3 className="font-semibold text-foreground">Свой домен</h3>
+            <p className="text-sm text-muted-foreground">
+              Подключите собственный домен для розничного магазина
+            </p>
+            
+            <div>
+              <Label className="text-sm text-muted-foreground mb-2 block">
+                Ваш домен
+              </Label>
+              <Input
+                value={customDomain}
+                onChange={(e) => setCustomDomain(e.target.value.toLowerCase().trim())}
+                placeholder="shop.example.com"
+              />
+            </div>
+
+            <div className="pt-2">
+              <Button onClick={handleSaveDomain} disabled={saving}>
+                {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Сохранить домен
+              </Button>
+            </div>
+          </div>
+
+          {customDomain && (
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                <div className="space-y-3">
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100">
+                    Настройка DNS
+                  </h4>
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    Добавьте следующие записи в настройках DNS вашего домена:
+                  </p>
+                  
+                  <div className="bg-white dark:bg-background rounded-lg p-4 font-mono text-sm space-y-2">
+                    <div>
+                      <span className="text-muted-foreground">Тип:</span>{" "}
+                      <span className="font-semibold">A</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Имя:</span>{" "}
+                      <span className="font-semibold">@</span> или{" "}
+                      <span className="font-semibold">{customDomain}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Значение:</span>{" "}
+                      <span className="font-semibold">185.158.133.1</span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    Изменения DNS могут занять до 48 часов для применения
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {settings.custom_domain && (
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-2 h-2 rounded-full bg-yellow-500" />
+              <span className="text-muted-foreground">
+                Домен настроен: <span className="font-medium text-foreground">{settings.custom_domain}</span>
+              </span>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
