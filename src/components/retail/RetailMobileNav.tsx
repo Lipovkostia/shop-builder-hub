@@ -111,10 +111,10 @@ export function RetailMobileNav({
         />
       </div>
 
-      {/* Bottom navigation bar */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 lg:hidden">
+      {/* Bottom navigation bar - highest z-index to stay on top */}
+      <nav className="fixed bottom-0 inset-x-0 z-[100] lg:hidden">
         {/* Glass background */}
-        <div className="bg-background/80 backdrop-blur-xl border-t">
+        <div className="bg-background/95 backdrop-blur-xl border-t shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
           {/* Ultra compact container */}
           <div className="h-14 px-4 flex items-center justify-around safe-area-bottom">
             {/* Promotions button */}
