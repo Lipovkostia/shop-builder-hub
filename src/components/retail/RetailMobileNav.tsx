@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { Heart, Grid3X3, ShoppingCart, Search } from "lucide-react";
+import { Heart, ShoppingBag, Search, X, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface RetailMobileNavProps {
   cartItemsCount: number;
@@ -9,8 +9,9 @@ interface RetailMobileNavProps {
   onCategoriesClick: () => void;
   onCartClick: () => void;
   onFavoritesClick: () => void;
-  searchQuery?: string;
-  onSearchChange?: (query: string) => void;
+  onPromotionsClick?: () => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }
 
 export function RetailMobileNav({
@@ -19,160 +20,173 @@ export function RetailMobileNav({
   onCategoriesClick,
   onCartClick,
   onFavoritesClick,
-  searchQuery = "",
+  onPromotionsClick,
+  searchQuery,
   onSearchChange,
 }: RetailMobileNavProps) {
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [localQuery, setLocalQuery] = useState(searchQuery);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sync with external search query
+  // Sync local query with parent
   useEffect(() => {
     setLocalQuery(searchQuery);
   }, [searchQuery]);
 
   // Focus input when search opens
   useEffect(() => {
-    if (isSearchOpen && inputRef.current) {
-      const timer = setTimeout(() => {
+    if (searchOpen && inputRef.current) {
+      setTimeout(() => {
         inputRef.current?.focus();
-      }, 150);
-      return () => clearTimeout(timer);
+      }, 100);
     }
-  }, [isSearchOpen]);
-
-  const handleSearchOpen = () => {
-    setIsSearchOpen(true);
-  };
-
-  const handleSearchClose = () => {
-    setIsSearchOpen(false);
-    inputRef.current?.blur();
-  };
+  }, [searchOpen]);
 
   const handleSearchSubmit = () => {
-    onSearchChange?.(localQuery);
-    handleSearchClose();
+    onSearchChange(localQuery);
+    if (localQuery.trim()) {
+      setSearchOpen(false);
+    }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearchSubmit();
-    }
-    if (e.key === "Escape") {
-      handleSearchClose();
-    }
+  const handleClose = () => {
+    setSearchOpen(false);
+    setLocalQuery("");
+    onSearchChange("");
   };
 
   return (
     <>
-      {/* Search panel - slides from top */}
+      {/* Search overlay - slides from top */}
       <div
-        className={`
-          lg:hidden fixed top-0 left-0 right-0 z-50
-          transition-transform duration-300 ease-out
-          ${isSearchOpen ? "translate-y-0" : "-translate-y-full"}
-        `}
+        className={cn(
+          "fixed inset-x-0 top-0 z-50 lg:hidden transition-transform duration-300 ease-out",
+          searchOpen ? "translate-y-0" : "-translate-y-full"
+        )}
       >
-        <div className="bg-background border-b border-border shadow-lg pt-safe">
-          <div className="flex items-center gap-3 px-4 py-3">
-            {/* Search input */}
-            <div className="flex-1 relative">
-              <Input
-                ref={inputRef}
-                type="text"
-                placeholder="Поиск товаров..."
-                value={localQuery}
-                onChange={(e) => setLocalQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="
-                  h-12 w-full pl-4 pr-12
-                  bg-muted/50 border-border/50 rounded-xl
-                  text-base text-foreground placeholder:text-muted-foreground
-                  focus-visible:ring-2 focus-visible:ring-primary/50
-                "
-              />
-            </div>
+        {/* Search panel */}
+        <div className="bg-background/95 backdrop-blur-xl border-b shadow-lg">
+          <div className="px-4 py-4 safe-area-top">
+            <div className="flex items-center gap-3">
+              {/* Close button */}
+              <button
+                onClick={handleClose}
+                className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-muted/80 text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
 
-            {/* Search button */}
-            <button
-              onClick={handleSearchSubmit}
-              className="flex-shrink-0 w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-sm active:scale-95 transition-transform"
-            >
-              <Search className="h-5 w-5" />
-            </button>
+              {/* Search input */}
+              <div className="flex-1 relative">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={localQuery}
+                  onChange={(e) => setLocalQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSearchSubmit();
+                    }
+                  }}
+                  placeholder="Поиск товаров..."
+                  className="w-full h-12 pl-4 pr-12 rounded-2xl bg-muted/60 border-0 text-base placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+
+              {/* Search button */}
+              <button
+                onClick={handleSearchSubmit}
+                className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-2xl bg-primary text-primary-foreground"
+              >
+                <Search className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 bg-black/40 -z-10"
+          onClick={handleClose}
+        />
       </div>
 
-      {/* Backdrop when search is open */}
-      <div
-        className={`
-          lg:hidden fixed inset-0 z-40 bg-black/40
-          transition-opacity duration-300
-          ${isSearchOpen ? "opacity-100" : "opacity-0 pointer-events-none"}
-        `}
-        onClick={handleSearchClose}
-      />
+      {/* Bottom navigation bar */}
+      <nav className="fixed bottom-0 inset-x-0 z-40 lg:hidden">
+        {/* Glass background */}
+        <div className="bg-background/80 backdrop-blur-xl border-t">
+          {/* Ultra compact container */}
+          <div className="h-14 px-4 flex items-center justify-around safe-area-bottom">
+            {/* Promotions button */}
+            <button
+              onClick={onPromotionsClick}
+              className="relative flex flex-col items-center justify-center gap-0.5 min-w-[48px]"
+            >
+              <Sparkles className="h-5 w-5 text-foreground" />
+              <span className="text-[10px] text-muted-foreground">Акции</span>
+            </button>
 
-      {/* Navigation bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 pb-safe">
-        {/* Frosted glass background */}
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-xl border-t border-border/50" />
-        
-        {/* Navigation items */}
-        <div className="relative flex items-center justify-around h-5 px-6">
-          {/* Favorites */}
-          <button
-            onClick={onFavoritesClick}
-            className="flex items-center justify-center w-8 h-5 transition-all active:scale-95"
-          >
-            <div className="relative">
-              <Heart className="h-5 w-5 text-foreground/70" />
+            {/* Favorites */}
+            <button
+              onClick={onFavoritesClick}
+              className="relative flex flex-col items-center justify-center gap-0.5 min-w-[48px]"
+            >
+              <Heart className="h-5 w-5 text-foreground" />
               {favoritesCount > 0 && (
-                <Badge
-                  className="absolute -top-1.5 -right-2 h-3 min-w-3 flex items-center justify-center p-0 text-[7px] bg-primary text-primary-foreground border-0"
-                >
-                  {favoritesCount > 99 ? "+" : favoritesCount}
+                <Badge className="absolute -top-1 left-1/2 ml-1 h-4 min-w-4 flex items-center justify-center p-0 text-[10px] bg-primary text-primary-foreground">
+                  {favoritesCount > 99 ? "99+" : favoritesCount}
                 </Badge>
               )}
-            </div>
-          </button>
+              <span className="text-[10px] text-muted-foreground">Любимое</span>
+            </button>
 
-          {/* Categories - Center, emphasized */}
-          <button
-            onClick={onCategoriesClick}
-            className="flex items-center justify-center -mt-3"
-          >
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary shadow-sm shadow-primary/25 transition-all active:scale-95">
-              <Grid3X3 className="h-5 w-5 text-primary-foreground" />
-            </div>
-          </button>
+            {/* Catalog button - elevated center */}
+            <button
+              onClick={onCategoriesClick}
+              className="relative flex flex-col items-center justify-center -mt-4"
+            >
+              <div className="w-14 h-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-6 w-6"
+                >
+                  <rect x="3" y="3" width="7" height="7" />
+                  <rect x="14" y="3" width="7" height="7" />
+                  <rect x="3" y="14" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" />
+                </svg>
+              </div>
+              <span className="text-[10px] text-muted-foreground mt-0.5">Каталог</span>
+            </button>
 
-          {/* Cart */}
-          <button
-            onClick={onCartClick}
-            className="flex items-center justify-center w-8 h-5 transition-all active:scale-95"
-          >
-            <div className="relative">
-              <ShoppingCart className="h-5 w-5 text-foreground/70" />
+            {/* Cart */}
+            <button
+              onClick={onCartClick}
+              className="relative flex flex-col items-center justify-center gap-0.5 min-w-[48px]"
+            >
+              <ShoppingBag className="h-5 w-5 text-foreground" />
               {cartItemsCount > 0 && (
-                <Badge
-                  className="absolute -top-1.5 -right-2 h-3 min-w-3 flex items-center justify-center p-0 text-[7px] bg-primary text-primary-foreground border-0"
-                >
-                  {cartItemsCount > 99 ? "+" : cartItemsCount}
+                <Badge className="absolute -top-1 left-1/2 ml-1 h-4 min-w-4 flex items-center justify-center p-0 text-[10px] bg-primary text-primary-foreground">
+                  {cartItemsCount > 99 ? "99+" : cartItemsCount}
                 </Badge>
               )}
-            </div>
-          </button>
+              <span className="text-[10px] text-muted-foreground">Корзина</span>
+            </button>
 
-          {/* Search */}
-          <button
-            onClick={handleSearchOpen}
-            className="flex items-center justify-center w-8 h-5 transition-all active:scale-95"
-          >
-            <Search className="h-5 w-5 text-foreground/70" />
-          </button>
+            {/* Search */}
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="relative flex flex-col items-center justify-center gap-0.5 min-w-[48px]"
+            >
+              <Search className="h-5 w-5 text-foreground" />
+              <span className="text-[10px] text-muted-foreground">Поиск</span>
+            </button>
+          </div>
         </div>
       </nav>
     </>

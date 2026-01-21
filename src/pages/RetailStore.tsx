@@ -1,9 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { ArrowUpDown, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useRetailStore } from "@/hooks/useRetailStore";
@@ -255,59 +253,7 @@ export default function RetailStore() {
             productCount={filteredProducts.length} 
           />
 
-          {/* Toolbar */}
-          <div className="flex items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-2">
-              {/* Mobile filters button */}
-              <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="lg:hidden">
-                    <SlidersHorizontal className="h-4 w-4 mr-2" />
-                    Фильтры
-                    {hasActiveFilters && (
-                      <Badge className="ml-2 h-5 w-5 p-0 flex items-center justify-center">
-                        !
-                      </Badge>
-                    )}
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-80">
-                  <SheetHeader>
-                    <SheetTitle>Фильтры</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-6">
-                    <RetailSidebar
-                      categories={categories}
-                      selectedCategories={selectedCategories}
-                      onCategoryToggle={toggleCategory}
-                      priceRange={priceRange}
-                      currentPriceRange={currentPriceRange}
-                      onPriceRangeChange={setCurrentPriceRange}
-                      inStockOnly={inStockOnly}
-                      onInStockChange={setInStockOnly}
-                      onResetFilters={resetFilters}
-                      hasActiveFilters={hasActiveFilters}
-                    />
-                  </div>
-                </SheetContent>
-              </Sheet>
-            </div>
-
-            {/* Sort */}
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-              <SelectTrigger className="w-[180px] h-9">
-                <ArrowUpDown className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Сортировка" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">По умолчанию</SelectItem>
-                <SelectItem value="price-asc">Сначала дешёвые</SelectItem>
-                <SelectItem value="price-desc">Сначала дорогие</SelectItem>
-                <SelectItem value="name-asc">По названию А-Я</SelectItem>
-                <SelectItem value="name-desc">По названию Я-А</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* No toolbar - filters and sorting removed */}
 
           {/* Products grid */}
           {filteredProducts.length === 0 ? (
@@ -354,6 +300,7 @@ export default function RetailStore() {
         onCategoriesClick={() => setMobileMenuOpen(true)}
         onCartClick={() => setIsOpen(true)}
         onFavoritesClick={() => setFavoritesOpen(true)}
+        onPromotionsClick={() => {/* TODO: navigate to promotions */}}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
