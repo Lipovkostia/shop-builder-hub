@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useRetailStore } from "@/hooks/useRetailStore";
 import { useRetailCart } from "@/hooks/useRetailCart";
+import { useRetailFavorites } from "@/hooks/useRetailFavorites";
 import { RetailLayoutSidebar } from "@/components/retail/RetailLayoutSidebar";
 import { RetailTopBar } from "@/components/retail/RetailTopBar";
 import { RetailProductCard } from "@/components/retail/RetailProductCard";
@@ -15,6 +16,7 @@ import { RetailSidebar } from "@/components/retail/RetailSidebar";
 import { RetailCartDrawer } from "@/components/retail/RetailCartDrawer";
 import { RetailFooter } from "@/components/retail/RetailFooter";
 import { CategoryHeader } from "@/components/retail/CategoryHeader";
+import { RetailMobileNav } from "@/components/retail/RetailMobileNav";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 type ViewMode = "grid" | "list";
@@ -23,6 +25,10 @@ export default function RetailStore() {
   const { subdomain } = useParams();
   const { store, products, categories, loading, error } = useRetailStore(subdomain);
   const { cart, cartTotal, cartItemsCount, isOpen, setIsOpen, addToCart, updateQuantity, removeFromCart } = useRetailCart(store?.id || null);
+  const { favorites, favoritesCount, toggleFavorite, isFavorite } = useRetailFavorites(store?.id || null);
+
+  // State for favorites sheet
+  const [favoritesOpen, setFavoritesOpen] = useState(false);
 
   // State
   const [searchQuery, setSearchQuery] = useState("");
@@ -326,15 +332,57 @@ export default function RetailStore() {
                   key={product.id}
                   product={product}
                   onAddToCart={handleAddToCart}
+                  isFavorite={isFavorite(product.id)}
+                  onToggleFavorite={toggleFavorite}
                 />
               ))}
             </div>
           )}
+
+          {/* Spacer for mobile bottom nav */}
+          <div className="h-20 lg:hidden" />
         </main>
 
         {/* Footer */}
         <RetailFooter store={store} />
       </div>
+
+      {/* Mobile bottom navigation */}
+      <RetailMobileNav
+        cartItemsCount={cartItemsCount}
+        favoritesCount={favoritesCount}
+        onCategoriesClick={() => setMobileMenuOpen(true)}
+        onCartClick={() => setIsOpen(true)}
+        onFavoritesClick={() => setFavoritesOpen(true)}
+      />
+
+      {/* Favorites sheet */}
+      <Sheet open={favoritesOpen} onOpenChange={setFavoritesOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Избранное ({favoritesCount})</SheetTitle>
+          </SheetHeader>
+          <div className="mt-6 space-y-4 overflow-y-auto max-h-[calc(100vh-120px)]">
+            {favorites.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                Добавьте товары в избранное, нажав на сердечко
+              </p>
+            ) : (
+              products
+                .filter((p) => favorites.includes(p.id))
+                .map((product) => (
+                  <RetailProductCard
+                    key={product.id}
+                    product={product}
+                    onAddToCart={handleAddToCart}
+                    isFavorite={true}
+                    onToggleFavorite={toggleFavorite}
+                  />
+                ))
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Cart drawer */}
       <RetailCartDrawer
