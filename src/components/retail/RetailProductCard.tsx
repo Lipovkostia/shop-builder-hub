@@ -187,7 +187,7 @@ export function RetailProductCard({
           isRightSide ? "right-full" : "left-full"
         )}
         style={{ 
-          width: isExpanded ? '100%' : 0,
+          width: isExpanded ? 'calc(100% + 16px)' : 0, // 100% + gap-4 (16px)
           height: cardHeight > 0 ? cardHeight : 'auto'
         }}
       >
