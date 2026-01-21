@@ -96,94 +96,23 @@ export function useRetailStore(subdomain: string | undefined) {
   const fetchProducts = useCallback(async () => {
     if (!store?.id) return;
 
+    // If no catalog is selected, show NO products
+    if (!store.retail_catalog_id) {
+      setProducts([]);
+      return;
+    }
+
     try {
-      let formattedProducts: RetailProduct[] = [];
-
-      // If a specific catalog is selected, fetch products from that catalog
-      if (store.retail_catalog_id) {
-        const { data, error: productsError } = await supabase
-          .from("product_catalog_visibility")
-          .select(`
-            products!inner (
-              id,
-              name,
-              description,
-              price,
-              buy_price,
-              compare_price,
-              images,
-              unit,
-              sku,
-              quantity,
-              slug,
-              packaging_type,
-              category_id,
-              is_active,
-              deleted_at,
-              categories!products_category_id_fkey (
-                name
-              )
-            ),
-            catalog_product_settings (
-              markup_type,
-              markup_value,
-              status
-            )
-          `)
-          .eq("catalog_id", store.retail_catalog_id);
-
-        if (productsError) throw productsError;
-
-        formattedProducts = (data || [])
-          .filter((item: any) => 
-            item.products?.is_active && 
-            !item.products?.deleted_at &&
-            (!item.catalog_product_settings?.[0]?.status || item.catalog_product_settings[0].status !== 'hidden')
-          )
-          .map((item: any) => {
-            const p = item.products;
-            const settings = item.catalog_product_settings?.[0];
-            
-            // Calculate price with catalog markup
-            let calculatedPrice = p.price;
-            if (p.buy_price && p.buy_price > 0 && settings) {
-              if (settings.markup_type === 'percent') {
-                calculatedPrice = p.buy_price * (1 + (settings.markup_value || 0) / 100);
-              } else if (settings.markup_type === 'fixed' || settings.markup_type === 'rubles') {
-                calculatedPrice = p.buy_price + (settings.markup_value || 0);
-              }
-            }
-            // Use product price if it's set and higher than 0, otherwise use calculated price
-            const finalPrice = p.price > 0 ? p.price : calculatedPrice;
-
-            return {
-              id: p.id,
-              name: p.name,
-              description: p.description,
-              price: finalPrice,
-              compare_price: p.compare_price,
-              images: p.images || [],
-              unit: p.unit || "шт",
-              sku: p.sku,
-              quantity: p.quantity,
-              slug: p.slug,
-              packaging_type: p.packaging_type || "piece",
-              category_id: p.category_id,
-              category_name: p.categories?.name,
-              is_active: p.is_active,
-            };
-          })
-          .filter((p: RetailProduct) => p.price > 0);
-
-      } else {
-        // Fetch all active products (original behavior)
-        const { data, error: productsError } = await supabase
-          .from("products")
-          .select(`
+      // Fetch products from the selected catalog only
+      const { data, error: productsError } = await supabase
+        .from("product_catalog_visibility")
+        .select(`
+          products!inner (
             id,
             name,
             description,
             price,
+            buy_price,
             compare_price,
             images,
             unit,
@@ -193,35 +122,75 @@ export function useRetailStore(subdomain: string | undefined) {
             packaging_type,
             category_id,
             is_active,
+            deleted_at,
             categories!products_category_id_fkey (
               name
             )
-          `)
-          .eq("store_id", store.id)
-          .eq("is_active", true)
-          .is("deleted_at", null)
-          .gt("price", 0)
-          .order("name");
+          )
+        `)
+        .eq("catalog_id", store.retail_catalog_id);
 
-        if (productsError) throw productsError;
+      if (productsError) throw productsError;
 
-        formattedProducts = (data || []).map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          description: p.description,
-          price: p.price,
-          compare_price: p.compare_price,
-          images: p.images || [],
-          unit: p.unit || "шт",
-          sku: p.sku,
-          quantity: p.quantity,
-          slug: p.slug,
-          packaging_type: p.packaging_type || "piece",
-          category_id: p.category_id,
-          category_name: p.categories?.name,
-          is_active: p.is_active,
-        }));
-      }
+      // Fetch catalog product settings for pricing and status
+      const { data: settingsData } = await supabase
+        .from("catalog_product_settings")
+        .select("product_id, markup_type, markup_value, status")
+        .eq("catalog_id", store.retail_catalog_id);
+
+      const settingsMap = new Map(
+        (settingsData || []).map(s => [s.product_id, s])
+      );
+
+      // Orderable statuses - product is available for purchase
+      // in_stock, pre_order, visible, or null (default) = show product
+      // hidden, out_of_stock = hide product
+      const formattedProducts: RetailProduct[] = (data || [])
+        .map((item: any) => {
+          const p = item.products;
+          if (!p || !p.is_active || p.deleted_at) return null;
+
+          const settings = settingsMap.get(p.id);
+          const status = settings?.status || null;
+
+          // Hide products with status 'hidden' or 'out_of_stock'
+          if (status === 'hidden' || status === 'out_of_stock') {
+            return null;
+          }
+
+          // Calculate price with catalog markup
+          let calculatedPrice = p.price;
+          if (p.buy_price && p.buy_price > 0 && settings) {
+            if (settings.markup_type === 'percent') {
+              calculatedPrice = p.buy_price * (1 + (settings.markup_value || 0) / 100);
+            } else if (settings.markup_type === 'fixed' || settings.markup_type === 'rubles') {
+              calculatedPrice = p.buy_price + (settings.markup_value || 0);
+            }
+          }
+          // Use product price if it's set and higher than 0, otherwise use calculated price
+          const finalPrice = p.price > 0 ? p.price : calculatedPrice;
+
+          // Skip products with no valid price
+          if (finalPrice <= 0) return null;
+
+          return {
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            price: finalPrice,
+            compare_price: p.compare_price,
+            images: p.images || [],
+            unit: p.unit || "шт",
+            sku: p.sku,
+            quantity: p.quantity,
+            slug: p.slug,
+            packaging_type: p.packaging_type || "piece",
+            category_id: p.category_id,
+            category_name: p.categories?.name,
+            is_active: p.is_active,
+          };
+        })
+        .filter(Boolean) as RetailProduct[];
 
       setProducts(formattedProducts);
     } catch (err) {
