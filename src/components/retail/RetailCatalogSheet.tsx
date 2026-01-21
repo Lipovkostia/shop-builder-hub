@@ -151,8 +151,8 @@ export function RetailCatalogSheet({
               <div className="flex-1 h-px bg-border/50" />
             </div>
 
-            {/* Categories list */}
-            <div className="pb-6">
+            {/* Categories list - with extra bottom padding for mobile nav */}
+            <div className="pb-24">
               {categoriesWithProducts.length === 0 ? (
                 <div className="px-5 py-8 text-center">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
