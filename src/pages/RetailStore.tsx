@@ -81,9 +81,15 @@ export default function RetailStore() {
       );
     }
 
-    // Category filter
+    // Category filter - check both category_id and category_ids array
     if (selectedCategories.length > 0) {
-      result = result.filter((p) => p.category_id && selectedCategories.includes(p.category_id));
+      result = result.filter((p) => {
+        // Check if any selected category matches product's categories
+        const productCategoryIds = p.category_ids || [];
+        return selectedCategories.some(catId => 
+          productCategoryIds.includes(catId) || p.category_id === catId
+        );
+      });
     }
 
     // Price filter
