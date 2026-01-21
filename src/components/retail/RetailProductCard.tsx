@@ -141,12 +141,25 @@ export function RetailProductCard({
   return (
     <Link
       to={`/retail/${subdomain}/product/${product.id}`}
-      className="group bg-card rounded-xl overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow"
+      className="group bg-card rounded-xl overflow-visible flex flex-col shadow-sm hover:shadow-md transition-shadow relative"
     >
+      {/* Favorite button - positioned above card */}
+      <button
+        onClick={handleFavorite}
+        className={cn(
+          "absolute -top-2 -right-2 p-1 transition-all z-20",
+          isFavorite 
+            ? "text-destructive drop-shadow-[0_3px_6px_rgba(0,0,0,0.4)]" 
+            : "text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]"
+        )}
+      >
+        <Heart className="h-7 w-7 fill-current" />
+      </button>
+
       {/* Image section */}
       <div 
         ref={imageContainerRef}
-        className="relative aspect-square bg-muted overflow-hidden"
+        className="relative aspect-square bg-muted overflow-hidden rounded-t-xl"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -167,17 +180,6 @@ export function RetailProductCard({
             <ImageOff className="h-12 w-12 text-muted-foreground/30" />
           </div>
         )}
-
-        {/* Favorite button */}
-        <button
-          onClick={handleFavorite}
-          className={cn(
-            "absolute -top-3 -right-3 p-1 transition-all z-10",
-            isFavorite && "text-destructive drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]"
-          )}
-        >
-          <Heart className={cn("h-7 w-7", isFavorite && "fill-current")} />
-        </button>
 
         {/* Sale badge */}
         {hasDiscount && (
