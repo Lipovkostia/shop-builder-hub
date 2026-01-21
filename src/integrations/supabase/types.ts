@@ -1094,15 +1094,22 @@ export type Database = {
           contact_email: string | null
           contact_phone: string | null
           created_at: string
+          custom_domain: string | null
           customers_count: number | null
           description: string | null
+          favicon_url: string | null
           id: string
           logo_url: string | null
           name: string
           owner_id: string
           primary_color: string | null
           products_count: number | null
+          retail_enabled: boolean | null
+          retail_logo_url: string | null
+          retail_theme: Json | null
           secondary_color: string | null
+          seo_description: string | null
+          seo_title: string | null
           status: Database["public"]["Enums"]["store_status"]
           subdomain: string
           updated_at: string
@@ -1113,15 +1120,22 @@ export type Database = {
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
+          custom_domain?: string | null
           customers_count?: number | null
           description?: string | null
+          favicon_url?: string | null
           id?: string
           logo_url?: string | null
           name: string
           owner_id: string
           primary_color?: string | null
           products_count?: number | null
+          retail_enabled?: boolean | null
+          retail_logo_url?: string | null
+          retail_theme?: Json | null
           secondary_color?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
           status?: Database["public"]["Enums"]["store_status"]
           subdomain: string
           updated_at?: string
@@ -1132,15 +1146,22 @@ export type Database = {
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
+          custom_domain?: string | null
           customers_count?: number | null
           description?: string | null
+          favicon_url?: string | null
           id?: string
           logo_url?: string | null
           name?: string
           owner_id?: string
           primary_color?: string | null
           products_count?: number | null
+          retail_enabled?: boolean | null
+          retail_logo_url?: string | null
+          retail_theme?: Json | null
           secondary_color?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
           status?: Database["public"]["Enums"]["store_status"]
           subdomain?: string
           updated_at?: string
