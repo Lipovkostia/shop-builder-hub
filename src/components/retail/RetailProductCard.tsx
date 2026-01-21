@@ -48,9 +48,11 @@ export function RetailProductCard({
   const touchStartX = useRef<number>(0);
   const touchEndX = useRef<number>(0);
   
-  // Touch/swipe for expanded image viewer
+  // Touch/swipe for expanded image viewer with drag effect
   const expandedTouchStartX = useRef<number>(0);
-  const expandedTouchEndX = useRef<number>(0);
+  const expandedTouchCurrentX = useRef<number>(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   
   // Image container ref for cursor tracking on desktop
   const imageContainerRef = useRef<HTMLDivElement>(null);
@@ -126,6 +128,16 @@ export function RetailProductCard({
     }
   }, [images.length, isOutOfStock, currentImageIndex]);
 
+  // Handle tap on expanded image to close
+  const handleExpandedImageTap = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only close if not dragging
+    if (!isDragging) {
+      setIsImageExpanded(false);
+    }
+  }, [isDragging]);
+
   // Close description when clicking outside
   useEffect(() => {
     if (!isExpanded) return;
@@ -183,34 +195,43 @@ export function RetailProductCard({
     touchEndX.current = 0;
   }, [hasMultipleImages, isMobile, images.length]);
 
-  // Expanded image touch handlers
+  // Expanded image touch handlers with drag effect
   const handleExpandedTouchStart = useCallback((e: React.TouchEvent) => {
-    if (!hasMultipleImages) return;
     expandedTouchStartX.current = e.touches[0].clientX;
-  }, [hasMultipleImages]);
+    expandedTouchCurrentX.current = e.touches[0].clientX;
+    setIsDragging(false);
+  }, []);
 
   const handleExpandedTouchMove = useCallback((e: React.TouchEvent) => {
     if (!hasMultipleImages) return;
-    expandedTouchEndX.current = e.touches[0].clientX;
+    const currentX = e.touches[0].clientX;
+    expandedTouchCurrentX.current = currentX;
+    const diff = currentX - expandedTouchStartX.current;
+    setDragOffset(diff);
+    if (Math.abs(diff) > 10) {
+      setIsDragging(true);
+    }
   }, [hasMultipleImages]);
 
   const handleExpandedTouchEnd = useCallback(() => {
-    if (!hasMultipleImages) return;
+    const threshold = 60;
     
-    const diff = expandedTouchStartX.current - expandedTouchEndX.current;
-    const threshold = 50;
-    
-    if (Math.abs(diff) > threshold) {
-      if (diff > 0) {
+    if (hasMultipleImages && Math.abs(dragOffset) > threshold) {
+      if (dragOffset < 0) {
+        // Swiped left - next image
         setExpandedImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
       } else {
+        // Swiped right - previous image
         setExpandedImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
       }
     }
     
+    setDragOffset(0);
+    // Reset dragging state after a small delay to allow tap detection
+    setTimeout(() => setIsDragging(false), 50);
     expandedTouchStartX.current = 0;
-    expandedTouchEndX.current = 0;
-  }, [hasMultipleImages, images.length]);
+    expandedTouchCurrentX.current = 0;
+  }, [hasMultipleImages, images.length, dragOffset]);
 
   const handleExpandedPrev = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -296,16 +317,32 @@ export function RetailProductCard({
           onTouchStart={handleExpandedTouchStart}
           onTouchMove={handleExpandedTouchMove}
           onTouchEnd={handleExpandedTouchEnd}
+          onClick={handleExpandedImageTap}
         >
-          {/* Expanded image */}
-          {images[expandedImageIndex] && (
-            <img
-              src={images[expandedImageIndex]}
-              alt={product.name}
-              className="w-full h-full object-cover"
-              draggable={false}
-            />
-          )}
+          {/* Images container with drag effect */}
+          <div 
+            className="flex h-full transition-transform"
+            style={{ 
+              width: `${images.length * 100}%`,
+              transform: `translateX(calc(-${expandedImageIndex * (100 / images.length)}% + ${dragOffset}px))`,
+              transition: isDragging ? 'none' : 'transform 0.3s ease-out'
+            }}
+          >
+            {images.map((img, idx) => (
+              <div 
+                key={idx} 
+                className="h-full flex-shrink-0"
+                style={{ width: `${100 / images.length}%` }}
+              >
+                <img
+                  src={img}
+                  alt={`${product.name} - ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                  draggable={false}
+                />
+              </div>
+            ))}
+          </div>
           
           {/* Navigation arrows for desktop */}
           {hasMultipleImages && !isMobile && (
