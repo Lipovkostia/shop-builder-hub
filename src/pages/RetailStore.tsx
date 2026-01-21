@@ -287,17 +287,14 @@ export default function RetailStore() {
             <div
               className={
                 viewMode === "grid"
-                  ? "flex flex-wrap gap-4"
+                  ? "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
                   : "flex flex-col gap-4"
               }
             >
-              {filteredProducts.map((product) => (
+              {filteredProducts.map((product, index) => (
                 <div 
                   key={product.id} 
-                  className={cn(
-                    "transition-all duration-300 ease-out",
-                    viewMode === "grid" && "w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] xl:w-[calc(25%-12px)]"
-                  )}
+                  className="relative"
                 >
                   <RetailProductCard
                     product={product}
@@ -306,6 +303,7 @@ export default function RetailStore() {
                     cartQuantity={getCartQuantity(product.id)}
                     isFavorite={isFavorite(product.id)}
                     onToggleFavorite={toggleFavorite}
+                    index={index}
                   />
                 </div>
               ))}
@@ -395,6 +393,7 @@ export default function RetailStore() {
                       cartQuantity={getCartQuantity(product.id)}
                       isFavorite={true}
                       onToggleFavorite={toggleFavorite}
+                      index={0}
                     />
                   ))
               )}
