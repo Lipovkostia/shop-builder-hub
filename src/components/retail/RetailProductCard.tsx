@@ -1,9 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Heart, Check, ImageOff, ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Heart, Check, ImageOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { RetailProduct } from "@/hooks/useRetailStore";
 
 interface RetailProductCardProps {
@@ -18,18 +18,26 @@ function formatPrice(price: number): string {
   }).format(price) + " ₽";
 }
 
-function formatWeight(unit: string | null): string {
+function formatUnit(unit: string | null): string {
   if (!unit) return "";
-  // Extract weight from unit string or return as-is
-  return unit.toUpperCase();
+  // Return unit as-is for display (e.g., "1 кг", "150г", "шт")
+  return unit;
 }
 
 export function RetailProductCard({ product, onAddToCart }: RetailProductCardProps) {
   const { subdomain } = useParams();
+  const isMobile = useIsMobile();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  
+  // Touch/swipe handling for mobile
+  const touchStartX = useRef<number>(0);
+  const touchEndX = useRef<number>(0);
+  
+  // Image container ref for cursor tracking on desktop
+  const imageContainerRef = useRef<HTMLDivElement>(null);
 
   const images = product.images || [];
   const hasMultipleImages = images.length > 1;
@@ -54,32 +62,83 @@ export function RetailProductCard({ product, onAddToCart }: RetailProductCardPro
     setIsFavorite(!isFavorite);
   }, [isFavorite]);
 
-  const handlePrevImage = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-  }, [images.length]);
+  // Mobile touch handlers for swipe
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!hasMultipleImages || !isMobile) return;
+    touchStartX.current = e.touches[0].clientX;
+  }, [hasMultipleImages, isMobile]);
 
-  const handleNextImage = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  }, [images.length]);
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!hasMultipleImages || !isMobile) return;
+    touchEndX.current = e.touches[0].clientX;
+  }, [hasMultipleImages, isMobile]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!hasMultipleImages || !isMobile) return;
+    
+    const diff = touchStartX.current - touchEndX.current;
+    const threshold = 50; // minimum swipe distance
+    
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        // Swipe left - next image
+        setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+      } else {
+        // Swipe right - previous image
+        setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+      }
+    }
+    
+    touchStartX.current = 0;
+    touchEndX.current = 0;
+  }, [hasMultipleImages, isMobile, images.length]);
+
+  // Desktop mouse movement handler for cursor-based image switching
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!hasMultipleImages || isMobile || !imageContainerRef.current) return;
+    
+    const rect = imageContainerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const width = rect.width;
+    
+    // Divide the image area into sections based on number of images
+    const sectionWidth = width / images.length;
+    const newIndex = Math.min(Math.floor(x / sectionWidth), images.length - 1);
+    
+    if (newIndex !== currentImageIndex && newIndex >= 0) {
+      setCurrentImageIndex(newIndex);
+    }
+  }, [hasMultipleImages, isMobile, images.length, currentImageIndex]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (!isMobile && hasMultipleImages) {
+      setCurrentImageIndex(0);
+    }
+  }, [isMobile, hasMultipleImages]);
 
   return (
     <Link
       to={`/retail/${subdomain}/product/${product.id}`}
-      className="group bg-card rounded-lg overflow-hidden flex flex-col"
+      className="group bg-card rounded-xl overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow"
     >
       {/* Image section */}
-      <div className="relative aspect-square bg-muted overflow-hidden rounded-lg">
+      <div 
+        ref={imageContainerRef}
+        className="relative aspect-square bg-muted overflow-hidden"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      >
         {currentImage && !imageError ? (
           <img
             src={currentImage}
             alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover transition-opacity duration-200"
             onError={() => setImageError(true)}
             loading="lazy"
+            draggable={false}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-muted">
@@ -114,17 +173,12 @@ export function RetailProductCard({ product, onAddToCart }: RetailProductCardPro
           </div>
         )}
 
-        {/* Image carousel dots */}
+        {/* Image indicators (dots for mobile, sections for desktop) */}
         {hasMultipleImages && !isOutOfStock && (
           <div className="absolute bottom-3 left-3 flex gap-1">
             {images.map((_, idx) => (
-              <button
+              <div
                 key={idx}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setCurrentImageIndex(idx);
-                }}
                 className={cn(
                   "w-1.5 h-1.5 rounded-full transition-all",
                   idx === currentImageIndex 
@@ -137,26 +191,20 @@ export function RetailProductCard({ product, onAddToCart }: RetailProductCardPro
         )}
       </div>
 
-      {/* Content */}
-      <div className="pt-4 pb-2 flex-1 flex flex-col">
-        {/* Name */}
-        <h3 className="font-medium text-base leading-snug line-clamp-2 text-foreground mb-1">
+      {/* Product name - below image, 2 lines max with fade */}
+      <div className="px-3 pt-3 pb-0">
+        <h3 className="font-medium text-sm leading-snug text-foreground line-clamp-2 min-h-[2.5rem]">
           {product.name}
         </h3>
+      </div>
 
-        {/* Category */}
-        {product.category_name && (
-          <span className="text-[11px] text-accent font-medium uppercase tracking-wide mb-auto">
-            {product.category_name}
-          </span>
-        )}
-
-        {/* Buy button with price */}
+      {/* Buy button - fills bottom of card */}
+      <div className="p-3 pt-2 mt-auto">
         <button
           onClick={handleAddToCart}
           disabled={isOutOfStock}
           className={cn(
-            "w-full mt-4 h-11 rounded-md text-sm font-medium transition-all flex items-center justify-between px-4",
+            "w-full h-11 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2",
             isAdded 
               ? "bg-success text-success-foreground"
               : "bg-primary text-primary-foreground hover:opacity-90",
@@ -169,24 +217,14 @@ export function RetailProductCard({ product, onAddToCart }: RetailProductCardPro
               Добавлено
             </span>
           ) : (
-            <span className="uppercase tracking-wide">Купить</span>
-          )}
-          <span className="flex items-center gap-2">
-            {product.unit && (
-              <span className="text-xs opacity-70">{formatWeight(product.unit)}</span>
-            )}
-            <span className="font-semibold">{formatPrice(product.price)}</span>
-          </span>
-        </button>
-
-        {/* Compare price if discounted */}
-        {hasDiscount && (
-          <div className="text-center mt-2">
-            <span className="text-xs text-muted-foreground line-through">
-              {formatPrice(product.compare_price!)}
+            <span className="flex items-center gap-2">
+              <span className="font-semibold">{formatPrice(product.price)}</span>
+              {product.unit && (
+                <span className="text-xs opacity-80">/ {formatUnit(product.unit)}</span>
+              )}
             </span>
-          </div>
-        )}
+          )}
+        </button>
       </div>
     </Link>
   );
