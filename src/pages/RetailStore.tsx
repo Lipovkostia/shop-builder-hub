@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { ArrowUpDown, Grid, List, SlidersHorizontal } from "lucide-react";
+import { ArrowUpDown, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -8,11 +8,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useRetailStore } from "@/hooks/useRetailStore";
 import { useRetailCart } from "@/hooks/useRetailCart";
-import { RetailHeader } from "@/components/retail/RetailHeader";
+import { RetailLayoutSidebar } from "@/components/retail/RetailLayoutSidebar";
+import { RetailTopBar } from "@/components/retail/RetailTopBar";
 import { RetailProductCard } from "@/components/retail/RetailProductCard";
 import { RetailSidebar } from "@/components/retail/RetailSidebar";
 import { RetailCartDrawer } from "@/components/retail/RetailCartDrawer";
 import { RetailFooter } from "@/components/retail/RetailFooter";
+import { CategoryHeader } from "@/components/retail/CategoryHeader";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 type ViewMode = "grid" | "list";
@@ -29,6 +31,7 @@ export default function RetailStore() {
   const [sortBy, setSortBy] = useState<SortOption>("default");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [inStockOnly, setInStockOnly] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // Price range calculation
@@ -78,7 +81,7 @@ export default function RetailStore() {
 
     // In stock filter
     if (inStockOnly) {
-      result = result.filter((p) => p.quantity > 0);
+      result = result.filter((p) => p.catalog_status !== 'out_of_stock');
     }
 
     // Sort
@@ -99,6 +102,12 @@ export default function RetailStore() {
 
     return result;
   }, [products, searchQuery, selectedCategories, currentPriceRange, inStockOnly, sortBy]);
+
+  // Get current category data
+  const currentCategory = useMemo(() => {
+    if (!selectedCategory) return null;
+    return categories.find(c => c.id === selectedCategory) || null;
+  }, [selectedCategory, categories]);
 
   // Check for active filters
   const hasActiveFilters =
@@ -150,23 +159,25 @@ export default function RetailStore() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="border-b">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-8 w-32" />
-              <Skeleton className="h-10 w-64" />
-              <Skeleton className="h-10 w-10" />
-            </div>
+      <div className="min-h-screen bg-background flex">
+        {/* Sidebar skeleton */}
+        <div className="hidden lg:block w-64 border-r p-6 space-y-4">
+          <Skeleton className="h-12 w-32" />
+          <div className="space-y-2 pt-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
           </div>
         </div>
-        <div className="container mx-auto px-4 py-6">
+        {/* Main content skeleton */}
+        <div className="flex-1 p-6">
+          <Skeleton className="h-12 w-full mb-6" />
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="space-y-3">
                 <Skeleton className="aspect-square rounded-lg" />
                 <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-6 w-1/2" />
+                <Skeleton className="h-12 w-full" />
               </div>
             ))}
           </div>
@@ -188,155 +199,142 @@ export default function RetailStore() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <RetailHeader
-        store={store}
-        categories={categories}
-        cartItemsCount={cartItemsCount}
-        onCartClick={() => setIsOpen(true)}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        selectedCategory={selectedCategory}
-        onCategorySelect={setSelectedCategory}
-      />
+    <div className="min-h-screen bg-background flex">
+      {/* Desktop sidebar */}
+      <div className="hidden lg:block">
+        <RetailLayoutSidebar
+          store={store}
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onCategorySelect={setSelectedCategory}
+        />
+      </div>
 
-      {/* Main content */}
-      <main className="flex-1 container mx-auto px-4 py-6">
-        <div className="flex gap-6">
-          {/* Desktop sidebar */}
-          <div className="hidden lg:block w-64 flex-shrink-0">
-            <div className="sticky top-32">
-              <RetailSidebar
-                categories={categories}
-                selectedCategories={selectedCategories}
-                onCategoryToggle={toggleCategory}
-                priceRange={priceRange}
-                currentPriceRange={currentPriceRange}
-                onPriceRangeChange={setCurrentPriceRange}
-                inStockOnly={inStockOnly}
-                onInStockChange={setInStockOnly}
-                onResetFilters={resetFilters}
-                hasActiveFilters={hasActiveFilters}
-              />
-            </div>
+      {/* Mobile sidebar sheet */}
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <SheetContent side="left" className="w-80 p-0">
+          <div className="h-full">
+            <RetailLayoutSidebar
+              store={store}
+              categories={categories}
+              selectedCategory={selectedCategory}
+              onCategorySelect={(cat) => {
+                setSelectedCategory(cat);
+                setMobileMenuOpen(false);
+              }}
+            />
           </div>
+        </SheetContent>
+      </Sheet>
 
-          {/* Products area */}
-          <div className="flex-1">
-            {/* Toolbar */}
-            <div className="flex items-center justify-between gap-4 mb-4">
-              <div className="flex items-center gap-2">
-                {/* Mobile filters button */}
-                <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" size="sm" className="lg:hidden">
-                      <SlidersHorizontal className="h-4 w-4 mr-2" />
-                      Фильтры
-                      {hasActiveFilters && (
-                        <Badge className="ml-2 h-5 w-5 p-0 flex items-center justify-center">
-                          !
-                        </Badge>
-                      )}
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-80">
-                    <SheetHeader>
-                      <SheetTitle>Фильтры</SheetTitle>
-                    </SheetHeader>
-                    <div className="mt-6">
-                      <RetailSidebar
-                        categories={categories}
-                        selectedCategories={selectedCategories}
-                        onCategoryToggle={toggleCategory}
-                        priceRange={priceRange}
-                        currentPriceRange={currentPriceRange}
-                        onPriceRangeChange={setCurrentPriceRange}
-                        inStockOnly={inStockOnly}
-                        onInStockChange={setInStockOnly}
-                        onResetFilters={resetFilters}
-                        hasActiveFilters={hasActiveFilters}
-                      />
-                    </div>
-                  </SheetContent>
-                </Sheet>
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top bar */}
+        <RetailTopBar
+          store={store}
+          cartItemsCount={cartItemsCount}
+          onCartClick={() => setIsOpen(true)}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onMobileMenuClick={() => setMobileMenuOpen(true)}
+        />
 
-                <span className="text-sm text-muted-foreground">
-                  {filteredProducts.length} товаров
-                </span>
-              </div>
+        {/* Main content */}
+        <main className="flex-1 px-4 lg:px-6 py-6">
+          {/* Category header */}
+          <CategoryHeader 
+            category={currentCategory} 
+            productCount={filteredProducts.length} 
+          />
 
-              <div className="flex items-center gap-2">
-                {/* Sort */}
-                <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-                  <SelectTrigger className="w-[180px] h-9">
-                    <ArrowUpDown className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Сортировка" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">По умолчанию</SelectItem>
-                    <SelectItem value="price-asc">Сначала дешёвые</SelectItem>
-                    <SelectItem value="price-desc">Сначала дорогие</SelectItem>
-                    <SelectItem value="name-asc">По названию А-Я</SelectItem>
-                    <SelectItem value="name-desc">По названию Я-А</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {/* View mode */}
-                <div className="hidden sm:flex border rounded-lg">
-                  <Button
-                    variant={viewMode === "grid" ? "secondary" : "ghost"}
-                    size="icon"
-                    className="h-9 w-9"
-                    onClick={() => setViewMode("grid")}
-                  >
-                    <Grid className="h-4 w-4" />
+          {/* Toolbar */}
+          <div className="flex items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-2">
+              {/* Mobile filters button */}
+              <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="lg:hidden">
+                    <SlidersHorizontal className="h-4 w-4 mr-2" />
+                    Фильтры
+                    {hasActiveFilters && (
+                      <Badge className="ml-2 h-5 w-5 p-0 flex items-center justify-center">
+                        !
+                      </Badge>
+                    )}
                   </Button>
-                  <Button
-                    variant={viewMode === "list" ? "secondary" : "ghost"}
-                    size="icon"
-                    className="h-9 w-9"
-                    onClick={() => setViewMode("list")}
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-80">
+                  <SheetHeader>
+                    <SheetTitle>Фильтры</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-6">
+                    <RetailSidebar
+                      categories={categories}
+                      selectedCategories={selectedCategories}
+                      onCategoryToggle={toggleCategory}
+                      priceRange={priceRange}
+                      currentPriceRange={currentPriceRange}
+                      onPriceRangeChange={setCurrentPriceRange}
+                      inStockOnly={inStockOnly}
+                      onInStockChange={setInStockOnly}
+                      onResetFilters={resetFilters}
+                      hasActiveFilters={hasActiveFilters}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
 
-            {/* Products grid */}
-            {filteredProducts.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Товары не найдены</p>
-                {hasActiveFilters && (
-                  <Button variant="link" onClick={resetFilters} className="mt-2">
-                    Сбросить фильтры
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div
-                className={
-                  viewMode === "grid"
-                    ? "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
-                    : "flex flex-col gap-4"
-                }
-              >
-                {filteredProducts.map((product) => (
-                  <RetailProductCard
-                    key={product.id}
-                    product={product}
-                    onAddToCart={handleAddToCart}
-                  />
-                ))}
-              </div>
-            )}
+            {/* Sort */}
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+              <SelectTrigger className="w-[180px] h-9">
+                <ArrowUpDown className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Сортировка" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">По умолчанию</SelectItem>
+                <SelectItem value="price-asc">Сначала дешёвые</SelectItem>
+                <SelectItem value="price-desc">Сначала дорогие</SelectItem>
+                <SelectItem value="name-asc">По названию А-Я</SelectItem>
+                <SelectItem value="name-desc">По названию Я-А</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </div>
-      </main>
 
-      {/* Footer */}
-      <RetailFooter store={store} />
+          {/* Products grid */}
+          {filteredProducts.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Товары не найдены</p>
+              {hasActiveFilters && (
+                <Button variant="link" onClick={resetFilters} className="mt-2">
+                  Сбросить фильтры
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
+                  : "flex flex-col gap-4"
+              }
+            >
+              {filteredProducts.map((product) => (
+                <RetailProductCard
+                  key={product.id}
+                  product={product}
+                  onAddToCart={handleAddToCart}
+                />
+              ))}
+            </div>
+          )}
+        </main>
+
+        {/* Footer */}
+        <RetailFooter store={store} />
+      </div>
 
       {/* Cart drawer */}
       <RetailCartDrawer
