@@ -305,10 +305,27 @@ export default function RetailStore() {
       <RetailMobileNav
         cartItemsCount={cartItemsCount}
         favoritesCount={favoritesCount}
-        onCategoriesClick={() => setMobileCatalogOpen(true)}
-        onCartClick={() => setIsOpen(true)}
-        onFavoritesClick={() => setFavoritesOpen(true)}
-        onPromotionsClick={() => {/* TODO: navigate to promotions */}}
+        onCategoriesClick={() => {
+          setIsOpen(false);
+          setFavoritesOpen(false);
+          setMobileCatalogOpen(true);
+        }}
+        onCartClick={() => {
+          setMobileCatalogOpen(false);
+          setFavoritesOpen(false);
+          setIsOpen(true);
+        }}
+        onFavoritesClick={() => {
+          setMobileCatalogOpen(false);
+          setIsOpen(false);
+          setFavoritesOpen(true);
+        }}
+        onPromotionsClick={() => {
+          setMobileCatalogOpen(false);
+          setIsOpen(false);
+          setFavoritesOpen(false);
+          /* TODO: navigate to promotions */
+        }}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
