@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Heart, ImageOff, Plus, Minus, ChevronRight, X } from "lucide-react";
+import { Heart, ImageOff, Plus, Minus, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -50,15 +50,16 @@ export function RetailProductCard({
   
   // Image container ref for cursor tracking on desktop
   const imageContainerRef = useRef<HTMLDivElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const innerCardRef = useRef<HTMLDivElement>(null);
 
   // Determine if card is on the right side (odd index in 2-column grid)
   const isRightSide = index % 2 === 1;
 
   // Measure card height for description panel
   useEffect(() => {
-    if (cardRef.current) {
-      setCardHeight(cardRef.current.offsetHeight);
+    if (innerCardRef.current) {
+      setCardHeight(innerCardRef.current.offsetHeight);
     }
   }, []);
 
@@ -71,8 +72,6 @@ export function RetailProductCard({
   const isInCart = cartQuantity > 0;
   const cartItemTotal = cartQuantity * product.price;
   const hasDescription = product.description && product.description.trim().length > 0;
-  
-  const descriptionWidth = isMobile ? 120 : 160;
 
   const handleAddToCart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -113,11 +112,19 @@ export function RetailProductCard({
     }
   }, [hasDescription]);
 
-  const handleCloseDescription = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsExpanded(false);
-  }, []);
+  // Close description when clicking outside
+  useEffect(() => {
+    if (!isExpanded) return;
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsExpanded(false);
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [isExpanded]);
 
   // Mobile touch handlers for swipe
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -171,35 +178,28 @@ export function RetailProductCard({
   }, [isMobile, hasMultipleImages]);
 
   return (
-    <div className="relative w-full">
-      {/* Description panel - positioned as overlay */}
+    <div className="relative w-full" ref={containerRef}>
+      {/* Description panel - positioned as overlay, full width of neighbor card */}
       <div 
         className={cn(
-          "absolute top-0 z-30 transition-all duration-300 ease-out",
+          "absolute top-0 z-30 transition-all duration-300 ease-out overflow-hidden",
           isExpanded ? "opacity-100" : "opacity-0 pointer-events-none",
-          isRightSide ? "right-full pr-2" : "left-full pl-2"
+          isRightSide ? "right-full" : "left-full"
         )}
         style={{ 
-          width: isExpanded ? descriptionWidth : 0,
+          width: isExpanded ? '100%' : 0,
           height: cardHeight > 0 ? cardHeight : 'auto'
         }}
       >
         <div 
-          className="h-full bg-muted/95 backdrop-blur-sm rounded-xl shadow-lg flex flex-col overflow-hidden border border-border/20"
+          className={cn(
+            "h-full bg-muted/95 backdrop-blur-sm shadow-lg flex flex-col overflow-hidden",
+            isRightSide ? "rounded-l-xl" : "rounded-r-xl"
+          )}
           style={{ height: cardHeight > 0 ? cardHeight : 'auto' }}
         >
-          {/* Close button only */}
-          <div className="flex items-center justify-end px-2 py-1.5 flex-shrink-0">
-            <button 
-              onClick={handleCloseDescription}
-              className="p-1 rounded-full hover:bg-background/50 transition-colors"
-            >
-              <X className="h-3.5 w-3.5 text-muted-foreground" />
-            </button>
-          </div>
-          
-          {/* Scrollable description content */}
-          <div className="flex-1 overflow-y-auto scrollbar-thin px-3 pb-3 min-h-0">
+          {/* Scrollable description content - no header, just content */}
+          <div className="flex-1 overflow-y-auto scrollbar-thin p-3 min-h-0">
             <p className="text-xs leading-relaxed text-foreground/80">
               {product.description}
             </p>
@@ -209,7 +209,7 @@ export function RetailProductCard({
 
       {/* Main card */}
       <div 
-        ref={cardRef}
+        ref={innerCardRef}
         className="bg-card rounded-xl overflow-visible flex flex-col shadow-sm hover:shadow-md transition-shadow relative"
       >
         {/* Favorite button - positioned above card */}
