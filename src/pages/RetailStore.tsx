@@ -18,6 +18,8 @@ import { RetailFooter } from "@/components/retail/RetailFooter";
 import { CategoryHeader } from "@/components/retail/CategoryHeader";
 import { RetailMobileNav } from "@/components/retail/RetailMobileNav";
 import { RetailCatalogSheet } from "@/components/retail/RetailCatalogSheet";
+import { RetailFavoritesSheet } from "@/components/retail/RetailFavoritesSheet";
+
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 type ViewMode = "grid" | "list";
 
@@ -355,35 +357,50 @@ export default function RetailStore() {
         storeName={store.name}
       />
 
-      {/* Favorites sheet */}
-      <Sheet open={favoritesOpen} onOpenChange={setFavoritesOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Избранное ({favoritesCount})</SheetTitle>
-          </SheetHeader>
-          <div className="mt-6 space-y-4 overflow-y-auto max-h-[calc(100vh-120px)]">
-            {favorites.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                Добавьте товары в избранное, нажав на сердечко
-              </p>
-            ) : (
-              products
-                .filter((p) => favorites.includes(p.id))
-                .map((product) => (
-                  <RetailProductCard
-                    key={product.id}
-                    product={product}
-                    onAddToCart={handleAddToCart}
-                    onUpdateQuantity={updateQuantity}
-                    cartQuantity={getCartQuantity(product.id)}
-                    isFavorite={true}
-                    onToggleFavorite={toggleFavorite}
-                  />
-                ))
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* Favorites sheet - desktop */}
+      {!isMobile && (
+        <Sheet open={favoritesOpen} onOpenChange={setFavoritesOpen}>
+          <SheetContent side="right" className="w-full sm:max-w-md">
+            <SheetHeader>
+              <SheetTitle>Избранное ({favoritesCount})</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6 space-y-4 overflow-y-auto max-h-[calc(100vh-120px)]">
+              {favorites.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">
+                  Добавьте товары в избранное, нажав на сердечко
+                </p>
+              ) : (
+                products
+                  .filter((p) => favorites.includes(p.id))
+                  .map((product) => (
+                    <RetailProductCard
+                      key={product.id}
+                      product={product}
+                      onAddToCart={handleAddToCart}
+                      onUpdateQuantity={updateQuantity}
+                      cartQuantity={getCartQuantity(product.id)}
+                      isFavorite={true}
+                      onToggleFavorite={toggleFavorite}
+                    />
+                  ))
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {/* Favorites sheet - mobile (slides from bottom) */}
+      {isMobile && (
+        <RetailFavoritesSheet
+          open={favoritesOpen}
+          onOpenChange={setFavoritesOpen}
+          products={products}
+          favoriteIds={favorites}
+          onToggleFavorite={toggleFavorite}
+          onAddToCart={handleAddToCart}
+          getCartQuantity={getCartQuantity}
+        />
+      )}
 
       {/* Cart drawer - desktop only */}
       {!isMobile && (
