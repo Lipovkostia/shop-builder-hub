@@ -183,19 +183,18 @@ export function RetailProductCard({
       <div 
         className={cn(
           "absolute top-0 z-30 transition-all duration-300 ease-out overflow-hidden",
-          isExpanded ? "opacity-100" : "opacity-0 pointer-events-none",
-          isRightSide ? "right-full" : "left-full"
+          isExpanded ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
         style={{ 
-          width: isExpanded ? 'calc(100% + 16px)' : 0, // 100% + gap-4 (16px)
-          height: cardHeight > 0 ? cardHeight : 'auto'
+          width: isExpanded ? 'calc(100% + 16px + 12px)' : 0, // 100% + gap-4 (16px) + overlap for rounded corner (12px)
+          height: cardHeight > 0 ? cardHeight : 'auto',
+          ...(isRightSide 
+            ? { right: '-12px' }  // Overlap onto card by 12px
+            : { left: 'calc(100% - 12px)' }) // Overlap onto card by 12px
         }}
       >
         <div 
-          className={cn(
-            "h-full bg-muted/95 backdrop-blur-sm shadow-lg flex flex-col overflow-hidden",
-            isRightSide ? "rounded-l-xl" : "rounded-r-xl"
-          )}
+          className="h-full bg-muted/95 backdrop-blur-sm shadow-lg flex flex-col overflow-hidden rounded-xl"
           style={{ height: cardHeight > 0 ? cardHeight : 'auto' }}
         >
           {/* Scrollable description content - no header, just content */}
