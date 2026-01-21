@@ -53,6 +53,7 @@ export function RetailProductCard({
   const expandedTouchCurrentX = useRef<number>(0);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   
   // Pinch-to-zoom state
   const [zoomScale, setZoomScale] = useState(1);
@@ -61,6 +62,7 @@ export function RetailProductCard({
   const initialPinchDistance = useRef<number>(0);
   const initialScale = useRef<number>(1);
   const lastPanPosition = useRef({ x: 0, y: 0 });
+  const imageContainerWidth = useRef<number>(0);
   
   // Image container ref for cursor tracking on desktop
   const imageContainerRef = useRef<HTMLDivElement>(null);
@@ -314,26 +316,51 @@ export function RetailProductCard({
     }
     
     // Handle swipe for image navigation (only when not zoomed)
-    if (zoomScale <= 1) {
+    if (zoomScale <= 1 && hasMultipleImages) {
       const threshold = 60;
+      const containerWidth = imageContainerWidth.current || 300;
       
-      if (hasMultipleImages && Math.abs(dragOffset) > threshold) {
-        if (dragOffset < 0) {
-          // Swiped left - next image
-          setExpandedImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-        } else {
-          // Swiped right - previous image
-          setExpandedImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+      if (Math.abs(dragOffset) > threshold) {
+        // Determine direction
+        const goNext = dragOffset < 0;
+        const goPrev = dragOffset > 0;
+        
+        // Calculate new index
+        let newIndex = expandedImageIndex;
+        if (goNext && expandedImageIndex < images.length - 1) {
+          newIndex = expandedImageIndex + 1;
+        } else if (goNext && expandedImageIndex === images.length - 1) {
+          newIndex = 0; // Loop to first
+        } else if (goPrev && expandedImageIndex > 0) {
+          newIndex = expandedImageIndex - 1;
+        } else if (goPrev && expandedImageIndex === 0) {
+          newIndex = images.length - 1; // Loop to last
         }
+        
+        // Enable animation, then change index
+        setIsAnimating(true);
+        setExpandedImageIndex(newIndex);
+        
+        // Reset drag offset after transition completes
+        setTimeout(() => {
+          setDragOffset(0);
+          setIsAnimating(false);
+        }, 300);
+      } else {
+        // Snap back - not enough swipe
+        setIsAnimating(true);
+        setDragOffset(0);
+        setTimeout(() => setIsAnimating(false), 300);
       }
+    } else {
+      setDragOffset(0);
     }
     
-    setDragOffset(0);
     // Reset dragging state after a small delay to allow tap detection
     setTimeout(() => setIsDragging(false), 50);
     expandedTouchStartX.current = 0;
     expandedTouchCurrentX.current = 0;
-  }, [hasMultipleImages, images.length, dragOffset, isPinching, zoomScale]);
+  }, [hasMultipleImages, images.length, dragOffset, isPinching, zoomScale, expandedImageIndex]);
 
   const handleExpandedPrev = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -427,7 +454,7 @@ export function RetailProductCard({
             style={{ 
               width: `${images.length * 100}%`,
               transform: `translateX(calc(-${expandedImageIndex * (100 / images.length)}% + ${zoomScale <= 1 ? dragOffset : 0}px))`,
-              transition: isDragging || isPinching ? 'none' : 'transform 0.3s ease-out'
+              transition: (isDragging && !isAnimating) || isPinching ? 'none' : 'transform 0.3s ease-out'
             }}
           >
             {images.map((img, idx) => (
