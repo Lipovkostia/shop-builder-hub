@@ -40,6 +40,7 @@ export interface RetailProduct {
   slug: string;
   packaging_type: string;
   category_id: string | null;
+  category_ids: string[]; // All categories from catalog settings
   category_name?: string;
   is_active: boolean;
   catalog_status: string | null; // Status from catalog_product_settings
@@ -133,10 +134,10 @@ export function useRetailStore(subdomain: string | undefined) {
 
       if (productsError) throw productsError;
 
-      // Fetch catalog product settings for pricing and status
+      // Fetch catalog product settings for pricing, status, and categories
       const { data: settingsData } = await supabase
         .from("catalog_product_settings")
-        .select("product_id, markup_type, markup_value, status")
+        .select("product_id, markup_type, markup_value, status, categories")
         .eq("catalog_id", store.retail_catalog_id);
 
       const settingsMap = new Map(
@@ -174,6 +175,12 @@ export function useRetailStore(subdomain: string | undefined) {
           // Skip products with no valid price
           if (finalPrice <= 0) return null;
 
+          // Get category from catalog settings first, fall back to product category_id
+          const catalogCategories = settings?.categories as string[] | null;
+          const primaryCategoryId = catalogCategories && catalogCategories.length > 0 
+            ? catalogCategories[0] 
+            : p.category_id;
+
           return {
             id: p.id,
             name: p.name,
@@ -186,7 +193,8 @@ export function useRetailStore(subdomain: string | undefined) {
             quantity: p.quantity,
             slug: p.slug,
             packaging_type: p.packaging_type || "piece",
-            category_id: p.category_id,
+            category_id: primaryCategoryId,
+            category_ids: catalogCategories || (p.category_id ? [p.category_id] : []),
             category_name: p.categories?.name,
             is_active: p.is_active,
             catalog_status: status, // Pass catalog status
@@ -212,10 +220,12 @@ export function useRetailStore(subdomain: string | undefined) {
 
       if (catError) throw catError;
 
-      // Count products per category
+      // Count products per category using category_ids array
       const categoriesWithCount = (data || []).map((cat) => ({
         ...cat,
-        product_count: products.filter((p) => p.category_id === cat.id).length,
+        product_count: products.filter((p) => 
+          p.category_ids.includes(cat.id) || p.category_id === cat.id
+        ).length,
       }));
 
       setCategories(categoriesWithCount);
