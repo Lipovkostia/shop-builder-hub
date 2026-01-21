@@ -1104,6 +1104,7 @@ export type Database = {
           owner_id: string
           primary_color: string | null
           products_count: number | null
+          retail_catalog_id: string | null
           retail_enabled: boolean | null
           retail_logo_url: string | null
           retail_theme: Json | null
@@ -1130,6 +1131,7 @@ export type Database = {
           owner_id: string
           primary_color?: string | null
           products_count?: number | null
+          retail_catalog_id?: string | null
           retail_enabled?: boolean | null
           retail_logo_url?: string | null
           retail_theme?: Json | null
@@ -1156,6 +1158,7 @@ export type Database = {
           owner_id?: string
           primary_color?: string | null
           products_count?: number | null
+          retail_catalog_id?: string | null
           retail_enabled?: boolean | null
           retail_logo_url?: string | null
           retail_theme?: Json | null
@@ -1172,6 +1175,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stores_retail_catalog_id_fkey"
+            columns: ["retail_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalogs"
             referencedColumns: ["id"]
           },
         ]

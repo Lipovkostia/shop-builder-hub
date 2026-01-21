@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import { 
   Store, 
   Palette, 
@@ -10,7 +10,8 @@ import {
   Upload, 
   Trash2, 
   Loader2,
-  Info
+  Info,
+  Package
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRetailSettings, RetailTheme } from "@/hooks/useRetailSettings";
+import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
 import { cn } from "@/lib/utils";
 
 interface RetailSettingsSectionProps {
@@ -34,11 +37,14 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
     updateRetailTheme,
     updateSeoSettings,
     updateCustomDomain,
+    updateRetailCatalog,
     uploadRetailLogo,
     uploadFavicon,
     deleteRetailLogo,
     deleteFavicon,
   } = useRetailSettings(storeId);
+
+  const { catalogs, productVisibility, loading: catalogsLoading } = useStoreCatalogs(storeId);
 
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
@@ -61,6 +67,27 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
       setCustomDomain(settings.custom_domain || "");
     }
   }, [settings]);
+
+  // Calculate product count for selected catalog
+  const getProductCountForCatalog = (catalogId: string): number => {
+    let count = 0;
+    Object.values(productVisibility).forEach((catalogSet) => {
+      if (catalogSet.has(catalogId)) {
+        count++;
+      }
+    });
+    return count;
+  };
+
+  const selectedCatalogProductCount = useMemo(() => {
+    if (!settings?.retail_catalog_id) return null;
+    return getProductCountForCatalog(settings.retail_catalog_id);
+  }, [settings?.retail_catalog_id, productVisibility]);
+
+  const selectedCatalog = useMemo(() => {
+    if (!settings?.retail_catalog_id) return null;
+    return catalogs.find(c => c.id === settings.retail_catalog_id);
+  }, [settings?.retail_catalog_id, catalogs]);
 
   if (loading) {
     return (
@@ -210,6 +237,65 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
                   settings.retail_enabled ? "text-green-600" : "text-muted-foreground"
                 )}>
                   {settings.retail_enabled ? "Активен" : "Выключен"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Product Source Selection */}
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <Package className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground">Источник товаров</h3>
+                <p className="text-sm text-muted-foreground">
+                  Выберите прайс-лист, товары из которого будут отображаться в розничном магазине
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">
+                  Прайс-лист
+                </Label>
+                <Select
+                  value={settings.retail_catalog_id || "all"}
+                  onValueChange={(value) => updateRetailCatalog(value === "all" ? null : value)}
+                  disabled={saving || catalogsLoading}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Выберите прайс-лист" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      Все активные товары
+                    </SelectItem>
+                    {catalogs.map((catalog) => {
+                      const productCount = getProductCountForCatalog(catalog.id);
+                      return (
+                        <SelectItem key={catalog.id} value={catalog.id}>
+                          {catalog.name} ({productCount} товаров)
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedCatalog && selectedCatalogProductCount !== null && (
+                <div className="flex items-center gap-2 text-sm bg-muted/50 rounded-lg p-3">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">
+                    В прайс-листе <span className="font-medium text-foreground">{selectedCatalog.name}</span>: {selectedCatalogProductCount} товаров
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-start gap-2 text-xs text-muted-foreground bg-blue-500/10 rounded-lg p-3">
+                <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>
+                  Если прайс-лист не выбран, все активные товары магазина будут отображаться в розничном магазине. При выборе прайс-листа будут показаны только товары из него с учётом настроенных наценок.
                 </span>
               </div>
             </div>
