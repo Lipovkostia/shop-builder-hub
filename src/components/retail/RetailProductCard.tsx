@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Heart, Check, ImageOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,8 @@ import type { RetailProduct } from "@/hooks/useRetailStore";
 interface RetailProductCardProps {
   product: RetailProduct;
   onAddToCart: (product: RetailProduct) => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: (productId: string) => void;
 }
 
 function formatPrice(price: number): string {
@@ -24,13 +26,17 @@ function formatUnit(unit: string | null): string {
   return unit;
 }
 
-export function RetailProductCard({ product, onAddToCart }: RetailProductCardProps) {
+export function RetailProductCard({ 
+  product, 
+  onAddToCart,
+  isFavorite = false,
+  onToggleFavorite,
+}: RetailProductCardProps) {
   const { subdomain } = useParams();
   const isMobile = useIsMobile();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
   
   // Touch/swipe handling for mobile
   const touchStartX = useRef<number>(0);
@@ -59,8 +65,8 @@ export function RetailProductCard({ product, onAddToCart }: RetailProductCardPro
   const handleFavorite = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsFavorite(!isFavorite);
-  }, [isFavorite]);
+    onToggleFavorite?.(product.id);
+  }, [onToggleFavorite, product.id]);
 
   // Mobile touch handlers for swipe
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
