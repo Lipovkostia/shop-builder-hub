@@ -11,35 +11,28 @@ export function CategoryHeader({ category, productCount }: CategoryHeaderProps) 
   const { subdomain } = useParams();
 
   return (
-    <div className="mb-6">
+    <div className="mb-8">
       {/* Breadcrumbs */}
-      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
+      <nav className="flex items-center gap-2 text-[11px] uppercase tracking-widest text-muted-foreground mb-4">
         <Link 
           to={`/retail/${subdomain}`} 
           className="hover:text-foreground transition-colors"
         >
-          Каталог
+          Коллекция
         </Link>
-        {category && (
-          <>
-            <ChevronRight className="h-4 w-4" />
-            <span className="text-foreground font-medium">{category.name}</span>
-          </>
-        )}
+        <span>/</span>
+        <span className="text-accent font-medium">
+          {category?.name || "Все товары"}
+        </span>
       </nav>
 
       {/* Category title */}
-      <div className="flex items-baseline justify-between gap-4">
-        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
-          {category?.name || "Все товары"}
-        </h1>
-        <span className="text-sm text-muted-foreground flex-shrink-0">
-          {productCount} {getProductWord(productCount)}
-        </span>
-      </div>
+      <h1 className="text-3xl lg:text-4xl font-light tracking-tight text-foreground font-serif">
+        {category?.name || "Все товары"}
+      </h1>
 
       {/* Separator line */}
-      <div className="mt-4 h-px bg-border" />
+      <div className="mt-6 h-px bg-border" />
     </div>
   );
 }

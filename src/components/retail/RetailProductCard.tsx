@@ -13,11 +13,15 @@ interface RetailProductCardProps {
 
 function formatPrice(price: number): string {
   return new Intl.NumberFormat("ru-RU", {
-    style: "currency",
-    currency: "RUB",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(price);
+  }).format(price) + " ₽";
+}
+
+function formatWeight(unit: string | null): string {
+  if (!unit) return "";
+  // Extract weight from unit string or return as-is
+  return unit.toUpperCase();
 }
 
 export function RetailProductCard({ product, onAddToCart }: RetailProductCardProps) {
@@ -65,20 +69,20 @@ export function RetailProductCard({ product, onAddToCart }: RetailProductCardPro
   return (
     <Link
       to={`/retail/${subdomain}/product/${product.id}`}
-      className="group bg-card rounded-xl border overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col"
+      className="group bg-card rounded-lg overflow-hidden flex flex-col"
     >
       {/* Image section */}
-      <div className="relative aspect-square bg-muted overflow-hidden">
+      <div className="relative aspect-square bg-muted overflow-hidden rounded-lg">
         {currentImage && !imageError ? (
           <img
             src={currentImage}
             alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             onError={() => setImageError(true)}
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
+          <div className="w-full h-full flex items-center justify-center bg-muted">
             <ImageOff className="h-12 w-12 text-muted-foreground/30" />
           </div>
         )}
@@ -87,110 +91,98 @@ export function RetailProductCard({ product, onAddToCart }: RetailProductCardPro
         <button
           onClick={handleFavorite}
           className={cn(
-            "absolute top-3 right-3 p-2 rounded-full bg-background/80 backdrop-blur transition-all hover:bg-background",
+            "absolute top-3 right-3 p-2.5 rounded-full bg-card/80 backdrop-blur transition-all hover:bg-card",
             isFavorite && "text-destructive"
           )}
         >
-          <Heart className={cn("h-5 w-5", isFavorite && "fill-current")} />
+          <Heart className={cn("h-4 w-4", isFavorite && "fill-current")} />
         </button>
 
         {/* Sale badge */}
         {hasDiscount && (
           <Badge 
-            className="absolute top-3 left-3 bg-destructive text-destructive-foreground font-semibold"
+            className="absolute bottom-3 right-3 bg-primary text-primary-foreground font-medium text-[10px] uppercase tracking-wide px-2 py-1"
           >
-            АКЦИЯ
+            Акция
           </Badge>
         )}
 
         {/* Out of stock overlay */}
         {isOutOfStock && (
           <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-            <Badge variant="secondary" className="text-sm">Нет в наличии</Badge>
+            <span className="text-sm font-medium text-muted-foreground">Нет в наличии</span>
           </div>
         )}
 
-        {/* Image carousel controls */}
+        {/* Image carousel dots */}
         {hasMultipleImages && !isOutOfStock && (
-          <>
-            {/* Nav arrows */}
-            <button
-              onClick={handlePrevImage}
-              className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-background/80 backdrop-blur opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              onClick={handleNextImage}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-background/80 backdrop-blur opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-
-            {/* Dots indicator */}
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-              {images.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setCurrentImageIndex(idx);
-                  }}
-                  className={cn(
-                    "w-2 h-2 rounded-full transition-all",
-                    idx === currentImageIndex 
-                      ? "bg-foreground w-4" 
-                      : "bg-foreground/40 hover:bg-foreground/60"
-                  )}
-                />
-              ))}
-            </div>
-          </>
+          <div className="absolute bottom-3 left-3 flex gap-1">
+            {images.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCurrentImageIndex(idx);
+                }}
+                className={cn(
+                  "w-1.5 h-1.5 rounded-full transition-all",
+                  idx === currentImageIndex 
+                    ? "bg-foreground" 
+                    : "bg-foreground/30"
+                )}
+              />
+            ))}
+          </div>
         )}
       </div>
 
       {/* Content */}
-      <div className="p-4 flex-1 flex flex-col">
+      <div className="pt-4 pb-2 flex-1 flex flex-col">
         {/* Name */}
-        <h3 className="font-semibold text-base leading-tight line-clamp-2 group-hover:text-primary transition-colors mb-2">
+        <h3 className="font-medium text-base leading-snug line-clamp-2 text-foreground mb-1">
           {product.name}
         </h3>
 
         {/* Category */}
         {product.category_name && (
-          <span className="text-xs text-primary font-medium uppercase tracking-wide mb-auto">
+          <span className="text-[11px] text-accent font-medium uppercase tracking-wide mb-auto">
             {product.category_name}
           </span>
         )}
 
         {/* Buy button with price */}
-        <Button
+        <button
           onClick={handleAddToCart}
           disabled={isOutOfStock}
           className={cn(
-            "w-full mt-4 h-12 text-base font-semibold transition-all justify-between px-4",
-            isAdded && "bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]"
+            "w-full mt-4 h-11 rounded-md text-sm font-medium transition-all flex items-center justify-between px-4",
+            isAdded 
+              ? "bg-success text-success-foreground"
+              : "bg-primary text-primary-foreground hover:opacity-90",
+            isOutOfStock && "opacity-50 cursor-not-allowed"
           )}
         >
           {isAdded ? (
             <span className="flex items-center gap-2">
-              <Check className="h-5 w-5" />
+              <Check className="h-4 w-4" />
               Добавлено
             </span>
           ) : (
-            <span>КУПИТЬ</span>
+            <span className="uppercase tracking-wide">Купить</span>
           )}
           <span className="flex items-center gap-2">
-            <span className="text-sm opacity-80">{product.unit}</span>
-            <span className="font-bold">{formatPrice(product.price)}</span>
+            {product.unit && (
+              <span className="text-xs opacity-70">{formatWeight(product.unit)}</span>
+            )}
+            <span className="font-semibold">{formatPrice(product.price)}</span>
           </span>
-        </Button>
+        </button>
 
         {/* Compare price if discounted */}
         {hasDiscount && (
           <div className="text-center mt-2">
-            <span className="text-sm text-muted-foreground line-through">
+            <span className="text-xs text-muted-foreground line-through">
               {formatPrice(product.compare_price!)}
             </span>
           </div>
