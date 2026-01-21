@@ -192,19 +192,19 @@ export function RetailProductCard({ product, onAddToCart }: RetailProductCardPro
       </div>
 
       {/* Product name - below image, 2 lines max with fade */}
-      <div className="px-3 pt-3 pb-0">
+      <div className="px-3 py-3">
         <h3 className="font-medium text-sm leading-snug text-foreground line-clamp-2 min-h-[2.5rem]">
           {product.name}
         </h3>
       </div>
 
       {/* Buy button - fills bottom of card */}
-      <div className="p-3 pt-2 mt-auto">
+      <div className="mt-auto">
         <button
           onClick={handleAddToCart}
           disabled={isOutOfStock}
           className={cn(
-            "w-full h-11 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2",
+            "w-full h-12 rounded-none text-sm font-medium transition-all flex items-center justify-center gap-2",
             isAdded 
               ? "bg-success text-success-foreground"
               : "bg-primary text-primary-foreground hover:opacity-90",
