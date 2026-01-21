@@ -67,8 +67,8 @@ export function RetailProductCard({ product, onAddToCart }: RetailProductCardPro
           </Badge>
         )}
 
-        {/* Out of stock overlay */}
-        {product.quantity <= 0 && (
+        {/* Out of stock overlay - only show if catalog status is explicitly 'out_of_stock' */}
+        {product.catalog_status === 'out_of_stock' && (
           <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
             <Badge variant="secondary">Нет в наличии</Badge>
           </div>
@@ -105,7 +105,7 @@ export function RetailProductCard({ product, onAddToCart }: RetailProductCardPro
         {/* Add to cart button */}
         <Button
           onClick={handleAddToCart}
-          disabled={product.quantity <= 0}
+          disabled={product.catalog_status === 'out_of_stock'}
           className={cn(
             "w-full mt-2 transition-all",
             isAdded && "bg-emerald-600 hover:bg-emerald-600 dark:bg-emerald-700 dark:hover:bg-emerald-700"
