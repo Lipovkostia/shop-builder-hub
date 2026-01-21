@@ -354,6 +354,8 @@ export default function RetailStore() {
         onCategoriesClick={() => setMobileMenuOpen(true)}
         onCartClick={() => setIsOpen(true)}
         onFavoritesClick={() => setFavoritesOpen(true)}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
       />
 
       {/* Favorites sheet */}
