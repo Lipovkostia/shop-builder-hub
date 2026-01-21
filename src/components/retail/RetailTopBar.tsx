@@ -41,14 +41,14 @@ export function RetailTopBar({
       {/* Main top bar */}
       <div className="px-4 lg:px-8 py-4">
         <div className="flex items-center justify-between gap-4">
-          {/* Left side - Mobile menu + Phone */}
+          {/* Left side - Phone (desktop only now, mobile menu moved to bottom nav) */}
           <div className="flex items-center gap-3">
-            {/* Mobile menu button */}
+            {/* Mobile menu button - desktop only */}
             {onMobileMenuClick && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden text-foreground"
+                className="hidden lg:flex text-foreground"
                 onClick={onMobileMenuClick}
               >
                 <Menu className="h-5 w-5" />
@@ -80,29 +80,29 @@ export function RetailTopBar({
             </span>
           </button>
 
-          {/* Right side - Icons */}
+          {/* Right side - Icons (desktop only for cart/search) */}
           <div className="flex items-center gap-0.5">
-            {/* Search toggle (mobile) */}
+            {/* Search toggle - desktop only */}
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden text-foreground hover:text-muted-foreground"
+              className="hidden md:flex text-foreground hover:text-muted-foreground"
               onClick={() => setSearchOpen(!searchOpen)}
             >
               {searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
             </Button>
 
-            {/* Favorites */}
+            {/* Favorites - desktop only */}
             <Button variant="ghost" size="icon" className="hidden sm:flex text-foreground hover:text-muted-foreground">
               <Star className="h-5 w-5" />
             </Button>
 
-            {/* Wishlist */}
+            {/* Wishlist - desktop only */}
             <Button variant="ghost" size="icon" className="hidden sm:flex text-foreground hover:text-muted-foreground">
               <Heart className="h-5 w-5" />
             </Button>
 
-            {/* View mode toggle */}
+            {/* View mode toggle - desktop only */}
             <div className="hidden sm:flex items-center gap-0.5 ml-2">
               <Button
                 variant="ghost"
@@ -128,11 +128,11 @@ export function RetailTopBar({
               </Button>
             </div>
 
-            {/* Cart */}
+            {/* Cart - desktop only */}
             <Button
               variant="ghost"
               size="icon"
-              className="relative ml-1 text-foreground hover:text-muted-foreground"
+              className="relative ml-1 hidden lg:flex text-foreground hover:text-muted-foreground"
               onClick={onCartClick}
             >
               <ShoppingCart className="h-5 w-5" />
@@ -147,9 +147,9 @@ export function RetailTopBar({
           </div>
         </div>
 
-        {/* Mobile search bar */}
+        {/* Desktop search bar */}
         {searchOpen && (
-          <div className="md:hidden mt-3">
+          <div className="hidden md:block mt-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
