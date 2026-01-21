@@ -15,7 +15,7 @@ import { RetailCartDrawer } from "@/components/retail/RetailCartDrawer";
 import { RetailFooter } from "@/components/retail/RetailFooter";
 import { CategoryHeader } from "@/components/retail/CategoryHeader";
 import { RetailMobileNav } from "@/components/retail/RetailMobileNav";
-
+import { RetailCatalogSheet } from "@/components/retail/RetailCatalogSheet";
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 type ViewMode = "grid" | "list";
 
@@ -37,6 +37,7 @@ export default function RetailStore() {
   const [inStockOnly, setInStockOnly] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [mobileCatalogOpen, setMobileCatalogOpen] = useState(false);
 
   // Price range calculation
   const priceRange = useMemo(() => {
@@ -304,12 +305,22 @@ export default function RetailStore() {
       <RetailMobileNav
         cartItemsCount={cartItemsCount}
         favoritesCount={favoritesCount}
-        onCategoriesClick={() => setMobileMenuOpen(true)}
+        onCategoriesClick={() => setMobileCatalogOpen(true)}
         onCartClick={() => setIsOpen(true)}
         onFavoritesClick={() => setFavoritesOpen(true)}
         onPromotionsClick={() => {/* TODO: navigate to promotions */}}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+      />
+
+      {/* Mobile catalog sheet */}
+      <RetailCatalogSheet
+        open={mobileCatalogOpen}
+        onOpenChange={setMobileCatalogOpen}
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onCategorySelect={setSelectedCategory}
+        storeName={store.name}
       />
 
       {/* Favorites sheet */}
