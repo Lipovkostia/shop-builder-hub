@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { RetailStore } from "@/hooks/useRetailStore";
 import { DeliveryInfoBanner } from "./DeliveryInfoBanner";
+import { TelegramIcon } from "@/components/icons/TelegramIcon";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 
 type ViewMode = "grid" | "list";
 
@@ -36,8 +38,52 @@ export function RetailTopBar({
   // Placeholder delivery time - can be from store settings later
   const nextDeliveryTime = "14:00";
 
+  // Helper to format phone for WhatsApp link (remove spaces, + etc)
+  const formatWhatsAppPhone = (phone: string) => {
+    return phone.replace(/[^\d]/g, "");
+  };
+
   return (
     <div className="sticky top-0 z-40 bg-background">
+      {/* Mobile contact bar */}
+      {(store.retail_phone || store.telegram_username || store.whatsapp_phone) && (
+        <div className="flex md:hidden items-center justify-center gap-4 px-4 py-2.5 border-b border-border bg-muted/30">
+          {/* Telegram icon */}
+          {store.telegram_username && (
+            <a
+              href={`https://t.me/${store.telegram_username}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-[#229ED9]/10 hover:bg-[#229ED9]/20 transition-colors"
+            >
+              <TelegramIcon className="h-4 w-4 text-[#229ED9]" />
+            </a>
+          )}
+          
+          {/* Phone - centered */}
+          {store.retail_phone && (
+            <a
+              href={`tel:${store.retail_phone}`}
+              className="text-sm font-medium text-foreground hover:text-muted-foreground transition-colors"
+            >
+              {store.retail_phone}
+            </a>
+          )}
+          
+          {/* WhatsApp icon */}
+          {store.whatsapp_phone && (
+            <a
+              href={`https://wa.me/${formatWhatsAppPhone(store.whatsapp_phone)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-[#25D366]/10 hover:bg-[#25D366]/20 transition-colors"
+            >
+              <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
+            </a>
+          )}
+        </div>
+      )}
+
       {/* Main top bar */}
       <div className="px-4 lg:px-8 py-4">
         <div className="flex items-center justify-between gap-4">

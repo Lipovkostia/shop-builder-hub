@@ -11,7 +11,9 @@ import {
   Trash2, 
   Loader2,
   Info,
-  Package
+  Package,
+  Phone,
+  MessageCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useRetailSettings, RetailTheme } from "@/hooks/useRetailSettings";
 import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
 import { cn } from "@/lib/utils";
+import { TelegramIcon } from "@/components/icons/TelegramIcon";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 
 interface RetailSettingsSectionProps {
   storeId: string | null;
@@ -38,6 +42,7 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
     updateSeoSettings,
     updateCustomDomain,
     updateRetailCatalog,
+    updateContactSettings,
     uploadRetailLogo,
     uploadFavicon,
     deleteRetailLogo,
@@ -54,6 +59,9 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
   const [seoTitle, setSeoTitle] = useState("");
   const [seoDescription, setSeoDescription] = useState("");
   const [customDomain, setCustomDomain] = useState("");
+  const [retailPhone, setRetailPhone] = useState("");
+  const [telegramUsername, setTelegramUsername] = useState("");
+  const [whatsappPhone, setWhatsappPhone] = useState("");
   
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
@@ -65,6 +73,9 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
       setSeoTitle(settings.seo_title || "");
       setSeoDescription(settings.seo_description || "");
       setCustomDomain(settings.custom_domain || "");
+      setRetailPhone(settings.retail_phone || "");
+      setTelegramUsername(settings.telegram_username || "");
+      setWhatsappPhone(settings.whatsapp_phone || "");
     }
   }, [settings]);
 
@@ -145,6 +156,14 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
 
   const handleSaveDomain = () => {
     updateCustomDomain(customDomain || null);
+  };
+
+  const handleSaveContacts = () => {
+    updateContactSettings({
+      retail_phone: retailPhone || null,
+      telegram_username: telegramUsername || null,
+      whatsapp_phone: whatsappPhone || null,
+    });
   };
 
   return (
@@ -297,6 +316,65 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
                 <span>
                   Если прайс-лист не выбран, все активные товары магазина будут отображаться в розничном магазине. При выборе прайс-листа будут показаны только товары из него с учётом настроенных наценок.
                 </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Contact Bar Settings */}
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground">Контакты для мобильной версии</h3>
+                <p className="text-sm text-muted-foreground">
+                  Телефон и мессенджеры, которые отображаются в шапке на мобильных устройствах
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">
+                  Телефон в шапке
+                </Label>
+                <Input
+                  value={retailPhone}
+                  onChange={(e) => setRetailPhone(e.target.value)}
+                  placeholder="+7 952 2288711"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
+                    <TelegramIcon className="h-4 w-4 text-[#229ED9]" />
+                    Telegram (username без @)
+                  </Label>
+                  <Input
+                    value={telegramUsername}
+                    onChange={(e) => setTelegramUsername(e.target.value.replace('@', ''))}
+                    placeholder="Lipovk"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
+                    <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
+                    WhatsApp (номер телефона)
+                  </Label>
+                  <Input
+                    value={whatsappPhone}
+                    onChange={(e) => setWhatsappPhone(e.target.value)}
+                    placeholder="+79999993222"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <Button onClick={handleSaveContacts} disabled={saving}>
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Сохранить контакты
+                </Button>
               </div>
             </div>
           </div>

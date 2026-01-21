@@ -19,6 +19,10 @@ export interface RetailSettings {
   custom_domain: string | null;
   subdomain: string;
   retail_catalog_id: string | null;
+  // Contact fields for mobile header
+  retail_phone: string | null;
+  telegram_username: string | null;
+  whatsapp_phone: string | null;
 }
 
 export function useRetailSettings(storeId: string | null) {
@@ -36,7 +40,7 @@ export function useRetailSettings(storeId: string | null) {
     try {
       const { data, error } = await supabase
         .from("stores")
-        .select("retail_enabled, retail_theme, retail_logo_url, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id")
+        .select("retail_enabled, retail_theme, retail_logo_url, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id, retail_phone, telegram_username, whatsapp_phone")
         .eq("id", storeId)
         .single();
 
@@ -52,6 +56,9 @@ export function useRetailSettings(storeId: string | null) {
         custom_domain: data.custom_domain,
         subdomain: data.subdomain,
         retail_catalog_id: data.retail_catalog_id,
+        retail_phone: data.retail_phone,
+        telegram_username: data.telegram_username,
+        whatsapp_phone: data.whatsapp_phone,
       });
     } catch (err) {
       console.error("Error fetching retail settings:", err);
@@ -360,6 +367,39 @@ export function useRetailSettings(storeId: string | null) {
     }
   }, [storeId, toast]);
 
+  const updateContactSettings = useCallback(async (contact: { 
+    retail_phone: string | null; 
+    telegram_username: string | null;
+    whatsapp_phone: string | null;
+  }) => {
+    if (!storeId) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("stores")
+        .update(contact)
+        .eq("id", storeId);
+
+      if (error) throw error;
+
+      setSettings(prev => prev ? { ...prev, ...contact } : null);
+      toast({
+        title: "Контакты сохранены",
+        description: "Контактные данные для мобильной версии обновлены",
+      });
+    } catch (err) {
+      console.error("Error updating contact settings:", err);
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Не удалось сохранить контактные данные",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [storeId, toast]);
+
   return {
     settings,
     loading,
@@ -369,6 +409,7 @@ export function useRetailSettings(storeId: string | null) {
     updateSeoSettings,
     updateCustomDomain,
     updateRetailCatalog,
+    updateContactSettings,
     uploadRetailLogo,
     uploadFavicon,
     deleteRetailLogo,

@@ -1107,13 +1107,16 @@ export type Database = {
           retail_catalog_id: string | null
           retail_enabled: boolean | null
           retail_logo_url: string | null
+          retail_phone: string | null
           retail_theme: Json | null
           secondary_color: string | null
           seo_description: string | null
           seo_title: string | null
           status: Database["public"]["Enums"]["store_status"]
           subdomain: string
+          telegram_username: string | null
           updated_at: string
+          whatsapp_phone: string | null
         }
         Insert: {
           address?: string | null
@@ -1134,13 +1137,16 @@ export type Database = {
           retail_catalog_id?: string | null
           retail_enabled?: boolean | null
           retail_logo_url?: string | null
+          retail_phone?: string | null
           retail_theme?: Json | null
           secondary_color?: string | null
           seo_description?: string | null
           seo_title?: string | null
           status?: Database["public"]["Enums"]["store_status"]
           subdomain: string
+          telegram_username?: string | null
           updated_at?: string
+          whatsapp_phone?: string | null
         }
         Update: {
           address?: string | null
@@ -1161,13 +1167,16 @@ export type Database = {
           retail_catalog_id?: string | null
           retail_enabled?: boolean | null
           retail_logo_url?: string | null
+          retail_phone?: string | null
           retail_theme?: Json | null
           secondary_color?: string | null
           seo_description?: string | null
           seo_title?: string | null
           status?: Database["public"]["Enums"]["store_status"]
           subdomain?: string
+          telegram_username?: string | null
           updated_at?: string
+          whatsapp_phone?: string | null
         }
         Relationships: [
           {

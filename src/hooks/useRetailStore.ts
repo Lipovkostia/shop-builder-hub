@@ -25,6 +25,10 @@ export interface RetailStore {
   favicon_url: string | null;
   custom_domain: string | null;
   retail_catalog_id: string | null;
+  // Contact fields for mobile header
+  retail_phone: string | null;
+  telegram_username: string | null;
+  whatsapp_phone: string | null;
 }
 
 export interface RetailProduct {
