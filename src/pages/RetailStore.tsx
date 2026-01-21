@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { useRetailStore } from "@/hooks/useRetailStore";
 import { useRetailCart } from "@/hooks/useRetailCart";
 import { useRetailFavorites } from "@/hooks/useRetailFavorites";
@@ -286,20 +287,27 @@ export default function RetailStore() {
             <div
               className={
                 viewMode === "grid"
-                  ? "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
+                  ? "flex flex-wrap gap-4"
                   : "flex flex-col gap-4"
               }
             >
               {filteredProducts.map((product) => (
-                <RetailProductCard
-                  key={product.id}
-                  product={product}
-                  onAddToCart={handleAddToCart}
-                  onUpdateQuantity={updateQuantity}
-                  cartQuantity={getCartQuantity(product.id)}
-                  isFavorite={isFavorite(product.id)}
-                  onToggleFavorite={toggleFavorite}
-                />
+                <div 
+                  key={product.id} 
+                  className={cn(
+                    "transition-all duration-300 ease-out",
+                    viewMode === "grid" && "w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] xl:w-[calc(25%-12px)]"
+                  )}
+                >
+                  <RetailProductCard
+                    product={product}
+                    onAddToCart={handleAddToCart}
+                    onUpdateQuantity={updateQuantity}
+                    cartQuantity={getCartQuantity(product.id)}
+                    isFavorite={isFavorite(product.id)}
+                    onToggleFavorite={toggleFavorite}
+                  />
+                </div>
               ))}
             </div>
           )}
