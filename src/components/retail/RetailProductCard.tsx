@@ -133,10 +133,14 @@ export function RetailProductCard({
     e.preventDefault();
     e.stopPropagation();
     if (images.length > 0 && !isOutOfStock) {
-      setExpandedImageIndex(currentImageIndex);
+      // Always start from the first (main) image to avoid jerking
+      setExpandedImageIndex(0);
+      setDragOffset(0);
+      setZoomScale(1);
+      setZoomPosition({ x: 0, y: 0 });
       setIsImageExpanded(true);
     }
-  }, [images.length, isOutOfStock, currentImageIndex]);
+  }, [images.length, isOutOfStock]);
 
   // Handle tap on expanded image to close
   const handleExpandedImageTap = useCallback((e: React.MouseEvent) => {
