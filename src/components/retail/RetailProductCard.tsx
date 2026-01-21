@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { Link, useParams } from "react-router-dom";
 import { Heart, ImageOff, Plus, Minus, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -13,8 +14,6 @@ interface RetailProductCardProps {
   isFavorite?: boolean;
   onToggleFavorite?: (productId: string) => void;
   index?: number; // To determine left/right position
-  isPhotoExpanded?: boolean;
-  onPhotoExpand?: (productId: string | null) => void;
 }
 
 function formatPrice(price: number): string {
@@ -37,9 +36,8 @@ export function RetailProductCard({
   isFavorite = false,
   onToggleFavorite,
   index = 0,
-  isPhotoExpanded = false,
-  onPhotoExpand,
 }: RetailProductCardProps) {
+  const { subdomain } = useParams();
   const isMobile = useIsMobile();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
@@ -128,29 +126,6 @@ export function RetailProductCard({
     return () => document.removeEventListener('click', handleClickOutside);
   }, [isExpanded]);
 
-  // Close photo expansion when clicking outside
-  useEffect(() => {
-    if (!isPhotoExpanded) return;
-    
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        onPhotoExpand?.(null);
-      }
-    };
-    
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [isPhotoExpanded, onPhotoExpand]);
-
-  // Handle photo click to toggle expansion
-  const handlePhotoClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (onPhotoExpand) {
-      onPhotoExpand(isPhotoExpanded ? null : product.id);
-    }
-  }, [isPhotoExpanded, onPhotoExpand, product.id]);
-
   // Mobile touch handlers for swipe
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (!hasMultipleImages || !isMobile) return;
@@ -203,13 +178,7 @@ export function RetailProductCard({
   }, [isMobile, hasMultipleImages]);
 
   return (
-    <div 
-      className={cn(
-        "relative w-full transition-all duration-300 ease-out",
-        isPhotoExpanded && "col-span-2"
-      )} 
-      ref={containerRef}
-    >
+    <div className="relative w-full" ref={containerRef}>
       {/* Description panel - positioned as overlay, full width of neighbor card */}
       <div 
         className={cn(
@@ -276,71 +245,66 @@ export function RetailProductCard({
           )}
         </button>
 
-        {/* Image section - clickable to expand, link removed */}
-        <div 
-          ref={imageContainerRef}
-          className={cn(
-            "relative bg-muted overflow-hidden rounded-t-xl cursor-pointer transition-all duration-300",
-            isPhotoExpanded ? "aspect-[2/1]" : "aspect-square"
-          )}
-          onClick={handlePhotoClick}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-        >
-          {currentImage && !imageError ? (
-            <img
-              src={currentImage}
-              alt={product.name}
-              className={cn(
-                "w-full h-full transition-all duration-300",
-                isPhotoExpanded ? "object-contain" : "object-cover"
-              )}
-              onError={() => setImageError(true)}
-              loading="lazy"
-              draggable={false}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-muted">
-              <ImageOff className="h-12 w-12 text-muted-foreground/30" />
-            </div>
-          )}
+        {/* Image section - clickable link to product page */}
+        <Link to={`/retail/${subdomain}/product/${product.id}`}>
+          <div 
+            ref={imageContainerRef}
+            className="relative aspect-square bg-muted overflow-hidden rounded-t-xl"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+          >
+            {currentImage && !imageError ? (
+              <img
+                src={currentImage}
+                alt={product.name}
+                className="w-full h-full object-cover transition-opacity duration-200"
+                onError={() => setImageError(true)}
+                loading="lazy"
+                draggable={false}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-muted">
+                <ImageOff className="h-12 w-12 text-muted-foreground/30" />
+              </div>
+            )}
 
-          {/* Sale badge */}
-          {hasDiscount && (
-            <Badge 
-              className="absolute bottom-3 right-3 bg-primary text-primary-foreground font-medium text-[10px] uppercase tracking-wide px-2 py-1"
-            >
-              Акция
-            </Badge>
-          )}
+            {/* Sale badge */}
+            {hasDiscount && (
+              <Badge 
+                className="absolute bottom-3 right-3 bg-primary text-primary-foreground font-medium text-[10px] uppercase tracking-wide px-2 py-1"
+              >
+                Акция
+              </Badge>
+            )}
 
-          {/* Out of stock overlay */}
-          {isOutOfStock && (
-            <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-              <span className="text-sm font-medium text-muted-foreground">Нет в наличии</span>
-            </div>
-          )}
+            {/* Out of stock overlay */}
+            {isOutOfStock && (
+              <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                <span className="text-sm font-medium text-muted-foreground">Нет в наличии</span>
+              </div>
+            )}
 
-          {/* Image indicators */}
-          {hasMultipleImages && !isOutOfStock && (
-            <div className="absolute bottom-3 left-3 flex gap-1">
-              {images.map((_, idx) => (
-                <div
-                  key={idx}
-                  className={cn(
-                    "w-1.5 h-1.5 rounded-full transition-all",
-                    idx === currentImageIndex 
-                      ? "bg-foreground" 
-                      : "bg-foreground/30"
-                  )}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+            {/* Image indicators */}
+            {hasMultipleImages && !isOutOfStock && (
+              <div className="absolute bottom-3 left-3 flex gap-1">
+                {images.map((_, idx) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "w-1.5 h-1.5 rounded-full transition-all",
+                      idx === currentImageIndex 
+                        ? "bg-foreground" 
+                        : "bg-foreground/30"
+                    )}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </Link>
 
         {/* Product name - clickable to expand description */}
         <div className="px-2 pt-2 pb-1">
