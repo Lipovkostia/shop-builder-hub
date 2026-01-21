@@ -639,54 +639,53 @@ export function RetailProductCard({
           </div>
         </div>
 
-        {/* Buy button - fixed height with reserved space for cart info */}
+        {/* Buy button - compact fixed height */}
         <div className="mt-auto">
-          <div className={cn(
-            "flex h-14 overflow-hidden rounded-b-xl",
-            isInCart ? "" : ""
-          )}>
+          <div className="flex h-10 overflow-hidden rounded-b-xl">
             {/* Minus button - only visible when in cart */}
             <button
               onClick={handleDecrement}
               className={cn(
                 "flex items-center justify-center transition-all text-foreground overflow-hidden",
                 isInCart 
-                  ? "w-10 bg-muted hover:bg-muted/80" 
+                  ? "w-8 bg-muted hover:bg-muted/80" 
                   : "w-0"
               )}
               style={{ transition: 'width 0.2s ease-out' }}
             >
-              <Minus className="h-4 w-4" />
+              <Minus className="h-3.5 w-3.5" />
             </button>
             
-            {/* Main button area with price and cart info */}
+            {/* Main button area with price and cart info inline */}
             <button
               onClick={handleAddToCart}
               disabled={isOutOfStock}
               className={cn(
-                "flex-1 h-full flex flex-col items-center justify-center transition-all",
+                "flex-1 h-full flex items-center justify-center gap-2 transition-all",
                 "bg-primary text-primary-foreground",
                 isOutOfStock && "opacity-50 cursor-not-allowed",
                 !isInCart && "hover:opacity-90"
               )}
             >
-              {/* Cart info row - always takes space, content only when in cart */}
-              <div className={cn(
-                "text-[10px] leading-tight transition-opacity h-3 flex items-center",
-                isInCart ? "opacity-70" : "opacity-0"
-              )}>
-                {isInCart && (
-                  <span>{cartQuantity} × {formatPrice(cartItemTotal)}</span>
-                )}
-              </div>
+              {/* Cart quantity badge - inline before price */}
+              {isInCart && (
+                <span className="text-[10px] opacity-70 tabular-nums">
+                  {cartQuantity}×
+                </span>
+              )}
               
-              {/* Price row */}
-              <div className="flex items-center gap-1">
-                <span className="font-semibold text-sm">{formatPrice(product.price)}</span>
-                {product.unit && (
-                  <span className="text-[10px] opacity-80">/ {formatUnit(product.unit)}</span>
-                )}
-              </div>
+              {/* Price */}
+              <span className="font-semibold text-xs">{formatPrice(product.price)}</span>
+              {product.unit && (
+                <span className="text-[9px] opacity-70">/{formatUnit(product.unit)}</span>
+              )}
+              
+              {/* Total when in cart */}
+              {isInCart && (
+                <span className="text-[10px] opacity-70 tabular-nums">
+                  = {formatPrice(cartItemTotal)}
+                </span>
+              )}
             </button>
             
             {/* Plus button - only visible when in cart */}
@@ -696,12 +695,12 @@ export function RetailProductCard({
               className={cn(
                 "flex items-center justify-center transition-all text-primary-foreground overflow-hidden",
                 isInCart 
-                  ? "w-10 bg-primary/80 hover:bg-primary/70" 
+                  ? "w-8 bg-primary/80 hover:bg-primary/70" 
                   : "w-0"
               )}
               style={{ transition: 'width 0.2s ease-out' }}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
