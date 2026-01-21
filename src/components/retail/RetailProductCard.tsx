@@ -220,52 +220,48 @@ export function RetailProductCard({
         </h3>
       </div>
 
-      {/* Cart info micro-block - appears when item is in cart */}
-      {isInCart && (
-        <div className="px-3 pb-2">
-          <div className="flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg bg-primary/10 text-primary text-xs font-medium">
-            <span>В корзине: {cartQuantity} шт</span>
-            <span className="text-primary/60">•</span>
-            <span>{formatPrice(cartItemTotal)}</span>
-          </div>
-        </div>
-      )}
-
       {/* Buy button - fills bottom of card */}
       <div className="mt-auto">
         {isInCart ? (
-          /* Quantity controls when in cart */
-          <div className="flex h-12">
-            {/* Minus button */}
-            <button
-              onClick={handleDecrement}
-              className="w-12 h-full flex items-center justify-center bg-muted hover:bg-muted/80 transition-colors text-foreground"
-            >
-              <Minus className="h-4 w-4" />
-            </button>
-            
-            {/* Price display */}
-            <div 
-              className="flex-1 h-full flex items-center justify-center bg-primary text-primary-foreground text-sm font-medium"
-              onClick={handleAddToCart}
-            >
-              <span className="flex items-center gap-2">
-                <span className="font-semibold">{formatPrice(product.price)}</span>
-                {product.unit && (
-                  <span className="text-xs opacity-80">/ {formatUnit(product.unit)}</span>
-                )}
-              </span>
+          <>
+            {/* Compact cart info - numbers only */}
+            <div className="text-[10px] text-center text-muted-foreground leading-none pb-0.5">
+              {cartQuantity} × {formatPrice(cartItemTotal)}
             </div>
             
-            {/* Plus button */}
-            <button
-              onClick={handleIncrement}
-              disabled={isOutOfStock}
-              className="w-12 h-full flex items-center justify-center bg-primary hover:bg-primary/90 transition-colors text-primary-foreground"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
+            {/* Quantity controls when in cart */}
+            <div className="flex h-12">
+              {/* Minus button */}
+              <button
+                onClick={handleDecrement}
+                className="w-8 h-full flex items-center justify-center bg-muted hover:bg-muted/80 transition-colors text-foreground"
+              >
+                <Minus className="h-3 w-3" />
+              </button>
+              
+              {/* Price display */}
+              <div 
+                className="flex-1 h-full flex items-center justify-center bg-primary text-primary-foreground text-xs font-medium"
+                onClick={handleAddToCart}
+              >
+                <span className="flex items-center gap-1">
+                  <span className="font-semibold">{formatPrice(product.price)}</span>
+                  {product.unit && (
+                    <span className="text-[10px] opacity-80">/ {formatUnit(product.unit)}</span>
+                  )}
+                </span>
+              </div>
+              
+              {/* Plus button */}
+              <button
+                onClick={handleIncrement}
+                disabled={isOutOfStock}
+                className="w-8 h-full flex items-center justify-center bg-primary hover:bg-primary/90 transition-colors text-primary-foreground"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
+            </div>
+          </>
         ) : (
           /* Default buy button */
           <button
