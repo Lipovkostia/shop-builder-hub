@@ -54,6 +54,14 @@ export function RetailProductCard({
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   
+  // Pinch-to-zoom state
+  const [zoomScale, setZoomScale] = useState(1);
+  const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
+  const [isPinching, setIsPinching] = useState(false);
+  const initialPinchDistance = useRef<number>(0);
+  const initialScale = useRef<number>(1);
+  const lastPanPosition = useRef({ x: 0, y: 0 });
+  
   // Image container ref for cursor tracking on desktop
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -132,11 +140,15 @@ export function RetailProductCard({
   const handleExpandedImageTap = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Only close if not dragging
-    if (!isDragging) {
+    // Only close if not dragging and not zoomed/pinching
+    if (!isDragging && !isPinching && zoomScale <= 1) {
       setIsImageExpanded(false);
+    } else if (zoomScale > 1) {
+      // Reset zoom on tap when zoomed
+      setZoomScale(1);
+      setZoomPosition({ x: 0, y: 0 });
     }
-  }, [isDragging]);
+  }, [isDragging, isPinching, zoomScale]);
 
   // Close description when clicking outside
   useEffect(() => {
@@ -152,19 +164,28 @@ export function RetailProductCard({
     return () => document.removeEventListener('click', handleClickOutside);
   }, [isExpanded]);
 
-  // Close expanded image when clicking outside
+  // Close expanded image when clicking outside and reset zoom
   useEffect(() => {
     if (!isImageExpanded) return;
     
     const handleClickOutside = (e: MouseEvent) => {
       if (expandedImageRef.current && !expandedImageRef.current.contains(e.target as Node)) {
         setIsImageExpanded(false);
+        // Reset zoom when closing
+        setZoomScale(1);
+        setZoomPosition({ x: 0, y: 0 });
       }
     };
     
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, [isImageExpanded]);
+
+  // Reset zoom when changing image
+  useEffect(() => {
+    setZoomScale(1);
+    setZoomPosition({ x: 0, y: 0 });
+  }, [expandedImageIndex]);
 
   // Mobile touch handlers for swipe
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -195,34 +216,115 @@ export function RetailProductCard({
     touchEndX.current = 0;
   }, [hasMultipleImages, isMobile, images.length]);
 
-  // Expanded image touch handlers with drag effect
+  // Calculate distance between two touch points
+  const getDistance = (touches: React.TouchList): number => {
+    if (touches.length < 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // Get center point between two touches
+  const getCenter = (touches: React.TouchList): { x: number; y: number } => {
+    if (touches.length < 2) return { x: touches[0].clientX, y: touches[0].clientY };
+    return {
+      x: (touches[0].clientX + touches[1].clientX) / 2,
+      y: (touches[0].clientY + touches[1].clientY) / 2
+    };
+  };
+
+  // Expanded image touch handlers with drag effect and pinch-to-zoom
   const handleExpandedTouchStart = useCallback((e: React.TouchEvent) => {
-    expandedTouchStartX.current = e.touches[0].clientX;
-    expandedTouchCurrentX.current = e.touches[0].clientX;
-    setIsDragging(false);
-  }, []);
+    if (e.touches.length === 2) {
+      // Pinch start
+      e.preventDefault();
+      setIsPinching(true);
+      initialPinchDistance.current = getDistance(e.touches);
+      initialScale.current = zoomScale;
+      const center = getCenter(e.touches);
+      lastPanPosition.current = { x: center.x, y: center.y };
+    } else if (e.touches.length === 1) {
+      // Single touch - swipe or pan
+      if (zoomScale > 1) {
+        // Pan when zoomed
+        lastPanPosition.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      } else {
+        // Swipe for image navigation
+        expandedTouchStartX.current = e.touches[0].clientX;
+        expandedTouchCurrentX.current = e.touches[0].clientX;
+      }
+      setIsDragging(false);
+    }
+  }, [zoomScale]);
 
   const handleExpandedTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!hasMultipleImages) return;
-    const currentX = e.touches[0].clientX;
-    expandedTouchCurrentX.current = currentX;
-    const diff = currentX - expandedTouchStartX.current;
-    setDragOffset(diff);
-    if (Math.abs(diff) > 10) {
-      setIsDragging(true);
+    if (e.touches.length === 2) {
+      // Pinch zoom
+      e.preventDefault();
+      const newDistance = getDistance(e.touches);
+      const scaleFactor = newDistance / initialPinchDistance.current;
+      const newScale = Math.min(Math.max(initialScale.current * scaleFactor, 1), 4);
+      setZoomScale(newScale);
+      
+      // Pan while pinching
+      const center = getCenter(e.touches);
+      if (newScale > 1) {
+        const deltaX = center.x - lastPanPosition.current.x;
+        const deltaY = center.y - lastPanPosition.current.y;
+        setZoomPosition(prev => ({
+          x: prev.x + deltaX,
+          y: prev.y + deltaY
+        }));
+        lastPanPosition.current = { x: center.x, y: center.y };
+      }
+    } else if (e.touches.length === 1) {
+      if (zoomScale > 1) {
+        // Pan when zoomed
+        e.preventDefault();
+        const deltaX = e.touches[0].clientX - lastPanPosition.current.x;
+        const deltaY = e.touches[0].clientY - lastPanPosition.current.y;
+        setZoomPosition(prev => ({
+          x: prev.x + deltaX,
+          y: prev.y + deltaY
+        }));
+        lastPanPosition.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        setIsDragging(true);
+      } else if (hasMultipleImages) {
+        // Swipe for navigation
+        const currentX = e.touches[0].clientX;
+        expandedTouchCurrentX.current = currentX;
+        const diff = currentX - expandedTouchStartX.current;
+        setDragOffset(diff);
+        if (Math.abs(diff) > 10) {
+          setIsDragging(true);
+        }
+      }
     }
-  }, [hasMultipleImages]);
+  }, [hasMultipleImages, zoomScale]);
 
   const handleExpandedTouchEnd = useCallback(() => {
-    const threshold = 60;
+    if (isPinching) {
+      setIsPinching(false);
+      // Reset if zoom is too small
+      if (zoomScale < 1.1) {
+        setZoomScale(1);
+        setZoomPosition({ x: 0, y: 0 });
+      }
+      return;
+    }
     
-    if (hasMultipleImages && Math.abs(dragOffset) > threshold) {
-      if (dragOffset < 0) {
-        // Swiped left - next image
-        setExpandedImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-      } else {
-        // Swiped right - previous image
-        setExpandedImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+    // Handle swipe for image navigation (only when not zoomed)
+    if (zoomScale <= 1) {
+      const threshold = 60;
+      
+      if (hasMultipleImages && Math.abs(dragOffset) > threshold) {
+        if (dragOffset < 0) {
+          // Swiped left - next image
+          setExpandedImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+        } else {
+          // Swiped right - previous image
+          setExpandedImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+        }
       }
     }
     
@@ -231,7 +333,7 @@ export function RetailProductCard({
     setTimeout(() => setIsDragging(false), 50);
     expandedTouchStartX.current = 0;
     expandedTouchCurrentX.current = 0;
-  }, [hasMultipleImages, images.length, dragOffset]);
+  }, [hasMultipleImages, images.length, dragOffset, isPinching, zoomScale]);
 
   const handleExpandedPrev = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -312,32 +414,38 @@ export function RetailProductCard({
         }}
       >
         <div 
-          className="h-full bg-muted rounded-xl shadow-lg overflow-hidden relative"
+          className="h-full bg-muted rounded-xl shadow-lg overflow-hidden relative touch-none"
           style={{ height: cardHeight > 0 ? cardHeight : 'auto' }}
           onTouchStart={handleExpandedTouchStart}
           onTouchMove={handleExpandedTouchMove}
           onTouchEnd={handleExpandedTouchEnd}
           onClick={handleExpandedImageTap}
         >
-          {/* Images container with drag effect */}
+          {/* Images container with drag effect and zoom */}
           <div 
-            className="flex h-full transition-transform"
+            className="flex h-full"
             style={{ 
               width: `${images.length * 100}%`,
-              transform: `translateX(calc(-${expandedImageIndex * (100 / images.length)}% + ${dragOffset}px))`,
-              transition: isDragging ? 'none' : 'transform 0.3s ease-out'
+              transform: `translateX(calc(-${expandedImageIndex * (100 / images.length)}% + ${zoomScale <= 1 ? dragOffset : 0}px))`,
+              transition: isDragging || isPinching ? 'none' : 'transform 0.3s ease-out'
             }}
           >
             {images.map((img, idx) => (
               <div 
                 key={idx} 
-                className="h-full flex-shrink-0"
+                className="h-full flex-shrink-0 overflow-hidden"
                 style={{ width: `${100 / images.length}%` }}
               >
                 <img
                   src={img}
                   alt={`${product.name} - ${idx + 1}`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover origin-center"
+                  style={{
+                    transform: idx === expandedImageIndex 
+                      ? `scale(${zoomScale}) translate(${zoomPosition.x / zoomScale}px, ${zoomPosition.y / zoomScale}px)`
+                      : 'scale(1)',
+                    transition: isPinching || isDragging ? 'none' : 'transform 0.2s ease-out'
+                  }}
                   draggable={false}
                 />
               </div>
