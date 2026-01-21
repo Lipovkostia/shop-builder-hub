@@ -27,13 +27,13 @@ export function RetailMobileNav({
         {/* Favorites */}
         <button
           onClick={onFavoritesClick}
-          className="flex items-center justify-center w-6 h-5 transition-all active:scale-95"
+          className="flex items-center justify-center w-8 h-5 transition-all active:scale-95"
         >
           <div className="relative">
-            <Heart className="h-2.5 w-2.5 text-foreground/70" />
+            <Heart className="h-5 w-5 text-foreground/70" />
             {favoritesCount > 0 && (
               <Badge
-                className="absolute -top-1 -right-1.5 h-2.5 min-w-2.5 flex items-center justify-center p-0 text-[6px] bg-primary text-primary-foreground border-0"
+                className="absolute -top-1.5 -right-2 h-3 min-w-3 flex items-center justify-center p-0 text-[7px] bg-primary text-primary-foreground border-0"
               >
                 {favoritesCount > 99 ? "+" : favoritesCount}
               </Badge>
@@ -44,23 +44,23 @@ export function RetailMobileNav({
         {/* Categories - Center, emphasized */}
         <button
           onClick={onCategoriesClick}
-          className="flex items-center justify-center -mt-1.5"
+          className="flex items-center justify-center -mt-3"
         >
-          <div className="flex items-center justify-center w-5 h-5 rounded-lg bg-primary shadow-sm shadow-primary/25 transition-all active:scale-95">
-            <Grid3X3 className="h-2.5 w-2.5 text-primary-foreground" />
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary shadow-sm shadow-primary/25 transition-all active:scale-95">
+            <Grid3X3 className="h-5 w-5 text-primary-foreground" />
           </div>
         </button>
 
         {/* Cart */}
         <button
           onClick={onCartClick}
-          className="flex items-center justify-center w-6 h-5 transition-all active:scale-95"
+          className="flex items-center justify-center w-8 h-5 transition-all active:scale-95"
         >
           <div className="relative">
-            <ShoppingCart className="h-2.5 w-2.5 text-foreground/70" />
+            <ShoppingCart className="h-5 w-5 text-foreground/70" />
             {cartItemsCount > 0 && (
               <Badge
-                className="absolute -top-1 -right-1.5 h-2.5 min-w-2.5 flex items-center justify-center p-0 text-[6px] bg-primary text-primary-foreground border-0"
+                className="absolute -top-1.5 -right-2 h-3 min-w-3 flex items-center justify-center p-0 text-[7px] bg-primary text-primary-foreground border-0"
               >
                 {cartItemsCount > 99 ? "+" : cartItemsCount}
               </Badge>
