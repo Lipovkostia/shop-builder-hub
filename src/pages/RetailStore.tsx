@@ -44,6 +44,7 @@ export default function RetailStore() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [mobileCatalogOpen, setMobileCatalogOpen] = useState(false);
+  const [expandedPhotoProductId, setExpandedPhotoProductId] = useState<string | null>(null);
 
   // Price range calculation
   const priceRange = useMemo(() => {
@@ -292,20 +293,18 @@ export default function RetailStore() {
               }
             >
               {filteredProducts.map((product, index) => (
-                <div 
-                  key={product.id} 
-                  className="relative"
-                >
-                  <RetailProductCard
-                    product={product}
-                    onAddToCart={handleAddToCart}
-                    onUpdateQuantity={updateQuantity}
-                    cartQuantity={getCartQuantity(product.id)}
-                    isFavorite={isFavorite(product.id)}
-                    onToggleFavorite={toggleFavorite}
-                    index={index}
-                  />
-                </div>
+                <RetailProductCard
+                  key={product.id}
+                  product={product}
+                  onAddToCart={handleAddToCart}
+                  onUpdateQuantity={updateQuantity}
+                  cartQuantity={getCartQuantity(product.id)}
+                  isFavorite={isFavorite(product.id)}
+                  onToggleFavorite={toggleFavorite}
+                  index={index}
+                  isPhotoExpanded={expandedPhotoProductId === product.id}
+                  onPhotoExpand={setExpandedPhotoProductId}
+                />
               ))}
             </div>
           )}
