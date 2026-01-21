@@ -200,6 +200,9 @@ export function RetailProductCard({
         >
           {/* Scrollable description content - no header, just content */}
           <div className="flex-1 overflow-y-auto scrollbar-thin p-3 min-h-0">
+            <h4 className="font-medium text-sm leading-snug text-foreground mb-2">
+              {product.name}
+            </h4>
             <p className="text-xs leading-relaxed text-foreground/80">
               {product.description}
             </p>
