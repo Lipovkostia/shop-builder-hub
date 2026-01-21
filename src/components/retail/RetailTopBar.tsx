@@ -84,8 +84,8 @@ export function RetailTopBar({
         </div>
       )}
 
-      {/* Main top bar */}
-      <div className="px-4 lg:px-8 py-4">
+      {/* Main top bar - hidden on mobile as all elements are moved elsewhere */}
+      <div className="hidden md:block px-4 lg:px-8 py-4">
         <div className="flex items-center justify-between gap-4">
           {/* Left side - Phone (desktop only now, mobile menu moved to bottom nav) */}
           <div className="flex items-center gap-3">
