@@ -142,8 +142,13 @@ export default function RetailStore() {
       name: product.name,
       price: product.price,
       image: product.images?.[0],
-      unit: product.unit,
+      unit: product.unit || "",
     });
+  };
+
+  const getCartQuantity = (productId: string): number => {
+    const item = cart.find(i => i.productId === productId);
+    return item?.quantity || 0;
   };
 
   // SEO
@@ -278,6 +283,8 @@ export default function RetailStore() {
                   key={product.id}
                   product={product}
                   onAddToCart={handleAddToCart}
+                  onUpdateQuantity={updateQuantity}
+                  cartQuantity={getCartQuantity(product.id)}
                   isFavorite={isFavorite(product.id)}
                   onToggleFavorite={toggleFavorite}
                 />
@@ -324,6 +331,8 @@ export default function RetailStore() {
                     key={product.id}
                     product={product}
                     onAddToCart={handleAddToCart}
+                    onUpdateQuantity={updateQuantity}
+                    cartQuantity={getCartQuantity(product.id)}
                     isFavorite={true}
                     onToggleFavorite={toggleFavorite}
                   />
