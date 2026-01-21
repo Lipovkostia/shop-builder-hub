@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Heart, ImageOff, Plus, Minus } from "lucide-react";
+import { Heart, ImageOff, Plus, Minus, ChevronRight, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -39,6 +39,7 @@ export function RetailProductCard({
   const isMobile = useIsMobile();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   
   // Touch/swipe handling for mobile
   const touchStartX = useRef<number>(0);
@@ -55,6 +56,7 @@ export function RetailProductCard({
   const isOutOfStock = product.catalog_status === 'out_of_stock';
   const isInCart = cartQuantity > 0;
   const cartItemTotal = cartQuantity * product.price;
+  const hasDescription = product.description && product.description.trim().length > 0;
 
   const handleAddToCart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -86,6 +88,20 @@ export function RetailProductCard({
     e.stopPropagation();
     onToggleFavorite?.(product.id);
   }, [onToggleFavorite, product.id]);
+
+  const handleNameClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (hasDescription) {
+      setIsExpanded(prev => !prev);
+    }
+  }, [hasDescription]);
+
+  const handleCloseDescription = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsExpanded(false);
+  }, []);
 
   // Mobile touch handlers for swipe
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -138,169 +154,232 @@ export function RetailProductCard({
     }
   }, [isMobile, hasMultipleImages]);
 
+  // Card width changes when expanded
+  const cardWidth = isExpanded ? (isMobile ? "calc(100% + 120px)" : "calc(100% + 160px)") : "100%";
+  const descriptionWidth = isMobile ? 120 : 160;
+
   return (
-    <Link
-      to={`/retail/${subdomain}/product/${product.id}`}
-      className="group bg-card rounded-xl overflow-visible flex flex-col shadow-sm hover:shadow-md transition-shadow relative"
+    <div 
+      className="transition-all duration-300 ease-out"
+      style={{ width: cardWidth }}
     >
-      {/* Favorite button - positioned above card */}
-      <button
-        onClick={handleFavorite}
-        className={cn(
-          "absolute -top-2 -right-2 p-1 transition-all z-20",
-          isFavorite 
-            ? "drop-shadow-[0_3px_6px_rgba(139,0,0,0.5)] animate-heartbeat" 
-            : "drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
-        )}
-      >
-        {isFavorite ? (
-          <svg width="28" height="28" viewBox="0 0 24 24" className="h-7 w-7">
-            <defs>
-              <linearGradient id="heartGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#8B0000" />
-                <stop offset="50%" stopColor="#A52A2A" />
-                <stop offset="100%" stopColor="#6B0000" />
-              </linearGradient>
-            </defs>
-            <path 
-              d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"
-              fill="url(#heartGradient)"
-              stroke="none"
-            />
-          </svg>
-        ) : (
-          <Heart className="h-7 w-7 fill-none stroke-foreground/40 stroke-[1.5]" />
-        )}
-      </button>
-
-      {/* Image section */}
-      <div 
-        ref={imageContainerRef}
-        className="relative aspect-square bg-muted overflow-hidden rounded-t-xl"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-      >
-        {currentImage && !imageError ? (
-          <img
-            src={currentImage}
-            alt={product.name}
-            className="w-full h-full object-cover transition-opacity duration-200"
-            onError={() => setImageError(true)}
-            loading="lazy"
-            draggable={false}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-muted">
-            <ImageOff className="h-12 w-12 text-muted-foreground/30" />
-          </div>
-        )}
-
-        {/* Sale badge */}
-        {hasDiscount && (
-          <Badge 
-            className="absolute bottom-3 right-3 bg-primary text-primary-foreground font-medium text-[10px] uppercase tracking-wide px-2 py-1"
-          >
-            Акция
-          </Badge>
-        )}
-
-        {/* Out of stock overlay */}
-        {isOutOfStock && (
-          <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-            <span className="text-sm font-medium text-muted-foreground">Нет в наличии</span>
-          </div>
-        )}
-
-        {/* Image indicators */}
-        {hasMultipleImages && !isOutOfStock && (
-          <div className="absolute bottom-3 left-3 flex gap-1">
-            {images.map((_, idx) => (
-              <div
-                key={idx}
-                className={cn(
-                  "w-1.5 h-1.5 rounded-full transition-all",
-                  idx === currentImageIndex 
-                    ? "bg-foreground" 
-                    : "bg-foreground/30"
-                )}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Product name - below image, 2 lines max with fade */}
-      <div className="px-2 pt-2 pb-1">
-        <h3 className="font-medium text-sm leading-snug text-foreground line-clamp-2 min-h-[2.5rem]">
-          {product.name}
-        </h3>
-      </div>
-
-      {/* Buy button - fills bottom of card */}
-      <div className="mt-auto">
-        {isInCart ? (
-          <>
-            {/* Compact cart info - numbers only */}
-            <div className="text-[10px] text-center text-muted-foreground leading-none pb-0.5">
-              {cartQuantity} × {formatPrice(cartItemTotal)}
-            </div>
-            
-            {/* Quantity controls when in cart */}
-            <div className="flex h-12 overflow-hidden rounded-b-xl">
-              {/* Minus button */}
-              <button
-                onClick={handleDecrement}
-                className="w-8 h-full flex items-center justify-center bg-muted hover:bg-muted/80 transition-colors text-foreground"
-              >
-                <Minus className="h-3 w-3" />
-              </button>
-              
-              {/* Price display */}
-              <div 
-                className="flex-1 h-full flex items-center justify-center bg-primary text-primary-foreground text-xs font-medium"
-                onClick={handleAddToCart}
-              >
-                <span className="flex items-center gap-1">
-                  <span className="font-semibold">{formatPrice(product.price)}</span>
-                  {product.unit && (
-                    <span className="text-[10px] opacity-80">/ {formatUnit(product.unit)}</span>
-                  )}
-                </span>
-              </div>
-              
-              {/* Plus button */}
-              <button
-                onClick={handleIncrement}
-                disabled={isOutOfStock}
-                className="w-8 h-full flex items-center justify-center bg-primary hover:bg-primary/90 transition-colors text-primary-foreground"
-              >
-                <Plus className="h-3 w-3" />
-              </button>
-            </div>
-          </>
-        ) : (
-          /* Default buy button */
+      <div className="flex">
+        {/* Main card */}
+        <div className="flex-shrink-0 w-full max-w-[calc(100%-0px)] bg-card rounded-xl overflow-visible flex flex-col shadow-sm hover:shadow-md transition-shadow relative"
+          style={{ width: isExpanded ? `calc(100% - ${descriptionWidth}px)` : "100%" }}
+        >
+          {/* Favorite button - positioned above card */}
           <button
-            onClick={handleAddToCart}
-            disabled={isOutOfStock}
+            onClick={handleFavorite}
             className={cn(
-              "w-full h-12 rounded-b-xl text-sm font-medium transition-all flex items-center justify-center gap-2",
-              "bg-primary text-primary-foreground hover:opacity-90",
-              isOutOfStock && "opacity-50 cursor-not-allowed"
+              "absolute -top-2 -right-2 p-1 transition-all z-20",
+              isFavorite 
+                ? "drop-shadow-[0_3px_6px_rgba(139,0,0,0.5)] animate-heartbeat" 
+                : "drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
             )}
           >
-            <span className="flex items-center gap-2">
-              <span className="font-semibold">{formatPrice(product.price)}</span>
-              {product.unit && (
-                <span className="text-xs opacity-80">/ {formatUnit(product.unit)}</span>
-              )}
-            </span>
+            {isFavorite ? (
+              <svg width="28" height="28" viewBox="0 0 24 24" className="h-7 w-7">
+                <defs>
+                  <linearGradient id="heartGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#8B0000" />
+                    <stop offset="50%" stopColor="#A52A2A" />
+                    <stop offset="100%" stopColor="#6B0000" />
+                  </linearGradient>
+                </defs>
+                <path 
+                  d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"
+                  fill="url(#heartGradient)"
+                  stroke="none"
+                />
+              </svg>
+            ) : (
+              <Heart className="h-7 w-7 fill-none stroke-foreground/40 stroke-[1.5]" />
+            )}
           </button>
-        )}
+
+          {/* Image section - clickable link to product page */}
+          <Link to={`/retail/${subdomain}/product/${product.id}`}>
+            <div 
+              ref={imageContainerRef}
+              className="relative aspect-square bg-muted overflow-hidden rounded-t-xl"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+            >
+              {currentImage && !imageError ? (
+                <img
+                  src={currentImage}
+                  alt={product.name}
+                  className="w-full h-full object-cover transition-opacity duration-200"
+                  onError={() => setImageError(true)}
+                  loading="lazy"
+                  draggable={false}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-muted">
+                  <ImageOff className="h-12 w-12 text-muted-foreground/30" />
+                </div>
+              )}
+
+              {/* Sale badge */}
+              {hasDiscount && (
+                <Badge 
+                  className="absolute bottom-3 right-3 bg-primary text-primary-foreground font-medium text-[10px] uppercase tracking-wide px-2 py-1"
+                >
+                  Акция
+                </Badge>
+              )}
+
+              {/* Out of stock overlay */}
+              {isOutOfStock && (
+                <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                  <span className="text-sm font-medium text-muted-foreground">Нет в наличии</span>
+                </div>
+              )}
+
+              {/* Image indicators */}
+              {hasMultipleImages && !isOutOfStock && (
+                <div className="absolute bottom-3 left-3 flex gap-1">
+                  {images.map((_, idx) => (
+                    <div
+                      key={idx}
+                      className={cn(
+                        "w-1.5 h-1.5 rounded-full transition-all",
+                        idx === currentImageIndex 
+                          ? "bg-foreground" 
+                          : "bg-foreground/30"
+                      )}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </Link>
+
+          {/* Product name - clickable to expand description */}
+          <div className="px-2 pt-2 pb-1">
+            <div 
+              onClick={handleNameClick}
+              className={cn(
+                "flex items-start gap-1 min-h-[2.5rem]",
+                hasDescription && "cursor-pointer group"
+              )}
+            >
+              <h3 className={cn(
+                "font-medium text-sm leading-snug text-foreground line-clamp-2 flex-1",
+                hasDescription && "group-hover:text-primary transition-colors"
+              )}>
+                {product.name}
+              </h3>
+              {hasDescription && (
+                <ChevronRight className={cn(
+                  "h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5 transition-transform duration-300",
+                  isExpanded && "rotate-180"
+                )} />
+              )}
+            </div>
+          </div>
+
+          {/* Buy button - fills bottom of card */}
+          <div className="mt-auto">
+            {isInCart ? (
+              <>
+                {/* Compact cart info - numbers only */}
+                <div className="text-[10px] text-center text-muted-foreground leading-none pb-0.5">
+                  {cartQuantity} × {formatPrice(cartItemTotal)}
+                </div>
+                
+                {/* Quantity controls when in cart */}
+                <div className="flex h-12 overflow-hidden rounded-b-xl">
+                  {/* Minus button */}
+                  <button
+                    onClick={handleDecrement}
+                    className="w-8 h-full flex items-center justify-center bg-muted hover:bg-muted/80 transition-colors text-foreground"
+                  >
+                    <Minus className="h-3 w-3" />
+                  </button>
+                  
+                  {/* Price display */}
+                  <div 
+                    className="flex-1 h-full flex items-center justify-center bg-primary text-primary-foreground text-xs font-medium"
+                    onClick={handleAddToCart}
+                  >
+                    <span className="flex items-center gap-1">
+                      <span className="font-semibold">{formatPrice(product.price)}</span>
+                      {product.unit && (
+                        <span className="text-[10px] opacity-80">/ {formatUnit(product.unit)}</span>
+                      )}
+                    </span>
+                  </div>
+                  
+                  {/* Plus button */}
+                  <button
+                    onClick={handleIncrement}
+                    disabled={isOutOfStock}
+                    className="w-8 h-full flex items-center justify-center bg-primary hover:bg-primary/90 transition-colors text-primary-foreground"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Default buy button */
+              <button
+                onClick={handleAddToCart}
+                disabled={isOutOfStock}
+                className={cn(
+                  "w-full h-12 rounded-b-xl text-sm font-medium transition-all flex items-center justify-center gap-2",
+                  "bg-primary text-primary-foreground hover:opacity-90",
+                  isOutOfStock && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <span className="font-semibold">{formatPrice(product.price)}</span>
+                  {product.unit && (
+                    <span className="text-xs opacity-80">/ {formatUnit(product.unit)}</span>
+                  )}
+                </span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Description panel - slides out from right */}
+        <div 
+          className={cn(
+            "overflow-hidden transition-all duration-300 ease-out flex-shrink-0",
+            isExpanded ? "opacity-100" : "opacity-0 pointer-events-none"
+          )}
+          style={{ width: isExpanded ? descriptionWidth : 0 }}
+        >
+          <div className="h-full pl-2">
+            <div className="h-full bg-muted/60 rounded-xl shadow-inner flex flex-col overflow-hidden">
+              {/* Header with close button */}
+              <div className="flex items-center justify-between px-3 py-2 border-b border-border/30">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  Описание
+                </span>
+                <button 
+                  onClick={handleCloseDescription}
+                  className="p-0.5 rounded-full hover:bg-background/50 transition-colors"
+                >
+                  <X className="h-3 w-3 text-muted-foreground" />
+                </button>
+              </div>
+              
+              {/* Scrollable description content */}
+              <div className="flex-1 overflow-y-auto scrollbar-thin p-3">
+                <p className="text-xs leading-relaxed text-foreground/80">
+                  {product.description}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </Link>
+    </div>
   );
 }
