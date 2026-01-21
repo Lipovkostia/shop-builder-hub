@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useRetailStore } from "@/hooks/useRetailStore";
 import { useRetailCart } from "@/hooks/useRetailCart";
 import { useRetailFavorites } from "@/hooks/useRetailFavorites";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { RetailLayoutSidebar } from "@/components/retail/RetailLayoutSidebar";
 import { RetailTopBar } from "@/components/retail/RetailTopBar";
 import { RetailProductCard } from "@/components/retail/RetailProductCard";
@@ -25,6 +26,7 @@ export default function RetailStore() {
   const { store, products, categories, loading, error } = useRetailStore(subdomain);
   const { cart, cartTotal, cartItemsCount, isOpen, setIsOpen, addToCart, updateQuantity, removeFromCart } = useRetailCart(store?.id || null);
   const { favorites, favoritesCount, toggleFavorite, isFavorite } = useRetailFavorites(store?.id || null);
+  const isMobile = useIsMobile();
 
   // State for favorites sheet
   const [favoritesOpen, setFavoritesOpen] = useState(false);
@@ -383,8 +385,8 @@ export default function RetailStore() {
         </SheetContent>
       </Sheet>
 
-      {/* Cart drawer - desktop */}
-      <div className="hidden lg:block">
+      {/* Cart drawer - desktop only */}
+      {!isMobile && (
         <RetailCartDrawer
           open={isOpen}
           onOpenChange={setIsOpen}
@@ -393,17 +395,19 @@ export default function RetailStore() {
           onUpdateQuantity={updateQuantity}
           onRemove={removeFromCart}
         />
-      </div>
+      )}
 
-      {/* Cart sheet - mobile (slides from bottom) */}
-      <RetailCartSheet
-        open={isOpen}
-        onOpenChange={setIsOpen}
-        cart={cart}
-        cartTotal={cartTotal}
-        onUpdateQuantity={updateQuantity}
-        onRemove={removeFromCart}
-      />
+      {/* Cart sheet - mobile only (slides from bottom) */}
+      {isMobile && (
+        <RetailCartSheet
+          open={isOpen}
+          onOpenChange={setIsOpen}
+          cart={cart}
+          cartTotal={cartTotal}
+          onUpdateQuantity={updateQuantity}
+          onRemove={removeFromCart}
+        />
+      )}
     </div>
   );
 }
