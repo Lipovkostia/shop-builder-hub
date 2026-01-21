@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
-import { Heart, ImageOff, Plus, Minus, ChevronRight } from "lucide-react";
+import { Heart, ImageOff, Plus, Minus, ChevronRight, ChevronLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -37,21 +36,27 @@ export function RetailProductCard({
   onToggleFavorite,
   index = 0,
 }: RetailProductCardProps) {
-  const { subdomain } = useParams();
   const isMobile = useIsMobile();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [expandedImageIndex, setExpandedImageIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isImageExpanded, setIsImageExpanded] = useState(false);
   const [cardHeight, setCardHeight] = useState<number>(0);
   
   // Touch/swipe handling for mobile
   const touchStartX = useRef<number>(0);
   const touchEndX = useRef<number>(0);
   
+  // Touch/swipe for expanded image viewer
+  const expandedTouchStartX = useRef<number>(0);
+  const expandedTouchEndX = useRef<number>(0);
+  
   // Image container ref for cursor tracking on desktop
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const innerCardRef = useRef<HTMLDivElement>(null);
+  const expandedImageRef = useRef<HTMLDivElement>(null);
 
   // Determine if card is on the right side (odd index in 2-column grid)
   const isRightSide = index % 2 === 1;
@@ -112,6 +117,15 @@ export function RetailProductCard({
     }
   }, [hasDescription]);
 
+  const handleImageClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (images.length > 0 && !isOutOfStock) {
+      setExpandedImageIndex(currentImageIndex);
+      setIsImageExpanded(true);
+    }
+  }, [images.length, isOutOfStock, currentImageIndex]);
+
   // Close description when clicking outside
   useEffect(() => {
     if (!isExpanded) return;
@@ -125,6 +139,20 @@ export function RetailProductCard({
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, [isExpanded]);
+
+  // Close expanded image when clicking outside
+  useEffect(() => {
+    if (!isImageExpanded) return;
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      if (expandedImageRef.current && !expandedImageRef.current.contains(e.target as Node)) {
+        setIsImageExpanded(false);
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [isImageExpanded]);
 
   // Mobile touch handlers for swipe
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -154,6 +182,45 @@ export function RetailProductCard({
     touchStartX.current = 0;
     touchEndX.current = 0;
   }, [hasMultipleImages, isMobile, images.length]);
+
+  // Expanded image touch handlers
+  const handleExpandedTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!hasMultipleImages) return;
+    expandedTouchStartX.current = e.touches[0].clientX;
+  }, [hasMultipleImages]);
+
+  const handleExpandedTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!hasMultipleImages) return;
+    expandedTouchEndX.current = e.touches[0].clientX;
+  }, [hasMultipleImages]);
+
+  const handleExpandedTouchEnd = useCallback(() => {
+    if (!hasMultipleImages) return;
+    
+    const diff = expandedTouchStartX.current - expandedTouchEndX.current;
+    const threshold = 50;
+    
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        setExpandedImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+      } else {
+        setExpandedImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+      }
+    }
+    
+    expandedTouchStartX.current = 0;
+    expandedTouchEndX.current = 0;
+  }, [hasMultipleImages, images.length]);
+
+  const handleExpandedPrev = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  }, [images.length]);
+
+  const handleExpandedNext = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  }, [images.length]);
 
   // Desktop mouse movement handler for cursor-based image switching
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -210,6 +277,73 @@ export function RetailProductCard({
         </div>
       </div>
 
+      {/* Expanded image viewer - positioned as overlay covering 2 cards */}
+      <div 
+        ref={expandedImageRef}
+        className={cn(
+          "absolute top-0 z-40 transition-all duration-300 ease-out overflow-hidden",
+          isImageExpanded ? "opacity-100" : "opacity-0 pointer-events-none",
+          isRightSide ? "right-0" : "left-0"
+        )}
+        style={{ 
+          width: isImageExpanded ? 'calc(200% + 16px)' : '100%',
+          height: cardHeight > 0 ? cardHeight : 'auto'
+        }}
+      >
+        <div 
+          className="h-full bg-muted rounded-xl shadow-lg overflow-hidden relative"
+          style={{ height: cardHeight > 0 ? cardHeight : 'auto' }}
+          onTouchStart={handleExpandedTouchStart}
+          onTouchMove={handleExpandedTouchMove}
+          onTouchEnd={handleExpandedTouchEnd}
+        >
+          {/* Expanded image */}
+          {images[expandedImageIndex] && (
+            <img
+              src={images[expandedImageIndex]}
+              alt={product.name}
+              className="w-full h-full object-cover"
+              draggable={false}
+            />
+          )}
+          
+          {/* Navigation arrows for desktop */}
+          {hasMultipleImages && !isMobile && (
+            <>
+              <button
+                onClick={handleExpandedPrev}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-md hover:bg-background transition-colors"
+              >
+                <ChevronLeft className="h-5 w-5 text-foreground" />
+              </button>
+              <button
+                onClick={handleExpandedNext}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-md hover:bg-background transition-colors"
+              >
+                <ChevronRight className="h-5 w-5 text-foreground" />
+              </button>
+            </>
+          )}
+          
+          {/* Image indicators */}
+          {hasMultipleImages && (
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+              {images.map((_, idx) => (
+                <div
+                  key={idx}
+                  className={cn(
+                    "w-2 h-2 rounded-full transition-all",
+                    idx === expandedImageIndex 
+                      ? "bg-foreground" 
+                      : "bg-foreground/30"
+                  )}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Main card */}
       <div 
         ref={innerCardRef}
@@ -245,66 +379,65 @@ export function RetailProductCard({
           )}
         </button>
 
-        {/* Image section - clickable link to product page */}
-        <Link to={`/retail/${subdomain}/product/${product.id}`}>
-          <div 
-            ref={imageContainerRef}
-            className="relative aspect-square bg-muted overflow-hidden rounded-t-xl"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
-          >
-            {currentImage && !imageError ? (
-              <img
-                src={currentImage}
-                alt={product.name}
-                className="w-full h-full object-cover transition-opacity duration-200"
-                onError={() => setImageError(true)}
-                loading="lazy"
-                draggable={false}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-muted">
-                <ImageOff className="h-12 w-12 text-muted-foreground/30" />
-              </div>
-            )}
+        {/* Image section - clickable to expand */}
+        <div 
+          ref={imageContainerRef}
+          className="relative aspect-square bg-muted overflow-hidden rounded-t-xl cursor-pointer"
+          onClick={handleImageClick}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
+          {currentImage && !imageError ? (
+            <img
+              src={currentImage}
+              alt={product.name}
+              className="w-full h-full object-cover transition-opacity duration-200"
+              onError={() => setImageError(true)}
+              loading="lazy"
+              draggable={false}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-muted">
+              <ImageOff className="h-12 w-12 text-muted-foreground/30" />
+            </div>
+          )}
 
-            {/* Sale badge */}
-            {hasDiscount && (
-              <Badge 
-                className="absolute bottom-3 right-3 bg-primary text-primary-foreground font-medium text-[10px] uppercase tracking-wide px-2 py-1"
-              >
-                Акция
-              </Badge>
-            )}
+          {/* Sale badge */}
+          {hasDiscount && (
+            <Badge 
+              className="absolute bottom-3 right-3 bg-primary text-primary-foreground font-medium text-[10px] uppercase tracking-wide px-2 py-1"
+            >
+              Акция
+            </Badge>
+          )}
 
-            {/* Out of stock overlay */}
-            {isOutOfStock && (
-              <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-                <span className="text-sm font-medium text-muted-foreground">Нет в наличии</span>
-              </div>
-            )}
+          {/* Out of stock overlay */}
+          {isOutOfStock && (
+            <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+              <span className="text-sm font-medium text-muted-foreground">Нет в наличии</span>
+            </div>
+          )}
 
-            {/* Image indicators */}
-            {hasMultipleImages && !isOutOfStock && (
-              <div className="absolute bottom-3 left-3 flex gap-1">
-                {images.map((_, idx) => (
-                  <div
-                    key={idx}
-                    className={cn(
-                      "w-1.5 h-1.5 rounded-full transition-all",
-                      idx === currentImageIndex 
-                        ? "bg-foreground" 
-                        : "bg-foreground/30"
-                    )}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </Link>
+          {/* Image indicators */}
+          {hasMultipleImages && !isOutOfStock && (
+            <div className="absolute bottom-3 left-3 flex gap-1">
+              {images.map((_, idx) => (
+                <div
+                  key={idx}
+                  className={cn(
+                    "w-1.5 h-1.5 rounded-full transition-all",
+                    idx === currentImageIndex 
+                      ? "bg-foreground" 
+                      : "bg-foreground/30"
+                  )}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Product name - clickable to expand description */}
         <div className="px-2 pt-2 pb-1">
