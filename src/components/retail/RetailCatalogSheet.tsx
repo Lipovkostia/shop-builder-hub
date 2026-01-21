@@ -50,8 +50,11 @@ export function RetailCatalogSheet({
     onOpenChange(false);
   };
 
+  // Filter categories to only show those with products
+  const categoriesWithProducts = categories.filter(cat => (cat.product_count || 0) > 0);
+
   // Calculate total products
-  const totalProducts = categories.reduce((sum, cat) => sum + (cat.product_count || 0), 0);
+  const totalProducts = categoriesWithProducts.reduce((sum, cat) => sum + (cat.product_count || 0), 0);
 
   return (
     <>
@@ -150,7 +153,7 @@ export function RetailCatalogSheet({
 
             {/* Categories list */}
             <div className="pb-6">
-              {categories.length === 0 ? (
+              {categoriesWithProducts.length === 0 ? (
                 <div className="px-5 py-8 text-center">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
                     <Sparkles className="h-7 w-7 text-muted-foreground" />
@@ -158,7 +161,7 @@ export function RetailCatalogSheet({
                   <p className="text-muted-foreground">Категории скоро появятся</p>
                 </div>
               ) : (
-                categories.map((category, index) => (
+                categoriesWithProducts.map((category, index) => (
                   <button
                     key={category.id}
                     onClick={() => handleCategoryClick(category.id)}
