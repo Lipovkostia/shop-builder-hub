@@ -233,7 +233,7 @@ export function RetailProductCard({
       </div>
 
       {/* Product name - below image, 2 lines max with fade */}
-      <div className="px-3 py-3">
+      <div className="px-2 pt-2 pb-1">
         <h3 className="font-medium text-sm leading-snug text-foreground line-clamp-2 min-h-[2.5rem]">
           {product.name}
         </h3>
