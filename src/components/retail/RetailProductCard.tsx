@@ -249,7 +249,7 @@ export function RetailProductCard({
             </div>
             
             {/* Quantity controls when in cart */}
-            <div className="flex h-12">
+            <div className="flex h-12 overflow-hidden rounded-b-xl">
               {/* Minus button */}
               <button
                 onClick={handleDecrement}
@@ -287,7 +287,7 @@ export function RetailProductCard({
             onClick={handleAddToCart}
             disabled={isOutOfStock}
             className={cn(
-              "w-full h-12 rounded-none text-sm font-medium transition-all flex items-center justify-center gap-2",
+              "w-full h-12 rounded-b-xl text-sm font-medium transition-all flex items-center justify-center gap-2",
               "bg-primary text-primary-foreground hover:opacity-90",
               isOutOfStock && "opacity-50 cursor-not-allowed"
             )}
