@@ -340,7 +340,7 @@ export default function RetailStore() {
           )}
 
           {/* Spacer for mobile bottom nav */}
-          <div className="h-12 lg:hidden" />
+          <div className="h-6 lg:hidden" />
         </main>
 
         {/* Footer */}
