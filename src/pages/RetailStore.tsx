@@ -306,19 +306,31 @@ export default function RetailStore() {
         cartItemsCount={cartItemsCount}
         favoritesCount={favoritesCount}
         onCategoriesClick={() => {
-          setIsOpen(false);
-          setFavoritesOpen(false);
-          setMobileCatalogOpen(true);
+          if (mobileCatalogOpen) {
+            setMobileCatalogOpen(false);
+          } else {
+            setIsOpen(false);
+            setFavoritesOpen(false);
+            setMobileCatalogOpen(true);
+          }
         }}
         onCartClick={() => {
-          setMobileCatalogOpen(false);
-          setFavoritesOpen(false);
-          setIsOpen(true);
+          if (isOpen) {
+            setIsOpen(false);
+          } else {
+            setMobileCatalogOpen(false);
+            setFavoritesOpen(false);
+            setIsOpen(true);
+          }
         }}
         onFavoritesClick={() => {
-          setMobileCatalogOpen(false);
-          setIsOpen(false);
-          setFavoritesOpen(true);
+          if (favoritesOpen) {
+            setFavoritesOpen(false);
+          } else {
+            setMobileCatalogOpen(false);
+            setIsOpen(false);
+            setFavoritesOpen(true);
+          }
         }}
         onPromotionsClick={() => {
           setMobileCatalogOpen(false);
