@@ -172,11 +172,11 @@ export function RetailProductCard({
         <button
           onClick={handleFavorite}
           className={cn(
-            "absolute -top-1 -right-1 p-1 transition-all",
+            "absolute -top-3 -right-3 p-1 transition-all z-10",
             isFavorite && "text-destructive drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]"
           )}
         >
-          <Heart className={cn("h-5 w-5", isFavorite && "fill-current")} />
+          <Heart className={cn("h-7 w-7", isFavorite && "fill-current")} />
         </button>
 
         {/* Sale badge */}
