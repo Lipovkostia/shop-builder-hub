@@ -11,40 +11,45 @@ export interface RetailCartItem {
 
 const CART_STORAGE_KEY = "retail_cart";
 
-function getStoredCart(storeId: string): RetailCartItem[] {
+// Use subdomain as the key for cart storage (more reliable than storeId)
+function getStoredCart(key: string): RetailCartItem[] {
   try {
-    const stored = localStorage.getItem(`${CART_STORAGE_KEY}_${storeId}`);
+    const stored = localStorage.getItem(`${CART_STORAGE_KEY}_${key}`);
     return stored ? JSON.parse(stored) : [];
   } catch {
     return [];
   }
 }
 
-function saveCart(storeId: string, cart: RetailCartItem[]) {
+function saveCart(key: string, cart: RetailCartItem[]) {
   try {
-    localStorage.setItem(`${CART_STORAGE_KEY}_${storeId}`, JSON.stringify(cart));
+    localStorage.setItem(`${CART_STORAGE_KEY}_${key}`, JSON.stringify(cart));
   } catch (e) {
     console.error("Failed to save cart:", e);
   }
 }
 
-export function useRetailCart(storeId: string | null) {
+// Support both storeId and subdomain for flexibility
+// When subdomain is provided, it's used as the storage key (works before store loads)
+export function useRetailCart(storeIdOrSubdomain: string | null) {
   const [cart, setCart] = useState<RetailCartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [cartKey, setCartKey] = useState<string | null>(null);
 
-  // Load cart from localStorage
+  // Set cart key and load cart from localStorage
   useEffect(() => {
-    if (storeId) {
-      setCart(getStoredCart(storeId));
+    if (storeIdOrSubdomain) {
+      setCartKey(storeIdOrSubdomain);
+      setCart(getStoredCart(storeIdOrSubdomain));
     }
-  }, [storeId]);
+  }, [storeIdOrSubdomain]);
 
   // Save cart to localStorage when it changes
   useEffect(() => {
-    if (storeId && cart.length >= 0) {
-      saveCart(storeId, cart);
+    if (cartKey && cart.length >= 0) {
+      saveCart(cartKey, cart);
     }
-  }, [storeId, cart]);
+  }, [cartKey, cart]);
 
   const addToCart = useCallback((item: Omit<RetailCartItem, "quantity">, quantity: number = 1) => {
     setCart((prev) => {
