@@ -12,6 +12,18 @@ import AdminPanel from "./AdminPanel";
 
 type ActiveView = "storefront" | "admin";
 
+function getInitialViewFromSearchParams(searchParams: URLSearchParams): ActiveView {
+  const view = searchParams.get("view");
+  if (view === "admin") return "admin";
+  if (view === "storefront") return "storefront";
+
+  // Back-compat: if section is present, we assume admin view
+  const section = searchParams.get("section");
+  if (section) return "admin";
+
+  return "storefront";
+}
+
 export default function SellerWorkspace() {
   const { subdomain } = useParams<{ subdomain: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -25,7 +37,14 @@ export default function SellerWorkspace() {
   // Получаем количество заказов для владельца/супер-админа
   const { orders } = useStoreOrders(hasFullAccess && store?.id ? store.id : null);
 
-  const [activeView, setActiveView] = useState<ActiveView>("storefront");
+  const [activeView, setActiveView] = useState<ActiveView>(() => getInitialViewFromSearchParams(searchParams));
+
+  // Keep activeView in sync with URL (e.g. back/forward, manual edits)
+  useEffect(() => {
+    const nextView = getInitialViewFromSearchParams(searchParams);
+    setActiveView(prev => (prev === nextView ? prev : nextView));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
   
   // Прокручиваем страницу вверх при первом входе
   useEffect(() => {
@@ -47,6 +66,13 @@ export default function SellerWorkspace() {
     }
     
     setActiveView(view);
+
+    // Persist view in URL so refresh keeps the same section
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set("view", view);
+      return next;
+    }, { replace: true });
     
     // Восстанавливаем позицию скролла после рендера
     requestAnimationFrame(() => {
@@ -56,18 +82,27 @@ export default function SellerWorkspace() {
         window.scrollTo(0, adminScrollRef.current);
       }
     });
-  }, [activeView]);
+  }, [activeView, setSearchParams]);
 
   const handleSwitchToAdmin = useCallback((section?: string) => {
-    if (section) {
-      setSearchParams({ section });
-    }
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set("view", "admin");
+      if (section) next.set("section", section);
+      return next;
+    }, { replace: true });
+
     handleViewChange("admin");
   }, [handleViewChange, setSearchParams]);
 
   const handleSwitchToStorefront = useCallback(() => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set("view", "storefront");
+      return next;
+    }, { replace: true });
     handleViewChange("storefront");
-  }, [handleViewChange]);
+  }, [handleViewChange, setSearchParams]);
 
   // Загрузка и ошибки
   if (storeLoading) {
