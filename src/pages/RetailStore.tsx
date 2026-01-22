@@ -318,7 +318,7 @@ export default function RetailStore() {
                   key={category.id}
                   category={category}
                   products={catProducts}
-                  renderProductCard={(product, index) => (
+                  renderProductCard={(product, index, isCarousel) => (
                     <RetailProductCard
                       product={product}
                       onAddToCart={handleAddToCart}
@@ -327,6 +327,7 @@ export default function RetailStore() {
                       isFavorite={isFavorite(product.id)}
                       onToggleFavorite={toggleFavorite}
                       index={index}
+                      isCarousel={isCarousel}
                     />
                   )}
                 />
@@ -356,6 +357,7 @@ export default function RetailStore() {
                             isFavorite={isFavorite(product.id)}
                             onToggleFavorite={toggleFavorite}
                             index={index}
+                            isCarousel={true}
                           />
                         </div>
                       ))}

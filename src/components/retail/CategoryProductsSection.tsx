@@ -8,7 +8,7 @@ import type { RetailProduct, RetailCategory } from "@/hooks/useRetailStore";
 interface CategoryProductsSectionProps {
   category: RetailCategory;
   products: RetailProduct[];
-  renderProductCard: (product: RetailProduct, index: number) => React.ReactNode;
+  renderProductCard: (product: RetailProduct, index: number, isCarousel: boolean) => React.ReactNode;
 }
 
 export function CategoryProductsSection({
@@ -70,7 +70,7 @@ export function CategoryProductsSection({
               key={product.id}
               className="flex-shrink-0 w-[45%] sm:w-[35%] md:w-[28%] lg:w-[22%] xl:w-[18%] snap-start"
             >
-              {renderProductCard(product, index)}
+              {renderProductCard(product, index, true)}
             </div>
           ))}
         </div>
