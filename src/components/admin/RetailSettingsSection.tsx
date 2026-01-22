@@ -39,6 +39,7 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
     saving,
     updateRetailEnabled,
     updateRetailTheme,
+    updateRetailName,
     updateSeoSettings,
     updateCustomDomain,
     updateRetailCatalog,
@@ -62,6 +63,7 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
   const [retailPhone, setRetailPhone] = useState("");
   const [telegramUsername, setTelegramUsername] = useState("");
   const [whatsappPhone, setWhatsappPhone] = useState("");
+  const [retailName, setRetailName] = useState("");
   
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
@@ -76,6 +78,7 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
       setRetailPhone(settings.retail_phone || "");
       setTelegramUsername(settings.telegram_username || "");
       setWhatsappPhone(settings.whatsapp_phone || "");
+      setRetailName(settings.retail_name || "");
     }
   }, [settings]);
 
@@ -380,12 +383,12 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
           </div>
         </TabsContent>
 
-        {/* Design Tab */}
         <TabsContent value="design" className="space-y-6">
+          {/* Logo and Store Name Section */}
           <div className="bg-card border border-border rounded-lg p-6">
-            <h3 className="font-semibold text-foreground mb-4">Логотип магазина</h3>
+            <h3 className="font-semibold text-foreground mb-4">Логотип и название магазина</h3>
             
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-4 mb-6">
               <div className="w-24 h-24 border border-dashed border-border rounded-lg flex items-center justify-center bg-muted/50 overflow-hidden">
                 {settings.retail_logo_url ? (
                   <img 
@@ -397,7 +400,7 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
                   <Store className="h-8 w-8 text-muted-foreground" />
                 )}
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 flex-1">
                 <input
                   ref={logoInputRef}
                   type="file"
@@ -426,7 +429,36 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
                     Удалить
                   </Button>
                 )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Рекомендуемый размер: до 2 МБ. Поддерживаются PNG, JPG, WebP. Большие файлы будут сжаты автоматически.
+                </p>
               </div>
+            </div>
+
+            {/* Store Name Field */}
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">
+                Название магазина (для витрины)
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={retailName}
+                  onChange={(e) => setRetailName(e.target.value)}
+                  placeholder="Введите название магазина"
+                  className="flex-1"
+                />
+                <Button 
+                  onClick={() => updateRetailName(retailName || null)} 
+                  disabled={saving}
+                  size="sm"
+                >
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Сохранить
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Отображается рядом с логотипом в меню категорий. Если не указано, будет использоваться название из настроек магазина.
+              </p>
             </div>
           </div>
 

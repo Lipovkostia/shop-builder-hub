@@ -13,6 +13,7 @@ export interface RetailSettings {
   retail_enabled: boolean;
   retail_theme: RetailTheme;
   retail_logo_url: string | null;
+  retail_name: string | null;
   seo_title: string | null;
   seo_description: string | null;
   favicon_url: string | null;
@@ -40,7 +41,7 @@ export function useRetailSettings(storeId: string | null) {
     try {
       const { data, error } = await supabase
         .from("stores")
-        .select("retail_enabled, retail_theme, retail_logo_url, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id, retail_phone, telegram_username, whatsapp_phone")
+        .select("retail_enabled, retail_theme, retail_logo_url, retail_name, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id, retail_phone, telegram_username, whatsapp_phone")
         .eq("id", storeId)
         .single();
 
@@ -50,6 +51,7 @@ export function useRetailSettings(storeId: string | null) {
         retail_enabled: data.retail_enabled || false,
         retail_theme: (data.retail_theme as RetailTheme) || {},
         retail_logo_url: data.retail_logo_url,
+        retail_name: (data as { retail_name?: string | null }).retail_name || null,
         seo_title: data.seo_title,
         seo_description: data.seo_description,
         favicon_url: data.favicon_url,
@@ -227,17 +229,111 @@ export function useRetailSettings(storeId: string | null) {
     }
   }, [storeId, toast]);
 
+  const updateRetailName = useCallback(async (name: string | null) => {
+    if (!storeId) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("stores")
+        .update({ retail_name: name || null })
+        .eq("id", storeId);
+
+      if (error) throw error;
+
+      setSettings(prev => prev ? { ...prev, retail_name: name } : null);
+      toast({
+        title: "Название сохранено",
+        description: "Название магазина обновлено",
+      });
+    } catch (err) {
+      console.error("Error updating retail_name:", err);
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Не удалось сохранить название",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [storeId, toast]);
+
+  // Compress image before upload
+  const compressImage = async (file: File, maxSizeMB: number = 2): Promise<File> => {
+    // If file is already small enough, return as is
+    if (file.size <= maxSizeMB * 1024 * 1024) return file;
+    
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      img.onload = () => {
+        // Calculate new dimensions while maintaining aspect ratio
+        let { width, height } = img;
+        const maxDimension = 1200;
+        
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = (height / width) * maxDimension;
+            width = maxDimension;
+          } else {
+            width = (width / height) * maxDimension;
+            height = maxDimension;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+        
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Determine output type - keep PNG for transparency
+        const isPng = file.type === 'image/png';
+        const outputType = isPng ? 'image/png' : 'image/jpeg';
+        const quality = isPng ? 0.9 : 0.85;
+        
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: outputType,
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          outputType,
+          quality
+        );
+      };
+      
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const uploadRetailLogo = useCallback(async (file: File) => {
     if (!storeId) return;
 
     setSaving(true);
     try {
-      const fileExt = file.name.split(".").pop();
+      // Compress image if needed
+      const processedFile = await compressImage(file, 2);
+      
+      const fileExt = processedFile.name.split(".").pop() || 'png';
       const fileName = `${storeId}/retail-logo.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("product-images")
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, processedFile, { upsert: true });
 
       if (uploadError) throw uploadError;
 
@@ -406,6 +502,7 @@ export function useRetailSettings(storeId: string | null) {
     saving,
     updateRetailEnabled,
     updateRetailTheme,
+    updateRetailName,
     updateSeoSettings,
     updateCustomDomain,
     updateRetailCatalog,

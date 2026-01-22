@@ -16,6 +16,8 @@ interface RetailProductCardProps {
   isCarousel?: boolean; // Whether card is in a horizontal carousel
   expandedCardId?: string | null; // Global state for which card has expanded image
   onExpandChange?: (productId: string | null) => void; // Callback to update expanded state
+  expandedDescriptionCardId?: string | null; // Global state for which card has expanded description
+  onDescriptionExpandChange?: (productId: string | null) => void; // Callback to update description expanded state
 }
 
 function formatPrice(price: number): string {
@@ -41,6 +43,8 @@ export function RetailProductCard({
   isCarousel = false,
   expandedCardId,
   onExpandChange,
+  expandedDescriptionCardId,
+  onDescriptionExpandChange,
 }: RetailProductCardProps) {
   const isMobile = useIsMobile();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -153,9 +157,12 @@ export function RetailProductCard({
       if (isCarousel) {
         checkCardPosition();
       }
-      setIsExpanded(prev => !prev);
+      const newState = !isExpanded;
+      setIsExpanded(newState);
+      // Notify parent about description expansion
+      onDescriptionExpandChange?.(newState ? product.id : null);
     }
-  }, [hasDescription, isCarousel, checkCardPosition]);
+  }, [hasDescription, isCarousel, checkCardPosition, isExpanded, onDescriptionExpandChange, product.id]);
 
   const handleImageClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -235,6 +242,13 @@ export function RetailProductCard({
       setZoomPosition({ x: 0, y: 0 });
     }
   }, [expandedCardId, product.id, isImageExpanded]);
+
+  // Close description when another card's description is expanded
+  useEffect(() => {
+    if (expandedDescriptionCardId !== null && expandedDescriptionCardId !== product.id && isExpanded) {
+      setIsExpanded(false);
+    }
+  }, [expandedDescriptionCardId, product.id, isExpanded]);
 
   // Handle wheel zoom for desktop
   const handleWheel = useCallback((e: React.WheelEvent) => {
