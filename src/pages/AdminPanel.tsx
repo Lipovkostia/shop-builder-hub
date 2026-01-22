@@ -6305,23 +6305,34 @@ export default function AdminPanel({
                             <div className="flex-1 min-w-0">
                               {/* Top row: status + price */}
                               <div className="flex items-center justify-between gap-2 mb-1">
-                                <Badge 
-                                  variant={
-                                    order.status === 'delivered' ? 'default' :
-                                    order.status === 'cancelled' ? 'destructive' :
-                                    order.status === 'shipped' ? 'secondary' :
-                                    'outline'
-                                  }
-                                  className={`text-[10px] px-1.5 py-0 h-5 ${
-                                    order.status === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 border-amber-200' : ''
-                                  }`}
-                                >
-                                  {order.status === 'pending' && 'Новый'}
-                                  {order.status === 'processing' && 'В обработке'}
-                                  {order.status === 'shipped' && 'Отправлен'}
-                                  {order.status === 'delivered' && 'Доставлен'}
-                                  {order.status === 'cancelled' && 'Отменён'}
-                                </Badge>
+                                <div className="flex items-center gap-1.5">
+                                  <Badge 
+                                    variant={
+                                      order.status === 'delivered' ? 'default' :
+                                      order.status === 'cancelled' ? 'destructive' :
+                                      order.status === 'shipped' ? 'secondary' :
+                                      'outline'
+                                    }
+                                    className={`text-[10px] px-1.5 py-0 h-5 ${
+                                      order.status === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 border-amber-200' : ''
+                                    }`}
+                                  >
+                                    {order.status === 'pending' && 'Новый'}
+                                    {order.status === 'processing' && 'В обработке'}
+                                    {order.status === 'shipped' && 'Отправлен'}
+                                    {order.status === 'delivered' && 'Доставлен'}
+                                    {order.status === 'cancelled' && 'Отменён'}
+                                  </Badge>
+                                  {/* Retail order badge */}
+                                  {order.shipping_address?.source === 'retail' && (
+                                    <Badge 
+                                      variant="outline" 
+                                      className="text-[10px] px-1.5 py-0 h-5 bg-primary/10 text-primary border-primary/30"
+                                    >
+                                      Розница
+                                    </Badge>
+                                  )}
+                                </div>
                                 <span className="font-bold text-base sm:text-lg tabular-nums whitespace-nowrap">
                                   {order.total.toLocaleString()} ₽
                                 </span>

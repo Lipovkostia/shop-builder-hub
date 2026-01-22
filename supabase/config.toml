@@ -14,3 +14,12 @@ verify_jwt = false
 
 [functions.telegram-webhook]
 verify_jwt = false
+
+[functions.create-guest-order]
+verify_jwt = false
+
+[functions.ai-customer-assistant]
+verify_jwt = false
+
+[functions.create-retail-order]
+verify_jwt = false
