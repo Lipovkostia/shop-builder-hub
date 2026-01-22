@@ -13,6 +13,7 @@ import StoreFront from "./pages/StoreFront";
 import SellerWorkspace from "./pages/SellerWorkspace";
 import NotFound from "./pages/NotFound";
 import RetailStore from "./pages/RetailStore";
+import RetailCheckout from "./pages/RetailCheckout";
 import CatalogAccess from "./pages/CatalogAccess";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import GuestCatalogView from "./pages/GuestCatalogView";
@@ -73,7 +74,7 @@ const App = () => (
             {/* Retail store routes */}
             <Route path="/retail/:subdomain" element={<RetailStore />} />
             <Route path="/retail/:subdomain/product/:productId" element={<RetailStore />} />
-            <Route path="/retail/:subdomain/checkout" element={<RetailStore />} />
+            <Route path="/retail/:subdomain/checkout" element={<RetailCheckout />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

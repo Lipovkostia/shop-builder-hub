@@ -28,6 +28,7 @@ export interface Order {
     phone?: string;
     address?: string;
     comment?: string;
+    source?: string; // 'retail' for retail orders
   } | null;
   notes: string | null;
   created_at: string;
