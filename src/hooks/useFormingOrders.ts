@@ -32,6 +32,7 @@ export function useFormingOrders(storeId: string | null) {
 
     setIsLoading(true);
     try {
+      // First get orders with status 'forming'
       const { data: orders, error } = await supabase
         .from('orders')
         .select(`
@@ -39,35 +40,61 @@ export function useFormingOrders(storeId: string | null) {
           customer_id,
           subtotal,
           total,
-          last_activity_at,
           created_at,
-          store_customers!inner (
-            id,
-            name,
-            phone,
-            profile_id
-          ),
           order_items (
             id,
             product_id,
             product_name,
             quantity,
-            price,
-            unit,
-            portion_type
+            price
           )
         `)
         .eq('store_id', storeId)
         .eq('status', 'forming' as any)
-        .order('last_activity_at', { ascending: false });
+        .order('created_at', { ascending: false }) as any;
 
       if (error) throw error;
+
+      if (!orders || orders.length === 0) {
+        setFormingOrders([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Get customer IDs and fetch their profile info
+      const customerIds: string[] = [...new Set(orders.map((o: any) => o.customer_id).filter(Boolean))] as string[];
+      
+      let customerProfiles: Record<string, { name: string; phone: string | null }> = {};
+      
+      if (customerIds.length > 0) {
+        // Get store_customers with profile info
+        const { data: storeCustomers } = await supabase
+          .from('store_customers')
+          .select(`
+            id,
+            profile_id,
+            profiles!inner (
+              full_name,
+              phone
+            )
+          `)
+          .in('id', customerIds) as any;
+        
+        if (storeCustomers) {
+          for (const sc of storeCustomers) {
+            customerProfiles[sc.id] = {
+              name: sc.profiles?.full_name || 'Покупатель',
+              phone: sc.profiles?.phone || null,
+            };
+          }
+        }
+      }
 
       const formattedOrders: FormingOrder[] = (orders || []).map((order: any) => ({
         id: order.id,
         customerId: order.customer_id,
-        customerName: order.store_customers?.name || 'Неизвестный покупатель',
-        customerPhone: order.store_customers?.phone,
+        customerName: customerProfiles[order.customer_id]?.name || 'Неизвестный покупатель',
+        customerPhone: customerProfiles[order.customer_id]?.phone,
         items: (order.order_items || []).map((item: any) => ({
           id: item.id,
           productId: item.product_id,
@@ -79,7 +106,7 @@ export function useFormingOrders(storeId: string | null) {
         })),
         subtotal: order.subtotal || 0,
         total: order.total || 0,
-        lastActivityAt: order.last_activity_at || order.created_at,
+        lastActivityAt: order.created_at,
         createdAt: order.created_at,
       }));
 

@@ -88,12 +88,18 @@ export function useDraftOrder(storeId: string | null, customerId: string | null)
     if (!storeId || !customerId) return null;
 
     try {
+      // Generate order number for draft (DRAFT-timestamp-random)
+      const timestamp = Date.now().toString(36).toUpperCase();
+      const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const orderNumber = `DRAFT-${timestamp}-${random}`;
+
       const { data: order, error } = await supabase
         .from('orders')
         .insert({
           store_id: storeId,
           customer_id: customerId,
           status: 'forming' as any,
+          order_number: orderNumber,
           subtotal: 0,
           total: 0,
           last_activity_at: new Date().toISOString(),
