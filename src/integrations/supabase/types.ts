@@ -1252,6 +1252,26 @@ export type Database = {
         }[]
       }
       get_catalog_store_id: { Args: { _catalog_id: string }; Returns: string }
+      get_retail_products_public: {
+        Args: { _subdomain: string }
+        Returns: {
+          catalog_status: string
+          category_id: string
+          category_ids: string[]
+          category_name: string
+          compare_price: number
+          description: string
+          id: string
+          images: string[]
+          name: string
+          packaging_type: string
+          price: number
+          quantity: number
+          sku: string
+          slug: string
+          unit: string
+        }[]
+      }
       has_catalog_access: {
         Args: { _catalog_id: string; _user_id: string }
         Returns: boolean

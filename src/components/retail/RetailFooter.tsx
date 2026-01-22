@@ -12,7 +12,7 @@ export function RetailFooter({ store }: RetailFooterProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Store info */}
           <div>
-            <h3 className="font-bold text-lg mb-3">{store.name}</h3>
+            <h3 className="font-bold text-lg mb-3">{store.retail_name || store.name}</h3>
             {store.description && (
               <p className="text-sm text-muted-foreground">{store.description}</p>
             )}
@@ -61,7 +61,7 @@ export function RetailFooter({ store }: RetailFooterProps) {
         </div>
 
         <div className="border-t mt-8 pt-6 text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} {store.name}. Все права защищены.</p>
+          <p>© {new Date().getFullYear()} {store.retail_name || store.name}. Все права защищены.</p>
         </div>
       </div>
     </footer>

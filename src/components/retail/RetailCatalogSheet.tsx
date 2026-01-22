@@ -91,7 +91,7 @@ export function RetailCatalogSheet({
           <div className="flex items-center justify-between px-5 py-3 border-b border-border/50">
             <div>
               <h2 className="text-xl font-semibold text-foreground">Каталог</h2>
-              {storeName && (
+              {storeName && storeName.trim() !== '' && (
                 <p className="text-xs text-muted-foreground mt-0.5">{storeName}</p>
               )}
             </div>
