@@ -25,7 +25,7 @@ export function RetailLayoutSidebar({
   
   const logoUrl = store.retail_logo_url || store.logo_url;
   // Use retail_name if set, otherwise fall back to store name
-  const storeName = (store as { retail_name?: string | null }).retail_name || store.name;
+  const storeName = store.retail_name || store.name;
 
   const toggleExpanded = (categoryId: string) => {
     setExpandedCategories((prev) =>

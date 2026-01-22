@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface RetailStore {
   id: string;
   name: string;
+  retail_name: string | null;
   description: string | null;
   logo_url: string | null;
   banner_url: string | null;
@@ -250,10 +251,10 @@ export function useRetailStore(subdomain: string | undefined) {
   }, [store?.id, fetchProducts]);
 
   useEffect(() => {
-    if (store?.id && products.length > 0) {
+    if (store?.id) {
       fetchCategories();
     }
-  }, [store?.id, products.length, fetchCategories]);
+  }, [store?.id, products, fetchCategories]);
 
   return {
     store,
