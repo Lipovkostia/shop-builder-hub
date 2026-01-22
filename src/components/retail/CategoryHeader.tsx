@@ -12,20 +12,6 @@ export function CategoryHeader({ category, productCount }: CategoryHeaderProps) 
 
   return (
     <div className="mb-8">
-      {/* Breadcrumbs */}
-      <nav className="flex items-center gap-2 text-[11px] uppercase tracking-widest text-muted-foreground mb-4">
-        <Link 
-          to={`/retail/${subdomain}`} 
-          className="hover:text-foreground transition-colors"
-        >
-          Коллекция
-        </Link>
-        <span>/</span>
-        <span className="text-accent font-medium">
-          {category?.name || "Все товары"}
-        </span>
-      </nav>
-
       {/* Category title */}
       <h1 className="text-3xl lg:text-4xl font-light tracking-tight text-foreground font-serif">
         {category?.name || "Все товары"}
