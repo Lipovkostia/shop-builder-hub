@@ -23,7 +23,6 @@ import { RetailFavoritesSheet } from "@/components/retail/RetailFavoritesSheet";
 import { CategoryProductsSection } from "@/components/retail/CategoryProductsSection";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
-type ViewMode = "grid" | "list";
 
 export default function RetailStore() {
   const { subdomain } = useParams();
@@ -40,7 +39,7 @@ export default function RetailStore() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>("default");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  
   const [inStockOnly, setInStockOnly] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -284,11 +283,8 @@ export default function RetailStore() {
           store={store}
           cartItemsCount={cartItemsCount}
           onCartClick={() => setIsOpen(true)}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          onMobileMenuClick={() => setMobileMenuOpen(true)}
         />
 
         {/* Main content */}
@@ -382,11 +378,7 @@ export default function RetailStore() {
                 </div>
               ) : (
                 <div
-                  className={
-                    viewMode === "grid"
-                      ? "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
-                      : "flex flex-col gap-4"
-                  }
+                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
                 >
                   {filteredProducts.map((product, index) => (
                     <div 
