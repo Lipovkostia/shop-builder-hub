@@ -109,8 +109,8 @@ export function RetailCartSheet({
           </div>
 
           {cart.length === 0 ? (
-            /* Empty state */
-            <div className="flex-1 flex flex-col items-center justify-center py-12 px-5">
+            /* Empty state - with bottom padding for nav bar */
+            <div className="flex-1 flex flex-col items-center justify-center py-12 px-5 pb-24">
               <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-4">
                 <ShoppingBag className="h-10 w-10 text-muted-foreground/50" />
               </div>
@@ -120,7 +120,7 @@ export function RetailCartSheet({
               </p>
               <Button
                 variant="outline"
-                className="mt-6"
+                className="mt-6 mb-4"
                 onClick={() => onOpenChange(false)}
               >
                 Перейти к покупкам
