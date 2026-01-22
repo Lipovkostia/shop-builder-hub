@@ -16,6 +16,7 @@ interface RetailTopBarProps {
   onSearchChange: (query: string) => void;
   favoritesCount?: number;
   onFavoritesClick?: () => void;
+  cartIconRef?: React.RefObject<HTMLButtonElement>;
 }
 
 export function RetailTopBar({
@@ -26,6 +27,7 @@ export function RetailTopBar({
   onSearchChange,
   favoritesCount = 0,
   onFavoritesClick,
+  cartIconRef,
 }: RetailTopBarProps) {
   const [deliveryExpanded, setDeliveryExpanded] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -165,6 +167,7 @@ export function RetailTopBar({
 
             {/* Cart - desktop only */}
             <Button
+              ref={cartIconRef}
               variant="ghost"
               size="icon"
               className="relative ml-1 hidden lg:flex text-foreground hover:text-muted-foreground"

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -22,6 +22,7 @@ import { RetailCatalogSheet } from "@/components/retail/RetailCatalogSheet";
 import { RetailFavoritesSheet } from "@/components/retail/RetailFavoritesSheet";
 import { RetailFavoritesDrawer } from "@/components/retail/RetailFavoritesDrawer";
 import { CategoryProductsSection } from "@/components/retail/CategoryProductsSection";
+import { FlyToCartAnimation, triggerFlyToCart } from "@/components/retail/FlyToCartAnimation";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 
@@ -32,6 +33,10 @@ export default function RetailStore() {
   const { cart, cartTotal, cartItemsCount, isOpen, setIsOpen, addToCart, updateQuantity, removeFromCart } = useRetailCart(subdomain || null);
   const { favorites, favoritesCount, toggleFavorite, isFavorite } = useRetailFavorites(subdomain || null);
   const isMobile = useIsMobile();
+
+  // Ref for cart icon to animate items flying to it
+  const cartIconRef = useRef<HTMLButtonElement>(null);
+  const mobileCartIconRef = useRef<HTMLButtonElement>(null);
 
   // State for favorites sheet
   const [favoritesOpen, setFavoritesOpen] = useState(false);
@@ -183,7 +188,12 @@ export default function RetailStore() {
     setSelectedCategory(null);
   };
 
-  const handleAddToCart = (product: typeof products[0]) => {
+  const handleAddToCart = (product: typeof products[0], imageRect?: { x: number; y: number }) => {
+    // Trigger fly animation if we have the position
+    if (imageRect && product.images?.[0]) {
+      triggerFlyToCart(product.images[0], imageRect.x, imageRect.y);
+    }
+    
     addToCart({
       productId: product.id,
       name: product.name,
@@ -297,6 +307,7 @@ export default function RetailStore() {
           onSearchChange={setSearchQuery}
           favoritesCount={favoritesCount}
           onFavoritesClick={() => setFavoritesOpen(true)}
+          cartIconRef={cartIconRef}
         />
 
         {/* Main content */}
@@ -523,6 +534,7 @@ export default function RetailStore() {
         }}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        cartIconRef={mobileCartIconRef}
       />
 
       {/* Mobile catalog sheet */}
@@ -584,6 +596,9 @@ export default function RetailStore() {
           onRemove={removeFromCart}
         />
       )}
+
+      {/* Fly to cart animation */}
+      <FlyToCartAnimation cartIconRef={isMobile ? mobileCartIconRef : cartIconRef} />
     </div>
   );
 }
