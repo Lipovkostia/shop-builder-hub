@@ -11,6 +11,7 @@ export interface CustomerCatalog {
   store_name: string;
   store_logo: string | null;
   granted_at: string;
+  store_customer_id: string; // ID записи в store_customers для синхронизации корзины
 }
 
 export interface CatalogProduct {
@@ -160,6 +161,7 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
           store_name: store?.name || "Магазин",
           store_logo: store?.logo_url || null,
           granted_at: ar.granted_at,
+          store_customer_id: ar.store_customer_id, // ID для синхронизации корзины
         };
       });
 
