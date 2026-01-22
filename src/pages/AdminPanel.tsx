@@ -814,10 +814,41 @@ export default function AdminPanel({
   // Expanded orders state - by default everything is collapsed
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   
-  // Hidden orders state
-  const [hiddenOrders, setHiddenOrders] = useState<Set<string>>(new Set());
+  // Hidden orders state - persisted in localStorage per store
+  const hiddenOrdersKey = effectiveStoreId ? `hidden_orders_${effectiveStoreId}` : null;
+  
+  const [hiddenOrders, setHiddenOrders] = useState<Set<string>>(() => {
+    if (!hiddenOrdersKey) return new Set();
+    try {
+      const stored = localStorage.getItem(hiddenOrdersKey);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
   const [showHiddenOrders, setShowHiddenOrders] = useState(false);
   const [hidingOrderId, setHidingOrderId] = useState<string | null>(null);
+  
+  // Persist hidden orders to localStorage
+  useEffect(() => {
+    if (hiddenOrdersKey && hiddenOrders.size > 0) {
+      localStorage.setItem(hiddenOrdersKey, JSON.stringify([...hiddenOrders]));
+    } else if (hiddenOrdersKey) {
+      localStorage.removeItem(hiddenOrdersKey);
+    }
+  }, [hiddenOrders, hiddenOrdersKey]);
+  
+  // Reload hidden orders when store changes
+  useEffect(() => {
+    if (hiddenOrdersKey) {
+      try {
+        const stored = localStorage.getItem(hiddenOrdersKey);
+        setHiddenOrders(stored ? new Set(JSON.parse(stored)) : new Set());
+      } catch {
+        setHiddenOrders(new Set());
+      }
+    }
+  }, [hiddenOrdersKey]);
   
   // Order notifications settings panel state
   const [showOrderNotificationsPanel, setShowOrderNotificationsPanel] = useState(false);
