@@ -1,36 +1,27 @@
 import { useState } from "react";
-import { Phone, Grid, List, Heart, ShoppingCart, Star, Search, X, Menu } from "lucide-react";
+import { Heart, ShoppingCart, Star, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import type { RetailStore } from "@/hooks/useRetailStore";
 import { DeliveryInfoBanner } from "./DeliveryInfoBanner";
 import { TelegramIcon } from "@/components/icons/TelegramIcon";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 
-type ViewMode = "grid" | "list";
-
 interface RetailTopBarProps {
   store: RetailStore;
   cartItemsCount: number;
   onCartClick: () => void;
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  onMobileMenuClick?: () => void;
 }
 
 export function RetailTopBar({
   store,
   cartItemsCount,
   onCartClick,
-  viewMode,
-  onViewModeChange,
   searchQuery,
   onSearchChange,
-  onMobileMenuClick,
 }: RetailTopBarProps) {
   const [deliveryExpanded, setDeliveryExpanded] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -87,21 +78,8 @@ export function RetailTopBar({
       {/* Main top bar - hidden on mobile as all elements are moved elsewhere */}
       <div className="hidden md:block px-4 lg:px-8 py-4">
         <div className="flex items-center justify-between gap-4">
-          {/* Left side - Phone (desktop only now, mobile menu moved to bottom nav) */}
+          {/* Left side - Phone */}
           <div className="flex items-center gap-3">
-            {/* Mobile menu button - desktop only */}
-            {onMobileMenuClick && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="hidden lg:flex text-foreground"
-                onClick={onMobileMenuClick}
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            )}
-
-            {/* Phone */}
             {store.contact_phone && (
               <a
                 href={`tel:${store.contact_phone}`}
@@ -148,31 +126,6 @@ export function RetailTopBar({
               <Heart className="h-5 w-5" />
             </Button>
 
-            {/* View mode toggle - desktop only */}
-            <div className="hidden sm:flex items-center gap-0.5 ml-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "h-9 w-9",
-                  viewMode === "grid" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-                onClick={() => onViewModeChange("grid")}
-              >
-                <Grid className="h-5 w-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "h-9 w-9",
-                  viewMode === "list" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-                onClick={() => onViewModeChange("list")}
-              >
-                <List className="h-5 w-5" />
-              </Button>
-            </div>
 
             {/* Cart - desktop only */}
             <Button

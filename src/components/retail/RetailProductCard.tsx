@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Heart, ImageOff, Plus, Minus, ChevronRight, ChevronLeft } from "lucide-react";
+import { Heart, ImageOff, Plus, Minus, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -394,15 +394,6 @@ export function RetailProductCard({
     expandedTouchCurrentX.current = 0;
   }, [hasMultipleImages, images.length, dragOffset, isPinching, zoomScale, expandedImageIndex]);
 
-  const handleExpandedPrev = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setExpandedImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-  }, [images.length]);
-
-  const handleExpandedNext = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setExpandedImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  }, [images.length]);
 
   // Desktop mouse movement handler for cursor-based image switching
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -479,6 +470,19 @@ export function RetailProductCard({
           onTouchMove={handleExpandedTouchMove}
           onTouchEnd={handleExpandedTouchEnd}
           onClick={handleExpandedImageTap}
+          onMouseMove={(e) => {
+            // Cursor-based navigation for desktop
+            if (isMobile || !hasMultipleImages) return;
+            e.stopPropagation();
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const width = rect.width;
+            const sectionWidth = width / images.length;
+            const newIndex = Math.min(Math.floor(x / sectionWidth), images.length - 1);
+            if (newIndex !== expandedImageIndex && newIndex >= 0) {
+              setExpandedImageIndex(newIndex);
+            }
+          }}
         >
           {/* Images container with drag effect and zoom */}
           <div 
@@ -510,24 +514,6 @@ export function RetailProductCard({
               </div>
             ))}
           </div>
-          
-          {/* Navigation arrows for desktop */}
-          {hasMultipleImages && !isMobile && (
-            <>
-              <button
-                onClick={handleExpandedPrev}
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-md hover:bg-background transition-colors"
-              >
-                <ChevronLeft className="h-5 w-5 text-foreground" />
-              </button>
-              <button
-                onClick={handleExpandedNext}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-md hover:bg-background transition-colors"
-              >
-                <ChevronRight className="h-5 w-5 text-foreground" />
-              </button>
-            </>
-          )}
           
           {/* Image indicators */}
           {hasMultipleImages && (
