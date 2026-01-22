@@ -478,120 +478,122 @@ export function RetailProductCard({
   return (
     <div className="relative w-full" ref={containerRef}>
       {/* Description panel - positioned as overlay, full width of neighbor card */}
-      <div 
-            className={cn(
-          "absolute top-0 z-30 transition-all duration-300 ease-out overflow-hidden",
-          isExpanded ? "opacity-100" : "opacity-0 pointer-events-none",
-          isRightSide ? "right-full" : "left-full"
-        )}
-        style={{ 
-          width: isExpanded ? 'calc(100% + 16px)' : 0, // 100% + gap-4 (16px)
-          height: cardHeight > 0 ? cardHeight : 'auto'
-        }}
-      >
+      {isExpanded && (
         <div 
           className={cn(
-            "h-full bg-muted/95 backdrop-blur-sm shadow-lg flex flex-col overflow-hidden",
-            isRightSide ? "rounded-l-xl" : "rounded-r-xl"
+            "absolute top-0 z-30 transition-all duration-300 ease-out overflow-hidden",
+            isRightSide ? "right-full" : "left-full"
           )}
-          style={{ height: cardHeight > 0 ? cardHeight : 'auto' }}
-        >
-          {/* Scrollable description content - no header, just content */}
-          <div className="flex-1 overflow-y-auto scrollbar-thin p-3 min-h-0">
-            <h4 className="font-medium text-sm leading-snug text-foreground mb-2">
-              {product.name}
-            </h4>
-            <p className="text-xs leading-relaxed text-foreground/80">
-              {product.description}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Expanded image viewer - positioned as overlay covering 2 cards */}
-      <div 
-        ref={expandedImageRef}
-        className={cn(
-          "absolute top-0 z-40 transition-all duration-300 ease-out overflow-hidden",
-          isImageExpanded ? "opacity-100" : "opacity-0 pointer-events-none",
-          isRightSide ? "right-0" : "left-0"
-        )}
-        style={{ 
-          width: isImageExpanded ? 'calc(200% + 16px)' : '100%',
-          height: cardHeight > 0 ? cardHeight : 'auto'
-        }}
-      >
-        <div 
-          className="h-full bg-muted rounded-xl shadow-lg overflow-hidden relative touch-none"
-          style={{ height: cardHeight > 0 ? cardHeight : 'auto' }}
-          onTouchStart={handleExpandedTouchStart}
-          onTouchMove={handleExpandedTouchMove}
-          onTouchEnd={handleExpandedTouchEnd}
-          onClick={handleExpandedImageTap}
-          onWheel={handleWheel}
-          onMouseMove={(e) => {
-            // Cursor-based navigation for desktop (only when not zoomed)
-            if (isMobile || !hasMultipleImages || zoomScale > 1) return;
-            e.stopPropagation();
-            const rect = e.currentTarget.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const width = rect.width;
-            const sectionWidth = width / images.length;
-            const newIndex = Math.min(Math.floor(x / sectionWidth), images.length - 1);
-            if (newIndex !== expandedImageIndex && newIndex >= 0) {
-              setExpandedImageIndex(newIndex);
-            }
+          style={{ 
+            width: 'calc(100% + 16px)', // 100% + gap-4 (16px)
+            height: cardHeight > 0 ? cardHeight : 'auto'
           }}
         >
-          {/* Images container with drag effect and zoom */}
           <div 
-            className="flex h-full"
-            style={{ 
-              width: `${images.length * 100}%`,
-              transform: `translateX(calc(-${expandedImageIndex * (100 / images.length)}% + ${zoomScale <= 1 ? dragOffset : 0}px))`,
-              transition: (isDragging && !isAnimating) || isPinching ? 'none' : 'transform 0.3s ease-out'
+            className={cn(
+              "h-full bg-muted/95 backdrop-blur-sm shadow-lg flex flex-col overflow-hidden",
+              isRightSide ? "rounded-l-xl" : "rounded-r-xl"
+            )}
+            style={{ height: cardHeight > 0 ? cardHeight : 'auto' }}
+          >
+            {/* Scrollable description content - no header, just content */}
+            <div className="flex-1 overflow-y-auto scrollbar-thin p-3 min-h-0">
+              <h4 className="font-medium text-sm leading-snug text-foreground mb-2">
+                {product.name}
+              </h4>
+              <p className="text-xs leading-relaxed text-foreground/80">
+                {product.description}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Expanded image viewer - positioned as overlay covering 2 cards */}
+      {isImageExpanded && (
+        <div 
+          ref={expandedImageRef}
+          className={cn(
+            "absolute top-0 z-40 transition-all duration-300 ease-out overflow-hidden",
+            isRightSide ? "right-0" : "left-0"
+          )}
+          style={{ 
+            width: 'calc(200% + 16px)',
+            height: cardHeight > 0 ? cardHeight : 'auto'
+          }}
+        >
+          <div 
+            className="h-full bg-muted rounded-xl shadow-lg overflow-hidden relative touch-none"
+            style={{ height: cardHeight > 0 ? cardHeight : 'auto' }}
+            onTouchStart={handleExpandedTouchStart}
+            onTouchMove={handleExpandedTouchMove}
+            onTouchEnd={handleExpandedTouchEnd}
+            onClick={handleExpandedImageTap}
+            onWheel={handleWheel}
+            onMouseMove={(e) => {
+              // Cursor-based navigation for desktop (only when not zoomed)
+              if (isMobile || !hasMultipleImages || zoomScale > 1) return;
+              e.stopPropagation();
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const width = rect.width;
+              const sectionWidth = width / images.length;
+              const newIndex = Math.min(Math.floor(x / sectionWidth), images.length - 1);
+              if (newIndex !== expandedImageIndex && newIndex >= 0) {
+                setExpandedImageIndex(newIndex);
+              }
             }}
           >
-            {images.map((img, idx) => (
-              <div 
-                key={idx} 
-                className="h-full flex-shrink-0 overflow-hidden"
-                style={{ width: `${100 / images.length}%` }}
-              >
-                <img
-                  src={img}
-                  alt={`${product.name} - ${idx + 1}`}
-                  className="w-full h-full object-cover origin-center"
-                  style={{
-                    transform: idx === expandedImageIndex 
-                      ? `scale(${zoomScale}) translate(${zoomPosition.x / zoomScale}px, ${zoomPosition.y / zoomScale}px)`
-                      : 'scale(1)',
-                    transition: isPinching || isDragging ? 'none' : 'transform 0.2s ease-out'
-                  }}
-                  draggable={false}
-                />
-              </div>
-            ))}
-          </div>
-          
-          {/* Image indicators */}
-          {hasMultipleImages && (
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-              {images.map((_, idx) => (
-                <div
-                  key={idx}
-                  className={cn(
-                    "w-2 h-2 rounded-full transition-all",
-                    idx === expandedImageIndex 
-                      ? "bg-foreground" 
-                      : "bg-foreground/30"
-                  )}
-                />
+            {/* Images container with drag effect and zoom */}
+            <div 
+              className="flex h-full"
+              style={{ 
+                width: `${images.length * 100}%`,
+                transform: `translateX(calc(-${expandedImageIndex * (100 / images.length)}% + ${zoomScale <= 1 ? dragOffset : 0}px))`,
+                transition: (isDragging && !isAnimating) || isPinching ? 'none' : 'transform 0.3s ease-out'
+              }}
+            >
+              {images.map((img, idx) => (
+                <div 
+                  key={idx} 
+                  className="h-full flex-shrink-0 overflow-hidden"
+                  style={{ width: `${100 / images.length}%` }}
+                >
+                  <img
+                    src={img}
+                    alt={`${product.name} - ${idx + 1}`}
+                    className="w-full h-full object-cover origin-center"
+                    style={{
+                      transform: idx === expandedImageIndex 
+                        ? `scale(${zoomScale}) translate(${zoomPosition.x / zoomScale}px, ${zoomPosition.y / zoomScale}px)`
+                        : 'scale(1)',
+                      transition: isPinching || isDragging ? 'none' : 'transform 0.2s ease-out'
+                    }}
+                    draggable={false}
+                  />
+                </div>
               ))}
             </div>
-          )}
+            
+            {/* Image indicators */}
+            {hasMultipleImages && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                {images.map((_, idx) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "w-2 h-2 rounded-full transition-all",
+                      idx === expandedImageIndex 
+                        ? "bg-foreground" 
+                        : "bg-foreground/30"
+                    )}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main card */}
       <div 
