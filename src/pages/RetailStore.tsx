@@ -28,8 +28,9 @@ type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-de
 export default function RetailStore() {
   const { subdomain } = useParams();
   const { store, products, categories, loading, error } = useRetailStore(subdomain);
-  const { cart, cartTotal, cartItemsCount, isOpen, setIsOpen, addToCart, updateQuantity, removeFromCart } = useRetailCart(store?.id || null);
-  const { favorites, favoritesCount, toggleFavorite, isFavorite } = useRetailFavorites(store?.id || null);
+  // Use subdomain for cart/favorites storage (available immediately from URL)
+  const { cart, cartTotal, cartItemsCount, isOpen, setIsOpen, addToCart, updateQuantity, removeFromCart } = useRetailCart(subdomain || null);
+  const { favorites, favoritesCount, toggleFavorite, isFavorite } = useRetailFavorites(subdomain || null);
   const isMobile = useIsMobile();
 
   // State for favorites sheet

@@ -24,7 +24,9 @@ export default function RetailCheckout() {
   const { subdomain } = useParams();
   const navigate = useNavigate();
   const { store, loading: storeLoading } = useRetailStore(subdomain);
-  const { cart, cartTotal, clearCart } = useRetailCart(store?.id || null);
+  
+  // Use subdomain for cart storage (available immediately from URL)
+  const { cart, cartTotal, clearCart } = useRetailCart(subdomain || null);
   
   // Form state
   const [name, setName] = useState("");
@@ -37,11 +39,19 @@ export default function RetailCheckout() {
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
 
-  // Redirect to store if cart is empty
+  // Redirect to store if cart is empty (only after checking localStorage is loaded)
   useEffect(() => {
-    if (!storeLoading && store && cart.length === 0 && !orderSuccess) {
-      navigate(`/retail/${subdomain}`, { replace: true });
-    }
+    // Wait for subdomain to be available and cart to initialize
+    if (!subdomain) return;
+    
+    // Give time for cart to load from localStorage
+    const timeoutId = setTimeout(() => {
+      if (!storeLoading && store && cart.length === 0 && !orderSuccess) {
+        navigate(`/retail/${subdomain}`, { replace: true });
+      }
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
   }, [storeLoading, store, cart.length, orderSuccess, subdomain, navigate]);
 
   // Phone input formatting
