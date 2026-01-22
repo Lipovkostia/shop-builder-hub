@@ -815,40 +815,34 @@ export default function AdminPanel({
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   
   // Hidden orders state - persisted in localStorage per store
-  const hiddenOrdersKey = effectiveStoreId ? `hidden_orders_${effectiveStoreId}` : null;
-  
-  const [hiddenOrders, setHiddenOrders] = useState<Set<string>>(() => {
-    if (!hiddenOrdersKey) return new Set();
-    try {
-      const stored = localStorage.getItem(hiddenOrdersKey);
-      return stored ? new Set(JSON.parse(stored)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
+  const [hiddenOrders, setHiddenOrders] = useState<Set<string>>(new Set());
   const [showHiddenOrders, setShowHiddenOrders] = useState(false);
   const [hidingOrderId, setHidingOrderId] = useState<string | null>(null);
   
-  // Persist hidden orders to localStorage
+  // Load hidden orders when effectiveStoreId becomes available
   useEffect(() => {
-    if (hiddenOrdersKey && hiddenOrders.size > 0) {
-      localStorage.setItem(hiddenOrdersKey, JSON.stringify([...hiddenOrders]));
-    } else if (hiddenOrdersKey) {
-      localStorage.removeItem(hiddenOrdersKey);
+    if (!effectiveStoreId) return;
+    
+    const key = `hidden_orders_${effectiveStoreId}`;
+    try {
+      const stored = localStorage.getItem(key);
+      setHiddenOrders(stored ? new Set(JSON.parse(stored)) : new Set());
+    } catch {
+      setHiddenOrders(new Set());
     }
-  }, [hiddenOrders, hiddenOrdersKey]);
+  }, [effectiveStoreId]);
   
-  // Reload hidden orders when store changes
+  // Persist hidden orders to localStorage whenever they change
   useEffect(() => {
-    if (hiddenOrdersKey) {
-      try {
-        const stored = localStorage.getItem(hiddenOrdersKey);
-        setHiddenOrders(stored ? new Set(JSON.parse(stored)) : new Set());
-      } catch {
-        setHiddenOrders(new Set());
-      }
+    if (!effectiveStoreId) return;
+    
+    const key = `hidden_orders_${effectiveStoreId}`;
+    if (hiddenOrders.size > 0) {
+      localStorage.setItem(key, JSON.stringify([...hiddenOrders]));
+    } else {
+      localStorage.removeItem(key);
     }
-  }, [hiddenOrdersKey]);
+  }, [hiddenOrders, effectiveStoreId]);
   
   // Order notifications settings panel state
   const [showOrderNotificationsPanel, setShowOrderNotificationsPanel] = useState(false);
@@ -6296,16 +6290,136 @@ export default function AdminPanel({
                     Заказы появятся здесь, когда покупатели оформят их через прайс-листы
                   </p>
                 </div>
+              ) : showHiddenOrders ? (
+                // Show hidden orders in place of visible orders
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                    <EyeOff className="h-4 w-4" />
+                    <span>Скрытые заказы ({hiddenOrders.size})</span>
+                  </div>
+                  {hiddenOrders.size === 0 ? (
+                    <div className="bg-card rounded-lg border border-border p-8 text-center">
+                      <EyeOff className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="font-medium text-foreground mb-2">Нет скрытых заказов</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Скрытые заказы будут отображаться здесь
+                      </p>
+                    </div>
+                  ) : (
+                    orders.filter(o => hiddenOrders.has(o.id)).map((order) => (
+                      <div 
+                        key={order.id}
+                        className="bg-muted/30 rounded-lg border border-border/50 hover:border-border transition-colors"
+                      >
+                        <div className="p-3 sm:p-4">
+                          <div className="flex items-center gap-3">
+                            {/* Main content */}
+                            <div className="flex-1 min-w-0">
+                              {/* Top row: status + price */}
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <div className="flex items-center gap-1.5">
+                                  <Badge 
+                                    variant={
+                                      order.status === 'delivered' ? 'default' :
+                                      order.status === 'cancelled' ? 'destructive' :
+                                      order.status === 'shipped' ? 'secondary' :
+                                      'outline'
+                                    }
+                                    className={`text-[10px] px-1.5 py-0 h-5 ${
+                                      order.status === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 border-amber-200' : ''
+                                    }`}
+                                  >
+                                    {order.status === 'pending' && 'Новый'}
+                                    {order.status === 'processing' && 'В обработке'}
+                                    {order.status === 'shipped' && 'Отправлен'}
+                                    {order.status === 'delivered' && 'Доставлен'}
+                                    {order.status === 'cancelled' && 'Отменён'}
+                                  </Badge>
+                                  {order.shipping_address?.source === 'retail' && (
+                                    <Badge 
+                                      variant="outline" 
+                                      className="text-[10px] px-1.5 py-0 h-5 bg-primary/10 text-primary border-primary/30"
+                                    >
+                                      Розница
+                                    </Badge>
+                                  )}
+                                </div>
+                                <span className="font-bold text-base sm:text-lg tabular-nums whitespace-nowrap">
+                                  {order.total.toLocaleString()} ₽
+                                </span>
+                              </div>
+                              
+                              {/* Middle row: order number + items count */}
+                              <div className="flex items-center gap-2 text-xs sm:text-sm">
+                                <span className="font-medium text-foreground truncate">
+                                  {order.order_number}
+                                </span>
+                                {order.items && order.items.length > 0 && (
+                                  <span className="text-muted-foreground whitespace-nowrap">
+                                    • {order.items.length} поз.
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {/* Bottom row: date + customer */}
+                              <div className="flex items-center justify-between gap-2 mt-1 text-[11px] sm:text-xs text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3 flex-shrink-0" />
+                                  <span>
+                                    {new Date(order.created_at).toLocaleString('ru-RU', { 
+                                      day: 'numeric', 
+                                      month: 'short', 
+                                      hour: '2-digit', 
+                                      minute: '2-digit' 
+                                    })}
+                                  </span>
+                                </div>
+                                {order.customer_name && (
+                                  <span className="truncate max-w-[120px] sm:max-w-[180px]">
+                                    {order.customer_name}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Restore button */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRestoreOrder(order.id)}
+                              className="gap-1.5 text-muted-foreground hover:text-foreground"
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                              <span className="hidden sm:inline">Восстановить</span>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               ) : (
                 <div className="space-y-4">
                   {/* Visible orders */}
-                  {orders.filter(o => !hiddenOrders.has(o.id)).map((order) => (
-                    <div 
-                      key={order.id}
-                      className={`transition-all duration-300 ${
-                        hidingOrderId === order.id 
-                          ? 'opacity-0 -translate-x-full scale-95' 
-                          : 'opacity-100 translate-x-0 scale-100'
+                  {orders.filter(o => !hiddenOrders.has(o.id)).length === 0 ? (
+                    <div className="bg-card rounded-lg border border-border p-8 text-center">
+                      <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="font-medium text-foreground mb-2">Нет видимых заказов</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {hiddenOrders.size > 0 
+                          ? `${hiddenOrders.size} ${hiddenOrders.size === 1 ? 'заказ скрыт' : 'заказов скрыто'}. Нажмите на иконку глаза для просмотра.`
+                          : 'Заказы появятся здесь, когда покупатели оформят их через прайс-листы'
+                        }
+                      </p>
+                    </div>
+                  ) : (
+                    orders.filter(o => !hiddenOrders.has(o.id)).map((order) => (
+                      <div 
+                        key={order.id}
+                        className={`transition-all duration-300 ${
+                          hidingOrderId === order.id 
+                            ? 'opacity-0 -translate-x-full scale-95' 
+                            : 'opacity-100 translate-x-0 scale-100'
                       }`}
                     >
                       <Collapsible 
@@ -6524,74 +6638,7 @@ export default function AdminPanel({
                       </CollapsibleContent>
                     </Collapsible>
                     </div>
-                  ))}
-                  
-                  {/* Hidden orders section */}
-                  {showHiddenOrders && hiddenOrders.size > 0 && (
-                    <div className="mt-6 space-y-3 animate-fade-in">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <EyeOff className="h-4 w-4" />
-                        <span>Скрытые заказы ({hiddenOrders.size})</span>
-                      </div>
-                      {orders.filter(o => hiddenOrders.has(o.id)).map((order) => (
-                        <div 
-                          key={order.id}
-                          className="bg-muted/30 rounded-lg border border-border/50 p-3 opacity-70 hover:opacity-100 transition-opacity"
-                        >
-                          <div className="flex items-center gap-3">
-                            {/* Main content */}
-                            <div className="flex-1 min-w-0">
-                              {/* Top row: status + price */}
-                              <div className="flex items-center justify-between gap-2 mb-1">
-                                <Badge 
-                                  variant={
-                                    order.status === 'delivered' ? 'default' :
-                                    order.status === 'cancelled' ? 'destructive' :
-                                    order.status === 'shipped' ? 'secondary' :
-                                    'outline'
-                                  }
-                                  className={`text-[10px] px-1.5 py-0 h-5 ${
-                                    order.status === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 border-amber-200' : ''
-                                  }`}
-                                >
-                                  {order.status === 'pending' && 'Новый'}
-                                  {order.status === 'processing' && 'В обработке'}
-                                  {order.status === 'shipped' && 'Отправлен'}
-                                  {order.status === 'delivered' && 'Доставлен'}
-                                  {order.status === 'cancelled' && 'Отменён'}
-                                </Badge>
-                                <span className="font-bold text-base tabular-nums whitespace-nowrap text-muted-foreground">
-                                  {order.total.toLocaleString()} ₽
-                                </span>
-                              </div>
-                              
-                              {/* Middle row: order number + items count */}
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span className="font-medium truncate">
-                                  {order.order_number}
-                                </span>
-                                {order.items && order.items.length > 0 && (
-                                  <span className="whitespace-nowrap">
-                                    • {order.items.length} поз.
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            
-                            {/* Restore button */}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRestoreOrder(order.id)}
-                              className="h-8 gap-1.5"
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" />
-                              <span className="hidden sm:inline">Восстановить</span>
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    ))
                   )}
                 </div>
               )}
