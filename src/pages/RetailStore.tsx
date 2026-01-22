@@ -200,12 +200,13 @@ export default function RetailStore() {
   // SEO
   useEffect(() => {
     if (store) {
-      document.title = store.seo_title || `${store.name} — Интернет-магазин`;
+      const displayName = store.retail_name || store.name;
+      document.title = store.seo_title || `${displayName} — Интернет-магазин`;
       const metaDescription = document.querySelector('meta[name="description"]');
       if (metaDescription) {
         metaDescription.setAttribute(
           "content",
-          store.seo_description || store.description || `Интернет-магазин ${store.name}`
+          store.seo_description || store.description || `Интернет-магазин ${displayName}`
         );
       }
     }

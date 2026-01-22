@@ -101,117 +101,47 @@ export function useRetailStore(subdomain: string | undefined) {
   }, [subdomain]);
 
   const fetchProducts = useCallback(async () => {
-    if (!store?.id) return;
-
+    if (!subdomain) return;
+    
     // If no catalog is selected, show NO products
-    if (!store.retail_catalog_id) {
+    if (!store?.retail_catalog_id) {
       setProducts([]);
       return;
     }
 
     try {
-      // Fetch products from the selected catalog only
+      // Use the public RPC function that bypasses RLS
+      // Note: This function is created via migration and may not be in generated types
       const { data, error: productsError } = await supabase
-        .from("product_catalog_visibility")
-        .select(`
-          products!inner (
-            id,
-            name,
-            description,
-            price,
-            buy_price,
-            compare_price,
-            images,
-            unit,
-            sku,
-            quantity,
-            slug,
-            packaging_type,
-            category_id,
-            is_active,
-            deleted_at,
-            categories!products_category_id_fkey (
-              name
-            )
-          )
-        `)
-        .eq("catalog_id", store.retail_catalog_id);
+        .rpc('get_retail_products_public' as any, { _subdomain: subdomain });
 
       if (productsError) throw productsError;
 
-      // Fetch catalog product settings for pricing, status, and categories
-      const { data: settingsData } = await supabase
-        .from("catalog_product_settings")
-        .select("product_id, markup_type, markup_value, status, categories")
-        .eq("catalog_id", store.retail_catalog_id);
-
-      const settingsMap = new Map(
-        (settingsData || []).map(s => [s.product_id, s])
-      );
-
-      // Orderable statuses - product is available for purchase
-      // in_stock, pre_order, visible, or null (default) = show product
-      // hidden, out_of_stock = hide product
-      const formattedProducts: RetailProduct[] = (data || [])
-        .map((item: any) => {
-          const p = item.products;
-          if (!p || !p.is_active || p.deleted_at) return null;
-
-          const settings = settingsMap.get(p.id);
-          const status = settings?.status || null;
-
-          // Hide products with status 'hidden' or 'out_of_stock'
-          if (status === 'hidden' || status === 'out_of_stock') {
-            return null;
-          }
-
-          // Calculate price with catalog markup
-          let calculatedPrice = p.price;
-          if (p.buy_price && p.buy_price > 0 && settings) {
-            if (settings.markup_type === 'percent') {
-              calculatedPrice = p.buy_price * (1 + (settings.markup_value || 0) / 100);
-            } else if (settings.markup_type === 'fixed' || settings.markup_type === 'rubles') {
-              calculatedPrice = p.buy_price + (settings.markup_value || 0);
-            }
-          }
-          // Use product price if it's set and higher than 0, otherwise use calculated price
-          const finalPrice = p.price > 0 ? p.price : calculatedPrice;
-
-          // Skip products with no valid price
-          if (finalPrice <= 0) return null;
-
-          // Get category from catalog settings first, fall back to product category_id
-          const catalogCategories = settings?.categories as string[] | null;
-          const primaryCategoryId = catalogCategories && catalogCategories.length > 0 
-            ? catalogCategories[0] 
-            : p.category_id;
-
-          return {
-            id: p.id,
-            name: p.name,
-            description: p.description,
-            price: finalPrice,
-            compare_price: p.compare_price,
-            images: p.images || [],
-            unit: p.unit || "шт",
-            sku: p.sku,
-            quantity: p.quantity,
-            slug: p.slug,
-            packaging_type: p.packaging_type || "piece",
-            category_id: primaryCategoryId,
-            category_ids: catalogCategories || (p.category_id ? [p.category_id] : []),
-            category_name: p.categories?.name,
-            is_active: p.is_active,
-            catalog_status: status, // Pass catalog status
-          };
-        })
-        .filter(Boolean) as RetailProduct[];
+      const rawData = data as any[] || [];
+      const formattedProducts: RetailProduct[] = rawData.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        price: p.price,
+        compare_price: p.compare_price,
+        images: p.images || [],
+        unit: p.unit || "шт",
+        sku: p.sku,
+        quantity: p.quantity,
+        slug: p.slug,
+        packaging_type: p.packaging_type || "piece",
+        category_id: p.category_id,
+        category_ids: p.category_ids || (p.category_id ? [p.category_id] : []),
+        category_name: p.category_name,
+        is_active: true,
+        catalog_status: p.catalog_status,
+      }));
 
       setProducts(formattedProducts);
     } catch (err) {
       console.error("Error fetching products:", err);
     }
-  }, [store?.id, store?.retail_catalog_id]);
+  }, [subdomain, store?.retail_catalog_id]);
 
   const fetchCategories = useCallback(async () => {
     if (!store?.id) return;
