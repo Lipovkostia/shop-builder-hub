@@ -113,6 +113,7 @@ import { AIAssistantPanel } from "@/components/admin/AIAssistantPanel";
 import { ActivityHistorySection } from "@/components/admin/ActivityHistorySection";
 import { TrashSection } from "@/components/admin/TrashSection";
 import { RetailSettingsSection } from "@/components/admin/RetailSettingsSection";
+import { FormingOrdersSection } from "@/components/admin/FormingOrdersSection";
 
 // Removed localStorage keys - now using Supabase
 
@@ -6207,6 +6208,11 @@ export default function AdminPanel({
                   </div>
                 )}
               </div>
+
+              {/* Forming Orders Section - Real-time */}
+              {effectiveStoreId && (
+                <FormingOrdersSection storeId={effectiveStoreId} />
+              )}
 
               {ordersLoading ? (
                 <div className="flex items-center justify-center py-12">
