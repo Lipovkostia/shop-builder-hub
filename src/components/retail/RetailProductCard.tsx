@@ -14,6 +14,8 @@ interface RetailProductCardProps {
   onToggleFavorite?: (productId: string) => void;
   index?: number; // To determine left/right position
   isCarousel?: boolean; // Whether card is in a horizontal carousel
+  expandedCardId?: string | null; // Global state for which card has expanded image
+  onExpandChange?: (productId: string | null) => void; // Callback to update expanded state
 }
 
 function formatPrice(price: number): string {
@@ -37,6 +39,8 @@ export function RetailProductCard({
   onToggleFavorite,
   index = 0,
   isCarousel = false,
+  expandedCardId,
+  onExpandChange,
 }: RetailProductCardProps) {
   const isMobile = useIsMobile();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -167,8 +171,10 @@ export function RetailProductCard({
       setZoomScale(1);
       setZoomPosition({ x: 0, y: 0 });
       setIsImageExpanded(true);
+      // Notify parent that this card is now expanded
+      onExpandChange?.(product.id);
     }
-  }, [images.length, isOutOfStock, isCarousel, checkCardPosition]);
+  }, [images.length, isOutOfStock, isCarousel, checkCardPosition, onExpandChange, product.id]);
 
   // Handle tap on expanded image to close
   const handleExpandedImageTap = useCallback((e: React.MouseEvent) => {
@@ -220,6 +226,30 @@ export function RetailProductCard({
     setZoomScale(1);
     setZoomPosition({ x: 0, y: 0 });
   }, [expandedImageIndex]);
+
+  // Close expanded image when another card is expanded
+  useEffect(() => {
+    if (expandedCardId !== null && expandedCardId !== product.id && isImageExpanded) {
+      setIsImageExpanded(false);
+      setZoomScale(1);
+      setZoomPosition({ x: 0, y: 0 });
+    }
+  }, [expandedCardId, product.id, isImageExpanded]);
+
+  // Handle wheel zoom for desktop
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (!isImageExpanded || isMobile) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const delta = e.deltaY > 0 ? -0.3 : 0.3; // Scroll down = zoom out, scroll up = zoom in
+    const newScale = Math.min(Math.max(zoomScale + delta, 1), 4);
+    setZoomScale(newScale);
+    
+    if (newScale <= 1) {
+      setZoomPosition({ x: 0, y: 0 });
+    }
+  }, [isImageExpanded, isMobile, zoomScale]);
 
   // Mobile touch handlers for swipe
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -470,9 +500,10 @@ export function RetailProductCard({
           onTouchMove={handleExpandedTouchMove}
           onTouchEnd={handleExpandedTouchEnd}
           onClick={handleExpandedImageTap}
+          onWheel={handleWheel}
           onMouseMove={(e) => {
-            // Cursor-based navigation for desktop
-            if (isMobile || !hasMultipleImages) return;
+            // Cursor-based navigation for desktop (only when not zoomed)
+            if (isMobile || !hasMultipleImages || zoomScale > 1) return;
             e.stopPropagation();
             const rect = e.currentTarget.getBoundingClientRect();
             const x = e.clientX - rect.left;

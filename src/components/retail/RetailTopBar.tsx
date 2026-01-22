@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, ShoppingCart, Star, Search, X } from "lucide-react";
+import { Heart, ShoppingCart, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,8 @@ interface RetailTopBarProps {
   onCartClick: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  favoritesCount?: number;
+  onFavoritesClick?: () => void;
 }
 
 export function RetailTopBar({
@@ -22,6 +24,8 @@ export function RetailTopBar({
   onCartClick,
   searchQuery,
   onSearchChange,
+  favoritesCount = 0,
+  onFavoritesClick,
 }: RetailTopBarProps) {
   const [deliveryExpanded, setDeliveryExpanded] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -78,14 +82,39 @@ export function RetailTopBar({
       {/* Main top bar - hidden on mobile as all elements are moved elsewhere */}
       <div className="hidden md:block px-4 lg:px-8 py-4">
         <div className="flex items-center justify-between gap-4">
-          {/* Left side - Phone */}
+          {/* Left side - Contacts (same as mobile) */}
           <div className="flex items-center gap-3">
-            {store.contact_phone && (
+            {/* Telegram icon */}
+            {store.telegram_username && (
               <a
-                href={`tel:${store.contact_phone}`}
-                className="hidden sm:flex items-center gap-2 text-base font-medium text-foreground hover:text-muted-foreground transition-colors"
+                href={`https://t.me/${store.telegram_username}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-[#229ED9]/10 hover:bg-[#229ED9]/20 transition-colors"
               >
-                <span>{store.contact_phone}</span>
+                <TelegramIcon className="h-4 w-4 text-[#229ED9]" />
+              </a>
+            )}
+            
+            {/* Phone */}
+            {(store.retail_phone || store.contact_phone) && (
+              <a
+                href={`tel:${store.retail_phone || store.contact_phone}`}
+                className="flex items-center gap-2 text-base font-medium text-foreground hover:text-muted-foreground transition-colors"
+              >
+                <span>{store.retail_phone || store.contact_phone}</span>
+              </a>
+            )}
+            
+            {/* WhatsApp icon */}
+            {store.whatsapp_phone && (
+              <a
+                href={`https://wa.me/${formatWhatsAppPhone(store.whatsapp_phone)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-[#25D366]/10 hover:bg-[#25D366]/20 transition-colors"
+              >
+                <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
               </a>
             )}
           </div>
@@ -117,13 +146,20 @@ export function RetailTopBar({
             </Button>
 
             {/* Favorites - desktop only */}
-            <Button variant="ghost" size="icon" className="hidden sm:flex text-foreground hover:text-muted-foreground">
-              <Star className="h-5 w-5" />
-            </Button>
-
-            {/* Wishlist - desktop only */}
-            <Button variant="ghost" size="icon" className="hidden sm:flex text-foreground hover:text-muted-foreground">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="hidden sm:flex text-foreground hover:text-muted-foreground relative"
+              onClick={onFavoritesClick}
+            >
               <Heart className="h-5 w-5" />
+              {favoritesCount > 0 && (
+                <Badge
+                  className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center p-0 text-xs bg-primary text-primary-foreground"
+                >
+                  {favoritesCount > 99 ? "99+" : favoritesCount}
+                </Badge>
+              )}
             </Button>
 
 
