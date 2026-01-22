@@ -12,6 +12,7 @@ interface RetailMobileNavProps {
   onPromotionsClick?: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  cartIconRef?: React.RefObject<HTMLButtonElement>;
 }
 
 export function RetailMobileNav({
@@ -23,6 +24,7 @@ export function RetailMobileNav({
   onPromotionsClick,
   searchQuery,
   onSearchChange,
+  cartIconRef,
 }: RetailMobileNavProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [localQuery, setLocalQuery] = useState(searchQuery);
@@ -166,6 +168,7 @@ export function RetailMobileNav({
 
             {/* Cart */}
             <button
+              ref={cartIconRef}
               onClick={onCartClick}
               className="relative flex flex-col items-center justify-center gap-0.5 min-w-[48px]"
             >

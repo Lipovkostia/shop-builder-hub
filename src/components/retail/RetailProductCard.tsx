@@ -7,7 +7,7 @@ import type { RetailProduct } from "@/hooks/useRetailStore";
 
 interface RetailProductCardProps {
   product: RetailProduct;
-  onAddToCart: (product: RetailProduct) => void;
+  onAddToCart: (product: RetailProduct, imageRect?: { x: number; y: number }) => void;
   onUpdateQuantity?: (productId: string, quantity: number) => void;
   cartQuantity?: number;
   isFavorite?: boolean;
@@ -123,7 +123,14 @@ export function RetailProductCard({
     e.stopPropagation();
     if (isOutOfStock) return;
     
-    onAddToCart(product);
+    // Get image position for fly animation
+    let imageRect: { x: number; y: number } | undefined;
+    if (imageContainerRef.current) {
+      const rect = imageContainerRef.current.getBoundingClientRect();
+      imageRect = { x: rect.left + rect.width / 2 - 30, y: rect.top + rect.height / 2 - 30 };
+    }
+    
+    onAddToCart(product, imageRect);
   }, [product, onAddToCart, isOutOfStock]);
 
   const handleIncrement = useCallback((e: React.MouseEvent) => {
@@ -131,7 +138,14 @@ export function RetailProductCard({
     e.stopPropagation();
     if (isOutOfStock) return;
     
-    onAddToCart(product);
+    // Get image position for fly animation
+    let imageRect: { x: number; y: number } | undefined;
+    if (imageContainerRef.current) {
+      const rect = imageContainerRef.current.getBoundingClientRect();
+      imageRect = { x: rect.left + rect.width / 2 - 30, y: rect.top + rect.height / 2 - 30 };
+    }
+    
+    onAddToCart(product, imageRect);
   }, [product, onAddToCart, isOutOfStock]);
 
   const handleDecrement = useCallback((e: React.MouseEvent) => {
