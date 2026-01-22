@@ -465,7 +465,7 @@ export function RetailProductCard({
     <div className="relative w-full" ref={containerRef}>
       {/* Description panel - positioned as overlay, full width of neighbor card */}
       <div 
-        className={cn(
+            className={cn(
           "absolute top-0 z-30 transition-all duration-300 ease-out overflow-hidden",
           isExpanded ? "opacity-100" : "opacity-0 pointer-events-none",
           isRightSide ? "right-full" : "left-full"
@@ -610,11 +610,11 @@ export function RetailProductCard({
             </div>
           )}
 
-          {/* Favorite button - inside image, top-left corner */}
+          {/* Favorite button - inside image, top-right corner */}
           <button
             onClick={handleFavorite}
             className={cn(
-              "absolute top-2 left-2 p-0.5 transition-all z-20 bg-transparent border-none outline-none",
+              "absolute top-2 right-2 p-0.5 transition-all z-20 bg-transparent border-none outline-none",
               isFavorite && "drop-shadow-[0_3px_6px_rgba(139,0,0,0.5)] animate-heartbeat"
             )}
             style={{ background: 'transparent' }}
