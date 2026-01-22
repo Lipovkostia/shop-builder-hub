@@ -20,6 +20,7 @@ import { CategoryHeader } from "@/components/retail/CategoryHeader";
 import { RetailMobileNav } from "@/components/retail/RetailMobileNav";
 import { RetailCatalogSheet } from "@/components/retail/RetailCatalogSheet";
 import { RetailFavoritesSheet } from "@/components/retail/RetailFavoritesSheet";
+import { RetailFavoritesDrawer } from "@/components/retail/RetailFavoritesDrawer";
 import { CategoryProductsSection } from "@/components/retail/CategoryProductsSection";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
@@ -47,6 +48,8 @@ export default function RetailStore() {
   
   // Global state for expanded card (only one card can have expanded image at a time)
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  // Global state for expanded description (only one card can have expanded description at a time)
+  const [expandedDescriptionCardId, setExpandedDescriptionCardId] = useState<string | null>(null);
 
   // Price range calculation
   const priceRange = useMemo(() => {
@@ -257,6 +260,7 @@ export default function RetailStore() {
         <RetailLayoutSidebar
           store={store}
           categories={categories}
+          products={products}
           selectedCategory={selectedCategory}
           onCategorySelect={setSelectedCategory}
         />
@@ -269,6 +273,7 @@ export default function RetailStore() {
             <RetailLayoutSidebar
               store={store}
               categories={categories}
+              products={products}
               selectedCategory={selectedCategory}
               onCategorySelect={(cat) => {
                 setSelectedCategory(cat);
@@ -336,6 +341,8 @@ export default function RetailStore() {
                         index={index}
                         expandedCardId={expandedCardId}
                         onExpandChange={setExpandedCardId}
+                        expandedDescriptionCardId={expandedDescriptionCardId}
+                        onDescriptionExpandChange={setExpandedDescriptionCardId}
                       />
                     </div>
                   ))}
@@ -373,6 +380,8 @@ export default function RetailStore() {
                       isCarousel={isCarousel}
                       expandedCardId={expandedCardId}
                       onExpandChange={setExpandedCardId}
+                      expandedDescriptionCardId={expandedDescriptionCardId}
+                      onDescriptionExpandChange={setExpandedDescriptionCardId}
                     />
                   )}
                 />
@@ -405,6 +414,8 @@ export default function RetailStore() {
                             isCarousel={true}
                             expandedCardId={expandedCardId}
                             onExpandChange={setExpandedCardId}
+                            expandedDescriptionCardId={expandedDescriptionCardId}
+                            onDescriptionExpandChange={setExpandedDescriptionCardId}
                           />
                         </div>
                       ))}
@@ -446,6 +457,8 @@ export default function RetailStore() {
                         index={index}
                         expandedCardId={expandedCardId}
                         onExpandChange={setExpandedCardId}
+                        expandedDescriptionCardId={expandedDescriptionCardId}
+                        onDescriptionExpandChange={setExpandedDescriptionCardId}
                       />
                     </div>
                   ))}
@@ -520,37 +533,17 @@ export default function RetailStore() {
         storeName={store.name}
       />
 
-      {/* Favorites sheet - desktop */}
+      {/* Favorites drawer - desktop */}
       {!isMobile && (
-        <Sheet open={favoritesOpen} onOpenChange={setFavoritesOpen}>
-          <SheetContent side="right" className="w-full sm:max-w-md">
-            <SheetHeader>
-              <SheetTitle>Избранное ({favoritesCount})</SheetTitle>
-            </SheetHeader>
-            <div className="mt-6 space-y-4 overflow-y-auto max-h-[calc(100vh-120px)]">
-              {favorites.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  Добавьте товары в избранное, нажав на сердечко
-                </p>
-              ) : (
-                products
-                  .filter((p) => favorites.includes(p.id))
-                  .map((product) => (
-                    <RetailProductCard
-                      key={product.id}
-                      product={product}
-                      onAddToCart={handleAddToCart}
-                      onUpdateQuantity={updateQuantity}
-                      cartQuantity={getCartQuantity(product.id)}
-                      isFavorite={true}
-                      onToggleFavorite={toggleFavorite}
-                      index={0}
-                    />
-                  ))
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
+        <RetailFavoritesDrawer
+          open={favoritesOpen}
+          onOpenChange={setFavoritesOpen}
+          products={products}
+          favoriteIds={favorites}
+          onToggleFavorite={toggleFavorite}
+          onAddToCart={handleAddToCart}
+          getCartQuantity={getCartQuantity}
+        />
       )}
 
       {/* Favorites sheet - mobile (slides from bottom) */}
