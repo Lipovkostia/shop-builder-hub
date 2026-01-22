@@ -433,6 +433,7 @@ export type Database = {
           guest_phone: string | null
           id: string
           is_guest_order: boolean | null
+          last_activity_at: string | null
           moysklad_order_id: string | null
           notes: string | null
           order_number: string
@@ -452,6 +453,7 @@ export type Database = {
           guest_phone?: string | null
           id?: string
           is_guest_order?: boolean | null
+          last_activity_at?: string | null
           moysklad_order_id?: string | null
           notes?: string | null
           order_number: string
@@ -471,6 +473,7 @@ export type Database = {
           guest_phone?: string | null
           id?: string
           is_guest_order?: boolean | null
+          last_activity_at?: string | null
           moysklad_order_id?: string | null
           notes?: string | null
           order_number?: string
@@ -1298,6 +1301,7 @@ export type Database = {
     }
     Enums: {
       order_status:
+        | "forming"
         | "pending"
         | "processing"
         | "shipped"
@@ -1434,6 +1438,7 @@ export const Constants = {
   public: {
     Enums: {
       order_status: [
+        "forming",
         "pending",
         "processing",
         "shipped",
