@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut, FileSpreadsheet, Sheet, Upload, Sparkles } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, EyeOff, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut, FileSpreadsheet, Sheet, Upload, Sparkles, RotateCcw } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -814,6 +814,11 @@ export default function AdminPanel({
   // Expanded orders state - by default everything is collapsed
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   
+  // Hidden orders state
+  const [hiddenOrders, setHiddenOrders] = useState<Set<string>>(new Set());
+  const [showHiddenOrders, setShowHiddenOrders] = useState(false);
+  const [hidingOrderId, setHidingOrderId] = useState<string | null>(null);
+  
   // Order notifications settings panel state
   const [showOrderNotificationsPanel, setShowOrderNotificationsPanel] = useState(false);
   const [selectedNotificationChannel, setSelectedNotificationChannel] = useState<'telegram' | 'whatsapp' | 'email' | 'moysklad' | null>(null);
@@ -822,6 +827,24 @@ export default function AdminPanel({
     whatsapp: '',
     email: '',
   });
+  
+  // Hide order handler
+  const handleHideOrder = (orderId: string) => {
+    setHidingOrderId(orderId);
+    setTimeout(() => {
+      setHiddenOrders(prev => new Set(prev).add(orderId));
+      setHidingOrderId(null);
+    }, 400);
+  };
+  
+  // Restore order handler
+  const handleRestoreOrder = (orderId: string) => {
+    setHiddenOrders(prev => {
+      const next = new Set(prev);
+      next.delete(orderId);
+      return next;
+    });
+  };
   
   // Load notification settings from Supabase when they become available
   useEffect(() => {
@@ -5763,15 +5786,31 @@ export default function AdminPanel({
               <div className="mb-4">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <h2 className="text-xl font-semibold text-foreground">Заказы</h2>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowOrderNotificationsPanel(!showOrderNotificationsPanel)}
-                    className={`gap-1.5 ${showOrderNotificationsPanel ? 'bg-primary/10 border-primary' : ''}`}
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Отправлять заказы</span>
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowHiddenOrders(!showHiddenOrders)}
+                      className={`gap-1.5 relative ${showHiddenOrders ? 'bg-muted border-muted-foreground/50' : ''}`}
+                      title="Скрытые заказы"
+                    >
+                      <Eye className={`h-3.5 w-3.5 ${showHiddenOrders ? '' : 'opacity-50'}`} />
+                      {hiddenOrders.size > 0 && (
+                        <Badge variant="secondary" className="h-5 min-w-5 px-1 text-[10px]">
+                          {hiddenOrders.size}
+                        </Badge>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowOrderNotificationsPanel(!showOrderNotificationsPanel)}
+                      className={`gap-1.5 ${showOrderNotificationsPanel ? 'bg-primary/10 border-primary' : ''}`}
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Отправлять заказы</span>
+                    </Button>
+                  </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Управляйте заказами от ваших покупателей
@@ -6228,9 +6267,17 @@ export default function AdminPanel({
                 </div>
               ) : (
                 <div className="space-y-4">
-                    {orders.map((order) => (
+                  {/* Visible orders */}
+                  {orders.filter(o => !hiddenOrders.has(o.id)).map((order) => (
+                    <div 
+                      key={order.id}
+                      className={`transition-all duration-300 ${
+                        hidingOrderId === order.id 
+                          ? 'opacity-0 -translate-x-full scale-95' 
+                          : 'opacity-100 translate-x-0 scale-100'
+                      }`}
+                    >
                       <Collapsible 
-                        key={order.id} 
                         open={expandedOrders.has(order.id)}
                         onOpenChange={(open) => {
                           setExpandedOrders(prev => {
@@ -6311,6 +6358,18 @@ export default function AdminPanel({
                                   </span>
                                 )}
                               </div>
+                            </div>
+                            
+                            {/* Hide button */}
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleHideOrder(order.id);
+                              }}
+                              className="flex-shrink-0 w-8 h-8 rounded-full bg-muted/50 hover:bg-destructive/20 flex items-center justify-center cursor-pointer transition-colors group"
+                              title="Скрыть заказ"
+                            >
+                              <EyeOff className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors" />
                             </div>
                             
                             {/* Copy button */}
@@ -6422,7 +6481,76 @@ export default function AdminPanel({
                         </div>
                       </CollapsibleContent>
                     </Collapsible>
+                    </div>
                   ))}
+                  
+                  {/* Hidden orders section */}
+                  {showHiddenOrders && hiddenOrders.size > 0 && (
+                    <div className="mt-6 space-y-3 animate-fade-in">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <EyeOff className="h-4 w-4" />
+                        <span>Скрытые заказы ({hiddenOrders.size})</span>
+                      </div>
+                      {orders.filter(o => hiddenOrders.has(o.id)).map((order) => (
+                        <div 
+                          key={order.id}
+                          className="bg-muted/30 rounded-lg border border-border/50 p-3 opacity-70 hover:opacity-100 transition-opacity"
+                        >
+                          <div className="flex items-center gap-3">
+                            {/* Main content */}
+                            <div className="flex-1 min-w-0">
+                              {/* Top row: status + price */}
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <Badge 
+                                  variant={
+                                    order.status === 'delivered' ? 'default' :
+                                    order.status === 'cancelled' ? 'destructive' :
+                                    order.status === 'shipped' ? 'secondary' :
+                                    'outline'
+                                  }
+                                  className={`text-[10px] px-1.5 py-0 h-5 ${
+                                    order.status === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 border-amber-200' : ''
+                                  }`}
+                                >
+                                  {order.status === 'pending' && 'Новый'}
+                                  {order.status === 'processing' && 'В обработке'}
+                                  {order.status === 'shipped' && 'Отправлен'}
+                                  {order.status === 'delivered' && 'Доставлен'}
+                                  {order.status === 'cancelled' && 'Отменён'}
+                                </Badge>
+                                <span className="font-bold text-base tabular-nums whitespace-nowrap text-muted-foreground">
+                                  {order.total.toLocaleString()} ₽
+                                </span>
+                              </div>
+                              
+                              {/* Middle row: order number + items count */}
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="font-medium truncate">
+                                  {order.order_number}
+                                </span>
+                                {order.items && order.items.length > 0 && (
+                                  <span className="whitespace-nowrap">
+                                    • {order.items.length} поз.
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Restore button */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRestoreOrder(order.id)}
+                              className="h-8 gap-1.5"
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                              <span className="hidden sm:inline">Восстановить</span>
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </>
