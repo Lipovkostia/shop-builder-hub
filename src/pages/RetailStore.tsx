@@ -20,6 +20,7 @@ import { CategoryHeader } from "@/components/retail/CategoryHeader";
 import { RetailMobileNav } from "@/components/retail/RetailMobileNav";
 import { RetailCatalogSheet } from "@/components/retail/RetailCatalogSheet";
 import { RetailFavoritesSheet } from "@/components/retail/RetailFavoritesSheet";
+import { CategoryProductsSection } from "@/components/retail/CategoryProductsSection";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 type ViewMode = "grid" | "list";
@@ -125,6 +126,33 @@ export default function RetailStore() {
     if (!selectedCategory) return null;
     return categories.find(c => c.id === selectedCategory) || null;
   }, [selectedCategory, categories]);
+
+  // Group products by category for "All Products" view
+  const productsByCategory = useMemo(() => {
+    if (selectedCategory) return null; // Not needed when a specific category is selected
+    
+    const grouped = new Map<string, { category: typeof categories[0]; products: typeof products }>();
+    
+    // First, organize products by their categories
+    categories.forEach(cat => {
+      const categoryProducts = products.filter(p => {
+        const productCategoryIds = p.category_ids || [];
+        return productCategoryIds.includes(cat.id) || p.category_id === cat.id;
+      });
+      
+      if (categoryProducts.length > 0) {
+        grouped.set(cat.id, { category: cat, products: categoryProducts });
+      }
+    });
+    
+    // Add uncategorized products if any
+    const uncategorized = products.filter(p => {
+      const productCategoryIds = p.category_ids || [];
+      return productCategoryIds.length === 0 && !p.category_id;
+    });
+    
+    return { grouped, uncategorized };
+  }, [selectedCategory, products, categories]);
 
   // Check for active filters
   const hasActiveFilters =
@@ -265,48 +293,124 @@ export default function RetailStore() {
 
         {/* Main content */}
         <main className="flex-1 px-4 lg:px-6 py-6">
-          {/* Category header */}
-          <CategoryHeader 
-            category={currentCategory} 
-            productCount={filteredProducts.length} 
-          />
+          {/* Category header - only when specific category selected */}
+          {selectedCategory && (
+            <CategoryHeader 
+              category={currentCategory} 
+              productCount={filteredProducts.length} 
+            />
+          )}
 
-          {/* No toolbar - filters and sorting removed */}
+          {/* "All Products" view - horizontal carousels by category */}
+          {!selectedCategory && productsByCategory && (
+            <>
+              {/* Page title */}
+              <div className="mb-8">
+                <h1 className="text-3xl lg:text-4xl font-light tracking-tight text-foreground font-serif">
+                  Все товары
+                </h1>
+                <div className="mt-6 h-px bg-border" />
+              </div>
 
-          {/* Products grid */}
-          {filteredProducts.length === 0 ? (
+              {/* Category sections with horizontal scrolling */}
+              {Array.from(productsByCategory.grouped.values()).map(({ category, products: catProducts }) => (
+                <CategoryProductsSection
+                  key={category.id}
+                  category={category}
+                  products={catProducts}
+                  renderProductCard={(product, index) => (
+                    <RetailProductCard
+                      product={product}
+                      onAddToCart={handleAddToCart}
+                      onUpdateQuantity={updateQuantity}
+                      cartQuantity={getCartQuantity(product.id)}
+                      isFavorite={isFavorite(product.id)}
+                      onToggleFavorite={toggleFavorite}
+                      index={index}
+                    />
+                  )}
+                />
+              ))}
+
+              {/* Uncategorized products */}
+              {productsByCategory.uncategorized.length > 0 && (
+                <section className="mb-8">
+                  <h2 className="text-xl lg:text-2xl font-light tracking-tight text-foreground font-serif mb-4">
+                    Прочее
+                  </h2>
+                  <div className="relative -mx-4 lg:-mx-6">
+                    <div
+                      className="flex gap-4 overflow-x-auto scrollbar-hide px-4 lg:px-6 pb-2 snap-x snap-mandatory"
+                      style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                    >
+                      {productsByCategory.uncategorized.map((product, index) => (
+                        <div
+                          key={product.id}
+                          className="flex-shrink-0 w-[45%] sm:w-[35%] md:w-[28%] lg:w-[22%] xl:w-[18%] snap-start"
+                        >
+                          <RetailProductCard
+                            product={product}
+                            onAddToCart={handleAddToCart}
+                            onUpdateQuantity={updateQuantity}
+                            cartQuantity={getCartQuantity(product.id)}
+                            isFavorite={isFavorite(product.id)}
+                            onToggleFavorite={toggleFavorite}
+                            index={index}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+              )}
+            </>
+          )}
+
+          {/* Single category view - grid */}
+          {selectedCategory && (
+            <>
+              {filteredProducts.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Товары не найдены</p>
+                  {hasActiveFilters && (
+                    <Button variant="link" onClick={resetFilters} className="mt-2">
+                      Сбросить фильтры
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div
+                  className={
+                    viewMode === "grid"
+                      ? "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
+                      : "flex flex-col gap-4"
+                  }
+                >
+                  {filteredProducts.map((product, index) => (
+                    <div 
+                      key={product.id} 
+                      className="relative"
+                    >
+                      <RetailProductCard
+                        product={product}
+                        onAddToCart={handleAddToCart}
+                        onUpdateQuantity={updateQuantity}
+                        cartQuantity={getCartQuantity(product.id)}
+                        isFavorite={isFavorite(product.id)}
+                        onToggleFavorite={toggleFavorite}
+                        index={index}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Empty state for "All Products" when no products at all */}
+          {!selectedCategory && products.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">Товары не найдены</p>
-              {hasActiveFilters && (
-                <Button variant="link" onClick={resetFilters} className="mt-2">
-                  Сбросить фильтры
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div
-              className={
-                viewMode === "grid"
-                  ? "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
-                  : "flex flex-col gap-4"
-              }
-            >
-              {filteredProducts.map((product, index) => (
-                <div 
-                  key={product.id} 
-                  className="relative"
-                >
-                  <RetailProductCard
-                    product={product}
-                    onAddToCart={handleAddToCart}
-                    onUpdateQuantity={updateQuantity}
-                    cartQuantity={getCartQuantity(product.id)}
-                    isFavorite={isFavorite(product.id)}
-                    onToggleFavorite={toggleFavorite}
-                    index={index}
-                  />
-                </div>
-              ))}
             </div>
           )}
 
