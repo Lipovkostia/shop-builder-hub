@@ -811,8 +811,8 @@ export default function AdminPanel({
   const [editingCatalogListName, setEditingCatalogListName] = useState<string | null>(null);
   const [catalogListNameValue, setCatalogListNameValue] = useState("");
   
-  // Collapsed orders state - to hide/show order items
-  const [collapsedOrders, setCollapsedOrders] = useState<Set<string>>(new Set());
+  // Expanded orders state - by default everything is collapsed
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   
   // Order notifications settings panel state
   const [showOrderNotificationsPanel, setShowOrderNotificationsPanel] = useState(false);
@@ -6228,23 +6228,23 @@ export default function AdminPanel({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {orders.map((order) => (
-                    <Collapsible 
-                      key={order.id} 
-                      open={!collapsedOrders.has(order.id)}
-                      onOpenChange={(open) => {
-                        setCollapsedOrders(prev => {
-                          const next = new Set(prev);
-                          if (open) {
-                            next.delete(order.id);
-                          } else {
-                            next.add(order.id);
-                          }
-                          return next;
-                        });
-                      }}
-                      className="bg-card rounded-lg border border-border"
-                    >
+                    {orders.map((order) => (
+                      <Collapsible 
+                        key={order.id} 
+                        open={expandedOrders.has(order.id)}
+                        onOpenChange={(open) => {
+                          setExpandedOrders(prev => {
+                            const next = new Set(prev);
+                            if (open) {
+                              next.add(order.id);
+                            } else {
+                              next.delete(order.id);
+                            }
+                            return next;
+                          });
+                        }}
+                        className="bg-card rounded-lg border border-border"
+                      >
                       <CollapsibleTrigger asChild>
                         <button className="w-full p-3 sm:p-4 text-left hover:bg-muted/30 transition-colors">
                           {/* Mobile-first compact layout */}
@@ -6285,7 +6285,7 @@ export default function AdminPanel({
                                 <span className="font-medium text-foreground truncate">
                                   {order.order_number}
                                 </span>
-                                {order.items && order.items.length > 0 && collapsedOrders.has(order.id) && (
+                                {order.items && order.items.length > 0 && !expandedOrders.has(order.id) && (
                                   <span className="text-muted-foreground whitespace-nowrap">
                                     • {order.items.length} поз.
                                   </span>
