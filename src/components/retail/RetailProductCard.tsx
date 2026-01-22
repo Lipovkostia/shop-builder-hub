@@ -656,36 +656,32 @@ export function RetailProductCard({
               <Minus className="h-3.5 w-3.5" />
             </button>
             
-            {/* Main button area with price and cart info inline */}
+            {/* Main button area with two rows */}
             <button
               onClick={handleAddToCart}
               disabled={isOutOfStock}
               className={cn(
-                "flex-1 h-full flex items-center justify-center gap-2 transition-all",
+                "flex-1 h-full flex flex-col items-center justify-center py-0.5 transition-all",
                 "bg-primary text-primary-foreground",
                 isOutOfStock && "opacity-50 cursor-not-allowed",
                 !isInCart && "hover:opacity-90"
               )}
             >
-              {/* Cart quantity badge - inline before price */}
-              {isInCart && (
-                <span className="text-[10px] opacity-70 tabular-nums">
-                  {cartQuantity}×
-                </span>
-              )}
+              {/* Top row: cart info (quantity × total) - only when in cart */}
+              <div className={cn(
+                "text-[9px] leading-none transition-opacity tabular-nums",
+                isInCart ? "opacity-70" : "opacity-0 h-0"
+              )}>
+                {cartQuantity} × {formatPrice(cartItemTotal)}
+              </div>
               
-              {/* Price */}
-              <span className="font-semibold text-xs">{formatPrice(product.price)}</span>
-              {product.unit && (
-                <span className="text-[9px] opacity-70">/{formatUnit(product.unit)}</span>
-              )}
-              
-              {/* Total when in cart */}
-              {isInCart && (
-                <span className="text-[10px] opacity-70 tabular-nums">
-                  = {formatPrice(cartItemTotal)}
-                </span>
-              )}
+              {/* Bottom row: price per unit */}
+              <div className="flex items-center gap-0.5">
+                <span className="font-semibold text-xs leading-tight">{formatPrice(product.price)}</span>
+                {product.unit && (
+                  <span className="text-[9px] opacity-70 leading-tight">/ {formatUnit(product.unit)}</span>
+                )}
+              </div>
             </button>
             
             {/* Plus button - only visible when in cart */}
