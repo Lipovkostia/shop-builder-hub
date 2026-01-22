@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCustomerCatalogs, CartItem, CatalogProduct, CustomerCatalog } from "@/hooks/useCustomerCatalogs";
 import { useCustomerOrders, useCustomerOrdersHistory, Order } from "@/hooks/useOrders";
 import { useProfileSettings } from "@/hooks/useProfileSettings";
+import { useDraftOrder, DraftOrderItem } from "@/hooks/useDraftOrder";
 import { useCustomerAddresses } from "@/hooks/useCustomerAddresses";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { Button } from "@/components/ui/button";
@@ -855,7 +856,17 @@ const CustomerDashboard = () => {
   
   // Load store categories
   const currentStoreId = currentCatalog?.store_id || null;
+  const currentStoreCustomerId = currentCatalog?.store_customer_id || null;
   const { categories: storeCategories } = useStoreCategories(currentStoreId);
+  
+  // Draft order hook for real-time cart sync
+  const {
+    draftOrder,
+    isSyncing: isDraftSyncing,
+    getOrCreateDraft,
+    syncItems,
+    discardDraft,
+  } = useDraftOrder(currentStoreId, currentStoreCustomerId);
   
   const [cart, setCartState] = useState<LocalCartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -877,16 +888,68 @@ const CustomerDashboard = () => {
   // AI Assistant hook - lifted here so state persists and can be accessed from header
   const assistant = useCustomerAIAssistant(currentCatalog?.catalog_id || null);
   
-  // Wrapper for setCart that also saves to localStorage
+  // Sync cart to database when cart changes
+  const syncCartToDatabase = useCallback(async (cartItems: LocalCartItem[]) => {
+    if (!currentStoreId || !currentStoreCustomerId || cartItems.length === 0) return;
+    
+    // Convert LocalCartItem to DraftOrderItem
+    const draftItems: DraftOrderItem[] = cartItems
+      .filter(item => item.isAvailable !== false)
+      .map(item => {
+        const product = products.find(p => p.id === item.productId);
+        const variantLabels = ['Целая', '½', '¼', 'Порция'];
+        const variantLabel = variantLabels[item.variantIndex] || '';
+        const productName = product 
+          ? product.name + (variantLabel ? ` (${variantLabel})` : '')
+          : item.originalProductName || 'Товар';
+        
+        return {
+          productId: item.productId,
+          productName,
+          quantity: item.quantity,
+          price: item.price,
+          portionType: variantLabels[item.variantIndex]?.toLowerCase(),
+        };
+      });
+    
+    // Create draft order if needed, then sync items
+    const orderId = draftOrder?.id || await getOrCreateDraft();
+    if (orderId && draftItems.length > 0) {
+      await syncItems(draftItems, orderId);
+    }
+  }, [currentStoreId, currentStoreCustomerId, products, draftOrder?.id, getOrCreateDraft, syncItems]);
+  
+  // Debounced sync - avoid too many DB calls
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Wrapper for setCart that also saves to localStorage and syncs to DB
   const setCart = useCallback((updater: LocalCartItem[] | ((prev: LocalCartItem[]) => LocalCartItem[])) => {
     setCartState(prev => {
       const newCart = typeof updater === 'function' ? updater(prev) : updater;
       if (currentCatalog?.catalog_id) {
         saveCart(currentCatalog.catalog_id, newCart);
       }
+      
+      // Debounced sync to database
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+      syncTimeoutRef.current = setTimeout(() => {
+        syncCartToDatabase(newCart);
+      }, 1000); // Sync after 1 second of inactivity
+      
       return newCart;
     });
-  }, [currentCatalog?.catalog_id]);
+  }, [currentCatalog?.catalog_id, syncCartToDatabase]);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, []);
   
   // Load cart from localStorage when catalog changes
   useEffect(() => {
@@ -1359,6 +1422,9 @@ const CustomerDashboard = () => {
       if (checkoutAddress.trim()) {
         await addAddress(checkoutAddress);
       }
+      
+      // Discard the draft order since it's now submitted
+      await discardDraft();
       
       setCart([]);
       setIsCheckoutOpen(false);
