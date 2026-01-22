@@ -41,6 +41,7 @@ export function useFormingOrders(storeId: string | null) {
           subtotal,
           total,
           created_at,
+          last_activity_at,
           order_items (
             id,
             product_id,
@@ -51,7 +52,7 @@ export function useFormingOrders(storeId: string | null) {
         `)
         .eq('store_id', storeId)
         .eq('status', 'forming' as any)
-        .order('created_at', { ascending: false }) as any;
+        .order('last_activity_at', { ascending: false }) as any;
 
       if (error) throw error;
 
@@ -106,7 +107,7 @@ export function useFormingOrders(storeId: string | null) {
         })),
         subtotal: order.subtotal || 0,
         total: order.total || 0,
-        lastActivityAt: order.created_at,
+        lastActivityAt: order.last_activity_at || order.created_at,
         createdAt: order.created_at,
       }));
 

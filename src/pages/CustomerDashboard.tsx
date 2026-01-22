@@ -77,7 +77,8 @@ import {
   Search,
   Copy,
   MessageCircle,
-  Sparkles
+  Sparkles,
+  Eye
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerAIAssistantBanner } from "@/components/customer/CustomerAIAssistantBanner";
@@ -890,7 +891,13 @@ const CustomerDashboard = () => {
   
   // Sync cart to database when cart changes
   const syncCartToDatabase = useCallback(async (cartItems: LocalCartItem[]) => {
-    if (!currentStoreId || !currentStoreCustomerId || cartItems.length === 0) return;
+    if (!currentStoreId || !currentStoreCustomerId) return;
+    
+    // If cart is empty, discard the draft order
+    if (cartItems.length === 0) {
+      await discardDraft();
+      return;
+    }
     
     // Convert LocalCartItem to DraftOrderItem
     const draftItems: DraftOrderItem[] = cartItems
@@ -917,7 +924,7 @@ const CustomerDashboard = () => {
     if (orderId && draftItems.length > 0) {
       await syncItems(draftItems, orderId);
     }
-  }, [currentStoreId, currentStoreCustomerId, products, draftOrder?.id, getOrCreateDraft, syncItems]);
+  }, [currentStoreId, currentStoreCustomerId, products, draftOrder?.id, getOrCreateDraft, syncItems, discardDraft]);
   
   // Debounced sync - avoid too many DB calls
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -2261,6 +2268,24 @@ const CustomerDashboard = () => {
               </Badge>
             </div>
             <div className="flex items-center gap-3">
+              {/* Force sync (send to seller) button */}
+              <button
+                onClick={() => {
+                  if (syncTimeoutRef.current) {
+                    clearTimeout(syncTimeoutRef.current);
+                  }
+                  syncCartToDatabase(cart);
+                  toast({
+                    title: "Корзина отправлена",
+                    description: "Продавец видит вашу заявку в реальном времени",
+                  });
+                }}
+                className={`p-1 rounded hover:bg-muted transition-colors ${isDraftSyncing ? 'opacity-50' : ''}`}
+                title="Отправить продавцу на просмотр"
+                disabled={isDraftSyncing || cart.length === 0}
+              >
+                <Eye className={`w-4 h-4 ${draftOrder?.id ? 'text-primary' : 'text-muted-foreground'}`} />
+              </button>
               <button
                 onClick={() => setShowCartImages(!showCartImages)}
                 className="p-1 rounded hover:bg-muted transition-colors"
