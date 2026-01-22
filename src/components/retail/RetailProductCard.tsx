@@ -13,6 +13,7 @@ interface RetailProductCardProps {
   isFavorite?: boolean;
   onToggleFavorite?: (productId: string) => void;
   index?: number; // To determine left/right position
+  isCarousel?: boolean; // Whether card is in a horizontal carousel
 }
 
 function formatPrice(price: number): string {
@@ -35,6 +36,7 @@ export function RetailProductCard({
   isFavorite = false,
   onToggleFavorite,
   index = 0,
+  isCarousel = false,
 }: RetailProductCardProps) {
   const isMobile = useIsMobile();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -43,6 +45,7 @@ export function RetailProductCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isImageExpanded, setIsImageExpanded] = useState(false);
   const [cardHeight, setCardHeight] = useState<number>(0);
+  const [isOnRightHalf, setIsOnRightHalf] = useState(false);
   
   // Touch/swipe handling for mobile
   const touchStartX = useRef<number>(0);
@@ -70,8 +73,25 @@ export function RetailProductCard({
   const innerCardRef = useRef<HTMLDivElement>(null);
   const expandedImageRef = useRef<HTMLDivElement>(null);
 
-  // Determine if card is on the right side (odd index in 2-column grid)
-  const isRightSide = index % 2 === 1;
+  // Determine card position on screen for carousel mode
+  const checkCardPosition = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const cardCenterX = rect.left + rect.width / 2;
+    const screenCenterX = window.innerWidth / 2;
+    setIsOnRightHalf(cardCenterX > screenCenterX);
+  }, []);
+
+  // For carousel mode: calculate position dynamically
+  // For grid mode: use index % 2 logic
+  const isRightSide = isCarousel ? isOnRightHalf : (index % 2 === 1);
+
+  // Check position when expanding in carousel mode
+  useEffect(() => {
+    if (isCarousel && (isExpanded || isImageExpanded)) {
+      checkCardPosition();
+    }
+  }, [isCarousel, isExpanded, isImageExpanded, checkCardPosition]);
 
   // Measure card height for description panel
   useEffect(() => {
@@ -125,14 +145,22 @@ export function RetailProductCard({
     e.preventDefault();
     e.stopPropagation();
     if (hasDescription) {
+      // Check position before expanding in carousel mode
+      if (isCarousel) {
+        checkCardPosition();
+      }
       setIsExpanded(prev => !prev);
     }
-  }, [hasDescription]);
+  }, [hasDescription, isCarousel, checkCardPosition]);
 
   const handleImageClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (images.length > 0 && !isOutOfStock) {
+      // Check position before expanding in carousel mode
+      if (isCarousel) {
+        checkCardPosition();
+      }
       // Always start from the first (main) image to avoid jerking
       setExpandedImageIndex(0);
       setDragOffset(0);
@@ -140,7 +168,7 @@ export function RetailProductCard({
       setZoomPosition({ x: 0, y: 0 });
       setIsImageExpanded(true);
     }
-  }, [images.length, isOutOfStock]);
+  }, [images.length, isOutOfStock, isCarousel, checkCardPosition]);
 
   // Handle tap on expanded image to close
   const handleExpandedImageTap = useCallback((e: React.MouseEvent) => {
