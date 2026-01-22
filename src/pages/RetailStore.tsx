@@ -44,6 +44,9 @@ export default function RetailStore() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [mobileCatalogOpen, setMobileCatalogOpen] = useState(false);
+  
+  // Global state for expanded card (only one card can have expanded image at a time)
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
   // Price range calculation
   const priceRange = useMemo(() => {
@@ -285,6 +288,8 @@ export default function RetailStore() {
           onCartClick={() => setIsOpen(true)}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          favoritesCount={favoritesCount}
+          onFavoritesClick={() => setFavoritesOpen(true)}
         />
 
         {/* Main content */}
@@ -297,8 +302,50 @@ export default function RetailStore() {
             />
           )}
 
-          {/* "All Products" view - horizontal carousels by category */}
-          {!selectedCategory && productsByCategory && (
+          {/* Search results view - when search query is active */}
+          {searchQuery && !selectedCategory && (
+            <>
+              <div className="mb-8">
+                <h1 className="text-3xl lg:text-4xl font-light tracking-tight text-foreground font-serif">
+                  Результаты поиска: "{searchQuery}"
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  Найдено товаров: {filteredProducts.length}
+                </p>
+                <div className="mt-6 h-px bg-border" />
+              </div>
+
+              {filteredProducts.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Товары не найдены</p>
+                  <Button variant="link" onClick={() => setSearchQuery("")} className="mt-2">
+                    Очистить поиск
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                  {filteredProducts.map((product, index) => (
+                    <div key={product.id} className="relative">
+                      <RetailProductCard
+                        product={product}
+                        onAddToCart={handleAddToCart}
+                        onUpdateQuantity={updateQuantity}
+                        cartQuantity={getCartQuantity(product.id)}
+                        isFavorite={isFavorite(product.id)}
+                        onToggleFavorite={toggleFavorite}
+                        index={index}
+                        expandedCardId={expandedCardId}
+                        onExpandChange={setExpandedCardId}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* "All Products" view - horizontal carousels by category (only when no search) */}
+          {!selectedCategory && !searchQuery && productsByCategory && (
             <>
               {/* Page title */}
               <div className="mb-8">
@@ -324,6 +371,8 @@ export default function RetailStore() {
                       onToggleFavorite={toggleFavorite}
                       index={index}
                       isCarousel={isCarousel}
+                      expandedCardId={expandedCardId}
+                      onExpandChange={setExpandedCardId}
                     />
                   )}
                 />
@@ -354,6 +403,8 @@ export default function RetailStore() {
                             onToggleFavorite={toggleFavorite}
                             index={index}
                             isCarousel={true}
+                            expandedCardId={expandedCardId}
+                            onExpandChange={setExpandedCardId}
                           />
                         </div>
                       ))}
@@ -393,6 +444,8 @@ export default function RetailStore() {
                         isFavorite={isFavorite(product.id)}
                         onToggleFavorite={toggleFavorite}
                         index={index}
+                        expandedCardId={expandedCardId}
+                        onExpandChange={setExpandedCardId}
                       />
                     </div>
                   ))}
