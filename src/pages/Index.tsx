@@ -7,56 +7,43 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Store, LogIn, Shield, User, Mail } from "lucide-react";
+import { Store, User, Mail, Lock, Phone, ArrowLeft, Loader2 } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
+
+type AuthMode = 'login' | 'register' | 'forgot';
 
 const Index = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   
-  // Check if coming from catalog link
   const tabFromUrl = searchParams.get("tab");
   const catalogFromUrl = searchParams.get("catalog");
-  const storeFromUrl = searchParams.get("store");
   
-  // Active tab state
-  const [activeTab, setActiveTab] = useState(tabFromUrl === "customer" ? "customer" : "register");
-
-  // Registration form state
-  const [regStoreName, setRegStoreName] = useState("");
-  const [regEmail, setRegEmail] = useState("");
-  const [regPhone, setRegPhone] = useState("");
-  const [regPassword, setRegPassword] = useState("");
-  const [regLoading, setRegLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'seller' | 'customer'>(tabFromUrl === "customer" ? "customer" : "seller");
   
-  // Login form state
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginLoading, setLoginLoading] = useState(false);
-
-  // Customer form state
+  // Seller state
+  const [sellerMode, setSellerMode] = useState<AuthMode>('login');
+  const [sellerEmail, setSellerEmail] = useState("");
+  const [sellerPassword, setSellerPassword] = useState("");
+  const [sellerStoreName, setSellerStoreName] = useState("");
+  const [sellerPhone, setSellerPhone] = useState("");
+  const [sellerLoading, setSellerLoading] = useState(false);
+  
+  // Customer state
+  const [customerMode, setCustomerMode] = useState<AuthMode>(tabFromUrl === "customer" && catalogFromUrl ? 'register' : 'login');
   const [customerEmail, setCustomerEmail] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
   const [customerPassword, setCustomerPassword] = useState("");
-  const [customerFullName, setCustomerFullName] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [customerLoading, setCustomerLoading] = useState(false);
-  const [isCustomerLogin, setIsCustomerLogin] = useState(tabFromUrl !== "customer");
 
-  // Switch to registration mode when coming from catalog link
-  useEffect(() => {
-    if (tabFromUrl === "customer" && catalogFromUrl) {
-      setIsCustomerLogin(false);
-    }
-  }, [tabFromUrl, catalogFromUrl]);
-
-  // Check if user is already logged in and redirect
+  // Check session on mount
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
 
-      // Check for super admin
       const { data: platformRole } = await supabase
         .from('platform_roles')
         .select('role')
@@ -69,7 +56,6 @@ const Index = () => {
         return;
       }
 
-      // Get profile and determine role
       const { data: profile } = await supabase
         .from('profiles')
         .select('id, role')
@@ -88,48 +74,21 @@ const Index = () => {
 
         if (store) {
           navigate(`/store/${store.subdomain}`);
-          return;
-        }
-
-        // No store found - auto-create one
-        const { data: fullProfile } = await supabase
-          .from('profiles')
-          .select('full_name, phone')
-          .eq('id', profile.id)
-          .single();
-
-        const storeName = fullProfile?.full_name || fullProfile?.phone?.replace(/\D/g, '') || 'Мой магазин';
-        const baseSubdomain = storeName.toLowerCase()
-          .replace(/[^a-zа-яё0-9\s]/gi, '')
-          .replace(/\s+/g, '-')
-          .substring(0, 20);
-        const subdomain = baseSubdomain + '-' + Date.now().toString(36).slice(-4);
-
-        const { error: storeError } = await supabase
-          .from('stores')
-          .insert({
-            name: storeName,
-            subdomain,
-            owner_id: profile.id,
-            status: 'active'
-          });
-
-        if (!storeError) {
-          toast({ title: "Магазин создан!", description: "Переходим в витрину" });
-          localStorage.setItem('seller_onboarding_step1', 'true');
-          navigate(`/store/${subdomain}`);
-          return;
         }
       } else if (profile.role === 'customer') {
-        navigate('/customer-dashboard');
-        return;
+        if (catalogFromUrl) {
+          navigate(`/catalog/${catalogFromUrl}`);
+        } else {
+          navigate('/customer-dashboard');
+        }
       }
     };
 
     checkSession();
-  }, [navigate]);
+  }, [navigate, catalogFromUrl]);
 
-  // Generate subdomain from store name
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
   const generateSubdomain = (name: string) => {
     return name
       .toLowerCase()
@@ -145,128 +104,30 @@ const Index = () => {
       })
       .replace(/[^a-z0-9]/g, '-')
       .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
+      .replace(/^-|-$/g, '') || 'store';
   };
 
-  // Validate email format
-  const isValidEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email.trim());
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!regStoreName.trim() || !regEmail.trim() || !regPassword.trim()) {
-      toast({ title: "Заполните все обязательные поля", variant: "destructive" });
-      return;
-    }
-
-    if (!isValidEmail(regEmail)) {
-      toast({ title: "Введите корректный email", variant: "destructive" });
-      return;
-    }
-
-    if (regPassword.length < 6) {
-      toast({ title: "Пароль должен быть минимум 6 символов", variant: "destructive" });
-      return;
-    }
-
-    setRegLoading(true);
-    try {
-      const subdomain = generateSubdomain(regStoreName);
-
-      // Register user with real email
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: regEmail.trim().toLowerCase(),
-        password: regPassword,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            full_name: regStoreName,
-            role: 'seller'
-          }
-        }
-      });
-
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Ошибка регистрации");
-
-      // Wait for profile to be created by trigger
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Get the profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', authData.user.id)
-        .single();
-
-      if (profileError) throw profileError;
-
-      // Update profile with phone if provided
-      if (regPhone.trim()) {
-        await supabase
-          .from('profiles')
-          .update({ phone: regPhone })
-          .eq('id', profile.id);
-      }
-
-      // Create store
-      const { error: storeError } = await supabase
-        .from('stores')
-        .insert({
-          name: regStoreName,
-          subdomain,
-          owner_id: profile.id,
-          status: 'active'
-        });
-
-      if (storeError) throw storeError;
-
-      toast({ title: "Магазин создан!", description: "Переходим в витрину" });
-      localStorage.setItem('seller_onboarding_step1', 'true');
-      navigate(`/store/${subdomain}`);
-      
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      let message = error.message;
-      if (error.message?.includes('already registered')) {
-        message = 'Этот email уже зарегистрирован. Попробуйте войти.';
-      }
-      toast({ 
-        title: "Ошибка регистрации", 
-        description: message,
-        variant: "destructive" 
-      });
-    } finally {
-      setRegLoading(false);
-    }
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!loginEmail.trim() || !loginPassword.trim()) {
+  // SELLER HANDLERS
+  const handleSellerLogin = async () => {
+    if (!sellerEmail.trim() || !sellerPassword.trim()) {
       toast({ title: "Заполните все поля", variant: "destructive" });
       return;
     }
-
-    if (!isValidEmail(loginEmail)) {
+    if (!isValidEmail(sellerEmail)) {
       toast({ title: "Введите корректный email", variant: "destructive" });
       return;
     }
 
-    setLoginLoading(true);
+    setSellerLoading(true);
     try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: loginEmail.trim().toLowerCase(),
-        password: loginPassword
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: sellerEmail.trim().toLowerCase(),
+        password: sellerPassword
       });
 
-      if (authError) throw authError;
+      if (error) throw error;
 
-      // Check for super admin first
+      // Check super admin
       const { data: platformRole } = await supabase
         .from('platform_roles')
         .select('role')
@@ -279,470 +140,490 @@ const Index = () => {
         return;
       }
 
-      // Get user's profile
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, phone, role')
+        .select('id, role')
+        .eq('user_id', authData.user.id)
+        .single();
+
+      if (profile?.role === 'customer') {
+        navigate('/customer-dashboard');
+        return;
+      }
+
+      const { data: store } = await supabase
+        .from('stores')
+        .select('subdomain')
+        .eq('owner_id', profile?.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (store) {
+        navigate(`/store/${store.subdomain}`);
+      } else {
+        // Auto-create store
+        const subdomain = generateSubdomain(sellerEmail.split('@')[0]) + '-' + Date.now().toString(36).slice(-4);
+        await supabase.from('stores').insert({
+          name: 'Мой магазин',
+          subdomain,
+          owner_id: profile?.id,
+          status: 'active'
+        });
+        navigate(`/store/${subdomain}`);
+      }
+    } catch (error: any) {
+      toast({ title: "Ошибка входа", description: "Неверный email или пароль", variant: "destructive" });
+    } finally {
+      setSellerLoading(false);
+    }
+  };
+
+  const handleSellerRegister = async () => {
+    if (!sellerEmail.trim() || !sellerPassword.trim() || !sellerStoreName.trim()) {
+      toast({ title: "Заполните обязательные поля", variant: "destructive" });
+      return;
+    }
+    if (!isValidEmail(sellerEmail)) {
+      toast({ title: "Введите корректный email", variant: "destructive" });
+      return;
+    }
+    if (sellerPassword.length < 6) {
+      toast({ title: "Пароль минимум 6 символов", variant: "destructive" });
+      return;
+    }
+
+    setSellerLoading(true);
+    try {
+      const subdomain = generateSubdomain(sellerStoreName) + '-' + Date.now().toString(36).slice(-4);
+
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: sellerEmail.trim().toLowerCase(),
+        password: sellerPassword,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: { full_name: sellerStoreName, role: 'seller' }
+        }
+      });
+
+      if (authError) {
+        if (authError.message.includes('already registered')) {
+          toast({ title: "Email уже зарегистрирован", description: "Попробуйте войти", variant: "destructive" });
+          setSellerMode('login');
+          return;
+        }
+        throw authError;
+      }
+      if (!authData.user) throw new Error("Ошибка регистрации");
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
         .eq('user_id', authData.user.id)
         .single();
 
       if (profile) {
-        if (profile.role === 'customer') {
-          navigate('/customer-dashboard');
-          return;
+        if (sellerPhone.trim()) {
+          await supabase.from('profiles').update({ phone: sellerPhone }).eq('id', profile.id);
         }
 
-        const { data: store } = await supabase
-          .from('stores')
-          .select('subdomain')
-          .eq('owner_id', profile.id)
-          .limit(1)
-          .maybeSingle();
-
-        if (store) {
-          navigate(`/store/${store.subdomain}`);
-          return;
-        }
-
-        // No store found - auto-create one for sellers
-        const storeName = profile.full_name || 'Мой магазин';
-        const baseSubdomain = generateSubdomain(storeName);
-        const subdomain = baseSubdomain + '-' + Date.now().toString(36).slice(-4);
-
-        const { error: storeError } = await supabase
-          .from('stores')
-          .insert({
-            name: storeName,
-            subdomain,
-            owner_id: profile.id,
-            status: 'active'
-          });
-
-        if (!storeError) {
-          toast({ title: "Магазин создан!", description: "Переходим в витрину" });
-          localStorage.setItem('seller_onboarding_step1', 'true');
-          navigate(`/store/${subdomain}`);
-          return;
-        } else {
-          throw storeError;
-        }
+        await supabase.from('stores').insert({
+          name: sellerStoreName,
+          subdomain,
+          owner_id: profile.id,
+          status: 'active'
+        });
       }
-      
+
+      toast({ title: "Магазин создан!", description: "Переходим в витрину" });
+      localStorage.setItem('seller_onboarding_step1', 'true');
+      navigate(`/store/${subdomain}`);
     } catch (error: any) {
-      console.error('Login error:', error);
-      toast({ 
-        title: "Ошибка входа", 
-        description: "Неверный email или пароль",
-        variant: "destructive" 
-      });
+      toast({ title: "Ошибка регистрации", description: error.message, variant: "destructive" });
     } finally {
-      setLoginLoading(false);
+      setSellerLoading(false);
     }
   };
 
-  const handleCustomerAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  // CUSTOMER HANDLERS
+  const handleCustomerLogin = async () => {
     if (!customerEmail.trim() || !customerPassword.trim()) {
-      toast({ title: "Заполните email и пароль", variant: "destructive" });
+      toast({ title: "Заполните все поля", variant: "destructive" });
       return;
     }
-
     if (!isValidEmail(customerEmail)) {
       toast({ title: "Введите корректный email", variant: "destructive" });
       return;
     }
 
-    if (!isCustomerLogin && !customerFullName.trim()) {
-      toast({ title: "Введите ваше имя", variant: "destructive" });
-      return;
-    }
-
-    if (!isCustomerLogin && customerPassword.length < 6) {
-      toast({ title: "Пароль должен быть минимум 6 символов", variant: "destructive" });
-      return;
-    }
-
-    const email = customerEmail.trim().toLowerCase();
-
     setCustomerLoading(true);
     try {
-      if (isCustomerLogin) {
-        // Login
-        const { data: authData, error } = await supabase.auth.signInWithPassword({
-          email,
-          password: customerPassword
-        });
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: customerEmail.trim().toLowerCase(),
+        password: customerPassword
+      });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        // Проверяем/создаём профиль после логина
-        if (authData.user) {
-          const { data: existingProfile } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('user_id', authData.user.id)
-            .maybeSingle();
-
-          if (!existingProfile) {
-            await supabase.from('profiles').insert({
-              user_id: authData.user.id,
-              email: email,
-              full_name: customerFullName || '',
-              phone: customerPhone || null,
-              role: 'customer'
-            });
-          }
-        }
-
-        toast({ title: "Вход выполнен" });
-        if (catalogFromUrl) {
-          navigate(`/catalog/${catalogFromUrl}`);
-        } else {
-          navigate('/customer-dashboard');
-        }
+      toast({ title: "Вход выполнен" });
+      if (catalogFromUrl) {
+        navigate(`/catalog/${catalogFromUrl}`);
       } else {
-        // Registration
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email,
-          password: customerPassword,
-          options: {
-            emailRedirectTo: `${window.location.origin}/customer-dashboard`,
-            data: {
-              full_name: customerFullName,
-              role: 'customer'
-            }
-          }
-        });
-
-        // Handle "user already exists" - try to login instead
-        if (authError) {
-          if (authError.message.includes('already registered') || authError.code === 'user_already_exists') {
-            const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-              email,
-              password: customerPassword
-            });
-            
-            if (loginError) {
-              toast({ 
-                title: "Пользователь уже зарегистрирован", 
-                description: "Неверный пароль. Попробуйте войти с правильным паролем.",
-                variant: "destructive" 
-              });
-              setIsCustomerLogin(true);
-              setCustomerLoading(false);
-              return;
-            }
-
-            if (loginData.user) {
-              const { data: existingProfile } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('user_id', loginData.user.id)
-                .maybeSingle();
-
-              if (!existingProfile) {
-                await supabase.from('profiles').insert({
-                  user_id: loginData.user.id,
-                  email: email,
-                  full_name: customerFullName || '',
-                  phone: customerPhone || null,
-                  role: 'customer'
-                });
-              }
-            }
-            
-            toast({ title: "Вход выполнен", description: "Вы уже были зарегистрированы" });
-            if (catalogFromUrl) {
-              navigate(`/catalog/${catalogFromUrl}`);
-            } else {
-              navigate('/customer-dashboard');
-            }
-            setCustomerLoading(false);
-            return;
-          }
-          throw authError;
-        }
-        
-        if (!authData.user) throw new Error("Ошибка регистрации");
-
-        // Update profile with phone if provided
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', authData.user.id)
-          .single();
-
-        if (profile && customerPhone.trim()) {
-          await supabase
-            .from('profiles')
-            .update({ phone: customerPhone })
-            .eq('id', profile.id);
-        }
-
-        toast({ 
-          title: "Регистрация успешна!", 
-          description: "Теперь вы можете войти в личный кабинет" 
-        });
-        if (catalogFromUrl) {
-          navigate(`/catalog/${catalogFromUrl}`);
-        } else {
-          navigate('/customer-dashboard');
-        }
+        navigate('/customer-dashboard');
       }
     } catch (error: any) {
-      console.error('Customer auth error:', error);
-      toast({ 
-        title: isCustomerLogin ? "Ошибка входа" : "Ошибка регистрации", 
-        description: error.message,
-        variant: "destructive" 
-      });
+      toast({ title: "Ошибка входа", description: "Неверный email или пароль", variant: "destructive" });
     } finally {
       setCustomerLoading(false);
     }
   };
 
-  const handleForgotPassword = async (email: string, role: 'seller' | 'customer') => {
-    if (!email.trim()) {
-      toast({ title: "Введите email для восстановления", variant: "destructive" });
+  const handleCustomerRegister = async () => {
+    if (!customerEmail.trim() || !customerPassword.trim() || !customerName.trim()) {
+      toast({ title: "Заполните обязательные поля", variant: "destructive" });
+      return;
+    }
+    if (!isValidEmail(customerEmail)) {
+      toast({ title: "Введите корректный email", variant: "destructive" });
+      return;
+    }
+    if (customerPassword.length < 6) {
+      toast({ title: "Пароль минимум 6 символов", variant: "destructive" });
       return;
     }
 
+    setCustomerLoading(true);
+    try {
+      const email = customerEmail.trim().toLowerCase();
+      
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password: customerPassword,
+        options: {
+          emailRedirectTo: `${window.location.origin}/customer-dashboard`,
+          data: { full_name: customerName, role: 'customer' }
+        }
+      });
+
+      if (authError) {
+        if (authError.message.includes('already registered')) {
+          // Try login
+          const { error: loginError } = await supabase.auth.signInWithPassword({
+            email,
+            password: customerPassword
+          });
+          if (loginError) {
+            toast({ title: "Email уже зарегистрирован", description: "Неверный пароль", variant: "destructive" });
+            setCustomerMode('login');
+            return;
+          }
+          toast({ title: "Вход выполнен", description: "Вы уже были зарегистрированы" });
+          navigate(catalogFromUrl ? `/catalog/${catalogFromUrl}` : '/customer-dashboard');
+          return;
+        }
+        throw authError;
+      }
+
+      if (!authData.user) throw new Error("Ошибка регистрации");
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      if (customerPhone.trim()) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', authData.user.id)
+          .single();
+        
+        if (profile) {
+          await supabase.from('profiles').update({ phone: customerPhone }).eq('id', profile.id);
+        }
+      }
+
+      toast({ title: "Регистрация успешна!" });
+      navigate(catalogFromUrl ? `/catalog/${catalogFromUrl}` : '/customer-dashboard');
+    } catch (error: any) {
+      toast({ title: "Ошибка регистрации", description: error.message, variant: "destructive" });
+    } finally {
+      setCustomerLoading(false);
+    }
+  };
+
+  // FORGOT PASSWORD
+  const handleForgotPassword = async (email: string, setLoading: (v: boolean) => void, setMode: (m: AuthMode) => void) => {
+    if (!email.trim()) {
+      toast({ title: "Введите email", variant: "destructive" });
+      return;
+    }
     if (!isValidEmail(email)) {
       toast({ title: "Введите корректный email", variant: "destructive" });
       return;
     }
 
+    setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
         redirectTo: `${window.location.origin}/`,
       });
-
       if (error) throw error;
-
-      toast({ 
-        title: "Письмо отправлено", 
-        description: "Проверьте вашу почту для восстановления пароля" 
-      });
+      toast({ title: "Письмо отправлено", description: "Проверьте почту для восстановления пароля" });
+      setMode('login');
     } catch (error: any) {
-      console.error('Password reset error:', error);
-      toast({ 
-        title: "Ошибка", 
-        description: error.message,
-        variant: "destructive" 
-      });
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
   };
 
+  const renderAuthForm = (
+    type: 'seller' | 'customer',
+    mode: AuthMode,
+    setMode: (m: AuthMode) => void,
+    email: string,
+    setEmail: (v: string) => void,
+    password: string,
+    setPassword: (v: string) => void,
+    loading: boolean,
+    onLogin: () => void,
+    onRegister: () => void,
+    extraFields?: React.ReactNode
+  ) => {
+    if (mode === 'forgot') {
+      return (
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => setMode('login')}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Назад
+          </button>
+          
+          <div className="space-y-2">
+            <Label>Email для восстановления</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="email"
+                placeholder="email@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+          
+          <Button
+            className="w-full"
+            disabled={loading}
+            onClick={() => handleForgotPassword(email, 
+              type === 'seller' ? setSellerLoading : setCustomerLoading, 
+              setMode
+            )}
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Отправить ссылку
+          </Button>
+        </div>
+      );
+    }
+
+    const isLogin = mode === 'login';
+
+    return (
+      <div className="space-y-4">
+        {/* Mode toggle */}
+        <div className="flex rounded-lg bg-muted p-1">
+          <button
+            type="button"
+            onClick={() => setMode('login')}
+            className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-all ${
+              isLogin ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Вход
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('register')}
+            className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-all ${
+              !isLogin ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Регистрация
+          </button>
+        </div>
+
+        {/* Extra fields for registration */}
+        {!isLogin && extraFields}
+
+        {/* Email */}
+        <div className="space-y-1.5">
+          <Label className="text-sm">Email {!isLogin && '*'}</Label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="email"
+              placeholder="email@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+
+        {/* Password */}
+        <div className="space-y-1.5">
+          <Label className="text-sm">Пароль {!isLogin && '*'}</Label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="password"
+              placeholder={isLogin ? "••••••" : "Минимум 6 символов"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+
+        {/* Submit button */}
+        <Button
+          className="w-full"
+          disabled={loading}
+          onClick={isLogin ? onLogin : onRegister}
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          {isLogin ? 'Войти' : 'Зарегистрироваться'}
+        </Button>
+
+        {/* Forgot password link */}
+        {isLogin && (
+          <button
+            type="button"
+            onClick={() => setMode('forgot')}
+            className="w-full text-sm text-muted-foreground hover:text-primary transition-colors"
+          >
+            Забыли пароль?
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex items-start md:items-center justify-center p-4 pt-8 md:pt-4">
-      <div className="w-full max-w-md">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="register" className="text-xs sm:text-sm">
-              <Store className="h-4 w-4 mr-1 hidden sm:inline" />
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'seller' | 'customer')} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="seller" className="gap-2">
+              <Store className="h-4 w-4" />
               Продавец
             </TabsTrigger>
-            <TabsTrigger value="login" className="text-xs sm:text-sm">
-              <LogIn className="h-4 w-4 mr-1 hidden sm:inline" />
-              Войти
-            </TabsTrigger>
-            <TabsTrigger value="customer" className="text-xs sm:text-sm">
-              <User className="h-4 w-4 mr-1 hidden sm:inline" />
+            <TabsTrigger value="customer" className="gap-2">
+              <User className="h-4 w-4" />
               Покупатель
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="register">
+          <TabsContent value="seller">
             <Card>
-              <CardHeader>
-                <CardTitle>Создать магазин</CardTitle>
-                <CardDescription>Заполните форму для регистрации</CardDescription>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl">
+                  {sellerMode === 'forgot' ? 'Восстановление пароля' : 'Кабинет продавца'}
+                </CardTitle>
+                <CardDescription>
+                  {sellerMode === 'forgot' 
+                    ? 'Введите email для получения ссылки'
+                    : sellerMode === 'login' 
+                      ? 'Войдите для управления магазином' 
+                      : 'Создайте свой магазин бесплатно'}
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleRegister} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="storeName">Название магазина *</Label>
-                    <Input
-                      id="storeName"
-                      placeholder="Мой магазин"
-                      value={regStoreName}
-                      onChange={(e) => setRegStoreName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="regEmail">Email *</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                {renderAuthForm(
+                  'seller',
+                  sellerMode,
+                  setSellerMode,
+                  sellerEmail,
+                  setSellerEmail,
+                  sellerPassword,
+                  setSellerPassword,
+                  sellerLoading,
+                  handleSellerLogin,
+                  handleSellerRegister,
+                  // Extra fields for registration
+                  <>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Название магазина *</Label>
                       <Input
-                        id="regEmail"
-                        type="email"
-                        placeholder="email@example.com"
-                        value={regEmail}
-                        onChange={(e) => setRegEmail(e.target.value)}
-                        className="pl-10"
+                        placeholder="Мой магазин"
+                        value={sellerStoreName}
+                        onChange={(e) => setSellerStoreName(e.target.value)}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground">Для восстановления пароля</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="regPhone">Номер телефона</Label>
-                    <PhoneInput
-                      id="regPhone"
-                      value={regPhone}
-                      onChange={setRegPhone}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="regPassword">Пароль *</Label>
-                    <Input
-                      id="regPassword"
-                      type="password"
-                      placeholder="Минимум 6 символов"
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={regLoading}>
-                    {regLoading ? "Создание..." : "Создать магазин"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="login">
-            <Card>
-              <CardHeader>
-                <CardTitle>Вход</CardTitle>
-                <CardDescription>Войдите в свой аккаунт</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="loginEmail">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="loginEmail"
-                        type="email"
-                        placeholder="email@example.com"
-                        value={loginEmail}
-                        onChange={(e) => setLoginEmail(e.target.value)}
-                        className="pl-10"
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Телефон</Label>
+                      <PhoneInput
+                        value={sellerPhone}
+                        onChange={setSellerPhone}
                       />
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="loginPassword">Пароль</Label>
-                    <Input
-                      id="loginPassword"
-                      type="password"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loginLoading}>
-                    {loginLoading ? "Вход..." : "Войти"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="w-full text-sm"
-                    onClick={() => handleForgotPassword(loginEmail, 'seller')}
-                  >
-                    Забыли пароль?
-                  </Button>
-                </form>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="customer">
             <Card>
-              <CardHeader>
-                <CardTitle>{isCustomerLogin ? "Вход для покупателя" : "Регистрация покупателя"}</CardTitle>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl">
+                  {customerMode === 'forgot' ? 'Восстановление пароля' : 'Личный кабинет'}
+                </CardTitle>
                 <CardDescription>
-                  {catalogFromUrl && !isCustomerLogin 
-                    ? "Зарегистрируйтесь для просмотра каталога" 
-                    : (isCustomerLogin ? "Войдите в личный кабинет" : "Создайте аккаунт покупателя")}
+                  {customerMode === 'forgot'
+                    ? 'Введите email для получения ссылки'
+                    : catalogFromUrl 
+                      ? 'Войдите для просмотра каталога' 
+                      : customerMode === 'login'
+                        ? 'Войдите в личный кабинет'
+                        : 'Создайте аккаунт покупателя'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleCustomerAuth} className="space-y-4">
-                  {!isCustomerLogin && (
-                    <div className="space-y-2">
-                      <Label htmlFor="customerFullName">Ваше имя *</Label>
+                {renderAuthForm(
+                  'customer',
+                  customerMode,
+                  setCustomerMode,
+                  customerEmail,
+                  setCustomerEmail,
+                  customerPassword,
+                  setCustomerPassword,
+                  customerLoading,
+                  handleCustomerLogin,
+                  handleCustomerRegister,
+                  // Extra fields for registration
+                  <>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Ваше имя *</Label>
                       <Input
-                        id="customerFullName"
                         placeholder="Иван Иванов"
-                        value={customerFullName}
-                        onChange={(e) => setCustomerFullName(e.target.value)}
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
                       />
                     </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label htmlFor="customerEmail">Email *</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="customerEmail"
-                        type="email"
-                        placeholder="email@example.com"
-                        value={customerEmail}
-                        onChange={(e) => setCustomerEmail(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                    {!isCustomerLogin && (
-                      <p className="text-xs text-muted-foreground">Для восстановления пароля</p>
-                    )}
-                  </div>
-                  {!isCustomerLogin && (
-                    <div className="space-y-2">
-                      <Label htmlFor="customerPhone">Номер телефона</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Телефон</Label>
                       <PhoneInput
-                        id="customerPhone"
                         value={customerPhone}
                         onChange={setCustomerPhone}
                       />
                     </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label htmlFor="customerPassword">Пароль {!isCustomerLogin && '*'}</Label>
-                    <Input
-                      id="customerPassword"
-                      type="password"
-                      placeholder={isCustomerLogin ? "" : "Минимум 6 символов"}
-                      value={customerPassword}
-                      onChange={(e) => setCustomerPassword(e.target.value)}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={customerLoading}>
-                    {customerLoading 
-                      ? (isCustomerLogin ? "Вход..." : "Регистрация...") 
-                      : (isCustomerLogin ? "Войти" : "Зарегистрироваться")}
-                  </Button>
-                  {isCustomerLogin && (
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="w-full text-sm"
-                      onClick={() => handleForgotPassword(customerEmail, 'customer')}
-                    >
-                      Забыли пароль?
-                    </Button>
-                  )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setIsCustomerLogin(!isCustomerLogin)}
-                  >
-                    {isCustomerLogin ? "Нет аккаунта? Зарегистрироваться" : "Уже есть аккаунт? Войти"}
-                  </Button>
-                </form>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
