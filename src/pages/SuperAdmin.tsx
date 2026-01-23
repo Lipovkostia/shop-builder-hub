@@ -89,51 +89,32 @@ export default function SuperAdmin() {
   const fetchStores = async () => {
     setIsLoading(true);
     try {
-      let query = supabase
-        .from('stores')
-        .select(`
-          id,
-          name,
-          subdomain,
-          status,
-          created_at,
-          products_count,
-          customers_count,
-          profiles!stores_owner_id_fkey (
-            email,
-            full_name
-          )
-        `, { count: 'exact' });
-
-      // Apply search filter
+      // Build URL with query params for edge function
+      const params = new URLSearchParams({
+        action: 'stores',
+        page: currentPage.toString(),
+        limit: ITEMS_PER_PAGE.toString(),
+      });
       if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%,subdomain.ilike.%${searchQuery}%`);
+        params.set('search', searchQuery);
       }
 
-      // Apply pagination
-      const from = (currentPage - 1) * ITEMS_PER_PAGE;
-      const to = from + ITEMS_PER_PAGE - 1;
-      
-      const { data, error, count } = await query
-        .order('created_at', { ascending: false })
-        .range(from, to);
+      const response = await fetch(
+        `https://zqegcsutpwwrahfiwaic.supabase.co/functions/v1/super-admin-stats?${params.toString()}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-super-admin-key': 'temp_super_admin_access',
+          },
+        }
+      );
 
-      if (error) throw error;
+      if (!response.ok) throw new Error('Failed to fetch stores');
 
-      const formattedStores: StoreWithCounts[] = (data || []).map((store: any) => ({
-        id: store.id,
-        name: store.name,
-        subdomain: store.subdomain,
-        status: store.status,
-        created_at: store.created_at,
-        owner_email: store.profiles?.email || 'N/A',
-        owner_name: store.profiles?.full_name,
-        products_count: store.products_count || 0,
-        customers_count: store.customers_count || 0,
-      }));
-
-      setStores(formattedStores);
-      setTotalCount(count || 0);
+      const result = await response.json();
+      setStores(result.data || []);
+      setTotalCount(result.total || 0);
     } catch (error) {
       console.error('Error fetching stores:', error);
       toast({
@@ -149,58 +130,32 @@ export default function SuperAdmin() {
   const fetchCustomers = async () => {
     setCustomersLoading(true);
     try {
-      // Fetch all customer profiles (role = 'customer')
-      let query = supabase
-        .from('profiles')
-        .select('id, user_id, full_name, phone, email, created_at', { count: 'exact' })
-        .eq('role', 'customer');
-
-      if (customersSearch) {
-        query = query.or(`full_name.ilike.%${customersSearch}%,phone.ilike.%${customersSearch}%,email.ilike.%${customersSearch}%`);
-      }
-
-      const from = (customersPage - 1) * ITEMS_PER_PAGE;
-      const to = from + ITEMS_PER_PAGE - 1;
-
-      const { data: profilesData, error: profilesError, count } = await query
-        .order('created_at', { ascending: false })
-        .range(from, to);
-
-      if (profilesError) throw profilesError;
-
-      // Get store_customers for each profile to find which stores they're registered with
-      const profileIds = (profilesData || []).map(p => p.id);
-      
-      let storeCustomersData: any[] = [];
-      if (profileIds.length > 0) {
-        const { data: scData } = await supabase
-          .from('store_customers')
-          .select('profile_id, store_id, stores(name)')
-          .in('profile_id', profileIds);
-        storeCustomersData = scData || [];
-      }
-
-      const customersWithStores: CustomerProfile[] = (profilesData || []).map(profile => {
-        const customerStores = storeCustomersData
-          .filter(sc => sc.profile_id === profile.id)
-          .map(sc => ({
-            store_id: sc.store_id,
-            store_name: sc.stores?.name || 'Неизвестный магазин'
-          }));
-
-        return {
-          id: profile.id,
-          user_id: profile.user_id,
-          full_name: profile.full_name,
-          phone: profile.phone,
-          email: profile.email,
-          created_at: profile.created_at,
-          stores: customerStores
-        };
+      // Build URL with query params for edge function
+      const params = new URLSearchParams({
+        action: 'customers',
+        page: customersPage.toString(),
+        limit: ITEMS_PER_PAGE.toString(),
       });
+      if (customersSearch) {
+        params.set('search', customersSearch);
+      }
 
-      setCustomers(customersWithStores);
-      setCustomersTotal(count || 0);
+      const response = await fetch(
+        `https://zqegcsutpwwrahfiwaic.supabase.co/functions/v1/super-admin-stats?${params.toString()}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-super-admin-key': 'temp_super_admin_access',
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to fetch customers');
+
+      const result = await response.json();
+      setCustomers(result.data || []);
+      setCustomersTotal(result.total || 0);
     } catch (error) {
       console.error('Error fetching customers:', error);
       toast({
