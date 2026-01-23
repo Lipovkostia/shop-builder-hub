@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.create-retail-order]
 verify_jwt = false
+
+[functions.super-admin-stats]
+verify_jwt = false
