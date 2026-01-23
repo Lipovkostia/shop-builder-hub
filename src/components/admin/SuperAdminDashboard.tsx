@@ -31,9 +31,14 @@ interface StatCardProps {
   icon: React.ReactNode;
   color?: 'default' | 'primary' | 'success' | 'warning';
   fullWidth?: boolean;
+  onClick?: () => void;
 }
 
-function StatCard({ title, value, todayChange, subtitle, icon, color = 'default', fullWidth = false }: StatCardProps) {
+interface SuperAdminDashboardProps {
+  onNavigate?: (tab: string) => void;
+}
+
+function StatCard({ title, value, todayChange, subtitle, icon, color = 'default', fullWidth = false, onClick }: StatCardProps) {
   const colorClasses = {
     default: 'bg-card border-border',
     primary: 'bg-primary/5 border-primary/20',
@@ -49,7 +54,10 @@ function StatCard({ title, value, todayChange, subtitle, icon, color = 'default'
   };
 
   return (
-    <Card className={`${colorClasses[color]} ${fullWidth ? 'col-span-2' : ''} transition-all hover:shadow-md`}>
+    <Card 
+      className={`${colorClasses[color]} ${fullWidth ? 'col-span-2' : ''} transition-all hover:shadow-md ${onClick ? 'cursor-pointer hover:scale-[1.02]' : ''}`}
+      onClick={onClick}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
@@ -89,7 +97,7 @@ function formatCurrency(value: number): string {
   return `${value.toLocaleString('ru-RU')} ₽`;
 }
 
-export default function SuperAdminDashboard() {
+export default function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps) {
   const { session } = useAuth();
   const [stats, setStats] = useState<StatsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -178,6 +186,7 @@ export default function SuperAdminDashboard() {
           todayChange={stats?.sellers.today ?? 0}
           icon={<Users className="h-5 w-5" />}
           color="primary"
+          onClick={() => onNavigate?.('stores')}
         />
         <StatCard
           title="Покупатели"
@@ -185,6 +194,7 @@ export default function SuperAdminDashboard() {
           todayChange={stats?.customers.today ?? 0}
           icon={<Users className="h-5 w-5" />}
           color="success"
+          onClick={() => onNavigate?.('customers')}
         />
 
         {/* Row 2: Stores & Catalogs */}
@@ -193,6 +203,7 @@ export default function SuperAdminDashboard() {
           value={stats?.stores.total ?? 0}
           todayChange={stats?.stores.today ?? 0}
           icon={<Store className="h-5 w-5" />}
+          onClick={() => onNavigate?.('stores')}
         />
         <StatCard
           title="Прайс-листы"
@@ -210,6 +221,7 @@ export default function SuperAdminDashboard() {
           icon={<Package className="h-5 w-5" />}
           color="warning"
           fullWidth
+          onClick={() => onNavigate?.('products')}
         />
 
         {/* Row 4: Orders */}

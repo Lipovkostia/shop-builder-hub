@@ -203,6 +203,60 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (action === "products") {
+      // Fetch products list with pagination and store info
+      let query = supabase
+        .from("products")
+        .select(`
+          id,
+          name,
+          sku,
+          price,
+          quantity,
+          created_at,
+          is_active,
+          store_id,
+          stores!products_store_id_fkey (
+            id,
+            name,
+            subdomain
+          )
+        `, { count: "exact" })
+        .is("deleted_at", null);
+
+      if (search) {
+        query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
+      }
+
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+
+      const { data, error, count } = await query
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+
+      const formattedProducts = (data || []).map((product: any) => ({
+        id: product.id,
+        name: product.name,
+        sku: product.sku,
+        price: product.price,
+        quantity: product.quantity,
+        created_at: product.created_at,
+        is_active: product.is_active,
+        store_id: product.store_id,
+        store_name: product.stores?.name || "Неизвестный магазин",
+        store_subdomain: product.stores?.subdomain || "",
+        is_new_today: new Date(product.created_at) >= today
+      }));
+
+      return new Response(
+        JSON.stringify({ data: formattedProducts, total: count || 0 }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Default: fetch stats
     console.log("Fetching stats with service role key...");
 

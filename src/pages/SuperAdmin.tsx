@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image, LayoutDashboard, LogOut, Mail, Lock, Loader2 } from 'lucide-react';
+import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image, LayoutDashboard, LogOut, Mail, Lock, Loader2, Package, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,6 +43,20 @@ interface CustomerProfile {
   stores: { store_name: string; store_id: string }[];
 }
 
+interface ProductWithStore {
+  id: string;
+  name: string;
+  sku: string | null;
+  price: number;
+  quantity: number;
+  created_at: string;
+  is_active: boolean;
+  store_id: string;
+  store_name: string;
+  store_subdomain: string;
+  is_new_today: boolean;
+}
+
 const ITEMS_PER_PAGE = 10;
 
 export default function SuperAdmin() {
@@ -72,6 +86,13 @@ export default function SuperAdmin() {
   const [customersPage, setCustomersPage] = useState(1);
   const [customersTotal, setCustomersTotal] = useState(0);
 
+  // Products state
+  const [products, setProducts] = useState<ProductWithStore[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsSearch, setProductsSearch] = useState('');
+  const [productsPage, setProductsPage] = useState(1);
+  const [productsTotal, setProductsTotal] = useState(0);
+
   useEffect(() => {
     if (isSuperAdmin && activeTab === 'stores') {
       fetchStores();
@@ -83,6 +104,12 @@ export default function SuperAdmin() {
       fetchCustomers();
     }
   }, [isSuperAdmin, customersPage, customersSearch, activeTab, session]);
+
+  useEffect(() => {
+    if (isSuperAdmin && activeTab === 'products') {
+      fetchProducts();
+    }
+  }, [isSuperAdmin, productsPage, productsSearch, activeTab, session]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,6 +220,51 @@ export default function SuperAdmin() {
       });
     } finally {
       setCustomersLoading(false);
+    }
+  };
+
+  const fetchProducts = async () => {
+    if (!session?.access_token) return;
+    
+    setProductsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        action: 'products',
+        page: productsPage.toString(),
+        limit: ITEMS_PER_PAGE.toString(),
+      });
+      if (productsSearch) {
+        params.set('search', productsSearch);
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/super-admin-stats?${params.toString()}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch products');
+      }
+
+      const result = await response.json();
+      setProducts(result.data || []);
+      setProductsTotal(result.total || 0);
+    } catch (error: any) {
+      console.error('Error fetching products:', error);
+      toast({
+        title: 'Ошибка',
+        description: error.message || 'Не удалось загрузить список товаров',
+        variant: 'destructive',
+      });
+    } finally {
+      setProductsLoading(false);
     }
   };
 
@@ -358,6 +430,10 @@ export default function SuperAdmin() {
               <Store className="h-4 w-4" />
               <span className="hidden sm:inline">Магазины</span>
             </TabsTrigger>
+            <TabsTrigger value="products" className="gap-2">
+              <Package className="h-4 w-4" />
+              <span className="hidden sm:inline">Товары</span>
+            </TabsTrigger>
             <TabsTrigger value="customers" className="gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Покупатели</span>
@@ -370,7 +446,7 @@ export default function SuperAdmin() {
 
           {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="space-y-6">
-            <SuperAdminDashboard />
+            <SuperAdminDashboard onNavigate={setActiveTab} />
           </TabsContent>
 
           {/* Stores Tab */}
@@ -630,6 +706,138 @@ export default function SuperAdmin() {
                       size="sm"
                       onClick={() => setCustomersPage(p => Math.min(customersTotalPages, p + 1))}
                       disabled={customersPage === customersTotalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Products Tab */}
+          <TabsContent value="products" className="space-y-6">
+            {/* Search and stats */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Поиск по названию или артикулу..."
+                  value={productsSearch}
+                  onChange={(e) => {
+                    setProductsSearch(e.target.value);
+                    setProductsPage(1);
+                  }}
+                  className="pl-10"
+                />
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Package className="h-4 w-4" />
+                <span>Всего товаров: <strong className="text-foreground">{productsTotal}</strong></span>
+              </div>
+            </div>
+
+            {/* Products table */}
+            <div className="rounded-lg border bg-card">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Название</TableHead>
+                    <TableHead>Артикул</TableHead>
+                    <TableHead className="text-right">Цена</TableHead>
+                    <TableHead className="text-center">Кол-во</TableHead>
+                    <TableHead>Магазин</TableHead>
+                    <TableHead>Добавлен</TableHead>
+                    <TableHead className="text-right">Действия</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {productsLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-32 text-center">
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : products.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                        {productsSearch ? 'Товары не найдены' : 'Нет товаров'}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    products.map((product) => (
+                      <TableRow key={product.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{product.name}</span>
+                            {product.is_new_today && (
+                              <Badge variant="default" className="bg-green-500 text-xs">
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                Новый
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <code className="text-xs bg-muted px-2 py-1 rounded">
+                            {product.sku || '—'}
+                          </code>
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {product.price.toLocaleString('ru-RU')} ₽
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {product.quantity}
+                        </TableCell>
+                        <TableCell>
+                          <button
+                            onClick={() => navigate(`/store/${product.store_subdomain}/admin`)}
+                            className="text-primary hover:underline text-sm"
+                          >
+                            {product.store_name}
+                          </button>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {new Date(product.created_at).toLocaleDateString('ru-RU')}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/store/${product.store_subdomain}/admin`)}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-1" />
+                            Магазин
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+
+              {/* Pagination */}
+              {Math.ceil(productsTotal / ITEMS_PER_PAGE) > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t">
+                  <div className="text-sm text-muted-foreground">
+                    Страница {productsPage} из {Math.ceil(productsTotal / ITEMS_PER_PAGE)}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setProductsPage(p => Math.max(1, p - 1))}
+                      disabled={productsPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setProductsPage(p => Math.min(Math.ceil(productsTotal / ITEMS_PER_PAGE), p + 1))}
+                      disabled={productsPage === Math.ceil(productsTotal / ITEMS_PER_PAGE)}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
