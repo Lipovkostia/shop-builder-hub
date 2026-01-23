@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image } from 'lucide-react';
+import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import SlidesManager from '@/components/admin/SlidesManager';
+import SuperAdminDashboard from '@/components/admin/SuperAdminDashboard';
 
 interface StoreWithCounts {
   id: string;
@@ -47,7 +48,7 @@ export default function SuperAdmin() {
   const { toast } = useToast();
   const { isSuperAdmin, loading } = useAuth();
   
-  const [activeTab, setActiveTab] = useState('stores');
+  const [activeTab, setActiveTab] = useState('dashboard');
   
   // Stores state
   const [stores, setStores] = useState<StoreWithCounts[]>([]);
@@ -287,20 +288,29 @@ export default function SuperAdmin() {
       {/* Main content */}
       <main className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList>
+          <TabsList className="flex flex-wrap h-auto gap-1">
+            <TabsTrigger value="dashboard" className="gap-2">
+              <LayoutDashboard className="h-4 w-4" />
+              <span className="hidden sm:inline">Дашборд</span>
+            </TabsTrigger>
             <TabsTrigger value="stores" className="gap-2">
               <Store className="h-4 w-4" />
-              Магазины
+              <span className="hidden sm:inline">Магазины</span>
             </TabsTrigger>
             <TabsTrigger value="customers" className="gap-2">
               <Users className="h-4 w-4" />
-              Покупатели
+              <span className="hidden sm:inline">Покупатели</span>
             </TabsTrigger>
             <TabsTrigger value="slides" className="gap-2">
               <Image className="h-4 w-4" />
-              Слайды
+              <span className="hidden sm:inline">Слайды</span>
             </TabsTrigger>
           </TabsList>
+
+          {/* Dashboard Tab */}
+          <TabsContent value="dashboard" className="space-y-6">
+            <SuperAdminDashboard />
+          </TabsContent>
 
           {/* Stores Tab */}
           <TabsContent value="stores" className="space-y-6">
