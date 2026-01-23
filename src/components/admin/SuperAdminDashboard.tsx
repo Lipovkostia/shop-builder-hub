@@ -11,7 +11,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
 interface StatsData {
@@ -90,30 +90,42 @@ function formatCurrency(value: number): string {
 }
 
 export default function SuperAdminDashboard() {
+  const { session } = useAuth();
   const [stats, setStats] = useState<StatsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
 
   const fetchStats = async (showRefresh = false) => {
+    if (!session?.access_token) return;
+    
     if (showRefresh) setIsRefreshing(true);
     else setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('super-admin-stats', {
-        headers: {
-          'x-super-admin-key': 'temp_super_admin_access'
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/super-admin-stats`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
         }
-      });
+      );
 
-      if (error) throw error;
-      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch stats');
+      }
+
+      const data = await response.json();
       setStats(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching stats:', error);
       toast({
         title: 'Ошибка',
-        description: 'Не удалось загрузить статистику',
+        description: error.message || 'Не удалось загрузить статистику',
         variant: 'destructive',
       });
     } finally {
@@ -123,8 +135,10 @@ export default function SuperAdminDashboard() {
   };
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    if (session?.access_token) {
+      fetchStats();
+    }
+  }, [session?.access_token]);
 
   if (isLoading) {
     return (

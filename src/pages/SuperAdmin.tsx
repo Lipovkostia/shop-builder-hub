@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image, LayoutDashboard } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image, LayoutDashboard, LogOut, Mail, Lock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -46,8 +48,14 @@ const ITEMS_PER_PAGE = 10;
 export default function SuperAdmin() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isSuperAdmin, loading } = useAuth();
+  const { user, session, isSuperAdmin, loading: authLoading, signIn, signOut } = useAuth();
   
+  // Login form state
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
+
   const [activeTab, setActiveTab] = useState('dashboard');
   
   // Stores state
@@ -64,32 +72,45 @@ export default function SuperAdmin() {
   const [customersPage, setCustomersPage] = useState(1);
   const [customersTotal, setCustomersTotal] = useState(0);
 
-  // Check for temp super admin or real super admin
-  const isTempSuperAdmin = localStorage.getItem('temp_super_admin') === 'true';
-  const hasAccess = isSuperAdmin || isTempSuperAdmin;
-
   useEffect(() => {
-    if (!loading && !hasAccess) {
-      navigate('/');
-    }
-  }, [loading, hasAccess, navigate]);
-
-  useEffect(() => {
-    if (hasAccess && activeTab === 'stores') {
+    if (isSuperAdmin && activeTab === 'stores') {
       fetchStores();
     }
-  }, [hasAccess, currentPage, searchQuery, activeTab]);
+  }, [isSuperAdmin, currentPage, searchQuery, activeTab, session]);
 
   useEffect(() => {
-    if (hasAccess && activeTab === 'customers') {
+    if (isSuperAdmin && activeTab === 'customers') {
       fetchCustomers();
     }
-  }, [hasAccess, customersPage, customersSearch, activeTab]);
+  }, [isSuperAdmin, customersPage, customersSearch, activeTab, session]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    setLoginLoading(true);
+
+    try {
+      const { error } = await signIn(email, password);
+      
+      if (error) {
+        setLoginError(error.message || 'Ошибка входа');
+        return;
+      }
+      
+      // Auth state will update automatically via useAuth
+      // isSuperAdmin check will happen after auth state updates
+    } catch (err) {
+      setLoginError('Произошла ошибка при входе');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
 
   const fetchStores = async () => {
+    if (!session?.access_token) return;
+    
     setIsLoading(true);
     try {
-      // Build URL with query params for edge function
       const params = new URLSearchParams({
         action: 'stores',
         page: currentPage.toString(),
@@ -100,26 +121,29 @@ export default function SuperAdmin() {
       }
 
       const response = await fetch(
-        `https://zqegcsutpwwrahfiwaic.supabase.co/functions/v1/super-admin-stats?${params.toString()}`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/super-admin-stats?${params.toString()}`,
         {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'x-super-admin-key': 'temp_super_admin_access',
+            'Authorization': `Bearer ${session.access_token}`,
           },
         }
       );
 
-      if (!response.ok) throw new Error('Failed to fetch stores');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch stores');
+      }
 
       const result = await response.json();
       setStores(result.data || []);
       setTotalCount(result.total || 0);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching stores:', error);
       toast({
         title: 'Ошибка',
-        description: 'Не удалось загрузить список магазинов',
+        description: error.message || 'Не удалось загрузить список магазинов',
         variant: 'destructive',
       });
     } finally {
@@ -128,9 +152,10 @@ export default function SuperAdmin() {
   };
 
   const fetchCustomers = async () => {
+    if (!session?.access_token) return;
+    
     setCustomersLoading(true);
     try {
-      // Build URL with query params for edge function
       const params = new URLSearchParams({
         action: 'customers',
         page: customersPage.toString(),
@@ -141,26 +166,29 @@ export default function SuperAdmin() {
       }
 
       const response = await fetch(
-        `https://zqegcsutpwwrahfiwaic.supabase.co/functions/v1/super-admin-stats?${params.toString()}`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/super-admin-stats?${params.toString()}`,
         {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'x-super-admin-key': 'temp_super_admin_access',
+            'Authorization': `Bearer ${session.access_token}`,
           },
         }
       );
 
-      if (!response.ok) throw new Error('Failed to fetch customers');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch customers');
+      }
 
       const result = await response.json();
       setCustomers(result.data || []);
       setCustomersTotal(result.total || 0);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching customers:', error);
       toast({
         title: 'Ошибка',
-        description: 'Не удалось загрузить список покупателей',
+        description: error.message || 'Не удалось загрузить список покупателей',
         variant: 'destructive',
       });
     } finally {
@@ -181,7 +209,6 @@ export default function SuperAdmin() {
   };
 
   const openCustomerDashboard = (userId: string) => {
-    // Store the user ID to impersonate
     localStorage.setItem('impersonate_customer_id', userId);
     navigate('/customer-dashboard');
   };
@@ -202,7 +229,13 @@ export default function SuperAdmin() {
     }
   };
 
-  if (loading) {
+  const handleLogout = async () => {
+    await signOut();
+    localStorage.removeItem('impersonate_customer_id');
+  };
+
+  // Show loading while auth is initializing
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -210,15 +243,87 @@ export default function SuperAdmin() {
     );
   }
 
-  if (!hasAccess) {
-    return null;
-  }
+  // Show login form if not authenticated or not super admin
+  if (!user || !isSuperAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 p-3 bg-primary/10 rounded-full w-fit">
+              <Shield className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">Панель супер-администратора</CardTitle>
+            <CardDescription>
+              Войдите с учётной записью супер-администратора
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="admin@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Пароль</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+              
+              {loginError && (
+                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                  {loginError}
+                </div>
+              )}
 
-  const handleLogout = () => {
-    localStorage.removeItem('temp_super_admin');
-    localStorage.removeItem('impersonate_customer_id');
-    navigate('/');
-  };
+              {user && !isSuperAdmin && (
+                <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md">
+                  Вы вошли как {user.email}, но у вас нет прав супер-администратора.
+                </div>
+              )}
+              
+              <Button type="submit" className="w-full" disabled={loginLoading}>
+                {loginLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Вход...
+                  </>
+                ) : (
+                  'Войти'
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-4 text-center">
+              <Link to="/" className="text-sm text-muted-foreground hover:text-primary">
+                ← Вернуться на главную
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -230,10 +335,11 @@ export default function SuperAdmin() {
               <Shield className="h-8 w-8 text-primary" />
               <div>
                 <h1 className="text-2xl font-bold">Панель супер-администратора</h1>
-                <p className="text-sm text-muted-foreground">Управление всеми магазинами платформы</p>
+                <p className="text-sm text-muted-foreground">{user.email}</p>
               </div>
             </div>
             <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
               Выйти
             </Button>
           </div>
@@ -458,31 +564,21 @@ export default function SuperAdmin() {
                     customers.map((customer) => (
                       <TableRow key={customer.id}>
                         <TableCell>
-                          <button
-                            onClick={() => openCustomerDashboard(customer.user_id)}
-                            className="font-medium text-primary hover:underline flex items-center gap-1"
-                          >
-                            <User className="h-3 w-3" />
-                            {customer.full_name || 'Без имени'}
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                              <User className="h-4 w-4 text-primary" />
+                            </div>
+                            <span className="font-medium">{customer.full_name || 'Без имени'}</span>
+                          </div>
                         </TableCell>
-                        <TableCell>
-                          <button
-                            onClick={() => openCustomerDashboard(customer.user_id)}
-                            className="text-primary hover:underline"
-                          >
-                            {customer.phone || '—'}
-                          </button>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {customer.email}
-                        </TableCell>
+                        <TableCell>{customer.phone || '—'}</TableCell>
+                        <TableCell>{customer.email}</TableCell>
                         <TableCell>
                           {customer.stores.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {customer.stores.slice(0, 2).map((s, i) => (
-                                <Badge key={i} variant="secondary" className="text-xs">
-                                  {s.store_name}
+                              {customer.stores.slice(0, 2).map((store, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {store.store_name}
                                 </Badge>
                               ))}
                               {customer.stores.length > 2 && (
@@ -495,7 +591,7 @@ export default function SuperAdmin() {
                             <span className="text-muted-foreground text-sm">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
+                        <TableCell>
                           {new Date(customer.created_at).toLocaleDateString('ru-RU')}
                         </TableCell>
                         <TableCell className="text-right">
@@ -505,7 +601,7 @@ export default function SuperAdmin() {
                             onClick={() => openCustomerDashboard(customer.user_id)}
                           >
                             <ExternalLink className="h-4 w-4 mr-1" />
-                            Войти
+                            Войти как
                           </Button>
                         </TableCell>
                       </TableRow>
