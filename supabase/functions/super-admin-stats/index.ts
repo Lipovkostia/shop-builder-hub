@@ -21,21 +21,67 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Simple auth check - verify temp_super_admin header
-    const authHeader = req.headers.get("x-super-admin-key");
-    if (authHeader !== "temp_super_admin_access") {
-      console.log("Unauthorized access attempt");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    // Verify user authentication via JWT
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      console.log("Missing or invalid Authorization header");
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
+        JSON.stringify({ error: "Unauthorized - No token provided" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const token = authHeader.replace("Bearer ", "");
+    
+    // Create client with anon key to verify user token
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    });
+    
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    
+    if (authError || !user) {
+      console.log("Auth error:", authError?.message);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Create client with service role key to bypass RLS
+    console.log("Authenticated user:", user.id, user.email);
+
+    // Create service role client to check platform_roles (bypass RLS)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Check if user has super_admin role
+    const { data: roleData, error: roleError } = await supabase
+      .from("platform_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "super_admin")
+      .maybeSingle();
+
+    if (roleError) {
+      console.log("Role check error:", roleError.message);
+      return new Response(
+        JSON.stringify({ error: "Error checking role" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!roleData) {
+      console.log("User does not have super_admin role:", user.id);
+      return new Response(
+        JSON.stringify({ error: "Forbidden - Super admin access required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("User has super_admin role, proceeding...");
 
     // Parse URL to get action
     const url = new URL(req.url);
