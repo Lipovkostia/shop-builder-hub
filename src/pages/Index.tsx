@@ -10,7 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Store, User, Mail, Lock, Phone, ArrowLeft, Loader2 } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
 
-type AuthMode = 'login' | 'register' | 'forgot';
+type AuthMode = 'login' | 'register' | 'forgot' | 'forgot-phone';
+type LoginMethod = 'email' | 'phone';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -24,18 +25,22 @@ const Index = () => {
   
   // Seller state
   const [sellerMode, setSellerMode] = useState<AuthMode>('login');
+  const [sellerLoginMethod, setSellerLoginMethod] = useState<LoginMethod>('email');
   const [sellerEmail, setSellerEmail] = useState("");
   const [sellerPassword, setSellerPassword] = useState("");
   const [sellerStoreName, setSellerStoreName] = useState("");
   const [sellerPhone, setSellerPhone] = useState("");
+  const [sellerLoginPhone, setSellerLoginPhone] = useState("");
   const [sellerLoading, setSellerLoading] = useState(false);
   
   // Customer state
   const [customerMode, setCustomerMode] = useState<AuthMode>(tabFromUrl === "customer" && catalogFromUrl ? 'register' : 'login');
+  const [customerLoginMethod, setCustomerLoginMethod] = useState<LoginMethod>('email');
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPassword, setCustomerPassword] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerLoginPhone, setCustomerLoginPhone] = useState("");
   const [customerLoading, setCustomerLoading] = useState(false);
 
   // Check session on mount
@@ -88,6 +93,12 @@ const Index = () => {
   }, [navigate, catalogFromUrl]);
 
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  // Normalize phone to digits only
+  const normalizePhone = (phone: string) => phone.replace(/\D/g, '');
+
+  // Convert phone to pseudo-email for legacy users
+  const phoneToPseudoEmail = (phone: string) => `${normalizePhone(phone)}@store.local`;
 
   const generateSubdomain = (name: string) => {
     return name
@@ -173,6 +184,69 @@ const Index = () => {
       }
     } catch (error: any) {
       toast({ title: "Ошибка входа", description: "Неверный email или пароль", variant: "destructive" });
+    } finally {
+      setSellerLoading(false);
+    }
+  };
+
+  // Phone login handler for sellers
+  const handleSellerPhoneLogin = async () => {
+    const digits = normalizePhone(sellerLoginPhone);
+    if (!digits || digits.length < 10) {
+      toast({ title: "Введите корректный номер телефона", variant: "destructive" });
+      return;
+    }
+    if (!sellerPassword.trim()) {
+      toast({ title: "Введите пароль", variant: "destructive" });
+      return;
+    }
+
+    setSellerLoading(true);
+    try {
+      const pseudoEmail = phoneToPseudoEmail(sellerLoginPhone);
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: pseudoEmail,
+        password: sellerPassword
+      });
+
+      if (error) throw error;
+
+      // Check super admin
+      const { data: platformRole } = await supabase
+        .from('platform_roles')
+        .select('role')
+        .eq('user_id', authData.user.id)
+        .eq('role', 'super_admin')
+        .maybeSingle();
+
+      if (platformRole) {
+        navigate('/super-admin');
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, role')
+        .eq('user_id', authData.user.id)
+        .single();
+
+      if (profile?.role === 'customer') {
+        navigate('/customer-dashboard');
+        return;
+      }
+
+      const { data: store } = await supabase
+        .from('stores')
+        .select('subdomain')
+        .eq('owner_id', profile?.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (store) {
+        navigate(`/store/${store.subdomain}`);
+      }
+    } catch (error: any) {
+      toast({ title: "Ошибка входа", description: "Неверный телефон или пароль", variant: "destructive" });
     } finally {
       setSellerLoading(false);
     }
@@ -279,6 +353,41 @@ const Index = () => {
     }
   };
 
+  // Phone login handler for customers
+  const handleCustomerPhoneLogin = async () => {
+    const digits = normalizePhone(customerLoginPhone);
+    if (!digits || digits.length < 10) {
+      toast({ title: "Введите корректный номер телефона", variant: "destructive" });
+      return;
+    }
+    if (!customerPassword.trim()) {
+      toast({ title: "Введите пароль", variant: "destructive" });
+      return;
+    }
+
+    setCustomerLoading(true);
+    try {
+      const pseudoEmail = phoneToPseudoEmail(customerLoginPhone);
+      const { error } = await supabase.auth.signInWithPassword({
+        email: pseudoEmail,
+        password: customerPassword
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Вход выполнен" });
+      if (catalogFromUrl) {
+        navigate(`/catalog/${catalogFromUrl}`);
+      } else {
+        navigate('/customer-dashboard');
+      }
+    } catch (error: any) {
+      toast({ title: "Ошибка входа", description: "Неверный телефон или пароль", variant: "destructive" });
+    } finally {
+      setCustomerLoading(false);
+    }
+  };
+
   const handleCustomerRegister = async () => {
     if (!customerEmail.trim() || !customerPassword.trim() || !customerName.trim()) {
       toast({ title: "Заполните обязательные поля", variant: "destructive" });
@@ -376,6 +485,31 @@ const Index = () => {
     }
   };
 
+  const renderLoginMethodToggle = (method: LoginMethod, setMethod: (m: LoginMethod) => void) => (
+    <div className="flex rounded-md bg-muted/50 p-0.5 mb-3">
+      <button
+        type="button"
+        onClick={() => setMethod('email')}
+        className={`flex-1 py-1.5 px-2 text-xs font-medium rounded transition-all flex items-center justify-center gap-1.5 ${
+          method === 'email' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        <Mail className="h-3.5 w-3.5" />
+        Email
+      </button>
+      <button
+        type="button"
+        onClick={() => setMethod('phone')}
+        className={`flex-1 py-1.5 px-2 text-xs font-medium rounded transition-all flex items-center justify-center gap-1.5 ${
+          method === 'phone' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        <Phone className="h-3.5 w-3.5" />
+        Телефон
+      </button>
+    </div>
+  );
+
   const renderAuthForm = (
     type: 'seller' | 'customer',
     mode: AuthMode,
@@ -386,9 +520,48 @@ const Index = () => {
     setPassword: (v: string) => void,
     loading: boolean,
     onLogin: () => void,
+    onPhoneLogin: () => void,
     onRegister: () => void,
+    loginMethod: LoginMethod,
+    setLoginMethod: (m: LoginMethod) => void,
+    loginPhone: string,
+    setLoginPhone: (v: string) => void,
     extraFields?: React.ReactNode
   ) => {
+    // Forgot password for phone users
+    if (mode === 'forgot-phone') {
+      return (
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => setMode('login')}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Назад
+          </button>
+          
+          <div className="bg-muted/50 border border-border rounded-lg p-4 text-center">
+            <Phone className="h-8 w-8 text-primary mx-auto mb-2" />
+            <p className="text-sm text-foreground font-medium mb-1">
+              Восстановление по телефону
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Для сброса пароля обратитесь к администратору магазина или напишите в поддержку
+            </p>
+          </div>
+          
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => setMode('login')}
+          >
+            Вернуться ко входу
+          </Button>
+        </div>
+      );
+    }
+
     if (mode === 'forgot') {
       return (
         <div className="space-y-4">
@@ -459,20 +632,49 @@ const Index = () => {
         {/* Extra fields for registration */}
         {!isLogin && extraFields}
 
-        {/* Email */}
-        <div className="space-y-1.5">
-          <Label className="text-sm">Email {!isLogin && '*'}</Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="email"
-              placeholder="email@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="pl-10"
-            />
+        {/* Login method toggle - only for login mode */}
+        {isLogin && renderLoginMethodToggle(loginMethod, setLoginMethod)}
+
+        {/* Email or Phone field based on login method */}
+        {isLogin ? (
+          loginMethod === 'email' ? (
+            <div className="space-y-1.5">
+              <Label className="text-sm">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="email"
+                  placeholder="email@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label className="text-sm">Номер телефона</Label>
+              <PhoneInput
+                value={loginPhone}
+                onChange={setLoginPhone}
+              />
+            </div>
+          )
+        ) : (
+          <div className="space-y-1.5">
+            <Label className="text-sm">Email *</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="email"
+                placeholder="email@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Password */}
         <div className="space-y-1.5">
@@ -493,7 +695,7 @@ const Index = () => {
         <Button
           className="w-full"
           disabled={loading}
-          onClick={isLogin ? onLogin : onRegister}
+          onClick={isLogin ? (loginMethod === 'email' ? onLogin : onPhoneLogin) : onRegister}
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
           {isLogin ? 'Войти' : 'Зарегистрироваться'}
@@ -503,7 +705,7 @@ const Index = () => {
         {isLogin && (
           <button
             type="button"
-            onClick={() => setMode('forgot')}
+            onClick={() => setMode(loginMethod === 'phone' ? 'forgot-phone' : 'forgot')}
             className="w-full text-sm text-muted-foreground hover:text-primary transition-colors"
           >
             Забыли пароль?
@@ -532,14 +734,16 @@ const Index = () => {
             <Card>
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl">
-                  {sellerMode === 'forgot' ? 'Восстановление пароля' : 'Кабинет продавца'}
+                  {sellerMode === 'forgot' || sellerMode === 'forgot-phone' ? 'Восстановление пароля' : 'Кабинет продавца'}
                 </CardTitle>
                 <CardDescription>
                   {sellerMode === 'forgot' 
                     ? 'Введите email для получения ссылки'
-                    : sellerMode === 'login' 
-                      ? 'Войдите для управления магазином' 
-                      : 'Создайте свой магазин бесплатно'}
+                    : sellerMode === 'forgot-phone'
+                      ? 'Свяжитесь с поддержкой'
+                      : sellerMode === 'login' 
+                        ? 'Войдите для управления магазином' 
+                        : 'Создайте свой магазин бесплатно'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -553,7 +757,12 @@ const Index = () => {
                   setSellerPassword,
                   sellerLoading,
                   handleSellerLogin,
+                  handleSellerPhoneLogin,
                   handleSellerRegister,
+                  sellerLoginMethod,
+                  setSellerLoginMethod,
+                  sellerLoginPhone,
+                  setSellerLoginPhone,
                   // Extra fields for registration
                   <>
                     <div className="space-y-1.5">
@@ -581,16 +790,18 @@ const Index = () => {
             <Card>
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl">
-                  {customerMode === 'forgot' ? 'Восстановление пароля' : 'Личный кабинет'}
+                  {customerMode === 'forgot' || customerMode === 'forgot-phone' ? 'Восстановление пароля' : 'Личный кабинет'}
                 </CardTitle>
                 <CardDescription>
                   {customerMode === 'forgot'
                     ? 'Введите email для получения ссылки'
-                    : catalogFromUrl 
-                      ? 'Войдите для просмотра каталога' 
-                      : customerMode === 'login'
-                        ? 'Войдите в личный кабинет'
-                        : 'Создайте аккаунт покупателя'}
+                    : customerMode === 'forgot-phone'
+                      ? 'Свяжитесь с поддержкой'
+                      : catalogFromUrl 
+                        ? 'Войдите для просмотра каталога' 
+                        : customerMode === 'login'
+                          ? 'Войдите в личный кабинет'
+                          : 'Создайте аккаунт покупателя'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -604,7 +815,12 @@ const Index = () => {
                   setCustomerPassword,
                   customerLoading,
                   handleCustomerLogin,
+                  handleCustomerPhoneLogin,
                   handleCustomerRegister,
+                  customerLoginMethod,
+                  setCustomerLoginMethod,
+                  customerLoginPhone,
+                  setCustomerLoginPhone,
                   // Extra fields for registration
                   <>
                     <div className="space-y-1.5">
