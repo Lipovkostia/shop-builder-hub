@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Store, LogIn, Shield, User } from "lucide-react";
+import { Store, LogIn, Shield, User, Mail } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
 
 const Index = () => {
@@ -25,31 +25,28 @@ const Index = () => {
 
   // Registration form state
   const [regStoreName, setRegStoreName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
   const [regPhone, setRegPhone] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regLoading, setRegLoading] = useState(false);
   
   // Login form state
-  const [loginPhone, setLoginPhone] = useState("");
+  const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
-  
-  // Super admin form state
-  const [adminLogin, setAdminLogin] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
-  const [adminLoading, setAdminLoading] = useState(false);
 
   // Customer form state
+  const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerPassword, setCustomerPassword] = useState("");
   const [customerFullName, setCustomerFullName] = useState("");
   const [customerLoading, setCustomerLoading] = useState(false);
-  const [isCustomerLogin, setIsCustomerLogin] = useState(tabFromUrl !== "customer"); // Start in register mode if coming from catalog link
+  const [isCustomerLogin, setIsCustomerLogin] = useState(tabFromUrl !== "customer");
 
   // Switch to registration mode when coming from catalog link
   useEffect(() => {
     if (tabFromUrl === "customer" && catalogFromUrl) {
-      setIsCustomerLogin(false); // Show registration form
+      setIsCustomerLogin(false);
     }
   }, [tabFromUrl, catalogFromUrl]);
 
@@ -132,12 +129,6 @@ const Index = () => {
     checkSession();
   }, [navigate]);
 
-  // Format phone to email for Supabase auth
-  const phoneToEmail = (phone: string) => {
-    const cleanPhone = phone.replace(/\D/g, "");
-    return `${cleanPhone}@store.local`;
-  };
-
   // Generate subdomain from store name
   const generateSubdomain = (name: string) => {
     return name
@@ -157,22 +148,37 @@ const Index = () => {
       .replace(/^-|-$/g, '');
   };
 
+  // Validate email format
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email.trim());
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!regStoreName.trim() || !regPhone.trim() || !regPassword.trim()) {
-      toast({ title: "Заполните все поля", variant: "destructive" });
+    if (!regStoreName.trim() || !regEmail.trim() || !regPassword.trim()) {
+      toast({ title: "Заполните все обязательные поля", variant: "destructive" });
+      return;
+    }
+
+    if (!isValidEmail(regEmail)) {
+      toast({ title: "Введите корректный email", variant: "destructive" });
+      return;
+    }
+
+    if (regPassword.length < 6) {
+      toast({ title: "Пароль должен быть минимум 6 символов", variant: "destructive" });
       return;
     }
 
     setRegLoading(true);
     try {
-      const email = phoneToEmail(regPhone);
       const subdomain = generateSubdomain(regStoreName);
 
-      // Register user
+      // Register user with real email
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
+        email: regEmail.trim().toLowerCase(),
         password: regPassword,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
@@ -198,11 +204,13 @@ const Index = () => {
 
       if (profileError) throw profileError;
 
-      // Update profile with phone
-      await supabase
-        .from('profiles')
-        .update({ phone: regPhone })
-        .eq('id', profile.id);
+      // Update profile with phone if provided
+      if (regPhone.trim()) {
+        await supabase
+          .from('profiles')
+          .update({ phone: regPhone })
+          .eq('id', profile.id);
+      }
 
       // Create store
       const { error: storeError } = await supabase
@@ -216,15 +224,19 @@ const Index = () => {
 
       if (storeError) throw storeError;
 
-       toast({ title: "Магазин создан!", description: "Переходим в витрину" });
-       localStorage.setItem('seller_onboarding_step1', 'true');
-       navigate(`/store/${subdomain}`);
+      toast({ title: "Магазин создан!", description: "Переходим в витрину" });
+      localStorage.setItem('seller_onboarding_step1', 'true');
+      navigate(`/store/${subdomain}`);
       
     } catch (error: any) {
       console.error('Registration error:', error);
+      let message = error.message;
+      if (error.message?.includes('already registered')) {
+        message = 'Этот email уже зарегистрирован. Попробуйте войти.';
+      }
       toast({ 
         title: "Ошибка регистрации", 
-        description: error.message,
+        description: message,
         variant: "destructive" 
       });
     } finally {
@@ -235,30 +247,51 @@ const Index = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!loginPhone.trim() || !loginPassword.trim()) {
+    if (!loginEmail.trim() || !loginPassword.trim()) {
       toast({ title: "Заполните все поля", variant: "destructive" });
+      return;
+    }
+
+    if (!isValidEmail(loginEmail)) {
+      toast({ title: "Введите корректный email", variant: "destructive" });
       return;
     }
 
     setLoginLoading(true);
     try {
-      const email = phoneToEmail(loginPhone);
-
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
+        email: loginEmail.trim().toLowerCase(),
         password: loginPassword
       });
 
       if (authError) throw authError;
 
+      // Check for super admin first
+      const { data: platformRole } = await supabase
+        .from('platform_roles')
+        .select('role')
+        .eq('user_id', authData.user.id)
+        .eq('role', 'super_admin')
+        .maybeSingle();
+
+      if (platformRole) {
+        navigate('/super-admin');
+        return;
+      }
+
       // Get user's profile
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, phone')
+        .select('id, full_name, phone, role')
         .eq('user_id', authData.user.id)
         .single();
 
       if (profile) {
+        if (profile.role === 'customer') {
+          navigate('/customer-dashboard');
+          return;
+        }
+
         const { data: store } = await supabase
           .from('stores')
           .select('subdomain')
@@ -271,8 +304,8 @@ const Index = () => {
           return;
         }
 
-        // No store found - auto-create one
-        const storeName = profile.full_name || loginPhone.replace(/\D/g, '') || 'Мой магазин';
+        // No store found - auto-create one for sellers
+        const storeName = profile.full_name || 'Мой магазин';
         const baseSubdomain = generateSubdomain(storeName);
         const subdomain = baseSubdomain + '-' + Date.now().toString(36).slice(-4);
 
@@ -299,7 +332,7 @@ const Index = () => {
       console.error('Login error:', error);
       toast({ 
         title: "Ошибка входа", 
-        description: "Неверный телефон или пароль",
+        description: "Неверный email или пароль",
         variant: "destructive" 
       });
     } finally {
@@ -307,31 +340,16 @@ const Index = () => {
     }
   };
 
-  const handleSuperAdminLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Temporary super admin credentials
-    if (adminLogin === "1" && adminPassword === "1") {
-      setAdminLoading(true);
-      // Store super admin session in localStorage temporarily
-      localStorage.setItem('temp_super_admin', 'true');
-      toast({ title: "Вход выполнен" });
-      navigate('/super-admin');
-      setAdminLoading(false);
-    } else {
-      toast({ 
-        title: "Неверные данные", 
-        description: "Проверьте логин и пароль",
-        variant: "destructive" 
-      });
-    }
-  };
-
   const handleCustomerAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!customerPhone.trim() || !customerPassword.trim()) {
-      toast({ title: "Заполните все поля", variant: "destructive" });
+    if (!customerEmail.trim() || !customerPassword.trim()) {
+      toast({ title: "Заполните email и пароль", variant: "destructive" });
+      return;
+    }
+
+    if (!isValidEmail(customerEmail)) {
+      toast({ title: "Введите корректный email", variant: "destructive" });
       return;
     }
 
@@ -340,7 +358,12 @@ const Index = () => {
       return;
     }
 
-    const email = phoneToEmail(customerPhone);
+    if (!isCustomerLogin && customerPassword.length < 6) {
+      toast({ title: "Пароль должен быть минимум 6 символов", variant: "destructive" });
+      return;
+    }
+
+    const email = customerEmail.trim().toLowerCase();
 
     setCustomerLoading(true);
     try {
@@ -362,19 +385,17 @@ const Index = () => {
             .maybeSingle();
 
           if (!existingProfile) {
-            // Создаём профиль для покупателя
             await supabase.from('profiles').insert({
               user_id: authData.user.id,
               email: email,
               full_name: customerFullName || '',
-              phone: customerPhone,
+              phone: customerPhone || null,
               role: 'customer'
             });
           }
         }
 
         toast({ title: "Вход выполнен" });
-        // If coming from catalog link, redirect to catalog access page
         if (catalogFromUrl) {
           navigate(`/catalog/${catalogFromUrl}`);
         } else {
@@ -397,7 +418,6 @@ const Index = () => {
         // Handle "user already exists" - try to login instead
         if (authError) {
           if (authError.message.includes('already registered') || authError.code === 'user_already_exists') {
-            // User exists, try to login
             const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
               email,
               password: customerPassword
@@ -409,12 +429,11 @@ const Index = () => {
                 description: "Неверный пароль. Попробуйте войти с правильным паролем.",
                 variant: "destructive" 
               });
-              setIsCustomerLogin(true); // Switch to login mode
+              setIsCustomerLogin(true);
               setCustomerLoading(false);
               return;
             }
 
-            // Проверяем/создаём профиль после логина существующего пользователя
             if (loginData.user) {
               const { data: existingProfile } = await supabase
                 .from('profiles')
@@ -427,14 +446,13 @@ const Index = () => {
                   user_id: loginData.user.id,
                   email: email,
                   full_name: customerFullName || '',
-                  phone: customerPhone,
+                  phone: customerPhone || null,
                   role: 'customer'
                 });
               }
             }
             
             toast({ title: "Вход выполнен", description: "Вы уже были зарегистрированы" });
-            // If coming from catalog link, redirect to catalog access page
             if (catalogFromUrl) {
               navigate(`/catalog/${catalogFromUrl}`);
             } else {
@@ -448,7 +466,7 @@ const Index = () => {
         
         if (!authData.user) throw new Error("Ошибка регистрации");
 
-        // Update profile with phone
+        // Update profile with phone if provided
         await new Promise(resolve => setTimeout(resolve, 500));
         const { data: profile } = await supabase
           .from('profiles')
@@ -456,7 +474,7 @@ const Index = () => {
           .eq('user_id', authData.user.id)
           .single();
 
-        if (profile) {
+        if (profile && customerPhone.trim()) {
           await supabase
             .from('profiles')
             .update({ phone: customerPhone })
@@ -467,7 +485,6 @@ const Index = () => {
           title: "Регистрация успешна!", 
           description: "Теперь вы можете войти в личный кабинет" 
         });
-        // If coming from catalog link, redirect to catalog access page to grant access
         if (catalogFromUrl) {
           navigate(`/catalog/${catalogFromUrl}`);
         } else {
@@ -486,11 +503,43 @@ const Index = () => {
     }
   };
 
+  const handleForgotPassword = async (email: string, role: 'seller' | 'customer') => {
+    if (!email.trim()) {
+      toast({ title: "Введите email для восстановления", variant: "destructive" });
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      toast({ title: "Введите корректный email", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}/`,
+      });
+
+      if (error) throw error;
+
+      toast({ 
+        title: "Письмо отправлено", 
+        description: "Проверьте вашу почту для восстановления пароля" 
+      });
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      toast({ 
+        title: "Ошибка", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex items-start md:items-center justify-center p-4 pt-8 md:pt-4">
       <div className="w-full max-w-md">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="register" className="text-xs sm:text-sm">
               <Store className="h-4 w-4 mr-1 hidden sm:inline" />
               Продавец
@@ -503,10 +552,6 @@ const Index = () => {
               <User className="h-4 w-4 mr-1 hidden sm:inline" />
               Покупатель
             </TabsTrigger>
-            <TabsTrigger value="admin" className="text-xs sm:text-sm">
-              <Shield className="h-4 w-4 mr-1 hidden sm:inline" />
-              Админ
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="register">
@@ -518,13 +563,28 @@ const Index = () => {
               <CardContent>
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="storeName">Название магазина</Label>
+                    <Label htmlFor="storeName">Название магазина *</Label>
                     <Input
                       id="storeName"
                       placeholder="Мой магазин"
                       value={regStoreName}
                       onChange={(e) => setRegStoreName(e.target.value)}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="regEmail">Email *</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="regEmail"
+                        type="email"
+                        placeholder="email@example.com"
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Для восстановления пароля</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="regPhone">Номер телефона</Label>
@@ -535,7 +595,7 @@ const Index = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="regPassword">Пароль</Label>
+                    <Label htmlFor="regPassword">Пароль *</Label>
                     <Input
                       id="regPassword"
                       type="password"
@@ -555,18 +615,24 @@ const Index = () => {
           <TabsContent value="login">
             <Card>
               <CardHeader>
-                <CardTitle>Вход в магазин</CardTitle>
-                <CardDescription>Войдите в свою админ-панель</CardDescription>
+                <CardTitle>Вход</CardTitle>
+                <CardDescription>Войдите в свой аккаунт</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="loginPhone">Номер телефона</Label>
-                    <PhoneInput
-                      id="loginPhone"
-                      value={loginPhone}
-                      onChange={setLoginPhone}
-                    />
+                    <Label htmlFor="loginEmail">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="loginEmail"
+                        type="email"
+                        placeholder="email@example.com"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="loginPassword">Пароль</Label>
@@ -579,6 +645,14 @@ const Index = () => {
                   </div>
                   <Button type="submit" className="w-full" disabled={loginLoading}>
                     {loginLoading ? "Вход..." : "Войти"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="w-full text-sm"
+                    onClick={() => handleForgotPassword(loginEmail, 'seller')}
+                  >
+                    Забыли пароль?
                   </Button>
                 </form>
               </CardContent>
@@ -599,7 +673,7 @@ const Index = () => {
                 <form onSubmit={handleCustomerAuth} className="space-y-4">
                   {!isCustomerLogin && (
                     <div className="space-y-2">
-                      <Label htmlFor="customerFullName">Ваше имя</Label>
+                      <Label htmlFor="customerFullName">Ваше имя *</Label>
                       <Input
                         id="customerFullName"
                         placeholder="Иван Иванов"
@@ -609,15 +683,34 @@ const Index = () => {
                     </div>
                   )}
                   <div className="space-y-2">
-                    <Label htmlFor="customerPhone">Номер телефона</Label>
-                    <PhoneInput
-                      id="customerPhone"
-                      value={customerPhone}
-                      onChange={setCustomerPhone}
-                    />
+                    <Label htmlFor="customerEmail">Email *</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="customerEmail"
+                        type="email"
+                        placeholder="email@example.com"
+                        value={customerEmail}
+                        onChange={(e) => setCustomerEmail(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    {!isCustomerLogin && (
+                      <p className="text-xs text-muted-foreground">Для восстановления пароля</p>
+                    )}
                   </div>
+                  {!isCustomerLogin && (
+                    <div className="space-y-2">
+                      <Label htmlFor="customerPhone">Номер телефона</Label>
+                      <PhoneInput
+                        id="customerPhone"
+                        value={customerPhone}
+                        onChange={setCustomerPhone}
+                      />
+                    </div>
+                  )}
                   <div className="space-y-2">
-                    <Label htmlFor="customerPassword">Пароль</Label>
+                    <Label htmlFor="customerPassword">Пароль {!isCustomerLogin && '*'}</Label>
                     <Input
                       id="customerPassword"
                       type="password"
@@ -631,6 +724,16 @@ const Index = () => {
                       ? (isCustomerLogin ? "Вход..." : "Регистрация...") 
                       : (isCustomerLogin ? "Войти" : "Зарегистрироваться")}
                   </Button>
+                  {isCustomerLogin && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="w-full text-sm"
+                      onClick={() => handleForgotPassword(customerEmail, 'customer')}
+                    >
+                      Забыли пароль?
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
@@ -638,39 +741,6 @@ const Index = () => {
                     onClick={() => setIsCustomerLogin(!isCustomerLogin)}
                   >
                     {isCustomerLogin ? "Нет аккаунта? Зарегистрироваться" : "Уже есть аккаунт? Войти"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="admin">
-            <Card>
-              <CardHeader>
-                <CardTitle>Супер-админ</CardTitle>
-                <CardDescription>Вход в панель управления</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSuperAdminLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="adminLogin">Логин</Label>
-                    <Input
-                      id="adminLogin"
-                      value={adminLogin}
-                      onChange={(e) => setAdminLogin(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="adminPassword">Пароль</Label>
-                    <Input
-                      id="adminPassword"
-                      type="password"
-                      value={adminPassword}
-                      onChange={(e) => setAdminPassword(e.target.value)}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={adminLoading}>
-                    {adminLoading ? "Вход..." : "Войти как супер-админ"}
                   </Button>
                 </form>
               </CardContent>
