@@ -23,6 +23,7 @@ export interface WholesaleStore {
   wholesale_logo_url: string | null;
   wholesale_seo_title: string | null;
   wholesale_seo_description: string | null;
+  wholesale_custom_domain: string | null;
   seo_title: string | null;
   seo_description: string | null;
   favicon_url: string | null;

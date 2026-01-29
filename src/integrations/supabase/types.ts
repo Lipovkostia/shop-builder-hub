@@ -1146,6 +1146,7 @@ export type Database = {
           updated_at: string
           whatsapp_phone: string | null
           wholesale_catalog_id: string | null
+          wholesale_custom_domain: string | null
           wholesale_enabled: boolean | null
           wholesale_logo_url: string | null
           wholesale_min_order_amount: number | null
@@ -1185,6 +1186,7 @@ export type Database = {
           updated_at?: string
           whatsapp_phone?: string | null
           wholesale_catalog_id?: string | null
+          wholesale_custom_domain?: string | null
           wholesale_enabled?: boolean | null
           wholesale_logo_url?: string | null
           wholesale_min_order_amount?: number | null
@@ -1224,6 +1226,7 @@ export type Database = {
           updated_at?: string
           whatsapp_phone?: string | null
           wholesale_catalog_id?: string | null
+          wholesale_custom_domain?: string | null
           wholesale_enabled?: boolean | null
           wholesale_logo_url?: string | null
           wholesale_min_order_amount?: number | null

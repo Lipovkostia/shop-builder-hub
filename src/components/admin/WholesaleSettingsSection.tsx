@@ -46,6 +46,7 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
     wholesale_logo_url: string | null;
     wholesale_seo_title: string | null;
     wholesale_seo_description: string | null;
+    wholesale_custom_domain: string | null;
     subdomain: string;
   } | null>(null);
 
@@ -60,6 +61,8 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
   const [minOrderAmount, setMinOrderAmount] = useState("");
   const [seoTitle, setSeoTitle] = useState("");
   const [seoDescription, setSeoDescription] = useState("");
+  const [customDomain, setCustomDomain] = useState("");
+  const [savingDomain, setSavingDomain] = useState(false);
   
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -72,7 +75,7 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
       try {
         const { data, error } = await supabase
           .from("stores")
-          .select("wholesale_enabled, wholesale_name, wholesale_catalog_id, wholesale_min_order_amount, wholesale_logo_url, wholesale_seo_title, wholesale_seo_description, subdomain")
+          .select("wholesale_enabled, wholesale_name, wholesale_catalog_id, wholesale_min_order_amount, wholesale_logo_url, wholesale_seo_title, wholesale_seo_description, wholesale_custom_domain, subdomain")
           .eq("id", storeId)
           .single();
 
@@ -83,6 +86,7 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
         setWholesaleName(data?.wholesale_name || "");
         setMinOrderAmount(data?.wholesale_min_order_amount?.toString() || "");
         setSeoTitle(data?.wholesale_seo_title || "");
+        setCustomDomain(data?.wholesale_custom_domain || "");
         setSeoDescription(data?.wholesale_seo_description || "");
       } catch (err) {
         console.error("Error fetching wholesale settings:", err);
@@ -506,11 +510,134 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
         {/* Domain Tab */}
         <TabsContent value="domain" className="space-y-6">
           <div className="bg-card border border-border rounded-lg p-6">
-            <h3 className="font-semibold text-foreground mb-4">Свой домен</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Функция привязки собственного домена находится в разработке. 
-              Пока что используйте ссылку: <code className="bg-muted px-1 rounded">{fullUrl}</code>
+            <div className="flex items-start gap-3 mb-4">
+              <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground">Свой домен</h3>
+                <p className="text-sm text-muted-foreground">
+                  Подключите собственный домен для оптового магазина
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">
+                  Ваш домен
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={customDomain}
+                    onChange={(e) => setCustomDomain(e.target.value.toLowerCase().trim())}
+                    placeholder="b2b.example.com"
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={async () => {
+                      if (!storeId) return;
+                      setSavingDomain(true);
+                      try {
+                        const normalizedDomain = customDomain
+                          .toLowerCase()
+                          .trim()
+                          .replace(/^https?:\/\//, "")
+                          .replace(/\/+$/, "");
+                        
+                        const { error } = await supabase
+                          .from("stores")
+                          .update({ wholesale_custom_domain: normalizedDomain || null })
+                          .eq("id", storeId);
+                        
+                        if (error) throw error;
+                        
+                        setSettings(prev => prev ? { ...prev, wholesale_custom_domain: normalizedDomain || null } : null);
+                        setCustomDomain(normalizedDomain);
+                        toast.success("Домен сохранён");
+                      } catch (err) {
+                        console.error("Error saving domain:", err);
+                        toast.error("Ошибка сохранения домена");
+                      } finally {
+                        setSavingDomain(false);
+                      }
+                    }}
+                    disabled={savingDomain}
+                    size="sm"
+                  >
+                    {savingDomain ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Сохранить"
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {settings.wholesale_custom_domain && (
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    Домен настроен: {settings.wholesale_custom_domain}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* DNS Instructions */}
+          <div className="bg-muted/50 border border-border rounded-lg p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <Info className="h-5 w-5 text-primary mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground">Настройка DNS</h3>
+                <p className="text-sm text-muted-foreground">
+                  Добавьте следующие записи в настройках DNS вашего домена
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-card border border-border rounded-lg p-4 font-mono text-sm space-y-2">
+              <div className="flex items-center gap-4">
+                <span className="text-muted-foreground w-16">Тип:</span>
+                <span className="font-semibold">A</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-muted-foreground w-16">Имя:</span>
+                <span className="font-semibold">@ или {customDomain || "b2b.example.com"}</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-muted-foreground w-16">Значение:</span>
+                <span className="font-semibold text-primary">185.158.133.1</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground mt-4">
+              Изменения DNS могут занять до 48 часов для применения. После настройки DNS ваш оптовый магазин станет доступен по указанному домену.
             </p>
+          </div>
+
+          {/* Current subdomain link */}
+          <div className="bg-card border border-border rounded-lg p-6">
+            <h4 className="font-medium text-foreground mb-2">Текущая ссылка</h4>
+            <p className="text-sm text-muted-foreground mb-3">
+              Пока домен не настроен, используйте стандартную ссылку:
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 bg-muted px-3 py-2 rounded text-sm font-mono">
+                {fullUrl}
+              </code>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleCopyLink}
+                title="Скопировать"
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
           </div>
         </TabsContent>
       </Tabs>
