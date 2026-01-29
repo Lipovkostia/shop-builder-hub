@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { X, ChevronDown, Plus } from "lucide-react";
+import { X, ChevronDown, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,6 +11,7 @@ import type { StoreProduct } from "@/hooks/useStoreProducts";
 import { useStoreCategories, StoreCategory } from "@/hooks/useStoreCategories";
 import { useOnboardingSafe } from "@/contexts/OnboardingContext";
 import { OnboardingProductChecklist } from "@/components/onboarding/OnboardingProductChecklist";
+import { ProductSeoPanel } from "./ProductSeoPanel";
 
 interface Catalog {
   id: string;
@@ -105,6 +106,7 @@ export function ProductEditPanel({
   const [customPackaging, setCustomPackaging] = useState<{ value: string; label: string }[]>([]);
   const [selectedCatalogs, setSelectedCatalogs] = useState<string[]>(productCatalogIds);
   const [saving, setSaving] = useState(false);
+  const [showSeoPanel, setShowSeoPanel] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialMount = useRef(true);
   const catalogSettingsInitialized = useRef(false);
@@ -603,7 +605,43 @@ export function ProductEditPanel({
             }}
           />
         </div>
+
+        {/* SEO Settings Button */}
+        <div className="col-span-2 sm:col-span-3 pt-1 border-t border-border/50">
+          <Button
+            type="button"
+            variant={showSeoPanel ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setShowSeoPanel(!showSeoPanel)}
+            className="w-full h-8 text-xs gap-2"
+          >
+            <Search className="h-3.5 w-3.5" />
+            {showSeoPanel ? "Скрыть SEO-настройки" : "SEO-настройки для оптового магазина"}
+          </Button>
+        </div>
       </div>
+
+      {/* SEO Panel (collapsible) */}
+      {showSeoPanel && (
+        <div className="border-t border-border/50">
+          <ProductSeoPanel
+            product={{
+              ...product,
+              seo_title: (product as any).seo_title || null,
+              seo_description: (product as any).seo_description || null,
+              seo_keywords: (product as any).seo_keywords || null,
+              seo_schema: (product as any).seo_schema || null,
+              seo_noindex: (product as any).seo_noindex || false,
+              seo_generated_at: (product as any).seo_generated_at || null,
+            }}
+            storeId={storeId || product.store_id}
+            storeName={undefined}
+            onUpdate={() => {
+              // Trigger parent refresh if needed
+            }}
+          />
+        </div>
+      )}
 
       {/* Кнопка закрыть */}
       <div className="px-2 py-1.5 border-t border-border/50 flex gap-1.5 justify-between items-center bg-background/30">

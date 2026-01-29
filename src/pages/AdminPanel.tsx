@@ -113,6 +113,7 @@ import { AIAssistantPanel } from "@/components/admin/AIAssistantPanel";
 import { ActivityHistorySection } from "@/components/admin/ActivityHistorySection";
 import { TrashSection } from "@/components/admin/TrashSection";
 import { RetailSettingsSection } from "@/components/admin/RetailSettingsSection";
+import { WholesaleSettingsSection } from "@/components/admin/WholesaleSettingsSection";
 import { FormingOrdersSection } from "@/components/admin/FormingOrdersSection";
 
 // Removed localStorage keys - now using Supabase
@@ -297,7 +298,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail";
+type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "wholesale";
 type ImportView = "accounts" | "catalog";
 type ImportSource = "select" | "moysklad" | "excel" | "google-sheets";
 type CatalogView = "list" | "detail";
@@ -6647,6 +6648,10 @@ export default function AdminPanel({
 
           {activeSection === "retail" && effectiveStoreId && (
             <RetailSettingsSection storeId={effectiveStoreId} />
+          )}
+
+          {activeSection === "wholesale" && effectiveStoreId && (
+            <WholesaleSettingsSection storeId={effectiveStoreId} />
           )}
 
           {activeSection === "trash" && (
