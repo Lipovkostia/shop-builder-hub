@@ -730,6 +730,14 @@ export type Database = {
           price_portion: number | null
           price_quarter: number | null
           quantity: number
+          seo_canonical_url: string | null
+          seo_description: string | null
+          seo_generated_at: string | null
+          seo_keywords: string[] | null
+          seo_noindex: boolean | null
+          seo_og_image: string | null
+          seo_schema: Json | null
+          seo_title: string | null
           sku: string | null
           slug: string
           source: string | null
@@ -763,6 +771,14 @@ export type Database = {
           price_portion?: number | null
           price_quarter?: number | null
           quantity?: number
+          seo_canonical_url?: string | null
+          seo_description?: string | null
+          seo_generated_at?: string | null
+          seo_keywords?: string[] | null
+          seo_noindex?: boolean | null
+          seo_og_image?: string | null
+          seo_schema?: Json | null
+          seo_title?: string | null
           sku?: string | null
           slug: string
           source?: string | null
@@ -796,6 +812,14 @@ export type Database = {
           price_portion?: number | null
           price_quarter?: number | null
           quantity?: number
+          seo_canonical_url?: string | null
+          seo_description?: string | null
+          seo_generated_at?: string | null
+          seo_keywords?: string[] | null
+          seo_noindex?: boolean | null
+          seo_og_image?: string | null
+          seo_schema?: Json | null
+          seo_title?: string | null
           sku?: string | null
           slug?: string
           source?: string | null
@@ -1121,6 +1145,14 @@ export type Database = {
           telegram_username: string | null
           updated_at: string
           whatsapp_phone: string | null
+          wholesale_catalog_id: string | null
+          wholesale_enabled: boolean | null
+          wholesale_logo_url: string | null
+          wholesale_min_order_amount: number | null
+          wholesale_name: string | null
+          wholesale_seo_description: string | null
+          wholesale_seo_title: string | null
+          wholesale_theme: Json | null
         }
         Insert: {
           address?: string | null
@@ -1152,6 +1184,14 @@ export type Database = {
           telegram_username?: string | null
           updated_at?: string
           whatsapp_phone?: string | null
+          wholesale_catalog_id?: string | null
+          wholesale_enabled?: boolean | null
+          wholesale_logo_url?: string | null
+          wholesale_min_order_amount?: number | null
+          wholesale_name?: string | null
+          wholesale_seo_description?: string | null
+          wholesale_seo_title?: string | null
+          wholesale_theme?: Json | null
         }
         Update: {
           address?: string | null
@@ -1183,6 +1223,14 @@ export type Database = {
           telegram_username?: string | null
           updated_at?: string
           whatsapp_phone?: string | null
+          wholesale_catalog_id?: string | null
+          wholesale_enabled?: boolean | null
+          wholesale_logo_url?: string | null
+          wholesale_min_order_amount?: number | null
+          wholesale_name?: string | null
+          wholesale_seo_description?: string | null
+          wholesale_seo_title?: string | null
+          wholesale_theme?: Json | null
         }
         Relationships: [
           {
@@ -1195,6 +1243,13 @@ export type Database = {
           {
             foreignKeyName: "stores_retail_catalog_id_fkey"
             columns: ["retail_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stores_wholesale_catalog_id_fkey"
+            columns: ["wholesale_catalog_id"]
             isOneToOne: false
             referencedRelation: "catalogs"
             referencedColumns: ["id"]
@@ -1270,6 +1325,31 @@ export type Database = {
           packaging_type: string
           price: number
           quantity: number
+          sku: string
+          slug: string
+          unit: string
+        }[]
+      }
+      get_wholesale_products_public: {
+        Args: { _subdomain: string }
+        Returns: {
+          buy_price: number
+          catalog_status: string
+          category_id: string
+          category_ids: string[]
+          category_name: string
+          compare_price: number
+          description: string
+          id: string
+          images: string[]
+          name: string
+          packaging_type: string
+          price: number
+          quantity: number
+          seo_description: string
+          seo_keywords: string[]
+          seo_schema: Json
+          seo_title: string
           sku: string
           slug: string
           unit: string
