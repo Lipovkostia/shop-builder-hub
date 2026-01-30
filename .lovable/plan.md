@@ -1,192 +1,277 @@
 
-# План: Видеотрансляция и чат для оптового магазина
+# План: Полноценная поддержка кастомных доменов для Retail и Wholesale магазинов
 
-## Обновлённый layout
+## Текущая проблема
+
+Когда пользователь заходит на `9999999999.ru`:
+1. DNS направляет трафик на сервер Lovable (185.158.133.1)
+2. Приложение загружается, но `App.tsx` видит только путь `/`
+3. React Router показывает главную страницу `Index` вместо магазина
+4. Домен `9999999999.ru` привязан к магазину `79999993222-d778` как `wholesale_custom_domain`, но это нигде не проверяется
+
+## Решение: Перехват кастомных доменов в App.tsx
 
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                          ШАПКА МАГАЗИНА                              │
-│   [Лого] [Поиск...                           ] [Корзина]            │
-├─────────────────────────────────────────────────────────────────────┤
-│                              │                                       │
-│   ЛЕВАЯ КОЛОНКА (w-80)       │        ТОВАРЫ (flex-1)               │
-│   ──────────────────────     │        ─────────────────────         │
-│   ┌───────────────────────┐  │        ┌─────────────────────────┐   │
-│   │                       │  │        │ Товар | Цена | Ед | [+] │   │
-│   │   🎥 ВИДЕО-ПЛЕЕР      │  │        ├─────────────────────────┤   │
-│   │      (16:9 HLS)       │  │        │ Хамон Иберико           │   │
-│   │                       │  │        │ 12 500 ₽/кг      [+]    │   │
-│   └───────────────────────┘  │        ├─────────────────────────┤   │
-│   📌 Заголовок эфира         │        │ Сыр Манчего             │   │
-│                              │        │ 8 200 ₽/кг       [+]    │   │
-│   ┌───────────────────────┐  │        ├─────────────────────────┤   │
-│   │ 💬 Чат    ● 5 зрителей│  │        │ Оливки Каламата         │   │
-│   ├───────────────────────┤  │        │ 1 450 ₽/кг       [+]    │   │
-│   │ Гость: Какой срок?    │  │        └─────────────────────────┘   │
-│   │ 🛒 Продавец: 12 мес   │  │                                       │
-│   │ Гость: Отлично!       │  │                                       │
-│   ├───────────────────────┤  │                                       │
-│   │ [Сообщение...   ] [▶] │  │                                       │
-│   └───────────────────────┘  │                                       │
-│                              │                                       │
-│   КАТЕГОРИИ                  │                                       │
-│   ──────────────────────     │                                       │
-│   ● Все товары          125  │                                       │
-│     Хамон                45  │                                       │
-│     Сыры                 38  │                                       │
-│     Оливки               22  │                                       │
-│                              │                                       │
-│   КОНТАКТЫ                   │                                       │
-│   📞 +7 900 123-45-67        │                                       │
-│   ✉️ info@example.com        │                                       │
-│                              │                                       │
-└──────────────────────────────┴───────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    ЗАГРУЗКА ПРИЛОЖЕНИЯ                          │
+│                  (window.location.hostname)                     │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  ОПРЕДЕЛЕНИЕ ТИПА ДОМЕНА                                        │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│  Платформенный домен?                                           │
+│  • *.lovable.app                                                │
+│  • *.lovable.dev                                                │
+│  • localhost                                                    │
+│  • 127.0.0.1                                                    │
+│       │                               │                         │
+│      ДА                              НЕТ                        │
+│       │                               │                         │
+│       ▼                               ▼                         │
+│  Стандартный                    КАСТОМНЫЙ ДОМЕН                 │
+│  React Router                   (например 9999999999.ru)        │
+│       │                               │                         │
+│       │                               ▼                         │
+│  /retail/:subdomain            Поиск в БД:                      │
+│  /wholesale/:subdomain         ├─ custom_domain = hostname?     │
+│  /admin                        └─ wholesale_custom_domain =     │
+│  и т.д.                            hostname?                    │
+│                                       │                         │
+│                          ┌────────────┼────────────┐            │
+│                          │            │            │            │
+│                      Найден       Найден        Не найден       │
+│                     в Retail     в Wholesale        │           │
+│                          │            │            ▼           │
+│                          ▼            ▼        Страница         │
+│                     RetailStore  WholesaleStore  "Магазин       │
+│                     (рендер      (рендер       не найден"       │
+│                      напрямую)    напрямую)                     │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Часть 1: База данных
+## Часть 1: Новый хук useCustomDomainStore
 
-### Новые поля в таблице `stores`
+Создать `src/hooks/useCustomDomainStore.ts`:
 
-| Поле | Тип | Описание |
-|------|-----|----------|
-| `wholesale_livestream_enabled` | BOOLEAN | Включение блока трансляции |
-| `wholesale_livestream_url` | TEXT | URL HLS-потока (.m3u8) |
-| `wholesale_livestream_title` | TEXT | Заголовок текущего эфира |
+Универсальный хук для поиска магазина по любому кастомному домену:
 
-### Новая таблица `livestream_chat_messages`
+| Функция | Описание |
+|---------|----------|
+| `useCustomDomainStore(hostname)` | Ищет магазин в БД по `custom_domain` ИЛИ `wholesale_custom_domain` |
 
-| Поле | Тип | Описание |
-|------|-----|----------|
-| `id` | UUID | Первичный ключ |
-| `store_id` | UUID | Ссылка на магазин |
-| `sender_name` | TEXT | Имя отправителя |
-| `message` | TEXT | Текст сообщения |
-| `is_seller` | BOOLEAN | Флаг сообщения от продавца |
-| `created_at` | TIMESTAMPTZ | Время отправки |
+Возвращает:
+- `store` — данные магазина
+- `storeType` — `"retail"` или `"wholesale"` или `null`
+- `loading` — статус загрузки
+- `error` — сообщение об ошибке
 
-Включение Realtime и публичные RLS-политики для чтения/записи.
+Логика поиска:
+1. Проверить `stores.custom_domain = hostname` → Retail магазин
+2. Проверить `stores.wholesale_custom_domain = hostname` → Wholesale магазин
+3. Если ничего не найдено → `storeType = null`
 
 ---
 
-## Часть 2: Новые компоненты
+## Часть 2: Новый компонент CustomDomainHandler
 
-### 1. `WholesaleLivestreamPlayer.tsx`
+Создать `src/components/CustomDomainHandler.tsx`:
 
-HLS видеоплеер с использованием `hls.js`:
-- Соотношение сторон 16:9
-- Индикатор "LIVE" при активном эфире
-- Fallback-заглушка когда поток недоступен
-- Автоплей без звука (muted)
+| Состояние | Отображение |
+|-----------|-------------|
+| Загрузка | Спиннер загрузки |
+| storeType = "retail" | `<RetailStore subdomain={store.subdomain} />` |
+| storeType = "wholesale" | `<WholesaleStore subdomain={store.subdomain} />` |
+| Не найден | Страница ошибки "Магазин не найден" |
 
-### 2. `WholesaleLivestreamChat.tsx`
-
-Компактный чат для посетителей:
-- Высота ограничена (max-h-64) с прокруткой
-- Автопрокрутка к новым сообщениям
-- Поле ввода имени гостя (сохраняется в localStorage)
-- Realtime-подписка на новые сообщения
-- Счётчик онлайн-зрителей через Supabase Presence
-- Сообщения продавца выделены визуально
-
-### 3. `WholesaleLivestreamBlock.tsx`
-
-Обёртка для размещения в сайдбаре:
-- Видео сверху
-- Заголовок эфира под видео
-- Чат под заголовком
-- Компактные отступы для сайдбара
+Также должен обрабатывать подпути на кастомных доменах:
+- `/` → Главная магазина
+- `/product/:slug` → Страница товара
+- `/checkout` → Оформление заказа (для Retail)
 
 ---
 
-## Часть 3: Изменения в WholesaleStore.tsx
+## Часть 3: Изменения в App.tsx
 
-### Новый layout сайдбара
+Добавить проверку кастомного домена ДО стандартного роутинга:
 
 ```text
-<aside className="hidden lg:block w-80 shrink-0">
-  <div className="sticky top-24 space-y-4">
-    
-    {/* 1. Блок трансляции (если включён) */}
-    {store.wholesale_livestream_enabled && (
-      <WholesaleLivestreamBlock
-        storeId={store.id}
-        streamUrl={store.wholesale_livestream_url}
-        streamTitle={store.wholesale_livestream_title}
-      />
+const App = () => {
+  const hostname = window.location.hostname;
+  
+  // Список платформенных доменов
+  const isPlatformDomain = 
+    hostname.endsWith('.lovable.app') ||
+    hostname.endsWith('.lovable.dev') ||
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname.startsWith('192.168.') ||
+    hostname.includes('preview--');
+  
+  if (!isPlatformDomain) {
+    // Это кастомный домен — используем специальный обработчик
+    return (
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <CustomDomainHandler hostname={hostname} />
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    );
+  }
+  
+  // Стандартный роутинг для платформенных доменов
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* существующие маршруты */}
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
+```
+
+---
+
+## Часть 4: Обновление WholesaleStore и RetailStore
+
+Добавить поддержку проп `subdomain` для прямого рендеринга:
+
+```text
+// Текущий код:
+export default function WholesaleStore() {
+  const { subdomain } = useParams(); // Только из URL
+  ...
+}
+
+// Новый код:
+interface Props {
+  subdomain?: string; // Для прямого вызова с CustomDomainHandler
+}
+
+export default function WholesaleStore({ subdomain: directSubdomain }: Props = {}) {
+  const params = useParams();
+  const subdomain = directSubdomain || params.subdomain;
+  ...
+}
+```
+
+---
+
+## Часть 5: Роутинг внутри CustomDomainHandler
+
+Для кастомных доменов нужно поддержать внутренние страницы:
+
+| Путь на кастомном домене | Компонент |
+|--------------------------|-----------|
+| `/` | RetailStore / WholesaleStore |
+| `/product/:slug` | WholesaleProduct (для Wholesale) |
+| `/product/:productId` | RetailStore с productId (для Retail) |
+| `/checkout` | RetailCheckout (только для Retail) |
+
+CustomDomainHandler будет использовать внутренний BrowserRouter:
+
+```text
+<BrowserRouter>
+  <Routes>
+    {storeType === "wholesale" && (
+      <>
+        <Route path="/" element={<WholesaleStore subdomain={store.subdomain} />} />
+        <Route path="/product/:slug" element={<WholesaleProduct subdomain={store.subdomain} />} />
+      </>
     )}
-    
-    {/* 2. Категории */}
-    <div>
-      <h2>Категории</h2>
-      <nav>...</nav>
-    </div>
-    
-    {/* 3. Контакты */}
-    <div>...</div>
-    
-  </div>
-</aside>
-```
-
-Ширина сайдбара увеличена с `w-64` до `w-80` для размещения видео.
-
----
-
-## Часть 4: Настройки в админке
-
-### Новая секция в `WholesaleSettingsSection.tsx`
-
-Добавить карточку "Прямые трансляции":
-
-- Переключатель включения блока
-- Поле для URL HLS-потока
-- Поле для заголовка эфира
-- Инструкция по настройке OBS/стриминга
-- Кнопка сохранения
-
----
-
-## Часть 5: Хук `useLivestreamChat.ts`
-
-Функционал:
-- `messages` — список последних 50 сообщений
-- `sendMessage(name, text)` — отправка сообщения
-- `viewersCount` — количество онлайн-зрителей
-- Realtime-подписка на INSERT в таблицу чата
-- Presence-канал для отслеживания зрителей
-
----
-
-## Зависимости
-
-Необходимо добавить библиотеку `hls.js` для воспроизведения HLS-потоков:
-
-```
-hls.js
+    {storeType === "retail" && (
+      <>
+        <Route path="/" element={<RetailStore subdomain={store.subdomain} />} />
+        <Route path="/product/:productId" element={<RetailStore subdomain={store.subdomain} />} />
+        <Route path="/checkout" element={<RetailCheckout subdomain={store.subdomain} />} />
+      </>
+    )}
+    <Route path="*" element={<NotFound />} />
+  </Routes>
+</BrowserRouter>
 ```
 
 ---
 
 ## Файлы для создания/изменения
 
-| Файл | Действие |
-|------|----------|
-| Миграция БД | Создать: поля в stores + таблица чата |
-| `src/hooks/useLivestreamChat.ts` | Создать |
-| `src/components/wholesale/WholesaleLivestreamPlayer.tsx` | Создать |
-| `src/components/wholesale/WholesaleLivestreamChat.tsx` | Создать |
-| `src/components/wholesale/WholesaleLivestreamBlock.tsx` | Создать |
-| `src/pages/WholesaleStore.tsx` | Изменить: обновить layout сайдбара |
-| `src/components/admin/WholesaleSettingsSection.tsx` | Изменить: добавить настройки стриминга |
-| `src/hooks/useWholesaleStore.ts` | Изменить: добавить поля стриминга |
+| Файл | Действие | Описание |
+|------|----------|----------|
+| `src/hooks/useCustomDomainStore.ts` | Создать | Поиск магазина по кастомному домену |
+| `src/components/CustomDomainHandler.tsx` | Создать | Обработчик кастомных доменов с роутингом |
+| `src/App.tsx` | Изменить | Добавить проверку hostname перед BrowserRouter |
+| `src/pages/WholesaleStore.tsx` | Изменить | Добавить проп `subdomain` |
+| `src/pages/WholesaleProduct.tsx` | Изменить | Добавить проп `subdomain` |
+| `src/pages/RetailStore.tsx` | Изменить | Добавить проп `subdomain` |
+| `src/pages/RetailCheckout.tsx` | Изменить | Добавить проп `subdomain` |
 
 ---
 
-## Мобильная адаптация
+## Примеры работы
 
-На мобильных устройствах (где сайдбар скрыт):
-- Блок трансляции показывается над списком товаров
-- Чат сворачивается в компактную кнопку для раскрытия
-- Видео адаптируется по ширине экрана
+### Пример 1: `9999999999.ru` (Wholesale)
+
+```text
+1. Пользователь заходит на 9999999999.ru
+2. DNS → 185.158.133.1 → Lovable сервер
+3. App.tsx: hostname = "9999999999.ru" — НЕ платформенный
+4. Рендерится CustomDomainHandler
+5. useCustomDomainStore ищет в БД:
+   - custom_domain = "9999999999.ru"? НЕТ
+   - wholesale_custom_domain = "9999999999.ru"? ДА → subdomain: "79999993222-d778"
+6. storeType = "wholesale"
+7. Рендерится WholesaleStore с subdomain="79999993222-d778"
+8. Пользователь видит оптовый магазин
+```
+
+### Пример 2: `shop.example.com` (Retail)
+
+```text
+1. Пользователь заходит на shop.example.com
+2. CustomDomainHandler ищет:
+   - custom_domain = "shop.example.com"? ДА
+3. storeType = "retail"
+4. Рендерится RetailStore
+```
+
+### Пример 3: `shopify-on-sub.lovable.app/wholesale/1`
+
+```text
+1. hostname = "shopify-on-sub.lovable.app" — платформенный
+2. Стандартный React Router
+3. Route "/wholesale/:subdomain" → WholesaleStore
+4. subdomain = "1" из useParams()
+```
+
+### Пример 4: `9999999999.ru/product/hammon-serrano`
+
+```text
+1. hostname = "9999999999.ru" — кастомный
+2. CustomDomainHandler определяет: wholesale
+3. Внутренний роутинг: path="/product/:slug"
+4. Рендерится WholesaleProduct с slug="hammon-serrano"
+```
+
+---
+
+## Преимущества решения
+
+- Минимальные изменения в существующем коде
+- Чёткое разделение логики кастомных и платформенных доменов
+- Поддержка отдельных доменов для Retail и Wholesale
+- Полноценная поддержка подстраниц (товары, checkout)
+- Совместимость с SEO (страницы товаров доступны по прямым ссылкам)
+- Лёгкое добавление новых подстраниц в будущем
