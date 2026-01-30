@@ -17,14 +17,8 @@ import {
 import { useWholesaleProduct } from "@/hooks/useWholesaleStore";
 import { useRetailCart } from "@/hooks/useRetailCart";
 
-interface WholesaleProductProps {
-  subdomain?: string;
-}
-
-export default function WholesaleProduct({ subdomain: directSubdomain }: WholesaleProductProps = {}) {
-  const params = useParams();
-  const subdomain = directSubdomain || params.subdomain;
-  const { slug } = params;
+export default function WholesaleProduct() {
+  const { subdomain, slug } = useParams();
   const { store, product, loading, error } = useWholesaleProduct(subdomain, slug);
   const { cart, addToCart, updateQuantity } = useRetailCart(subdomain || null);
 
