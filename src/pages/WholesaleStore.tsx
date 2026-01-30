@@ -17,9 +17,11 @@ import {
   X
 } from "lucide-react";
 import { useWholesaleStore, WholesaleProduct } from "@/hooks/useWholesaleStore";
-import { useRetailCart } from "@/hooks/useRetailCart";
+import { useWholesaleCart } from "@/hooks/useWholesaleCart";
 import { cn } from "@/lib/utils";
 import { WholesaleLivestreamBlock } from "@/components/wholesale/WholesaleLivestreamBlock";
+import { WholesaleCartSheet } from "@/components/wholesale/WholesaleCartSheet";
+import { WholesaleCartDrawer } from "@/components/wholesale/WholesaleCartDrawer";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 
@@ -31,7 +33,7 @@ export default function WholesaleStore({ subdomainOverride }: WholesaleStoreProp
   const params = useParams();
   const subdomain = subdomainOverride || params.subdomain;
   const { store, products, categories, loading, error } = useWholesaleStore(subdomain);
-  const { cart, cartTotal, cartItemsCount, isOpen, setIsOpen, addToCart, updateQuantity, removeFromCart } = useRetailCart(subdomain || null);
+  const { cart, cartTotal, cartItemsCount, isOpen, setIsOpen, addToCart, updateQuantity, removeFromCart } = useWholesaleCart(subdomain || null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -83,6 +85,7 @@ export default function WholesaleStore({ subdomainOverride }: WholesaleStoreProp
       price: product.price,
       image: product.images?.[0],
       unit: product.unit || "",
+      sku: product.sku || undefined,
     });
   };
 
@@ -436,20 +439,42 @@ export default function WholesaleStore({ subdomainOverride }: WholesaleStoreProp
       </div>
 
       {/* Cart minimum order warning */}
-      {store.wholesale_min_order_amount && cartTotal < store.wholesale_min_order_amount && cartItemsCount > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-sm">
-          <Card className="bg-orange-50 border-orange-200">
+      {store.wholesale_min_order_amount && cartTotal < store.wholesale_min_order_amount && cartItemsCount > 0 && !isOpen && (
+        <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-sm z-40">
+          <Card className="bg-accent/50 border-accent">
             <CardContent className="p-4">
-              <p className="text-sm text-orange-800">
+              <p className="text-sm text-accent-foreground">
                 Минимальная сумма заказа: {store.wholesale_min_order_amount.toLocaleString("ru-RU")} ₽
               </p>
-              <p className="text-xs text-orange-600 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Добавьте ещё на {(store.wholesale_min_order_amount - cartTotal).toLocaleString("ru-RU")} ₽
               </p>
             </CardContent>
           </Card>
         </div>
       )}
+
+      {/* Cart components */}
+      <WholesaleCartSheet
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        cart={cart}
+        cartTotal={cartTotal}
+        minOrderAmount={store.wholesale_min_order_amount || 0}
+        onUpdateQuantity={updateQuantity}
+        onRemove={removeFromCart}
+      />
+      
+      {/* Desktop drawer */}
+      <WholesaleCartDrawer
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        cart={cart}
+        cartTotal={cartTotal}
+        minOrderAmount={store.wholesale_min_order_amount || 0}
+        onUpdateQuantity={updateQuantity}
+        onRemove={removeFromCart}
+      />
     </div>
   );
 }
