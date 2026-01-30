@@ -23,8 +23,13 @@ import { WholesaleLivestreamBlock } from "@/components/wholesale/WholesaleLivest
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 
-export default function WholesaleStore() {
-  const { subdomain } = useParams();
+interface WholesaleStoreProps {
+  subdomainOverride?: string;
+}
+
+export default function WholesaleStore({ subdomainOverride }: WholesaleStoreProps = {}) {
+  const params = useParams();
+  const subdomain = subdomainOverride || params.subdomain;
   const { store, products, categories, loading, error } = useWholesaleStore(subdomain);
   const { cart, cartTotal, cartItemsCount, isOpen, setIsOpen, addToCart, updateQuantity, removeFromCart } = useRetailCart(subdomain || null);
 

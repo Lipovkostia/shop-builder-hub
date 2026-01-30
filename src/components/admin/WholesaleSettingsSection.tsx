@@ -714,31 +714,58 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
             <div className="flex items-start gap-3 mb-4">
               <Info className="h-5 w-5 text-primary mt-0.5" />
               <div>
-                <h3 className="font-semibold text-foreground">Настройка DNS</h3>
+                <h3 className="font-semibold text-foreground">🔧 Настройка DNS</h3>
                 <p className="text-sm text-muted-foreground">
-                  Добавьте следующие записи в настройках DNS вашего домена
+                  Добавьте следующие записи у вашего регистратора домена
                 </p>
               </div>
             </div>
 
-            <div className="bg-card border border-border rounded-lg p-4 font-mono text-sm space-y-2">
-              <div className="flex items-center gap-4">
-                <span className="text-muted-foreground w-16">Тип:</span>
-                <span className="font-semibold">A</span>
+            <div className="space-y-3">
+              {/* A Record for root domain */}
+              <div className="bg-card border border-border rounded-lg p-4 font-mono text-sm space-y-1">
+                <div className="text-xs text-muted-foreground mb-2 font-sans">Запись 1 — корневой домен</div>
+                <div className="flex items-center gap-4">
+                  <span className="text-muted-foreground w-20">Тип:</span>
+                  <span className="font-semibold">A</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-muted-foreground w-20">Имя:</span>
+                  <span className="font-semibold">@</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-muted-foreground w-20">Значение:</span>
+                  <span className="font-semibold text-primary">185.158.133.1</span>
+                </div>
               </div>
-              <div className="flex items-center gap-4">
-                <span className="text-muted-foreground w-16">Имя:</span>
-                <span className="font-semibold">@ или {customDomain || "b2b.example.com"}</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="text-muted-foreground w-16">Значение:</span>
-                <span className="font-semibold text-primary">185.158.133.1</span>
+
+              {/* A Record for www subdomain */}
+              <div className="bg-card border border-border rounded-lg p-4 font-mono text-sm space-y-1">
+                <div className="text-xs text-muted-foreground mb-2 font-sans">Запись 2 — www субдомен</div>
+                <div className="flex items-center gap-4">
+                  <span className="text-muted-foreground w-20">Тип:</span>
+                  <span className="font-semibold">A</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-muted-foreground w-20">Имя:</span>
+                  <span className="font-semibold">www</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-muted-foreground w-20">Значение:</span>
+                  <span className="font-semibold text-primary">185.158.133.1</span>
+                </div>
               </div>
             </div>
 
-            <p className="text-xs text-muted-foreground mt-4">
-              Изменения DNS могут занять до 48 часов для применения. После настройки DNS ваш оптовый магазин станет доступен по указанному домену.
-            </p>
+            <div className="mt-4 space-y-2">
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <span>⏱</span> Изменения DNS могут занять до 48 часов
+              </p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-start gap-1.5">
+                <span>ℹ️</span> 
+                <span>TXT-запись <code className="bg-muted px-1 rounded">_lovable</code> <strong>НЕ требуется</strong> для кастомных доменов магазинов — она нужна только для подключения домена к проекту Lovable через Settings → Domains</span>
+              </p>
+            </div>
           </div>
 
           {/* Current subdomain link */}
