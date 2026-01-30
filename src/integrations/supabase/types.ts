@@ -338,6 +338,41 @@ export type Database = {
         }
         Relationships: []
       }
+      livestream_chat_messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_seller: boolean | null
+          message: string
+          sender_name: string
+          store_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_seller?: boolean | null
+          message: string
+          sender_name: string
+          store_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_seller?: boolean | null
+          message?: string
+          sender_name?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "livestream_chat_messages_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       moysklad_accounts: {
         Row: {
           created_at: string
@@ -1148,6 +1183,9 @@ export type Database = {
           wholesale_catalog_id: string | null
           wholesale_custom_domain: string | null
           wholesale_enabled: boolean | null
+          wholesale_livestream_enabled: boolean | null
+          wholesale_livestream_title: string | null
+          wholesale_livestream_url: string | null
           wholesale_logo_url: string | null
           wholesale_min_order_amount: number | null
           wholesale_name: string | null
@@ -1188,6 +1226,9 @@ export type Database = {
           wholesale_catalog_id?: string | null
           wholesale_custom_domain?: string | null
           wholesale_enabled?: boolean | null
+          wholesale_livestream_enabled?: boolean | null
+          wholesale_livestream_title?: string | null
+          wholesale_livestream_url?: string | null
           wholesale_logo_url?: string | null
           wholesale_min_order_amount?: number | null
           wholesale_name?: string | null
@@ -1228,6 +1269,9 @@ export type Database = {
           wholesale_catalog_id?: string | null
           wholesale_custom_domain?: string | null
           wholesale_enabled?: boolean | null
+          wholesale_livestream_enabled?: boolean | null
+          wholesale_livestream_title?: string | null
+          wholesale_livestream_url?: string | null
           wholesale_logo_url?: string | null
           wholesale_min_order_amount?: number | null
           wholesale_name?: string | null

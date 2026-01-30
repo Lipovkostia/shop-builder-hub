@@ -19,6 +19,7 @@ import {
 import { useWholesaleStore, WholesaleProduct } from "@/hooks/useWholesaleStore";
 import { useRetailCart } from "@/hooks/useRetailCart";
 import { cn } from "@/lib/utils";
+import { WholesaleLivestreamBlock } from "@/components/wholesale/WholesaleLivestreamBlock";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 
@@ -192,45 +193,58 @@ export default function WholesaleStore() {
       {/* Main content */}
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="flex gap-6">
-          {/* Sidebar - Categories */}
-          <aside className="hidden lg:block w-64 shrink-0">
+          {/* Sidebar - Livestream, Categories, Contacts */}
+          <aside className="hidden lg:block w-80 shrink-0">
             <div className="sticky top-24 space-y-4">
-              <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
-                Категории
-              </h2>
-              <nav className="space-y-1">
-                <button
-                  onClick={() => setSelectedCategory(null)}
-                  className={cn(
-                    "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
-                    !selectedCategory 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-muted"
-                  )}
-                >
-                  Все товары
-                  <span className="float-right text-xs opacity-70">{products.length}</span>
-                </button>
-                {categories.filter(c => c.product_count && c.product_count > 0).map((cat) => (
+              
+              {/* Livestream block */}
+              {store.wholesale_livestream_enabled && (
+                <WholesaleLivestreamBlock
+                  storeId={store.id}
+                  streamUrl={store.wholesale_livestream_url}
+                  streamTitle={store.wholesale_livestream_title}
+                />
+              )}
+              
+              {/* Categories */}
+              <div>
+                <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-2">
+                  Категории
+                </h2>
+                <nav className="space-y-1">
                   <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
+                    onClick={() => setSelectedCategory(null)}
                     className={cn(
                       "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
-                      selectedCategory === cat.id 
+                      !selectedCategory 
                         ? "bg-primary text-primary-foreground" 
                         : "hover:bg-muted"
                     )}
                   >
-                    {cat.name}
-                    <span className="float-right text-xs opacity-70">{cat.product_count}</span>
+                    Все товары
+                    <span className="float-right text-xs opacity-70">{products.length}</span>
                   </button>
-                ))}
-              </nav>
+                  {categories.filter(c => c.product_count && c.product_count > 0).map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.id)}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                        selectedCategory === cat.id 
+                          ? "bg-primary text-primary-foreground" 
+                          : "hover:bg-muted"
+                      )}
+                    >
+                      {cat.name}
+                      <span className="float-right text-xs opacity-70">{cat.product_count}</span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
 
               {/* Contact info */}
               {(store.contact_phone || store.contact_email) && (
-                <div className="pt-6 border-t space-y-3">
+                <div className="pt-4 border-t space-y-3">
                   <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
                     Контакты
                   </h3>
