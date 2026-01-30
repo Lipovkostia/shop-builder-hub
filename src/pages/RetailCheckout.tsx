@@ -20,8 +20,13 @@ function formatPrice(price: number): string {
   }).format(price);
 }
 
-export default function RetailCheckout() {
-  const { subdomain } = useParams();
+interface RetailCheckoutProps {
+  subdomain?: string;
+}
+
+export default function RetailCheckout({ subdomain: directSubdomain }: RetailCheckoutProps = {}) {
+  const params = useParams();
+  const subdomain = directSubdomain || params.subdomain;
   const navigate = useNavigate();
   const { store, loading: storeLoading } = useRetailStore(subdomain);
   
