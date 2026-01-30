@@ -674,64 +674,41 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
             </div>
           </div>
 
-          {/* DNS Instructions - always show when domain is entered */}
-          <div className="bg-muted/50 border border-border rounded-lg p-6">
-            <div className="flex items-start gap-3 mb-4">
-              <Info className="h-5 w-5 text-primary mt-0.5" />
-              <div>
-                <h3 className="font-semibold text-foreground">🔧 Настройка DNS</h3>
-                <p className="text-sm text-muted-foreground">
-                  Добавьте следующие записи у вашего регистратора домена
-                </p>
-              </div>
-            </div>
+          {customDomain && (
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                <div className="space-y-3">
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100">
+                    Настройка DNS
+                  </h4>
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    Добавьте следующие записи в настройках DNS вашего домена:
+                  </p>
+                  
+                  <div className="bg-white dark:bg-background rounded-lg p-4 font-mono text-sm space-y-2">
+                    <div>
+                      <span className="text-muted-foreground">Тип:</span>{" "}
+                      <span className="font-semibold">A</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Имя:</span>{" "}
+                      <span className="font-semibold">@</span> или{" "}
+                      <span className="font-semibold">{customDomain}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Значение:</span>{" "}
+                      <span className="font-semibold">185.158.133.1</span>
+                    </div>
+                  </div>
 
-            <div className="space-y-3">
-              {/* A Record for root domain */}
-              <div className="bg-card border border-border rounded-lg p-4 font-mono text-sm space-y-1">
-                <div className="text-xs text-muted-foreground mb-2 font-sans">Запись 1 — корневой домен</div>
-                <div className="flex items-center gap-4">
-                  <span className="text-muted-foreground w-20">Тип:</span>
-                  <span className="font-semibold">A</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-muted-foreground w-20">Имя:</span>
-                  <span className="font-semibold">@</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-muted-foreground w-20">Значение:</span>
-                  <span className="font-semibold text-primary">185.158.133.1</span>
-                </div>
-              </div>
-
-              {/* A Record for www subdomain */}
-              <div className="bg-card border border-border rounded-lg p-4 font-mono text-sm space-y-1">
-                <div className="text-xs text-muted-foreground mb-2 font-sans">Запись 2 — www субдомен</div>
-                <div className="flex items-center gap-4">
-                  <span className="text-muted-foreground w-20">Тип:</span>
-                  <span className="font-semibold">A</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-muted-foreground w-20">Имя:</span>
-                  <span className="font-semibold">www</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-muted-foreground w-20">Значение:</span>
-                  <span className="font-semibold text-primary">185.158.133.1</span>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    Изменения DNS могут занять до 48 часов для применения
+                  </p>
                 </div>
               </div>
             </div>
-
-            <div className="mt-4 space-y-2">
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <span>⏱</span> Изменения DNS могут занять до 48 часов
-              </p>
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-start gap-1.5">
-                <span>ℹ️</span> 
-                <span>TXT-запись <code className="bg-muted px-1 rounded">_lovable</code> <strong>НЕ требуется</strong> для кастомных доменов магазинов — она нужна только для подключения домена к проекту Lovable через Settings → Domains</span>
-              </p>
-            </div>
-          </div>
+          )}
 
           {settings.custom_domain && (
             <div className="flex items-center gap-2 text-sm">
