@@ -26,8 +26,13 @@ import { FlyToCartAnimation, triggerFlyToCart } from "@/components/retail/FlyToC
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 
-export default function RetailStore() {
-  const { subdomain } = useParams();
+interface RetailStoreProps {
+  subdomain?: string;
+}
+
+export default function RetailStore({ subdomain: directSubdomain }: RetailStoreProps = {}) {
+  const params = useParams();
+  const subdomain = directSubdomain || params.subdomain;
   const { store, products, categories, loading, error } = useRetailStore(subdomain);
   // Use subdomain for cart/favorites storage (available immediately from URL)
   const { cart, cartTotal, cartItemsCount, isOpen, setIsOpen, addToCart, updateQuantity, removeFromCart } = useRetailCart(subdomain || null);
