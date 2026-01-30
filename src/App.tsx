@@ -16,6 +16,7 @@ import RetailStore from "./pages/RetailStore";
 import RetailCheckout from "./pages/RetailCheckout";
 import WholesaleStore from "./pages/WholesaleStore";
 import WholesaleProduct from "./pages/WholesaleProduct";
+import WholesaleCheckout from "./pages/WholesaleCheckout";
 import CatalogAccess from "./pages/CatalogAccess";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import GuestCatalogView from "./pages/GuestCatalogView";
@@ -125,6 +126,7 @@ function AppRoutes() {
       {/* Wholesale B2B routes */}
       <Route path="/wholesale/:subdomain" element={<WholesaleStore />} />
       <Route path="/wholesale/:subdomain/product/:slug" element={<WholesaleProduct />} />
+      <Route path="/wholesale/:subdomain/checkout" element={<WholesaleCheckout />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>
