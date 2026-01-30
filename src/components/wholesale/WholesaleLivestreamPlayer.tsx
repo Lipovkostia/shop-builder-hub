@@ -1,11 +1,76 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import Hls from "hls.js";
 import { cn } from "@/lib/utils";
-import { Video, WifiOff } from "lucide-react";
+import { WifiOff } from "lucide-react";
 
 interface WholesaleLivestreamPlayerProps {
   streamUrl: string | null;
   className?: string;
+}
+
+// Helper to detect stream type
+function getStreamType(url: string): "twitch" | "youtube" | "hls" | "unknown" {
+  if (!url) return "unknown";
+  
+  // Twitch patterns: twitch.tv/channel or player.twitch.tv
+  if (url.includes("twitch.tv/") || url.includes("twitch.tv")) {
+    return "twitch";
+  }
+  
+  // YouTube patterns: youtube.com/watch, youtu.be, youtube.com/live
+  if (url.includes("youtube.com/") || url.includes("youtu.be/")) {
+    return "youtube";
+  }
+  
+  // HLS stream (.m3u8)
+  if (url.includes(".m3u8")) {
+    return "hls";
+  }
+  
+  return "unknown";
+}
+
+// Extract Twitch channel name from URL
+function getTwitchChannel(url: string): string | null {
+  try {
+    // Handle various Twitch URL formats
+    const patterns = [
+      /twitch\.tv\/([a-zA-Z0-9_]+)/,
+      /player\.twitch\.tv\/\?channel=([a-zA-Z0-9_]+)/,
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Extract YouTube video ID from URL
+function getYouTubeVideoId(url: string): string | null {
+  try {
+    const patterns = [
+      /youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/,
+      /youtu\.be\/([a-zA-Z0-9_-]+)/,
+      /youtube\.com\/live\/([a-zA-Z0-9_-]+)/,
+      /youtube\.com\/embed\/([a-zA-Z0-9_-]+)/,
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export function WholesaleLivestreamPlayer({ streamUrl, className }: WholesaleLivestreamPlayerProps) {
@@ -14,7 +79,17 @@ export function WholesaleLivestreamPlayer({ streamUrl, className }: WholesaleLiv
   const [isLive, setIsLive] = useState(false);
   const [error, setError] = useState(false);
 
+  const streamType = useMemo(() => streamUrl ? getStreamType(streamUrl) : "unknown", [streamUrl]);
+  const twitchChannel = useMemo(() => streamUrl ? getTwitchChannel(streamUrl) : null, [streamUrl]);
+  const youtubeVideoId = useMemo(() => streamUrl ? getYouTubeVideoId(streamUrl) : null, [streamUrl]);
+
+  // HLS player effect
   useEffect(() => {
+    // Only use HLS.js for HLS streams
+    if (streamType !== "hls") {
+      return;
+    }
+
     const video = videoRef.current;
     if (!video || !streamUrl) {
       setError(true);
@@ -74,9 +149,46 @@ export function WholesaleLivestreamPlayer({ streamUrl, className }: WholesaleLiv
         hlsRef.current = null;
       }
     };
-  }, [streamUrl]);
+  }, [streamUrl, streamType]);
 
-  if (!streamUrl || error) {
+  // Twitch embed
+  if (streamType === "twitch" && twitchChannel) {
+    return (
+      <div className={cn("relative rounded-lg overflow-hidden bg-black", className)}>
+        <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-purple-600 text-white text-xs font-medium px-2 py-1 rounded">
+          <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+          TWITCH
+        </div>
+        <iframe
+          src={`https://player.twitch.tv/?channel=${twitchChannel}&parent=${window.location.hostname}&muted=true`}
+          className="w-full aspect-video"
+          allowFullScreen
+          allow="autoplay; encrypted-media"
+        />
+      </div>
+    );
+  }
+
+  // YouTube embed
+  if (streamType === "youtube" && youtubeVideoId) {
+    return (
+      <div className={cn("relative rounded-lg overflow-hidden bg-black", className)}>
+        <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-red-600 text-white text-xs font-medium px-2 py-1 rounded">
+          <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+          YOUTUBE
+        </div>
+        <iframe
+          src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&mute=1`}
+          className="w-full aspect-video"
+          allowFullScreen
+          allow="autoplay; encrypted-media"
+        />
+      </div>
+    );
+  }
+
+  // Fallback for no stream or error
+  if (!streamUrl || error || (streamType === "unknown" && !streamUrl.includes(".m3u8"))) {
     return (
       <div className={cn(
         "aspect-video bg-muted rounded-lg flex flex-col items-center justify-center text-muted-foreground",
@@ -88,6 +200,7 @@ export function WholesaleLivestreamPlayer({ streamUrl, className }: WholesaleLiv
     );
   }
 
+  // HLS player
   return (
     <div className={cn("relative rounded-lg overflow-hidden bg-black", className)}>
       {/* Live indicator */}
