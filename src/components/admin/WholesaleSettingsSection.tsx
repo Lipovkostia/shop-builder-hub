@@ -13,7 +13,9 @@ import {
   Info,
   Package,
   Phone,
-  Sparkles
+  Sparkles,
+  Video,
+  Radio
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +50,9 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
     wholesale_seo_description: string | null;
     wholesale_custom_domain: string | null;
     subdomain: string;
+    wholesale_livestream_enabled: boolean;
+    wholesale_livestream_url: string | null;
+    wholesale_livestream_title: string | null;
   } | null>(null);
 
   const { catalogs, productVisibility, loading: catalogsLoading } = useStoreCatalogs(storeId);
@@ -64,6 +69,10 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
   const [customDomain, setCustomDomain] = useState("");
   const [savingDomain, setSavingDomain] = useState(false);
   
+  // Livestream form states
+  const [livestreamUrl, setLivestreamUrl] = useState("");
+  const [livestreamTitle, setLivestreamTitle] = useState("");
+  
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch settings
@@ -75,7 +84,7 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
       try {
         const { data, error } = await supabase
           .from("stores")
-          .select("wholesale_enabled, wholesale_name, wholesale_catalog_id, wholesale_min_order_amount, wholesale_logo_url, wholesale_seo_title, wholesale_seo_description, wholesale_custom_domain, subdomain")
+          .select("wholesale_enabled, wholesale_name, wholesale_catalog_id, wholesale_min_order_amount, wholesale_logo_url, wholesale_seo_title, wholesale_seo_description, wholesale_custom_domain, subdomain, wholesale_livestream_enabled, wholesale_livestream_url, wholesale_livestream_title")
           .eq("id", storeId)
           .single();
 
@@ -88,6 +97,8 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
         setSeoTitle(data?.wholesale_seo_title || "");
         setCustomDomain(data?.wholesale_custom_domain || "");
         setSeoDescription(data?.wholesale_seo_description || "");
+        setLivestreamUrl(data?.wholesale_livestream_url || "");
+        setLivestreamTitle(data?.wholesale_livestream_title || "");
       } catch (err) {
         console.error("Error fetching wholesale settings:", err);
       } finally {
@@ -201,10 +212,14 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-4 mb-6">
+        <TabsList className="w-full grid grid-cols-5 mb-6">
           <TabsTrigger value="general" className="gap-1.5">
             <Store className="h-4 w-4" />
             <span className="hidden sm:inline">Общее</span>
+          </TabsTrigger>
+          <TabsTrigger value="livestream" className="gap-1.5">
+            <Video className="h-4 w-4" />
+            <span className="hidden sm:inline">Эфир</span>
           </TabsTrigger>
           <TabsTrigger value="design" className="gap-1.5">
             <Palette className="h-4 w-4" />
@@ -367,6 +382,117 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
                 >
                   Сохранить
                 </Button>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Livestream Tab */}
+        <TabsContent value="livestream" className="space-y-6">
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-start gap-3">
+                <Radio className="h-5 w-5 text-destructive mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-foreground">Прямые трансляции</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Включите блок с видеотрансляцией и чатом на витрине
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={settings?.wholesale_livestream_enabled || false}
+                onCheckedChange={(checked) => updateSetting({ wholesale_livestream_enabled: checked })}
+                disabled={saving}
+              />
+            </div>
+
+            <div className="flex items-center gap-2 text-sm mb-4">
+              <div className={cn(
+                "w-2 h-2 rounded-full",
+                settings?.wholesale_livestream_enabled ? "bg-destructive animate-pulse" : "bg-muted-foreground"
+              )} />
+              <span className={cn(
+                settings?.wholesale_livestream_enabled ? "text-destructive" : "text-muted-foreground"
+              )}>
+                {settings?.wholesale_livestream_enabled ? "Блок отображается" : "Блок скрыт"}
+              </span>
+            </div>
+          </div>
+
+          {/* Stream URL */}
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <Video className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground">URL видеопотока</h3>
+                <p className="text-sm text-muted-foreground">
+                  Укажите ссылку на HLS-поток (.m3u8) для воспроизведения
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">
+                  HLS URL
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={livestreamUrl}
+                    onChange={(e) => setLivestreamUrl(e.target.value)}
+                    placeholder="https://stream.example.com/live/stream.m3u8"
+                    className="flex-1 font-mono text-sm"
+                  />
+                  <Button
+                    onClick={() => updateSetting({ wholesale_livestream_url: livestreamUrl || null })}
+                    disabled={saving}
+                    size="sm"
+                  >
+                    Сохранить
+                  </Button>
+                </div>
+              </div>
+
+              <div className="bg-muted/50 rounded-lg p-3">
+                <h4 className="text-sm font-medium mb-2">Как начать трансляцию:</h4>
+                <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                  <li>Установите OBS Studio или другое ПО для стриминга</li>
+                  <li>Настройте RTMP-сервер (Nginx, Oven Media, etc.) или используйте облачный сервис</li>
+                  <li>Получите HLS URL вашего потока и вставьте его выше</li>
+                  <li>Включите трансляцию — видео появится на витрине</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+
+          {/* Stream Title */}
+          <div className="bg-card border border-border rounded-lg p-6">
+            <h3 className="font-semibold text-foreground mb-4">Заголовок эфира</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">
+                  Название текущей трансляции
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={livestreamTitle}
+                    onChange={(e) => setLivestreamTitle(e.target.value)}
+                    placeholder="Обзор нового ассортимента"
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={() => updateSetting({ wholesale_livestream_title: livestreamTitle || null })}
+                    disabled={saving}
+                    size="sm"
+                  >
+                    Сохранить
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Отображается под видео на витрине магазина
+                </p>
               </div>
             </div>
           </div>

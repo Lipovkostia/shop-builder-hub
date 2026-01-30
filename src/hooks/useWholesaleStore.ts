@@ -33,6 +33,10 @@ export interface WholesaleStore {
   retail_phone: string | null;
   telegram_username: string | null;
   whatsapp_phone: string | null;
+  // Livestream fields
+  wholesale_livestream_enabled: boolean;
+  wholesale_livestream_url: string | null;
+  wholesale_livestream_title: string | null;
 }
 
 export interface WholesaleProduct {
