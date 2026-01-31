@@ -1174,12 +1174,15 @@ export default function AdminPanel({
         }
         
         if (profile.role === 'seller') {
-          const { data: store } = await supabase
+          // Fetch the most recently updated store if user has multiple stores
+          const { data: stores } = await supabase
             .from('stores')
-            .select('id, name, subdomain')
+            .select('id, name, subdomain, updated_at')
             .eq('owner_id', profile.id)
-            .single();
+            .order('updated_at', { ascending: false });
           
+          // Take the most recently updated store
+          const store = stores?.[0];
           if (store) {
             setUserStoreId(store.id);
             setCurrentStoreId(store.id);
