@@ -27,7 +27,15 @@ const queryClient = new QueryClient();
 
 // Check if hostname is a platform domain (not a custom domain)
 function isPlatformDomain(hostname: string): boolean {
+  // Main platform domains - these should show the main service, not custom stores
+  const platformDomains = [
+    '9999999999.ru',
+    'www.9999999999.ru',
+    'shopify-on-sub.lovable.app',
+  ];
+  
   return (
+    platformDomains.includes(hostname) ||
     hostname.endsWith('.lovable.app') ||
     hostname.endsWith('.lovable.dev') ||
     hostname.endsWith('.lovableproject.com') ||
