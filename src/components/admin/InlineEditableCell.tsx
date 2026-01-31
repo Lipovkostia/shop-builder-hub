@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Check, X, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ interface InlineEditableCellProps {
   onSave: (newValue: string) => void;
   placeholder?: string;
   className?: string;
+  debounceMs?: number;
 }
 
 export function InlineEditableCell({
@@ -15,14 +16,16 @@ export function InlineEditableCell({
   onSave,
   placeholder = "Введите текст...",
   className = "",
+  debounceMs = 500,
 }: InlineEditableCellProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedValue, setEditedValue] = useState(value);
   const [displayValue, setDisplayValue] = useState(value);
+  const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    console.log('[InlineEditableCell] value changed from props:', value);
     setEditedValue(value);
     setDisplayValue(value);
   }, [value]);
@@ -34,19 +37,38 @@ export function InlineEditableCell({
     }
   }, [isEditing]);
 
-  const handleSave = () => {
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
+  const handleSave = useCallback(() => {
     const trimmedValue = editedValue.trim();
     if (trimmedValue !== value) {
       setDisplayValue(trimmedValue); // Optimistic update
-      onSave(trimmedValue);
+      setIsSaving(true);
+      
+      // Debounce the actual save
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      
+      debounceRef.current = setTimeout(() => {
+        onSave(trimmedValue);
+        setIsSaving(false);
+      }, debounceMs);
     }
     setIsEditing(false);
-  };
+  }, [editedValue, value, onSave, debounceMs]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setEditedValue(value);
     setIsEditing(false);
-  };
+  }, [value]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
