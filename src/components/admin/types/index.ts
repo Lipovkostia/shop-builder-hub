@@ -140,6 +140,14 @@ export interface CustomerRole {
   created_at: string;
 }
 
+// Группа товаров
+export interface ProductGroup {
+  id: string;
+  name: string;
+  description?: string;
+  sort_order?: number;
+}
+
 // Наценка для роли
 export interface RoleProductPricing {
   id: string;
