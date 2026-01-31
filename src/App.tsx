@@ -21,8 +21,23 @@ import CustomerDashboard from "./pages/CustomerDashboard";
 import GuestCatalogView from "./pages/GuestCatalogView";
 import { useStoreBySubdomain } from "@/hooks/useUserStore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CustomDomainHandler } from "@/components/CustomDomainHandler";
 
 const queryClient = new QueryClient();
+
+// Check if hostname is a platform domain (not a custom domain)
+function isPlatformDomain(hostname: string): boolean {
+  return (
+    hostname.endsWith('.lovable.app') ||
+    hostname.endsWith('.lovable.dev') ||
+    hostname.endsWith('.lovableproject.com') ||
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname.startsWith('192.168.') ||
+    hostname.startsWith('10.') ||
+    hostname.includes('preview--')
+  );
+}
 
 // Wrapper component to load AdminPanel with store context from subdomain
 function StoreAdminWrapper() {
@@ -52,42 +67,62 @@ function StoreAdminWrapper() {
   return <Navigate to={`/admin?storeId=${store.id}`} replace />;
 }
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/auth" element={<Navigate to="/" replace />} />
-            <Route path="/dashboard" element={<Navigate to="/" replace />} />
-            <Route path="/test-store" element={<TestStore />} />
-            <Route path="/admin" element={<AdminPanel />} />
-            <Route path="/super-admin" element={<SuperAdmin />} />
-            {/* Customer routes */}
-            <Route path="/catalog/:accessCode" element={<CatalogAccess />} />
-            <Route path="/catalog/:accessCode/view" element={<GuestCatalogView />} />
-            <Route path="/customer-dashboard" element={<CustomerDashboard />} />
-            {/* Store routes - SellerWorkspace for seamless transitions */}
-            <Route path="/store/:subdomain" element={<SellerWorkspace />} />
-            <Route path="/store/:subdomain/admin" element={<StoreAdminWrapper />} />
-            {/* Retail store routes */}
-            <Route path="/retail/:subdomain" element={<RetailStore />} />
-            <Route path="/retail/:subdomain/product/:productId" element={<RetailStore />} />
-            <Route path="/retail/:subdomain/checkout" element={<RetailCheckout />} />
-            {/* Wholesale B2B routes */}
-            <Route path="/wholesale/:subdomain" element={<WholesaleStore />} />
-            <Route path="/wholesale/:subdomain/product/:slug" element={<WholesaleProduct />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const hostname = window.location.hostname;
+
+  // If this is a custom domain, use the CustomDomainHandler
+  if (!isPlatformDomain(hostname)) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <CustomDomainHandler hostname={hostname} />
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    );
+  }
+
+  // Standard platform routing
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/auth" element={<Navigate to="/" replace />} />
+              <Route path="/dashboard" element={<Navigate to="/" replace />} />
+              <Route path="/test-store" element={<TestStore />} />
+              <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/super-admin" element={<SuperAdmin />} />
+              {/* Customer routes */}
+              <Route path="/catalog/:accessCode" element={<CatalogAccess />} />
+              <Route path="/catalog/:accessCode/view" element={<GuestCatalogView />} />
+              <Route path="/customer-dashboard" element={<CustomerDashboard />} />
+              {/* Store routes - SellerWorkspace for seamless transitions */}
+              <Route path="/store/:subdomain" element={<SellerWorkspace />} />
+              <Route path="/store/:subdomain/admin" element={<StoreAdminWrapper />} />
+              {/* Retail store routes */}
+              <Route path="/retail/:subdomain" element={<RetailStore />} />
+              <Route path="/retail/:subdomain/product/:productId" element={<RetailStore />} />
+              <Route path="/retail/:subdomain/checkout" element={<RetailCheckout />} />
+              {/* Wholesale B2B routes */}
+              <Route path="/wholesale/:subdomain" element={<WholesaleStore />} />
+              <Route path="/wholesale/:subdomain/product/:slug" element={<WholesaleProduct />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
