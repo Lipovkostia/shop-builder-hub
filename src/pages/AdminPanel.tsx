@@ -461,7 +461,9 @@ export default function AdminPanel({
   const [storeContextLoading, setStoreContextLoading] = useState(!workspaceMode || !storeIdOverride);
   
   // Determine which store context to use - workspace mode takes priority
-  const effectiveStoreId = workspaceMode && storeIdOverride ? storeIdOverride : (storeIdFromUrl || userStoreId || currentStoreId);
+  // IMPORTANT: do NOT fallback to currentStoreId here, because it can temporarily differ from
+  // userStoreId during async context resolution, causing the assortment to "flash" and disappear.
+  const effectiveStoreId = workspaceMode && storeIdOverride ? storeIdOverride : (storeIdFromUrl || userStoreId);
   
   // ================ SUPABASE DATA HOOKS ================
   // Products from Supabase
@@ -1174,16 +1176,34 @@ export default function AdminPanel({
         }
         
         if (profile.role === 'seller') {
-          // Fetch the most recently updated store if user has multiple stores
+          // A seller can end up with multiple stores (e.g. store creation flow run twice).
+          // We must pick ONE deterministically and keep it stable across renders.
           const { data: stores } = await supabase
             .from('stores')
             .select('id, name, subdomain, updated_at')
             .eq('owner_id', profile.id)
             .order('updated_at', { ascending: false });
-          
-          // Take the most recently updated store
-          const store = stores?.[0];
+
+          const storePreferenceKey = `seller_last_store_id_${profile.id}`;
+          const preferredId = (() => {
+            try {
+              return localStorage.getItem(storePreferenceKey);
+            } catch {
+              return null;
+            }
+          })();
+
+          const store = (preferredId && stores?.find((s) => s.id === preferredId))
+            ? stores?.find((s) => s.id === preferredId)
+            : stores?.[0];
+
           if (store) {
+            try {
+              localStorage.setItem(storePreferenceKey, store.id);
+            } catch {
+              // ignore
+            }
+
             setUserStoreId(store.id);
             setCurrentStoreId(store.id);
             setCurrentStoreName(store.name);
@@ -3156,7 +3176,7 @@ export default function AdminPanel({
 
   // Loading state - wait for auth and store context
   // В workspaceMode не показываем спиннер, так как данные магазина уже загружены в SellerWorkspace
-  if (!workspaceMode && (authLoading || (storeIdFromUrl && storeContextLoading))) {
+  if (!workspaceMode && (authLoading || storeContextLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
