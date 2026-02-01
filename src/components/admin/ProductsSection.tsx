@@ -6,7 +6,7 @@ import { useOptimisticImagePreviews } from "@/hooks/useOptimisticImagePreviews";
 import { uploadFilesToStorage } from "@/hooks/useProductImages";
 import { Product, Catalog, ProductGroup, PackagingType } from "./types";
 import { Button } from "@/components/ui/button";
-import { Plus, Filter, Columns, Download, Sparkles } from "lucide-react";
+import { Plus, Filter, Columns, Download, Sparkles, Globe } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-
+import { MegacatalogDialog } from "./MegacatalogDialog";
 interface ProductsSectionProps {
   products: Product[];
   catalogs: Catalog[];
@@ -29,6 +29,7 @@ interface ProductsSectionProps {
   onDeleteProducts: (productIds: string[]) => Promise<void>;
   onToggleAutoSync: (productId: string) => void;
   onAddProduct: () => void;
+  onAddProductsFromMegacatalog: (products: any[]) => Promise<void>;
   onNavigateToCatalog?: (catalogId: string) => void;
   onOpenAIAssistant?: () => void;
   customUnits?: string[];
@@ -80,6 +81,7 @@ export function ProductsSection({
   onDeleteProducts,
   onToggleAutoSync,
   onAddProduct,
+  onAddProductsFromMegacatalog,
   onNavigateToCatalog,
   onOpenAIAssistant,
   customUnits = [],
@@ -97,6 +99,10 @@ export function ProductsSection({
   const [expandedAssortmentImages, setExpandedAssortmentImages] = useState<string | null>(null);
   const [deletingImageProductId, setDeletingImageProductId] = useState<string | null>(null);
   const [uploadingImageProductId, setUploadingImageProductId] = useState<string | null>(null);
+  const [megacatalogOpen, setMegacatalogOpen] = useState(false);
+
+  // Set of existing product IDs for megacatalog
+  const existingProductIds = useMemo(() => new Set(products.map(p => p.id)), [products]);
 
   // Optimistic image previews
   const { optimisticPreviews, addPreviews, clearPreviews } = useOptimisticImagePreviews();
@@ -376,6 +382,11 @@ export function ProductsSection({
           Добавить товар
         </Button>
 
+        <Button variant="outline" size="sm" onClick={() => setMegacatalogOpen(true)}>
+          <Globe className="h-4 w-4 mr-2" />
+          Мегакаталог
+        </Button>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm">
@@ -436,6 +447,14 @@ export function ProductsSection({
           {filteredProducts.length} товар(ов)
         </span>
       </div>
+
+      {/* Megacatalog Dialog */}
+      <MegacatalogDialog
+        open={megacatalogOpen}
+        onOpenChange={setMegacatalogOpen}
+        existingProductIds={existingProductIds}
+        onAddProducts={onAddProductsFromMegacatalog}
+      />
 
       {/* Bulk Edit Panel */}
       {selectedBulkProducts.size > 0 && (
