@@ -2003,6 +2003,57 @@ export default function AdminPanel({
     }
   };
 
+  // Add products from megacatalog
+  const handleAddProductsFromMegacatalog = async (megaProducts: any[]) => {
+    if (!effectiveStoreId) {
+      toast({
+        title: "Ошибка",
+        description: "Магазин не выбран",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    let addedCount = 0;
+    for (const mp of megaProducts) {
+      try {
+        // Generate unique slug
+        const baseSlug = mp.name
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-а-яё]/gi, '')
+          .substring(0, 50);
+        const slug = `${baseSlug}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+        await createSupabaseProduct({
+          name: mp.name,
+          description: mp.description || null,
+          price: mp.price || 0,
+          buy_price: mp.buy_price || null,
+          images: mp.images || null,
+          unit: mp.unit || 'шт',
+          sku: mp.sku || null,
+          packaging_type: mp.packaging_type || 'piece',
+          unit_weight: mp.unit_weight || null,
+          quantity: 0,
+          source: 'megacatalog',
+          is_active: true,
+          slug,
+        });
+        addedCount++;
+      } catch (error) {
+        console.error('Error adding product from megacatalog:', error);
+      }
+    }
+
+    if (addedCount > 0) {
+      toast({
+        title: "Товары добавлены",
+        description: `${addedCount} товар(ов) добавлено в ваш ассортимент`,
+      });
+    }
+  };
+
   // Catalog management functions - now using Supabase
   const createCatalog = async () => {
     if (!newCatalogName.trim()) {
@@ -3319,6 +3370,7 @@ export default function AdminPanel({
                 customPackagingTypes={customPackagingTypes}
                 onAddCustomUnit={(unit) => setCustomUnits(prev => [...prev, unit])}
                 onAddCustomPackaging={(type) => setCustomPackagingTypes(prev => [...prev, type])}
+                onAddProductsFromMegacatalog={handleAddProductsFromMegacatalog}
               />
 
               {/* Product Pricing Dialog */}
