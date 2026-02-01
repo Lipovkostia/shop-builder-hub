@@ -240,9 +240,10 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
         ))}
 
         {/* Add Photo Button */}
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <button
+              onClick={(e) => e.stopPropagation()}
               className="flex-shrink-0 h-24 w-24 border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors disabled:opacity-50"
               disabled={isUploading}
             >
@@ -253,16 +254,30 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
               )}
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="center">
-            <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+          <DropdownMenuContent 
+            align="center" 
+            side="top"
+            className="z-[100]"
+            onCloseAutoFocus={(e) => e.preventDefault()}
+          >
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              fileInputRef.current?.click();
+            }}>
               <Upload className="h-4 w-4 mr-2" />
               Загрузить с компьютера
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              fileInputRef.current?.click();
+            }}>
               <ImageIcon className="h-4 w-4 mr-2" />
               Выбрать из медиатеки
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => cameraInputRef.current?.click()}>
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              cameraInputRef.current?.click();
+            }}>
               <Camera className="h-4 w-4 mr-2" />
               Сделать фото
             </DropdownMenuItem>

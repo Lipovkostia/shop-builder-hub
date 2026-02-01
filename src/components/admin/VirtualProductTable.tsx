@@ -188,7 +188,7 @@ interface VirtualProductTableProps {
 }
 
 const ROW_HEIGHT = 48;
-const EXPANDED_ROW_HEIGHT = 200;
+const EXPANDED_ROW_HEIGHT = 180; // Увеличенная высота для галереи изображений
 const OVERSCAN = 5;
 
 export function VirtualProductTable({
@@ -234,14 +234,19 @@ export function VirtualProductTable({
     return ROW_HEIGHT;
   }, [products, expandedAssortmentImages]);
 
-  // Create virtualizer
+  // Create virtualizer with dynamic row heights
   const virtualizer = useVirtualizer({
     count: products.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => ROW_HEIGHT,
+    estimateSize: getItemSize,
     overscan: OVERSCAN,
     getItemKey: (index) => products[index]?.id || index,
   });
+
+  // Re-measure all items when expanded state changes
+  React.useEffect(() => {
+    virtualizer.measure();
+  }, [expandedAssortmentImages, virtualizer]);
 
   const virtualItems = virtualizer.getVirtualItems();
   const totalSize = virtualizer.getTotalSize();
@@ -403,7 +408,7 @@ export function VirtualProductTable({
       {/* Virtualized Body */}
       <div 
         ref={parentRef}
-        className="overflow-auto"
+        className="overflow-y-auto overflow-x-hidden"
         style={{ height: 'calc(100vh - 300px)', minHeight: '400px' }}
       >
         <div
@@ -432,8 +437,9 @@ export function VirtualProductTable({
                   top: 0,
                   left: 0,
                   width: '100%',
-                  height: `${virtualRow.size}px`,
+                  minHeight: `${virtualRow.size}px`,
                   transform: `translateY(${virtualRow.start}px)`,
+                  zIndex: isExpanded ? 10 : 1,
                 }}
               >
                 <MemoizedProductRow
