@@ -91,6 +91,7 @@ export function ProductsSection({
   
   // Local state isolated to this section
   const [selectedBulkProducts, setSelectedBulkProducts] = useState<Set<string>>(new Set());
+  const [lastSelectedProductId, setLastSelectedProductId] = useState<string | null>(null);
   const [filters, setFilters] = useState<AllProductsFilters>(defaultFilters);
   const [visibleColumns, setVisibleColumns] = useState<VisibleColumns>(defaultVisibleColumns);
   const [expandedAssortmentImages, setExpandedAssortmentImages] = useState<string | null>(null);
@@ -183,9 +184,28 @@ export function ProductsSection({
   }, [products, filters, getProductGroupIds]);
 
   // Handlers
-  const handleToggleBulkSelection = useCallback((productId: string) => {
+  const handleToggleBulkSelection = useCallback((productId: string, shiftKey: boolean = false) => {
     setSelectedBulkProducts((prev) => {
       const next = new Set(prev);
+      
+      // If Shift is pressed and we have a last selected product, select range
+      if (shiftKey && lastSelectedProductId) {
+        const lastIndex = filteredProducts.findIndex(p => p.id === lastSelectedProductId);
+        const currentIndex = filteredProducts.findIndex(p => p.id === productId);
+        
+        if (lastIndex !== -1 && currentIndex !== -1) {
+          const startIndex = Math.min(lastIndex, currentIndex);
+          const endIndex = Math.max(lastIndex, currentIndex);
+          
+          // Add all products in range
+          for (let i = startIndex; i <= endIndex; i++) {
+            next.add(filteredProducts[i].id);
+          }
+          return next;
+        }
+      }
+      
+      // Normal toggle behavior
       if (next.has(productId)) {
         next.delete(productId);
       } else {
@@ -193,7 +213,10 @@ export function ProductsSection({
       }
       return next;
     });
-  }, []);
+    
+    // Always update last selected
+    setLastSelectedProductId(productId);
+  }, [lastSelectedProductId, filteredProducts]);
 
   const handleSelectAll = useCallback(() => {
     if (selectedBulkProducts.size === filteredProducts.length) {
