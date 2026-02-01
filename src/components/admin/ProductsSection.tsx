@@ -297,6 +297,46 @@ export function ProductsSection({
     setSelectedBulkProducts(new Set());
   }, [selectedBulkProducts, onDeleteProducts, toast]);
 
+  // Add selected products to a catalog
+  const handleAddToCatalog = useCallback(
+    (catalogId: string) => {
+      const selectedIds = Array.from(selectedBulkProducts);
+      for (const productId of selectedIds) {
+        // Check if already in catalog
+        const isInCatalog = productCatalogVisibility[productId]?.has(catalogId);
+        if (!isInCatalog) {
+          onToggleCatalogVisibility(productId, catalogId);
+        }
+      }
+      const catalog = catalogs.find((c) => c.id === catalogId);
+      toast({
+        title: "Товары добавлены в прайс-лист",
+        description: `${selectedIds.length} товар(ов) добавлено в "${catalog?.name || "прайс-лист"}"`,
+      });
+      setSelectedBulkProducts(new Set());
+    },
+    [selectedBulkProducts, productCatalogVisibility, onToggleCatalogVisibility, catalogs, toast]
+  );
+
+  // Create new catalog and add selected products
+  const handleCreateCatalogAndAdd = useCallback(
+    async (catalogName: string) => {
+      const newCatalog = await onCreateCatalog(catalogName);
+      if (newCatalog) {
+        const selectedIds = Array.from(selectedBulkProducts);
+        for (const productId of selectedIds) {
+          onToggleCatalogVisibility(productId, newCatalog.id);
+        }
+        toast({
+          title: "Прайс-лист создан",
+          description: `${selectedIds.length} товар(ов) добавлено в "${catalogName}"`,
+        });
+        setSelectedBulkProducts(new Set());
+      }
+    },
+    [selectedBulkProducts, onCreateCatalog, onToggleCatalogVisibility, toast]
+  );
+
   const toggleColumn = useCallback((columnKey: keyof VisibleColumns) => {
     setVisibleColumns((prev) => ({
       ...prev,
@@ -384,6 +424,8 @@ export function ProductsSection({
           unitOptions={allUnitOptions}
           packagingOptions={allPackagingOptions}
           catalogs={catalogs}
+          onAddToCatalog={handleAddToCatalog}
+          onCreateCatalogAndAdd={handleCreateCatalogAndAdd}
         />
       )}
 
