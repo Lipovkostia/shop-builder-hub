@@ -156,7 +156,8 @@ export interface AllProductsFilters {
 interface VirtualProductTableProps {
   products: Product[];
   selectedBulkProducts: Set<string>;
-  onToggleBulkSelection: (productId: string) => void;
+  onToggleBulkSelection: (productId: string, shiftKey?: boolean) => void;
+  
   onSelectAll: () => void;
   onUpdateProduct: (product: Product) => void;
   visibleColumns: VisibleColumns;

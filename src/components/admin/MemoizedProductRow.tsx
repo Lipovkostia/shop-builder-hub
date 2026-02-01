@@ -47,7 +47,7 @@ export interface ProductRowData {
 interface MemoizedProductRowProps {
   product: Product;
   isSelected: boolean;
-  onToggleSelection: (productId: string) => void;
+  onToggleSelection: (productId: string, shiftKey?: boolean) => void;
   onUpdateProduct: (product: Product) => void;
   visibleColumns: VisibleColumns;
   catalogs: Catalog[];
@@ -117,8 +117,10 @@ function ProductRowComponent({
   // Use optimistic images if provided, otherwise fall back to product.images
   const displayImages = optimisticImages || product.images || [];
 
-  const handleToggleSelection = useCallback(() => {
-    onToggleSelection(product.id);
+  const handleToggleSelection = useCallback((e?: React.MouseEvent | boolean) => {
+    // Handle both checkbox change (boolean) and click events
+    const shiftKey = typeof e === 'object' && e !== null ? e.shiftKey : false;
+    onToggleSelection(product.id, shiftKey);
   }, [onToggleSelection, product.id]);
 
   const handleToggleExpansion = useCallback(() => {
@@ -200,10 +202,13 @@ function ProductRowComponent({
         </div>
 
         {/* Checkbox */}
-        <div className="w-8 flex-shrink-0 flex items-center justify-center">
+        <div 
+          className="w-8 flex-shrink-0 flex items-center justify-center cursor-pointer"
+          onClick={handleToggleSelection}
+        >
           <Checkbox
             checked={isSelected}
-            onCheckedChange={handleToggleSelection}
+            className="pointer-events-none"
           />
         </div>
 
