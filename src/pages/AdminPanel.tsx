@@ -115,6 +115,7 @@ import { TrashSection } from "@/components/admin/TrashSection";
 import { RetailSettingsSection } from "@/components/admin/RetailSettingsSection";
 import { WholesaleSettingsSection } from "@/components/admin/WholesaleSettingsSection";
 import { FormingOrdersSection } from "@/components/admin/FormingOrdersSection";
+import { ProductsSection } from "@/components/admin/ProductsSection";
 
 // Removed localStorage keys - now using Supabase
 
@@ -3264,632 +3265,61 @@ export default function AdminPanel({
           
           {effectiveStoreId && activeSection === "products" && (
             <>
-              <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Товары</span>
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
-                    {filteredAllProducts.length}
-                  </Badge>
-                  {importedProducts.length > 0 && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
-                      МС: {importedProducts.length}
-                    </Badge>
-                  )}
-                  <div className="relative" data-onboarding="add-product-button">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => setQuickAddDialogOpen(true)}
-                      title="Добавить товар"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                    {/* Hint for empty state */}
-                    {allProducts.length === 0 && (
-                      <div className="absolute left-8 top-1/2 -translate-y-1/2 whitespace-nowrap bg-primary text-primary-foreground text-xs px-2 py-1 rounded shadow-lg animate-pulse">
-                        Добавьте свой первый товар
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-primary rotate-45" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {importedProducts.some(p => p.autoSync) && (
-                    <Button
-                      onClick={() => syncAutoSyncProducts()}
-                      disabled={isSyncing}
-                      variant="outline"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                    >
-                      {isSyncing ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-3 w-3" />
-                      )}
-                      <span className="hidden sm:inline ml-1">Синхр.</span>
-                    </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={handleExportProducts}
-                    disabled={isExportingProducts || supabaseProducts.length === 0}
-                    title="Скачать ассортимент в Excel"
-                  >
-                    {isExportingProducts ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Download className="h-3.5 w-3.5" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2 text-xs gap-1"
-                    onClick={() => setAiAssistantOpen(true)}
-                    title="AI Помощник для массовых операций"
-                  >
-                    <Sparkles className="h-3 w-3" />
-                    <span className="hidden sm:inline">AI</span>
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1">
-                        <Settings className="h-3 w-3" />
-                        <span className="hidden sm:inline">Столбцы</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      {Object.entries(columnLabels).map(([id, label]) => (
-                        <DropdownMenuCheckboxItem
-                          key={id}
-                          checked={visibleColumns[id]}
-                          onCheckedChange={() => toggleColumnVisibility(id)}
-                          className="text-xs"
-                        >
-                          {label}
-                        </DropdownMenuCheckboxItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-
-              {/* Bulk Edit Panel */}
-              <BulkEditPanel
-                selectedCount={selectedBulkProducts.size}
-                onClearSelection={() => setSelectedBulkProducts(new Set())}
-                onBulkUpdate={bulkUpdateProducts}
-                onBulkDelete={bulkDeleteProducts}
-                unitOptions={allUnitOptions}
-                packagingOptions={allPackagingOptions}
+              <ProductsSection
+                products={allProducts}
                 catalogs={catalogs}
-                onAddToCatalog={async (catalogId) => {
-                  const productIds = Array.from(selectedBulkProducts);
-                  let addedCount = 0;
-                  for (const productId of productIds) {
-                    const currentSet = productCatalogVisibility[productId] || new Set();
-                    if (!currentSet.has(catalogId)) {
-                      await toggleProductCatalogVisibility(productId, catalogId);
-                      addedCount++;
-                    }
-                  }
-                  const catalogName = catalogs.find(c => c.id === catalogId)?.name || "прайс-лист";
-                  toast({
-                    title: "Товары добавлены",
-                    description: `${addedCount} товар(ов) добавлено в "${catalogName}"`,
-                  });
-                  setSelectedBulkProducts(new Set());
+                productGroups={productGroups}
+                productCatalogVisibility={productCatalogVisibility}
+                getProductGroupIds={getProductGroupIds}
+                onToggleCatalogVisibility={toggleProductCatalogVisibility}
+                onSetProductGroupAssignments={setProductGroupAssignments}
+                onCreateProductGroup={async (name) => {
+                  const group = await createProductGroup(name);
+                  return group ? { id: group.id, name: group.name, storeId: effectiveStoreId || '' } : null;
                 }}
-                onCreateCatalogAndAdd={async (catalogName) => {
-                  const newCatalog = await createSupabaseCatalog(catalogName);
-                  if (newCatalog) {
-                    const productIds = Array.from(selectedBulkProducts);
-                    for (const productId of productIds) {
-                      await toggleProductCatalogVisibility(productId, newCatalog.id);
-                    }
-                    toast({
-                      title: "Прайс-лист создан",
-                      description: `"${catalogName}" создан и ${productIds.length} товар(ов) добавлено`,
-                    });
-                    setSelectedBulkProducts(new Set());
-                  }
+                onCreateCatalog={async (name) => {
+                  const catalog = await createSupabaseCatalog(name);
+                  return catalog ? { 
+                    id: catalog.id, 
+                    name: catalog.name, 
+                    productIds: [], 
+                    categoryIds: [], 
+                    createdAt: catalog.created_at 
+                  } : null;
                 }}
-              />
-
-
-              <div className="bg-card rounded-lg border border-border">
-                <DraggableTableWrapper items={productIds} onReorder={handleProductReorder}>
-                <ResizableTable
-                  storageKey="admin-products-v4"
-                  columns={[
-                    { id: "checkbox", minWidth: 40, defaultWidth: 40 },
-                    { id: "drag", minWidth: 32, defaultWidth: 32 },
-                    { id: "photo", minWidth: 50, defaultWidth: 50 },
-                    { id: "name", minWidth: 120, defaultWidth: 180 },
-                    { id: "sku", minWidth: 80, defaultWidth: 100 },
-                    { id: "desc", minWidth: 100, defaultWidth: 150 },
-                    { id: "source", minWidth: 80, defaultWidth: 90 },
-                    { id: "unit", minWidth: 60, defaultWidth: 70 },
-                    { id: "type", minWidth: 70, defaultWidth: 85 },
-                    { id: "volume", minWidth: 70, defaultWidth: 80 },
-                    { id: "cost", minWidth: 70, defaultWidth: 90 },
-                    { id: "groups", minWidth: 100, defaultWidth: 120 },
-                    { id: "catalogs", minWidth: 100, defaultWidth: 120 },
-                    { id: "status", minWidth: 70, defaultWidth: 80 },
-                    { id: "sync", minWidth: 36, defaultWidth: 36 },
-                    { id: "actions", minWidth: 40, defaultWidth: 40 },
-                  ]}
-                >
-                  <ResizableTableHeader>
-                    {/* Row 1: Column names */}
-                    <ResizableTableRow className="h-6">
-                      {visibleColumns.drag && (
-                        <ResizableTableHead columnId="drag" minWidth={32} resizable={false}>
-                          <span className="text-muted-foreground/50 text-[10px]">⋮⋮</span>
-                        </ResizableTableHead>
-                      )}
-                      {visibleColumns.checkbox && (
-                        <ResizableTableHead columnId="checkbox" minWidth={40} resizable={false}>
-                          <Checkbox
-                            checked={selectedBulkProducts.size === filteredAllProducts.length && filteredAllProducts.length > 0}
-                            onCheckedChange={selectAllBulkProducts}
-                          />
-                        </ResizableTableHead>
-                      )}
-                      {visibleColumns.photo && (
-                        <ResizableTableHead columnId="photo" minWidth={50} resizable={false}>Фото</ResizableTableHead>
-                      )}
-                      {visibleColumns.name && (
-                        <ResizableTableHead columnId="name" minWidth={120}>Название</ResizableTableHead>
-                      )}
-                      {visibleColumns.sku && (
-                        <ResizableTableHead columnId="sku" minWidth={80}>Код товара</ResizableTableHead>
-                      )}
-                      {visibleColumns.desc && (
-                        <ResizableTableHead columnId="desc" minWidth={100}>Описание</ResizableTableHead>
-                      )}
-                      {visibleColumns.source && (
-                        <ResizableTableHead columnId="source" minWidth={80}>Источник</ResizableTableHead>
-                      )}
-                      {visibleColumns.unit && (
-                        <ResizableTableHead columnId="unit" minWidth={60}>Ед.</ResizableTableHead>
-                      )}
-                      {visibleColumns.type && (
-                        <ResizableTableHead columnId="type" minWidth={70}>Вид</ResizableTableHead>
-                      )}
-                      {visibleColumns.volume && (
-                        <ResizableTableHead columnId="volume" minWidth={70}>Объем</ResizableTableHead>
-                      )}
-                      {visibleColumns.cost && (
-                        <ResizableTableHead columnId="cost" minWidth={70}>Себест.</ResizableTableHead>
-                      )}
-                      {visibleColumns.groups && (
-                        <ResizableTableHead columnId="groups" minWidth={100}>Группа</ResizableTableHead>
-                      )}
-                      {visibleColumns.catalogs && (
-                        <ResizableTableHead columnId="catalogs" minWidth={120} data-onboarding="catalog-column-header">Прайс-листы</ResizableTableHead>
-                      )}
-                      {visibleColumns.sync && (
-                        <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
-                          <RefreshCw className="h-3.5 w-3.5" />
-                        </ResizableTableHead>
-                      )}
-                    </ResizableTableRow>
-                    {/* Row 2: Filters */}
-                    <ResizableTableRow className="h-6 border-b-0">
-                      {visibleColumns.drag && (
-                        <ResizableTableHead columnId="drag" minWidth={32} resizable={false}></ResizableTableHead>
-                      )}
-                      {visibleColumns.checkbox && (
-                        <ResizableTableHead columnId="checkbox" minWidth={40} resizable={false}></ResizableTableHead>
-                      )}
-                      {visibleColumns.photo && (
-                        <ResizableTableHead columnId="photo" minWidth={50} resizable={false}></ResizableTableHead>
-                      )}
-                      {visibleColumns.name && (
-                        <ResizableTableHead columnId="name" minWidth={120} resizable={false}>
-                          <ColumnFilter 
-                            value={allProductsFilters.name} 
-                            onChange={(v) => setAllProductsFilters(f => ({...f, name: v}))}
-                            placeholder="Поиск..."
-                          />
-                        </ResizableTableHead>
-                      )}
-                      {visibleColumns.sku && (
-                        <ResizableTableHead columnId="sku" minWidth={80} resizable={false}>
-                          <ColumnFilter 
-                            value={allProductsFilters.sku || ""} 
-                            onChange={(v) => setAllProductsFilters(f => ({...f, sku: v}))}
-                            placeholder="Поиск..."
-                          />
-                        </ResizableTableHead>
-                      )}
-                      {visibleColumns.desc && (
-                        <ResizableTableHead columnId="desc" minWidth={100} resizable={false}>
-                          <ColumnFilter 
-                            value={allProductsFilters.desc} 
-                            onChange={(v) => setAllProductsFilters(f => ({...f, desc: v}))}
-                            placeholder="Поиск..."
-                          />
-                        </ResizableTableHead>
-                      )}
-                      {visibleColumns.source && (
-                        <ResizableTableHead columnId="source" minWidth={80} resizable={false}>
-                          <SelectFilter
-                            value={allProductsFilters.source}
-                            onChange={(v) => setAllProductsFilters(f => ({...f, source: v}))}
-                            options={[
-                              { value: "moysklad", label: "МС" },
-                              { value: "local", label: "Лок" },
-                            ]}
-                            placeholder="Все"
-                          />
-                        </ResizableTableHead>
-                      )}
-                      {visibleColumns.unit && (
-                        <ResizableTableHead columnId="unit" minWidth={60} resizable={false}>
-                          <SelectFilter
-                            value={allProductsFilters.unit}
-                            onChange={(v) => setAllProductsFilters(f => ({...f, unit: v}))}
-                            options={[
-                              { value: "кг", label: "кг" },
-                              { value: "шт", label: "шт" },
-                              { value: "л", label: "л" },
-                              { value: "уп", label: "уп" },
-                            ]}
-                            placeholder="Все"
-                          />
-                        </ResizableTableHead>
-                      )}
-                      {visibleColumns.type && (
-                        <ResizableTableHead columnId="type" minWidth={70} resizable={false}>
-                          <SelectFilter
-                            value={allProductsFilters.type}
-                            onChange={(v) => setAllProductsFilters(f => ({...f, type: v}))}
-                            options={[
-                              { value: "weight", label: "Вес" },
-                              { value: "piece", label: "Шт" },
-                            ]}
-                            placeholder="Все"
-                          />
-                        </ResizableTableHead>
-                      )}
-                      {visibleColumns.volume && (
-                        <ResizableTableHead columnId="volume" minWidth={70} resizable={false}>
-                          <ColumnFilter 
-                            value={allProductsFilters.volume} 
-                            onChange={(v) => setAllProductsFilters(f => ({...f, volume: v}))}
-                            placeholder="Поиск..."
-                          />
-                        </ResizableTableHead>
-                      )}
-                      {visibleColumns.cost && (
-                        <ResizableTableHead columnId="cost" minWidth={70} resizable={false}>
-                          <ColumnFilter 
-                            value={allProductsFilters.cost} 
-                            onChange={(v) => setAllProductsFilters(f => ({...f, cost: v}))}
-                            placeholder="Поиск..."
-                          />
-                        </ResizableTableHead>
-                      )}
-                      {visibleColumns.groups && (
-                        <ResizableTableHead columnId="groups" minWidth={100} resizable={false}>
-                          <MultiSelectFilter
-                            values={allProductsFilters.groups}
-                            onChange={(v) => setAllProductsFilters(f => ({...f, groups: v}))}
-                            options={[
-                              { value: "none", label: "Без группы" },
-                              ...productGroups.map(g => ({ value: g.id, label: g.name }))
-                            ]}
-                            placeholder="Все"
-                          />
-                        </ResizableTableHead>
-                      )}
-                      {visibleColumns.catalogs && (
-                        <ResizableTableHead columnId="catalogs" minWidth={120} resizable={false}></ResizableTableHead>
-                      )}
-                      {visibleColumns.sync && (
-                        <ResizableTableHead columnId="sync" minWidth={50} resizable={false}>
-                          <SelectFilter
-                            value={allProductsFilters.sync}
-                            onChange={(v) => setAllProductsFilters(f => ({...f, sync: v}))}
-                            options={[
-                              { value: "synced", label: "Да" },
-                              { value: "notSynced", label: "Нет" },
-                            ]}
-                            placeholder="Все"
-                          />
-                        </ResizableTableHead>
-                      )}
-                    </ResizableTableRow>
-                  </ResizableTableHeader>
-                  <SortableTableBody>
-                    {filteredAllProducts.map((product) => {
-                      const salePrice = getProductSalePrice(product);
-                      const packagingPrices = calculatePackagingPrices(
-                        salePrice,
-                        product.unitWeight,
-                        product.packagingType,
-                        product.customVariantPrices
-                      );
-                      
-                      // Define all cells with their column IDs
-                      const cellsMap: Record<string, React.ReactNode> = {
-                        checkbox: (
-                          <ResizableTableCell key="checkbox" columnId="checkbox">
-                            <Checkbox
-                              checked={selectedBulkProducts.has(product.id)}
-                              onCheckedChange={() => toggleBulkProductSelection(product.id)}
-                            />
-                          </ResizableTableCell>
-                        ),
-                        photo: (
-                          <ResizableTableCell key="photo" columnId="photo">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-auto px-1 gap-1 flex items-center"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setExpandedAssortmentImages(
-                                  expandedAssortmentImages === product.id ? null : product.id
-                                );
-                              }}
-                            >
-                              {product.image ? (
-                                <img
-                                  src={product.image}
-                                  alt={product.name}
-                                  className="w-6 h-6 rounded object-cover flex-shrink-0"
-                                />
-                              ) : (
-                                <div className="w-6 h-6 rounded bg-muted flex items-center justify-center flex-shrink-0 hover:bg-primary/10 transition-colors">
-                                  <Plus className="h-3.5 w-3.5 text-muted-foreground" />
-                                </div>
-                              )}
-                              {product.images && product.images.length > 0 && (
-                                <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                                  {product.images.length}
-                                </Badge>
-                              )}
-                              {expandedAssortmentImages === product.id ? (
-                                <ChevronUp className="h-3 w-3 text-muted-foreground" />
-                              ) : (
-                                <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                              )}
-                            </Button>
-                          </ResizableTableCell>
-                        ),
-                        name: (
-                          <ResizableTableCell key="name" columnId="name">
-                            <InlineEditableCell
-                              value={product.name}
-                              onSave={(newName) => updateProduct({ ...product, name: newName })}
-                              placeholder="Название"
-                            />
-                          </ResizableTableCell>
-                        ),
-                        sku: (
-                          <ResizableTableCell key="sku" columnId="sku">
-                            <InlineEditableCell
-                              value={product.sku || ""}
-                              onSave={(newSku) => updateProduct({ ...product, sku: newSku })}
-                              placeholder="—"
-                              className="font-mono text-xs text-muted-foreground"
-                            />
-                          </ResizableTableCell>
-                        ),
-                        desc: (
-                          <ResizableTableCell key="desc" columnId="desc">
-                            <InlineEditableCell
-                              value={product.description || ""}
-                              onSave={(newDesc) => updateProduct({ ...product, description: newDesc })}
-                              placeholder="Описание..."
-                              className="text-muted-foreground"
-                            />
-                          </ResizableTableCell>
-                        ),
-                        source: (
-                          <ResizableTableCell key="source" columnId="source">
-                            {product.source === "moysklad" ? (
-                              <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 whitespace-nowrap">
-                                МС
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-[10px] whitespace-nowrap">
-                                Лок
-                              </Badge>
-                            )}
-                          </ResizableTableCell>
-                        ),
-                        unit: (
-                          <ResizableTableCell key="unit" columnId="unit">
-                            <InlineSelectCell
-                              value={product.unit}
-                              options={allUnitOptions}
-                              onSave={(newUnit) => updateProduct({ ...product, unit: newUnit })}
-                              onAddOption={(newUnit) => setCustomUnits(prev => [...prev, newUnit])}
-                              addNewPlaceholder="Ед..."
-                            />
-                          </ResizableTableCell>
-                        ),
-                        type: (
-                          <ResizableTableCell key="type" columnId="type">
-                            <InlineSelectCell
-                              value={product.packagingType || (product.productType === "weight" ? "head" : "piece")}
-                              options={allPackagingOptions}
-                              onSave={(newType) => updateProduct({ ...product, packagingType: newType as PackagingType })}
-                              onAddOption={(newType) => setCustomPackagingTypes(prev => [...prev, newType])}
-                              addNewPlaceholder="Вид..."
-                            />
-                          </ResizableTableCell>
-                        ),
-                        volume: (
-                          <ResizableTableCell key="volume" columnId="volume">
-                            <InlinePriceCell
-                              value={product.unitWeight}
-                              onSave={(newVolume) => updateProduct({ ...product, unitWeight: newVolume })}
-                              placeholder="0"
-                              suffix={product.unit}
-                            />
-                          </ResizableTableCell>
-                        ),
-                        cost: (
-                          <ResizableTableCell key="cost" columnId="cost">
-                            <InlinePriceCell
-                              value={product.buyPrice}
-                              onSave={(newPrice) => updateProduct({ ...product, buyPrice: newPrice })}
-                              placeholder="0"
-                            />
-                          </ResizableTableCell>
-                        ),
-                        groups: (
-                          <ResizableTableCell key="groups" columnId="groups">
-                            <InlineMultiSelectCell
-                              values={getProductGroupIds(product.id)}
-                              options={productGroups.map(g => ({ value: g.id, label: g.name }))}
-                              onSave={(selectedIds) => {
-                                setProductGroupAssignments(product.id, selectedIds);
-                              }}
-                              onAddOption={async (newGroupName) => {
-                                const newGroup = await createProductGroup(newGroupName);
-                                if (newGroup) {
-                                  return newGroup.id;
-                                }
-                                return null;
-                              }}
-                              placeholder="Группа..."
-                              addNewPlaceholder="Новая группа..."
-                              allowAddNew={true}
-                            />
-                          </ResizableTableCell>
-                        ),
-                        catalogs: (
-                          <ResizableTableCell key="catalogs" columnId="catalogs">
-                            <InlineMultiSelectCell
-                              values={Array.from(productCatalogVisibility[product.id] || [])}
-                              options={catalogs.map(c => ({ value: c.id, label: c.name }))}
-                              onSave={(selectedIds) => {
-                                const currentSet = productCatalogVisibility[product.id] || new Set();
-                                const newSet = new Set(selectedIds);
-                                
-                                // Find added and removed
-                                selectedIds.forEach(id => {
-                                  if (!currentSet.has(id)) {
-                                    toggleProductCatalogVisibility(product.id, id);
-                                  }
-                                });
-                                currentSet.forEach(id => {
-                                  if (!newSet.has(id)) {
-                                    toggleProductCatalogVisibility(product.id, id);
-                                  }
-                                });
-                              }}
-                              onAddOption={async (newCatalogName) => {
-                                const newCatalog = await createSupabaseCatalog(newCatalogName);
-                                if (newCatalog) {
-                                  return newCatalog.id;
-                                }
-                                return null;
-                              }}
-                              onNavigate={(catalogId) => {
-                                const supabaseCatalog = supabaseCatalogs.find(c => c.id === catalogId);
-                                if (supabaseCatalog) {
-                                  // Navigate to catalogs section within admin panel
-                                  handleSectionChange("catalogs");
-                                  // Open this specific catalog
-                                  setTimeout(() => {
-                                    const legacyCatalog: Catalog = {
-                                      id: supabaseCatalog.id,
-                                      name: supabaseCatalog.name,
-                                      description: supabaseCatalog.description || undefined,
-                                      productIds: Object.entries(productCatalogVisibility)
-                                        .filter(([_, catalogs]) => catalogs.has(supabaseCatalog.id))
-                                        .map(([productId]) => productId),
-                                      categoryIds: [],
-                                      createdAt: supabaseCatalog.created_at,
-                                    };
-                                    setCurrentCatalog(legacyCatalog);
-                                    setSelectedCatalogProducts(new Set(legacyCatalog.productIds));
-                                    setCatalogView("detail");
-                                  }, 0);
-                                }
-                              }}
-                              placeholder="Выбрать..."
-                              addNewPlaceholder="Новый прайс-лист..."
-                              addNewButtonLabel="Создать прайс-лист"
-                              allowAddNew={true}
-                              emptyStateMessage="Нет прайс-листов"
-                              showNavigateOnboardingHint={
-                                supabaseProducts.length > 0 && 
-                                catalogs.length > 0 && 
-                                Object.values(productCatalogVisibility).some(cats => cats.size > 0) &&
-                                (productCatalogVisibility[product.id]?.size || 0) > 0 &&
-                                !supabaseProducts.some(p => p.buy_price && p.buy_price > 0)
-                              }
-                            />
-                          </ResizableTableCell>
-                        ),
-                        sync: (
-                          <ResizableTableCell key="sync" columnId="sync">
-                            {product.source === "moysklad" && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={`h-6 w-6 ${product.autoSync ? "text-primary" : "text-muted-foreground"}`}
-                                onClick={() => toggleAutoSync(product.id)}
-                                title={product.autoSync ? "Синхр. вкл" : "Синхр. выкл"}
-                              >
-                                {product.autoSync ? (
-                                  <Lock className="h-3 w-3" />
-                                ) : (
-                                  <Unlock className="h-3 w-3" />
-                                )}
-                              </Button>
-                            )}
-                          </ResizableTableCell>
-                        ),
+                onUpdateProduct={updateProduct}
+                onDeleteProducts={async (ids) => {
+                  await deleteSupabaseProducts(ids);
+                }}
+                onToggleAutoSync={toggleAutoSync}
+                onAddProduct={() => setQuickAddDialogOpen(true)}
+                onNavigateToCatalog={(catalogId) => {
+                  const supabaseCatalog = supabaseCatalogs.find(c => c.id === catalogId);
+                  if (supabaseCatalog) {
+                    handleSectionChange("catalogs");
+                    setTimeout(() => {
+                      const legacyCatalog: Catalog = {
+                        id: supabaseCatalog.id,
+                        name: supabaseCatalog.name,
+                        description: supabaseCatalog.description || undefined,
+                        productIds: Object.entries(productCatalogVisibility)
+                          .filter(([_, catalogs]) => catalogs.has(supabaseCatalog.id))
+                          .map(([productId]) => productId),
+                        categoryIds: [],
+                        createdAt: supabaseCatalog.created_at,
                       };
-                      
-                      return (
-                        <React.Fragment key={product.id}>
-                          <SortableTableRow id={product.id}>
-                            <OrderedCellsContainer 
-                              cells={cellsMap} 
-                              fixedStart={["drag", "checkbox"]}
-                              fixedEnd={["sync"]}
-                              visibleColumns={visibleColumns}
-                            />
-                          </SortableTableRow>
-                          {/* Expanded images row */}
-                          {expandedAssortmentImages === product.id && (
-                            <TableRow className="bg-muted/30 hover:bg-muted/50">
-                              <TableCell colSpan={13} className="py-3 px-4">
-                                <ImageGalleryViewer
-                                  images={product.images || []}
-                                  productName={product.name}
-                                  productId={product.id}
-                                  onDeleteImage={(index) => handleDeleteProductImage(product.id, index)}
-                                  onAddImages={(files, source) => handleAddProductImages(product.id, files, source)}
-                                  onSetMainImage={(index) => handleSetMainImage(product.id, index)}
-                                  isDeleting={deletingImageProductId === product.id}
-                                  isUploading={uploadingImageProductId === product.id}
-                                />
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </SortableTableBody>
-                </ResizableTable>
-                </DraggableTableWrapper>
-              </div>
+                      setCurrentCatalog(legacyCatalog);
+                      setSelectedCatalogProducts(new Set(legacyCatalog.productIds));
+                      setCatalogView("detail");
+                    }, 0);
+                  }
+                }}
+                onOpenAIAssistant={() => setAiAssistantOpen(true)}
+                customUnits={customUnits}
+                customPackagingTypes={customPackagingTypes}
+                onAddCustomUnit={(unit) => setCustomUnits(prev => [...prev, unit])}
+                onAddCustomPackaging={(type) => setCustomPackagingTypes(prev => [...prev, type])}
+              />
 
               {/* Product Pricing Dialog */}
               <ProductPricingDialog
