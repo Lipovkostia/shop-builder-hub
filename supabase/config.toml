@@ -29,3 +29,9 @@ verify_jwt = false
 
 [functions.ai-seo-generator]
 verify_jwt = false
+
+[functions.create-wholesale-order]
+verify_jwt = false
+
+[functions.admin-reset-password]
+verify_jwt = false

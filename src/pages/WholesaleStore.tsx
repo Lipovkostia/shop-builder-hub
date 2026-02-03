@@ -18,8 +18,11 @@ import {
 } from "lucide-react";
 import { useWholesaleStore, WholesaleProduct } from "@/hooks/useWholesaleStore";
 import { useRetailCart } from "@/hooks/useRetailCart";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { WholesaleLivestreamBlock } from "@/components/wholesale/WholesaleLivestreamBlock";
+import { WholesaleCartSheet } from "@/components/wholesale/WholesaleCartSheet";
+import { WholesaleCartDrawer } from "@/components/wholesale/WholesaleCartDrawer";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 
@@ -30,6 +33,7 @@ interface WholesaleStoreProps {
 export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleStoreProps = {}) {
   const params = useParams();
   const subdomain = propSubdomain || params.subdomain;
+  const isMobile = useIsMobile();
   const { store, products, categories, loading, error } = useWholesaleStore(subdomain);
   const { cart, cartTotal, cartItemsCount, isOpen, setIsOpen, addToCart, updateQuantity, removeFromCart } = useRetailCart(subdomain || null);
 
@@ -435,20 +439,27 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
         </div>
       </div>
 
-      {/* Cart minimum order warning */}
-      {store.wholesale_min_order_amount && cartTotal < store.wholesale_min_order_amount && cartItemsCount > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-sm">
-          <Card className="bg-orange-50 border-orange-200">
-            <CardContent className="p-4">
-              <p className="text-sm text-orange-800">
-                Минимальная сумма заказа: {store.wholesale_min_order_amount.toLocaleString("ru-RU")} ₽
-              </p>
-              <p className="text-xs text-orange-600 mt-1">
-                Добавьте ещё на {(store.wholesale_min_order_amount - cartTotal).toLocaleString("ru-RU")} ₽
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Cart components */}
+      {isMobile ? (
+        <WholesaleCartSheet
+          open={isOpen}
+          onOpenChange={setIsOpen}
+          cart={cart}
+          cartTotal={cartTotal}
+          onUpdateQuantity={updateQuantity}
+          onRemove={removeFromCart}
+          minOrderAmount={store.wholesale_min_order_amount}
+        />
+      ) : (
+        <WholesaleCartDrawer
+          open={isOpen}
+          onOpenChange={setIsOpen}
+          cart={cart}
+          cartTotal={cartTotal}
+          onUpdateQuantity={updateQuantity}
+          onRemove={removeFromCart}
+          minOrderAmount={store.wholesale_min_order_amount}
+        />
       )}
     </div>
   );
