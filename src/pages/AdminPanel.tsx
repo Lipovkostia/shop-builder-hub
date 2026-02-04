@@ -803,8 +803,15 @@ export default function AdminPanel({
     console.log('setCatalogs now routes through Supabase');
   }, []);
   
-  const [catalogView, setCatalogView] = useState<CatalogView>("list");
+  // Initialize catalog view and current catalog from URL params
+  const [catalogView, setCatalogView] = useState<CatalogView>(() => {
+    const catalogId = searchParams.get('catalogId');
+    return catalogId ? "detail" : "list";
+  });
   const [currentCatalog, setCurrentCatalog] = useState<Catalog | null>(null);
+  const [pendingCatalogId, setPendingCatalogId] = useState<string | null>(() => {
+    return searchParams.get('catalogId');
+  });
   const [newCatalogName, setNewCatalogName] = useState("");
   const [newCatalogDescription, setNewCatalogDescription] = useState("");
   const [newCatalogCategories, setNewCatalogCategories] = useState<Set<string>>(new Set());
@@ -1295,12 +1302,43 @@ export default function AdminPanel({
     if (section === "import") {
       setImportView("accounts");
     } else if (section === "catalogs") {
-      setCatalogView("list");
-      // Reset currentCatalog to force re-read from catalogs array with fresh product data
-      setCurrentCatalog(null);
-      setSelectedCatalogProducts(new Set());
+      // Only reset to list if there's no catalogId in URL
+      const catalogIdInUrl = searchParams.get('catalogId');
+      if (!catalogIdInUrl) {
+        setCatalogView("list");
+        // Reset currentCatalog to force re-read from catalogs array with fresh product data
+        setCurrentCatalog(null);
+        setSelectedCatalogProducts(new Set());
+      }
+      // Remove catalogId from URL when going back to catalogs list without explicit catalog
+      const newParamsForCatalogs = new URLSearchParams(newParams);
+      newParamsForCatalogs.delete('catalogId');
+      setSearchParams(newParamsForCatalogs, { replace: true });
     }
   }, [searchParams, setSearchParams]);
+
+  // Restore catalog from URL when catalogs are loaded
+  useEffect(() => {
+    if (!pendingCatalogId || supabaseCatalogs.length === 0 || catalogsLoading) return;
+    
+    const supabaseCatalog = supabaseCatalogs.find(c => c.id === pendingCatalogId);
+    if (supabaseCatalog) {
+      const legacyCatalog: Catalog = {
+        id: supabaseCatalog.id,
+        name: supabaseCatalog.name,
+        description: supabaseCatalog.description || undefined,
+        productIds: Object.entries(productCatalogVisibility)
+          .filter(([_, catalogsSet]) => catalogsSet.has(supabaseCatalog.id))
+          .map(([productId]) => productId),
+        categoryIds: [],
+        createdAt: supabaseCatalog.created_at,
+      };
+      setCurrentCatalog(legacyCatalog);
+      setSelectedCatalogProducts(new Set(legacyCatalog.productIds));
+      setCatalogView("detail");
+    }
+    setPendingCatalogId(null);
+  }, [pendingCatalogId, supabaseCatalogs, productCatalogVisibility, catalogsLoading]);
 
   // Initialize profile and store data when profile section is active
   useEffect(() => {
@@ -2160,6 +2198,11 @@ export default function AdminPanel({
       setCurrentCatalog(legacyCatalog);
       setSelectedCatalogProducts(new Set(legacyCatalog.productIds));
       setCatalogView("detail");
+      
+      // Save catalogId to URL for persistence on refresh
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('catalogId', freshCatalog.id);
+      setSearchParams(newParams, { replace: true });
     }
   };
 
@@ -3462,6 +3505,11 @@ export default function AdminPanel({
                       setCurrentCatalog(legacyCatalog);
                       setSelectedCatalogProducts(new Set(legacyCatalog.productIds));
                       setCatalogView("detail");
+                      
+                      // Save catalogId to URL for persistence on refresh
+                      const newParams = new URLSearchParams(searchParams);
+                      newParams.set('catalogId', supabaseCatalog.id);
+                      setSearchParams(newParams, { replace: true });
                     }, 0);
                   }
                 }}
@@ -4415,6 +4463,10 @@ export default function AdminPanel({
                           setCurrentCatalog(null);
                           setSelectedCatalogProducts(new Set());
                           setCatalogProductSearch("");
+                          // Remove catalogId from URL
+                          const newParams = new URLSearchParams(searchParams);
+                          newParams.delete('catalogId');
+                          setSearchParams(newParams, { replace: true });
                         }}
                       >
                         <ArrowLeft className="h-4 w-4 mr-2" />

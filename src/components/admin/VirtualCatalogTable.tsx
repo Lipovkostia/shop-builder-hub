@@ -416,6 +416,9 @@ const CatalogRow = memo(({
          prev.effectiveStatus === next.effectiveStatus &&
          prev.salePrice === next.salePrice &&
          prev.isSelected === next.isSelected &&
+         // Check if categories/storeCategories changed (for subcategory dropdown options)
+         prev.categories.length === next.categories.length &&
+         prev.storeCategories.length === next.storeCategories.length &&
          JSON.stringify(prev.effectiveCategories) === JSON.stringify(next.effectiveCategories) &&
          JSON.stringify(prev.effectiveMarkup) === JSON.stringify(next.effectiveMarkup) &&
          JSON.stringify(prev.effectivePortionPrices) === JSON.stringify(next.effectivePortionPrices);
