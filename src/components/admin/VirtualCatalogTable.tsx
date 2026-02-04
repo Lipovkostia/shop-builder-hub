@@ -506,7 +506,7 @@ export function VirtualCatalogTable({
     <div
       ref={parentRef}
       className="overflow-auto bg-card rounded-lg border border-border"
-      style={{ height: 'calc(100vh - 380px)', minHeight: '400px' }}
+      style={{ height: 'calc(100vh - 260px)', minHeight: '500px' }}
     >
       {/* Header */}
       <div 
