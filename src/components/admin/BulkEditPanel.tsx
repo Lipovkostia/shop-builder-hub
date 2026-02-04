@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Trash2, Package, Tag, Check, FolderPlus, FolderMinus } from "lucide-react";
+import { X, Trash2, Package, Tag, Check, FolderPlus, FolderMinus, Folder, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +37,7 @@ interface Category {
   id: string;
   name: string;
   sort_order?: number | null;
+  parent_id?: string | null;
 }
 
 interface BulkEditPanelProps {
@@ -55,6 +56,7 @@ interface BulkEditPanelProps {
   // New props for bulk category editing
   categories?: Category[];
   onBulkSetCategories?: (categoryIds: string[]) => void;
+  onBulkSetPrimaryCategory?: (categoryId: string | null) => void;
 }
 
 export function BulkEditPanel({
@@ -72,6 +74,7 @@ export function BulkEditPanel({
   currentCatalogName,
   categories = [],
   onBulkSetCategories,
+  onBulkSetPrimaryCategory,
 }: BulkEditPanelProps) {
   const [editField, setEditField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
@@ -85,6 +88,11 @@ export function BulkEditPanel({
   // Category bulk editing state
   const [selectedBulkCategories, setSelectedBulkCategories] = useState<string[]>([]);
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
+  // Primary category bulk editing state
+  const [isPrimaryCategoryPopoverOpen, setIsPrimaryCategoryPopoverOpen] = useState(false);
+
+  // Filter root categories (parent_id is null)
+  const rootCategories = categories.filter(c => !c.parent_id);
 
   const handleApply = () => {
     if (!editField) return;
@@ -220,7 +228,57 @@ export function BulkEditPanel({
             </>
           )}
 
-          {/* Bulk category editing */}
+          {/* Bulk primary category editing */}
+          {onBulkSetPrimaryCategory && rootCategories.length > 0 && (
+            <>
+              <Popover open={isPrimaryCategoryPopoverOpen} onOpenChange={setIsPrimaryCategoryPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-8"
+                  >
+                    <Folder className="h-4 w-4 mr-1" />
+                    Категория
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2" align="start">
+                  <div className="text-sm font-medium mb-2">Установить категорию</div>
+                  <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto mb-3">
+                    {/* Clear option */}
+                    <div
+                      onClick={() => {
+                        onBulkSetPrimaryCategory(null);
+                        setIsPrimaryCategoryPopoverOpen(false);
+                      }}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                    >
+                      <span className="text-sm text-muted-foreground">— Без категории</span>
+                    </div>
+                    {rootCategories
+                      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                      .map((category) => (
+                        <div
+                          key={category.id}
+                          onClick={() => {
+                            onBulkSetPrimaryCategory(category.id);
+                            setIsPrimaryCategoryPopoverOpen(false);
+                          }}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                        >
+                          <FolderOpen className="h-4 w-4 flex-shrink-0" />
+                          <span className="text-sm truncate">{category.name}</span>
+                        </div>
+                      ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <div className="w-px h-6 bg-primary-foreground/20 mx-1" />
+            </>
+          )}
+
+          {/* Bulk subcategory editing */}
           {onBulkSetCategories && categories.length > 0 && (
             <>
               <Popover open={isCategoryPopoverOpen} onOpenChange={(open) => {
@@ -234,14 +292,15 @@ export function BulkEditPanel({
                     className="h-8"
                   >
                     <Layers className="h-4 w-4 mr-1" />
-                    Категории
+                    Подкатегории
                     <ChevronDown className="h-3 w-3 ml-1" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-64 p-2" align="start">
-                  <div className="text-sm font-medium mb-2">Установить категории</div>
+                  <div className="text-sm font-medium mb-2">Установить подкатегории</div>
                   <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto mb-3">
                     {categories
+                      .filter(c => c.parent_id !== null) // Only show subcategories
                       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
                       .map((category) => {
                         const isSelected = selectedBulkCategories.includes(category.id);
@@ -259,8 +318,8 @@ export function BulkEditPanel({
                           </div>
                         );
                       })}
-                    {categories.length === 0 && (
-                      <p className="text-sm text-muted-foreground px-2 py-1">Нет категорий</p>
+                    {categories.filter(c => c.parent_id !== null).length === 0 && (
+                      <p className="text-sm text-muted-foreground px-2 py-1">Нет подкатегорий</p>
                     )}
                   </div>
                   <div className="flex gap-2">

@@ -80,6 +80,7 @@ import { InlineProductRow } from "@/components/admin/InlineProductRow";
 import { InlineEditableCell } from "@/components/admin/InlineEditableCell";
 import { InlineSelectCell } from "@/components/admin/InlineSelectCell";
 import { InlineMultiSelectCell } from "@/components/admin/InlineMultiSelectCell";
+import { InlinePrimaryCategoryCell } from "@/components/admin/InlinePrimaryCategoryCell";
 import { InlinePriceCell } from "@/components/admin/InlinePriceCell";
 import { InlineMarkupCell } from "@/components/admin/InlineMarkupCell";
 import { MobileTabNav } from "@/components/admin/MobileTabNav";
@@ -993,7 +994,8 @@ export default function AdminPanel({
     photo: true,
     name: true,
     description: true,
-    categories: true,
+    primaryCategory: true,
+    subcategories: true,
     unit: true,
     volume: true,
     type: true,
@@ -1012,7 +1014,8 @@ export default function AdminPanel({
     photo: "Фото",
     name: "Название",
     description: "Описание",
-    categories: "Категории",
+    primaryCategory: "Категория",
+    subcategories: "Подкатегория",
     unit: "Ед. изм.",
     volume: "Объем",
     type: "Вид",
@@ -2181,6 +2184,7 @@ export default function AdminPanel({
         value: dbSettings.markup_value
       } : undefined,
       status: dbSettings.status as ProductStatus,
+      primary_category_id: dbSettings.primary_category_id,
       categories: dbSettings.categories,
       portionPrices: dbSettings.portion_prices || undefined,
     };
@@ -2204,6 +2208,9 @@ export default function AdminPanel({
 
     const dbUpdates: Parameters<typeof updateCatalogProductSettingsInDB>[2] = {};
 
+    if (updates.primary_category_id !== undefined) {
+      dbUpdates.primary_category_id = updates.primary_category_id;
+    }
     if (updates.categories !== undefined) {
       dbUpdates.categories = updates.categories;
     }
@@ -4626,7 +4633,27 @@ export default function AdminPanel({
                     unitOptions={allUnitOptions}
                     packagingOptions={allPackagingOptions}
                     showDelete={false}
-                    categories={categories}
+                    categories={categories.map(c => ({ 
+                      id: c.id, 
+                      name: c.name, 
+                      sort_order: c.sort_order,
+                      parent_id: storeCategories.find(sc => sc.id === c.id)?.parent_id || null
+                    }))}
+                    onBulkSetPrimaryCategory={(categoryId) => {
+                      if (currentCatalog) {
+                        const count = selectedCatalogBulkProducts.size;
+                        selectedCatalogBulkProducts.forEach(productId => {
+                          updateCatalogProductPricing(currentCatalog.id, productId, { primary_category_id: categoryId });
+                        });
+                        setSelectedCatalogBulkProducts(new Set());
+                        toast({
+                          title: "Категория обновлена",
+                          description: categoryId 
+                            ? `Главная категория установлена для ${count} товаров`
+                            : `Главная категория убрана у ${count} товаров`,
+                        });
+                      }
+                    }}
                     onBulkSetCategories={(categoryIds) => {
                       if (currentCatalog) {
                         const count = selectedCatalogBulkProducts.size;
@@ -4635,8 +4662,8 @@ export default function AdminPanel({
                         });
                         setSelectedCatalogBulkProducts(new Set());
                         toast({
-                          title: "Категории обновлены",
-                          description: `Категории установлены для ${count} товаров`,
+                          title: "Подкатегории обновлены",
+                          description: `Подкатегории установлены для ${count} товаров`,
                         });
                       }
                     }}
@@ -4653,7 +4680,8 @@ export default function AdminPanel({
                         ...(catalogVisibleColumns.photo ? [{ id: "photo", minWidth: 50, defaultWidth: 60 }] : []),
                         ...(catalogVisibleColumns.name ? [{ id: "name", minWidth: 120, defaultWidth: 180 }] : []),
                         ...(catalogVisibleColumns.description ? [{ id: "description", minWidth: 100, defaultWidth: 200 }] : []),
-                        ...(catalogVisibleColumns.categories ? [{ id: "categories", minWidth: 100, defaultWidth: 140 }] : []),
+                        ...(catalogVisibleColumns.primaryCategory ? [{ id: "primaryCategory", minWidth: 90, defaultWidth: 120 }] : []),
+                        ...(catalogVisibleColumns.subcategories ? [{ id: "subcategories", minWidth: 100, defaultWidth: 140 }] : []),
                         ...(catalogVisibleColumns.unit ? [{ id: "unit", minWidth: 60, defaultWidth: 80 }] : []),
                         ...(catalogVisibleColumns.volume ? [{ id: "volume", minWidth: 60, defaultWidth: 80 }] : []),
                         ...(catalogVisibleColumns.type ? [{ id: "type", minWidth: 80, defaultWidth: 100 }] : []),
@@ -4691,7 +4719,8 @@ export default function AdminPanel({
                           {catalogVisibleColumns.photo && <ResizableTableHead columnId="photo">Фото</ResizableTableHead>}
                           {catalogVisibleColumns.name && <ResizableTableHead columnId="name">Название</ResizableTableHead>}
                           {catalogVisibleColumns.description && <ResizableTableHead columnId="description">Описание</ResizableTableHead>}
-                          {catalogVisibleColumns.categories && <ResizableTableHead columnId="categories">Категории</ResizableTableHead>}
+                          {catalogVisibleColumns.primaryCategory && <ResizableTableHead columnId="primaryCategory">Категория</ResizableTableHead>}
+                          {catalogVisibleColumns.subcategories && <ResizableTableHead columnId="subcategories">Подкатегория</ResizableTableHead>}
                           {catalogVisibleColumns.unit && <ResizableTableHead columnId="unit">Ед. изм.</ResizableTableHead>}
                           {catalogVisibleColumns.volume && <ResizableTableHead columnId="volume">Объем</ResizableTableHead>}
                           {catalogVisibleColumns.type && <ResizableTableHead columnId="type">Вид</ResizableTableHead>}
@@ -4722,6 +4751,7 @@ export default function AdminPanel({
                             const basePackagingType = product.packagingType;
                             
                             // Catalog-specific values (editable per catalog)
+                            const effectivePrimaryCategory = catalogPricing?.primary_category_id ?? null;
                             const effectiveCategories = catalogPricing?.categories ?? product.categories;
                             const effectiveMarkup = catalogPricing?.markup ?? product.markup;
                             const effectivePortionPrices = catalogPricing?.portionPrices ?? product.portionPrices;
@@ -4831,12 +4861,46 @@ export default function AdminPanel({
                                     />
                                   </ResizableTableCell>
                                 )}
-                                {/* Категории - независимые для каждого каталога */}
-                                {catalogVisibleColumns.categories && (
-                                  <ResizableTableCell columnId="categories">
+                                {/* Главная категория - независимая для каждого каталога */}
+                                {catalogVisibleColumns.primaryCategory && (
+                                  <ResizableTableCell columnId="primaryCategory">
+                                    <InlinePrimaryCategoryCell
+                                      value={effectivePrimaryCategory}
+                                      options={categories.map(c => ({ 
+                                        value: c.id, 
+                                        label: c.name, 
+                                        sort_order: c.sort_order,
+                                        parent_id: storeCategories.find(sc => sc.id === c.id)?.parent_id || null
+                                      }))}
+                                      onSave={(categoryId) => {
+                                        if (currentCatalog) {
+                                          updateCatalogProductPricing(currentCatalog.id, product.id, { primary_category_id: categoryId });
+                                        }
+                                      }}
+                                      onAddOption={handleAddCategory}
+                                      placeholder="Категория..."
+                                      addNewPlaceholder="Новая категория..."
+                                      addNewButtonLabel="Создать категорию"
+                                      allowAddNew={true}
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Подкатегории - независимые для каждого каталога */}
+                                {catalogVisibleColumns.subcategories && (
+                                  <ResizableTableCell columnId="subcategories">
                                     <InlineMultiSelectCell
                                       values={effectiveCategories || []}
-                                      options={categories.map(c => ({ value: c.id, label: c.name, sort_order: c.sort_order }))}
+                                      options={categories
+                                        .filter(c => {
+                                          // If primary category is set, show only its children
+                                          const cat = storeCategories.find(sc => sc.id === c.id);
+                                          if (effectivePrimaryCategory) {
+                                            return cat?.parent_id === effectivePrimaryCategory;
+                                          }
+                                          // Otherwise show all non-root categories (subcategories)
+                                          return cat?.parent_id !== null;
+                                        })
+                                        .map(c => ({ value: c.id, label: c.name, sort_order: c.sort_order }))}
                                       onSave={(selectedIds) => {
                                         if (currentCatalog) {
                                           updateCatalogProductPricing(currentCatalog.id, product.id, { categories: selectedIds });
@@ -4844,9 +4908,10 @@ export default function AdminPanel({
                                       }}
                                       onAddOption={handleAddCategory}
                                       onReorder={() => setCategoryOrderDialogOpen(true)}
-                                      placeholder="Категории..."
-                                      addNewPlaceholder="Новая категория..."
-                                      addNewButtonLabel="Создать категорию"
+                                      placeholder="Подкатегории..."
+                                      addNewPlaceholder="Новая подкатегория..."
+                                      addNewButtonLabel="Создать подкатегорию"
+                                      emptyStateMessage={effectivePrimaryCategory ? "Нет подкатегорий" : "Выберите категорию"}
                                       allowAddNew={true}
                                       showReorderButton={true}
                                     />
