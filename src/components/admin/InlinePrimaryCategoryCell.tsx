@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { Check, X, Plus, ChevronDown, Folder, FolderOpen } from "lucide-react";
+import { Check, X, Plus, ChevronDown, Folder, FolderOpen, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,6 +29,7 @@ interface InlinePrimaryCategoryCellProps {
   options: CategoryOption[];
   onSave: (newValue: string | null) => void;
   onAddOption?: (newOption: string) => void | string | null | Promise<string | null | void>;
+  onManageCategories?: () => void;
   allowAddNew?: boolean;
   addNewPlaceholder?: string;
   addNewButtonLabel?: string;
@@ -42,6 +43,7 @@ export function InlinePrimaryCategoryCell({
   options,
   onSave,
   onAddOption,
+  onManageCategories,
   allowAddNew = true,
   addNewPlaceholder = "Новая категория...",
   addNewButtonLabel = "Создать категорию",
@@ -177,46 +179,65 @@ export function InlinePrimaryCategoryCell({
           )}
         </div>
         
-        {allowAddNew && !!onAddOption && (
+        {(allowAddNew && !!onAddOption) || !!onManageCategories ? (
           <div className="border-t mt-2 pt-2 flex flex-col gap-1">
-            {isAddingNew ? (
-              <div className="flex items-center gap-1">
-                <Input
-                  ref={inputRef}
-                  value={newOptionValue}
-                  onChange={(e) => setNewOptionValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="h-7 text-xs"
-                  placeholder={addNewPlaceholder}
-                />
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6 text-green-600 flex-shrink-0" 
-                  onClick={handleAddNew}
-                >
-                  <Check className="h-3 w-3" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6 text-destructive flex-shrink-0" 
-                  onClick={handleCancelAdd}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-            ) : (
+            {/* Manage categories button */}
+            {onManageCategories && (
               <button
-                onClick={() => setIsAddingNew(true)}
-                className="flex items-center gap-1 w-full px-2 py-1.5 text-xs text-primary hover:bg-muted rounded"
+                onClick={() => {
+                  setIsOpen(false);
+                  onManageCategories();
+                }}
+                className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted rounded"
               >
-                <Plus className="h-3 w-3" />
-                {addNewButtonLabel}
+                <Settings className="h-3 w-3" />
+                Управление категориями
               </button>
             )}
+            
+            {/* Add new category */}
+            {allowAddNew && !!onAddOption && (
+              <>
+                {isAddingNew ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      ref={inputRef}
+                      value={newOptionValue}
+                      onChange={(e) => setNewOptionValue(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      className="h-7 text-xs"
+                      placeholder={addNewPlaceholder}
+                    />
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-primary flex-shrink-0" 
+                      onClick={handleAddNew}
+                    >
+                      <Check className="h-3 w-3" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-destructive flex-shrink-0" 
+                      onClick={handleCancelAdd}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsAddingNew(true)}
+                    className="flex items-center gap-1 w-full px-2 py-1.5 text-xs text-primary hover:bg-muted rounded"
+                  >
+                    <Plus className="h-3 w-3" />
+                    {addNewButtonLabel}
+                  </button>
+                )}
+              </>
+            )}
           </div>
-        )}
+        ) : null}
       </PopoverContent>
     </Popover>
   );
