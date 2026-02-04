@@ -89,16 +89,25 @@ export function WholesaleCategorySelector({
     const hasChildren = cat.children.length > 0;
     const isExpanded = expandedCategories.includes(cat.id);
     const isSelected = selectedCategory === cat.id;
+    const isRootCategory = depth === 0;
 
     return (
       <div key={cat.id}>
         <button
-          onClick={() => handleSelect(cat.id)}
+          onClick={(e) => {
+            // For parent categories with children, clicking toggles expansion
+            if (hasChildren && !isExpanded) {
+              toggleExpanded(cat.id, e);
+            } else {
+              handleSelect(cat.id);
+            }
+          }}
           className={cn(
             "w-full flex items-center justify-between px-4 py-3 rounded-lg text-left transition-colors",
             isSelected
               ? "bg-primary text-primary-foreground"
-              : "hover:bg-muted"
+              : "hover:bg-muted",
+            isRootCategory && "border-b border-border/50"
           )}
           style={{ paddingLeft: 16 + depth * 16 }}
         >
@@ -106,7 +115,8 @@ export function WholesaleCategorySelector({
             {isSelected && <Check className="h-4 w-4 shrink-0" />}
             <span
               className={cn(
-                "font-medium truncate",
+                "truncate",
+                isRootCategory ? "font-bold text-foreground" : "font-medium",
                 !isSelected && "ml-7"
               )}
             >
@@ -122,7 +132,10 @@ export function WholesaleCategorySelector({
             </Badge>
             {hasChildren && (
               <span
-                onClick={(e) => toggleExpanded(cat.id, e)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleExpanded(cat.id, e);
+                }}
                 className={cn(
                   "p-1 rounded hover:bg-black/10 transition-colors",
                   isSelected && "hover:bg-white/20"
@@ -137,9 +150,9 @@ export function WholesaleCategorySelector({
           </div>
         </button>
 
-        {/* Children */}
+        {/* Children - subcategories */}
         {hasChildren && isExpanded && (
-          <div className="border-l-2 border-muted ml-6">
+          <div className="ml-4 border-l-2 border-primary/20 bg-muted/30">
             {cat.children.map(child => renderCategory(child, depth + 1))}
           </div>
         )}
