@@ -1,10 +1,11 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { 
   Search, 
   ShoppingCart, 
@@ -12,6 +13,7 @@ import {
   Mail, 
   MapPin,
   ChevronRight,
+  ChevronLeft,
   Package,
   Filter,
   X
@@ -305,6 +307,40 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
                   Сбросить
                 </Button>
               )}
+            </div>
+
+            {/* Category chips horizontal scroll */}
+            <div className="mb-4 -mx-4 px-4 md:mx-0 md:px-0">
+              <ScrollArea className="w-full whitespace-nowrap">
+                <div className="flex gap-2 pb-2">
+                  <Button
+                    variant={!selectedCategory ? "default" : "outline"}
+                    size="sm"
+                    className="shrink-0 rounded-full"
+                    onClick={() => setSelectedCategory(null)}
+                  >
+                    Все товары
+                    <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-xs">
+                      {products.length}
+                    </Badge>
+                  </Button>
+                  {categories.filter(c => c.product_count && c.product_count > 0).map((cat) => (
+                    <Button
+                      key={cat.id}
+                      variant={selectedCategory === cat.id ? "default" : "outline"}
+                      size="sm"
+                      className="shrink-0 rounded-full"
+                      onClick={() => setSelectedCategory(cat.id)}
+                    >
+                      {cat.name}
+                      <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-xs">
+                        {cat.product_count}
+                      </Badge>
+                    </Button>
+                  ))}
+                </div>
+                <ScrollBar orientation="horizontal" className="h-2" />
+              </ScrollArea>
             </div>
 
             {/* Header */}
