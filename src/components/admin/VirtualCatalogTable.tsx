@@ -206,6 +206,7 @@ const CatalogRow = memo(({
               updateCatalogProductPricing(catalogId, product.id, { primary_category_id: categoryId });
             }}
             onAddOption={onAddCategory}
+            onManageCategories={onOpenCategoryOrder}
             placeholder="Категория..."
             addNewPlaceholder="Новая категория..."
             addNewButtonLabel="Создать категорию"
