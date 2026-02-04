@@ -100,7 +100,7 @@ import { useCatalogProductSettings } from "@/hooks/useCatalogProductSettings";
 import { useProductGroups } from "@/hooks/useProductGroups";
 import { useProductCategories } from "@/hooks/useProductCategories";
 import { useStoreCategories, StoreCategory } from "@/hooks/useStoreCategories";
-import { CategoryOrderDialog } from "@/components/admin/CategoryOrderDialog";
+import { CategoryManagementDialog } from "@/components/wholesale/CategoryManagementDialog";
 import { useStoreNotificationSettings } from "@/hooks/useStoreNotificationSettings";
 import { useMoyskladOrders } from "@/hooks/useMoyskladOrders";
 import { Textarea } from "@/components/ui/textarea";
@@ -652,7 +652,7 @@ export default function AdminPanel({
   } = useProductCategories(effectiveStoreId);
 
   // Store categories from Supabase
-  const { categories: storeCategories, loading: categoriesLoading, createCategory, updateCategoryOrder, refetch: refetchCategories } = useStoreCategories(effectiveStoreId);
+  const { categories: storeCategories, loading: categoriesLoading, createCategory, updateCategoryOrder, updateCategory, deleteCategory, refetch: refetchCategories } = useStoreCategories(effectiveStoreId);
   const [categoryOrderDialogOpen, setCategoryOrderDialogOpen] = useState(false);
   // ================ END SUPABASE DATA HOOKS ================
   
@@ -6194,18 +6194,15 @@ export default function AdminPanel({
         </DialogContent>
       </Dialog>
 
-      {/* Category Order Dialog */}
-      <CategoryOrderDialog
+      {/* Category Management Dialog */}
+      <CategoryManagementDialog
         open={categoryOrderDialogOpen}
         onOpenChange={setCategoryOrderDialogOpen}
         categories={storeCategories}
-        onSave={async (orderedIds) => {
-          await updateCategoryOrder(orderedIds);
-          toast({
-            title: "Порядок сохранён",
-            description: "Порядок отображения категорий обновлён",
-          });
-        }}
+        onCreateCategory={createCategory}
+        onUpdateCategory={updateCategory}
+        onDeleteCategory={deleteCategory}
+        onUpdateOrder={updateCategoryOrder}
       />
 
       {/* Catalog Export Dialog */}

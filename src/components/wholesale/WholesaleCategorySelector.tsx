@@ -9,14 +9,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { FolderOpen, Search, Check, ChevronDown, ChevronRight } from "lucide-react";
+import { FolderOpen, Search, Check, ChevronDown, ChevronRight, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildCategoryTree, filterTreeWithProducts, getDirectChildren, CategoryTree } from "@/lib/categoryUtils";
+import { CategoryManagementDialog } from "./CategoryManagementDialog";
 
 interface Category {
   id: string;
   name: string;
   parent_id: string | null;
+  sort_order?: number | null;
   product_count?: number;
 }
 
@@ -25,6 +27,12 @@ interface WholesaleCategorySelectorProps {
   selectedCategory: string | null;
   onSelectCategory: (categoryId: string | null) => void;
   totalProductsCount: number;
+  // Category management props (optional - only for admin)
+  onCreateCategory?: (name: string, parentId?: string | null) => Promise<Category | null>;
+  onUpdateCategory?: (id: string, name: string) => Promise<boolean>;
+  onDeleteCategory?: (id: string) => Promise<boolean>;
+  onUpdateOrder?: (orderedIds: string[]) => Promise<void>;
+  isAdmin?: boolean;
 }
 
 export function WholesaleCategorySelector({
@@ -32,10 +40,18 @@ export function WholesaleCategorySelector({
   selectedCategory,
   onSelectCategory,
   totalProductsCount,
+  onCreateCategory,
+  onUpdateCategory,
+  onDeleteCategory,
+  onUpdateOrder,
+  isAdmin = false,
 }: WholesaleCategorySelectorProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
+  const [managementOpen, setManagementOpen] = useState(false);
+
+  const canManage = isAdmin && onCreateCategory && onUpdateCategory && onDeleteCategory && onUpdateOrder;
 
   // Build category tree
   const categoryTree = useMemo(() => {
@@ -205,7 +221,23 @@ export function WholesaleCategorySelector({
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl flex flex-col">
           <SheetHeader className="pb-4 shrink-0">
-            <SheetTitle>Выберите категорию</SheetTitle>
+            <div className="flex items-center justify-between">
+              <SheetTitle>Выберите категорию</SheetTitle>
+              {canManage && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setOpen(false);
+                    setManagementOpen(true);
+                  }}
+                  className="gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  Управление
+                </Button>
+              )}
+            </div>
           </SheetHeader>
 
           {/* Search */}
@@ -295,6 +327,19 @@ export function WholesaleCategorySelector({
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Category management dialog */}
+      {canManage && (
+        <CategoryManagementDialog
+          open={managementOpen}
+          onOpenChange={setManagementOpen}
+          categories={categories}
+          onCreateCategory={onCreateCategory}
+          onUpdateCategory={onUpdateCategory}
+          onDeleteCategory={onDeleteCategory}
+          onUpdateOrder={onUpdateOrder}
+        />
+      )}
     </div>
   );
 }
