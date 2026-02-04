@@ -1,21 +1,17 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { 
   Search, 
   ShoppingCart, 
   Phone, 
   Mail, 
-  MapPin,
   ChevronRight,
-  ChevronLeft,
   Package,
-  Filter,
   X
 } from "lucide-react";
 import { useWholesaleStore, WholesaleProduct } from "@/hooks/useWholesaleStore";
@@ -25,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { WholesaleLivestreamBlock } from "@/components/wholesale/WholesaleLivestreamBlock";
 import { WholesaleCartSheet } from "@/components/wholesale/WholesaleCartSheet";
 import { WholesaleCartDrawer } from "@/components/wholesale/WholesaleCartDrawer";
+import { WholesaleCategorySelector } from "@/components/wholesale/WholesaleCategorySelector";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 
@@ -42,7 +39,6 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>("default");
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
@@ -284,63 +280,28 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
 
           {/* Products */}
           <main className="flex-1 min-w-0">
-            {/* Mobile filters button */}
-            <div className="lg:hidden mb-4 flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Фильтры
-                {selectedCategory && (
-                  <Badge variant="secondary" className="ml-2">1</Badge>
-                )}
-              </Button>
-              {selectedCategory && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedCategory(null)}
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Сбросить
-                </Button>
-              )}
-            </div>
-
-            {/* Category chips horizontal scroll */}
-            <div className="mb-4 -mx-4 px-4 md:mx-0 md:px-0">
-              <ScrollArea className="w-full whitespace-nowrap">
-                <div className="flex gap-2 pb-2">
-                  <Button
-                    variant={!selectedCategory ? "default" : "outline"}
-                    size="sm"
-                    className="shrink-0 rounded-full"
-                    onClick={() => setSelectedCategory(null)}
-                  >
-                    Все товары
-                    <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-xs">
-                      {products.length}
-                    </Badge>
-                  </Button>
-                  {categories.filter(c => c.product_count && c.product_count > 0).map((cat) => (
-                    <Button
-                      key={cat.id}
-                      variant={selectedCategory === cat.id ? "default" : "outline"}
-                      size="sm"
-                      className="shrink-0 rounded-full"
-                      onClick={() => setSelectedCategory(cat.id)}
-                    >
-                      {cat.name}
-                      <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-xs">
-                        {cat.product_count}
-                      </Badge>
-                    </Button>
-                  ))}
+            {/* Mobile/Tablet category selector */}
+            <div className="lg:hidden mb-4">
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <WholesaleCategorySelector
+                    categories={categories}
+                    selectedCategory={selectedCategory}
+                    onSelectCategory={setSelectedCategory}
+                    totalProductsCount={products.length}
+                  />
                 </div>
-                <ScrollBar orientation="horizontal" className="h-2" />
-              </ScrollArea>
+                {selectedCategory && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedCategory(null)}
+                    className="shrink-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Header */}
