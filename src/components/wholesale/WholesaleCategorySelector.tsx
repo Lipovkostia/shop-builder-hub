@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import {
   Sheet,
   SheetContent,
@@ -203,13 +203,13 @@ export function WholesaleCategorySelector({
 
       {/* Category selection sheet */}
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl">
-          <SheetHeader className="pb-4">
+        <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl flex flex-col">
+          <SheetHeader className="pb-4 shrink-0">
             <SheetTitle>Выберите категорию</SheetTitle>
           </SheetHeader>
 
           {/* Search */}
-          <div className="relative mb-4">
+          <div className="relative mb-4 shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={searchQuery}
@@ -219,8 +219,8 @@ export function WholesaleCategorySelector({
             />
           </div>
 
-          {/* Categories list */}
-          <ScrollArea className="h-[calc(70vh-160px)]">
+          {/* Categories list - flex-1 takes remaining space and enables scroll */}
+          <div className="flex-1 overflow-y-auto min-h-0">
             <div className="space-y-1 pr-4 pb-8">
               {/* All products option */}
               {(!searchQuery || "все товары".includes(searchQuery.toLowerCase())) && (
@@ -292,7 +292,7 @@ export function WholesaleCategorySelector({
                 </p>
               )}
             </div>
-          </ScrollArea>
+          </div>
         </SheetContent>
       </Sheet>
     </div>
