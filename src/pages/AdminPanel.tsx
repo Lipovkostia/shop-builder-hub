@@ -1119,6 +1119,59 @@ export default function AdminPanel({
     }
   }, [effectiveStoreId, storeCategories, toast, createCategory, refetchCategories]);
 
+  // Add new subcategory handler - creates with parent_id
+  const handleAddSubcategory = useCallback(async (categoryName: string, parentCategoryId: string | null): Promise<string | null> => {
+    if (!effectiveStoreId) return null;
+    if (!parentCategoryId) {
+      toast({
+        title: "Выберите категорию",
+        description: "Сначала выберите родительскую категорию для подкатегории",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    const normalized = categoryName.trim();
+    if (!normalized) return null;
+
+    // Check if subcategory already exists under this parent (case-insensitive)
+    const existing = storeCategories.find(
+      (c) => c.name.toLowerCase() === normalized.toLowerCase() && c.parent_id === parentCategoryId
+    );
+
+    if (existing) {
+      toast({
+        title: "Подкатегория уже существует",
+        description: `Подкатегория "${normalized}" уже есть в этой категории`,
+      });
+      return existing.id;
+    }
+
+    try {
+      const created = await createCategory(normalized, parentCategoryId);
+
+      if (!created) throw new Error("createCategory returned null");
+
+      toast({
+        title: "Подкатегория создана",
+        description: `Подкатегория "${normalized}" успешно добавлена`,
+      });
+
+      // Safety: if realtime is delayed, force refresh
+      refetchCategories();
+
+      return created.id;
+    } catch (error) {
+      console.error("Error creating subcategory:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось создать подкатегорию",
+        variant: "destructive",
+      });
+      return null;
+    }
+  }, [effectiveStoreId, storeCategories, toast, createCategory, refetchCategories]);
+
   // Build combined options lists
   const allUnitOptions = [
     { value: "кг", label: "кг" },
@@ -4906,13 +4959,16 @@ export default function AdminPanel({
                                           updateCatalogProductPricing(currentCatalog.id, product.id, { categories: selectedIds });
                                         }
                                       }}
-                                      onAddOption={handleAddCategory}
+                                      onAddOption={async (name) => {
+                                        const newId = await handleAddSubcategory(name, effectivePrimaryCategory);
+                                        return newId;
+                                      }}
                                       onReorder={() => setCategoryOrderDialogOpen(true)}
                                       placeholder="Подкатегории..."
                                       addNewPlaceholder="Новая подкатегория..."
                                       addNewButtonLabel="Создать подкатегорию"
                                       emptyStateMessage={effectivePrimaryCategory ? "Нет подкатегорий" : "Выберите категорию"}
-                                      allowAddNew={true}
+                                      allowAddNew={!!effectivePrimaryCategory}
                                       showReorderButton={true}
                                     />
                                   </ResizableTableCell>
