@@ -404,6 +404,7 @@ const CatalogRow = memo(({
   );
 }, (prev, next) => {
   // Custom comparison - only re-render when relevant data changes
+  // IMPORTANT: Include visibleColumns to re-render when column visibility changes
   return prev.product.id === next.product.id &&
          prev.product.name === next.product.name &&
          prev.product.description === next.product.description &&
@@ -421,7 +422,9 @@ const CatalogRow = memo(({
          prev.storeCategories.length === next.storeCategories.length &&
          JSON.stringify(prev.effectiveCategories) === JSON.stringify(next.effectiveCategories) &&
          JSON.stringify(prev.effectiveMarkup) === JSON.stringify(next.effectiveMarkup) &&
-         JSON.stringify(prev.effectivePortionPrices) === JSON.stringify(next.effectivePortionPrices);
+         JSON.stringify(prev.effectivePortionPrices) === JSON.stringify(next.effectivePortionPrices) &&
+         // Check column visibility changes
+         JSON.stringify(prev.visibleColumns) === JSON.stringify(next.visibleColumns);
 });
 
 CatalogRow.displayName = 'CatalogRow';
