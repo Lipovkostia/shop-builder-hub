@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Check, X, Plus, ChevronDown, Folder, FolderOpen, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { buildCategoryTree, CategoryTree } from "@/lib/categoryUtils";
+import { cn } from "@/lib/utils";
 
 // Simple debounce utility
 function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
@@ -62,8 +64,17 @@ export function InlinePrimaryCategoryCell({
     setLocalValue(value);
   }, [value]);
 
-  // Filter to show only root categories (parent_id is null)
-  const rootCategories = options.filter(opt => !opt.parent_id);
+  // Build category tree for hierarchical display
+  const categoryTree = useMemo(() => {
+    return buildCategoryTree(options.map(o => ({
+      id: o.value,
+      name: o.label,
+      slug: '',
+      image_url: null,
+      parent_id: o.parent_id || null,
+      sort_order: o.sort_order ?? 0,
+    })));
+  }, [options]);
 
   useEffect(() => {
     if (isAddingNew && inputRef.current) {
@@ -112,8 +123,37 @@ export function InlinePrimaryCategoryCell({
     }
   }, [handleAddNew, handleCancelAdd]);
 
+  // Recursive render for category tree
+  const renderCategoryItem = useCallback((cat: CategoryTree, depth: number = 0) => {
+    const isParent = depth === 0;
+    const isSelected = localValue === cat.id;
+    
+    return (
+      <React.Fragment key={cat.id}>
+        <div
+          onClick={() => handleSelect(cat.id)}
+          className={cn(
+            "flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted text-sm cursor-pointer",
+            isSelected && "bg-primary/10 text-primary",
+            !isParent && "pl-6"
+          )}
+        >
+          <FolderOpen className="h-3.5 w-3.5 flex-shrink-0" />
+          <span className={cn("truncate", isParent && "font-semibold")}>
+            {cat.name}
+          </span>
+          {isSelected && <Check className="h-3 w-3 ml-auto flex-shrink-0" />}
+        </div>
+        
+        {cat.children
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+          .map(child => renderCategoryItem(child, depth + 1))}
+      </React.Fragment>
+    );
+  }, [localValue, handleSelect]);
+
   const selectedLabel = localValue 
-    ? rootCategories.find(o => o.value === value)?.label 
+    ? options.find(o => o.value === localValue)?.label 
     : null;
 
   return (
@@ -146,32 +186,18 @@ export function InlinePrimaryCategoryCell({
           {/* Clear selection option */}
           <div
             onClick={() => handleSelect(null)}
-            className={`flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted text-sm cursor-pointer ${
-              !localValue ? "bg-muted" : ""
-            }`}
+            className={cn(
+              "flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted text-sm cursor-pointer",
+              !localValue && "bg-muted"
+            )}
           >
             <span className="text-muted-foreground">— Без категории</span>
           </div>
           
-          {rootCategories.length > 0 ? (
-            rootCategories
+          {categoryTree.length > 0 ? (
+            categoryTree
               .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-              .map((option) => {
-                const isSelected = localValue === option.value;
-                return (
-                  <div
-                    key={option.value}
-                    onClick={() => handleSelect(option.value)}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted text-sm cursor-pointer ${
-                      isSelected ? "bg-primary/10 text-primary" : ""
-                    }`}
-                  >
-                    <FolderOpen className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="truncate">{option.label}</span>
-                    {isSelected && <Check className="h-3 w-3 ml-auto flex-shrink-0" />}
-                  </div>
-                );
-              })
+              .map(cat => renderCategoryItem(cat, 0))
           ) : (
             <div className="px-2 py-1">
               <p className="text-xs text-muted-foreground">{emptyStateMessage}</p>
