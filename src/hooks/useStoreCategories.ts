@@ -86,8 +86,8 @@ export function useStoreCategories(storeId: string | null) {
     };
   }, [storeId]);
 
-  // Create new category
-  const createCategory = useCallback(async (name: string): Promise<StoreCategory | null> => {
+  // Create new category (optionally as subcategory with parent_id)
+  const createCategory = useCallback(async (name: string, parentId?: string | null): Promise<StoreCategory | null> => {
     if (!storeId) return null;
 
     // Create slug from name with unique timestamp suffix to avoid duplicates
@@ -106,6 +106,7 @@ export function useStoreCategories(storeId: string | null) {
           store_id: storeId,
           name: name,
           slug: slug,
+          parent_id: parentId || null,
         })
         .select()
         .single();
