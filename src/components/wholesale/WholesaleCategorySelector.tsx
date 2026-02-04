@@ -20,6 +20,8 @@ interface Category {
   parent_id: string | null;
   sort_order?: number | null;
   product_count?: number;
+  slug?: string;
+  image_url?: string | null;
 }
 
 interface WholesaleCategorySelectorProps {
@@ -53,14 +55,15 @@ export function WholesaleCategorySelector({
 
   const canManage = isAdmin && onCreateCategory && onUpdateCategory && onDeleteCategory && onUpdateOrder;
 
-  // Build category tree
+  // Build category tree - include ALL categories, then filter by totalProductCount
   const categoryTree = useMemo(() => {
-    const withProducts = categories.filter(cat => cat.product_count && cat.product_count > 0);
-    const tree = buildCategoryTree(withProducts.map(c => ({
+    // Build tree from ALL categories (not pre-filtered)
+    const tree = buildCategoryTree(categories.map(c => ({
       ...c,
-      slug: '',
-      image_url: null,
+      slug: c.slug || '',
+      image_url: c.image_url || null,
     })));
+    // Filter keeps categories where totalProductCount > 0 (includes children's products)
     return filterTreeWithProducts(tree);
   }, [categories]);
 
