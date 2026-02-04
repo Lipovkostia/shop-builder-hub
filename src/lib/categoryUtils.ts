@@ -24,6 +24,14 @@ export function buildCategoryTree<T extends CategoryWithParent>(categories: T[])
   const map = new Map<string, CategoryTree>();
   const roots: CategoryTree[] = [];
 
+  // Sort helper - preserves original order from database query (which is already sorted by sort_order, name)
+  const sortByOrder = (a: CategoryTree, b: CategoryTree) => {
+    const orderA = a.sort_order ?? 9999;
+    const orderB = b.sort_order ?? 9999;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.name.localeCompare(b.name, 'ru');
+  };
+
   // Initialize all nodes
   categories.forEach(cat => {
     map.set(cat.id, { 
@@ -42,6 +50,14 @@ export function buildCategoryTree<T extends CategoryWithParent>(categories: T[])
       roots.push(node);
     }
   });
+
+  // Sort roots and children by sort_order
+  roots.sort(sortByOrder);
+  function sortChildren(node: CategoryTree) {
+    node.children.sort(sortByOrder);
+    node.children.forEach(sortChildren);
+  }
+  roots.forEach(sortChildren);
 
   // Calculate total product counts (including children)
   function calculateTotalCount(node: CategoryTree): number {

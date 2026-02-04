@@ -70,6 +70,7 @@ export interface WholesaleCategory {
   slug: string;
   image_url: string | null;
   parent_id: string | null;
+  sort_order?: number | null;
   product_count?: number;
 }
 
@@ -167,9 +168,10 @@ export function useWholesaleStore(subdomain: string | undefined) {
     try {
       const { data, error: catError } = await supabase
         .from("categories")
-        .select("id, name, slug, image_url, parent_id")
+        .select("id, name, slug, image_url, parent_id, sort_order")
         .eq("store_id", store.id)
-        .order("sort_order");
+        .order("sort_order", { nullsFirst: false })
+        .order("name");
 
       if (catError) throw catError;
 

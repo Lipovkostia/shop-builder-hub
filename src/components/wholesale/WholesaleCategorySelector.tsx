@@ -70,15 +70,31 @@ export function WholesaleCategorySelector({
   // Get subcategories of selected category for chips display
   const subcategories = useMemo(() => {
     if (!selectedCategory) return [];
-    return categories.filter(c => c.parent_id === selectedCategory && c.product_count && c.product_count > 0);
+    return categories
+      .filter(c => c.parent_id === selectedCategory && c.product_count && c.product_count > 0)
+      .sort((a, b) => {
+        const orderA = a.sort_order ?? 9999;
+        const orderB = b.sort_order ?? 9999;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.name.localeCompare(b.name, 'ru');
+      });
   }, [categories, selectedCategory]);
 
-  const filteredCategories = categories.filter(
-    (cat) =>
-      cat.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      cat.product_count &&
-      cat.product_count > 0
-  );
+  const filteredCategories = useMemo(() => {
+    return categories
+      .filter(
+        (cat) =>
+          cat.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+          cat.product_count &&
+          cat.product_count > 0
+      )
+      .sort((a, b) => {
+        const orderA = a.sort_order ?? 9999;
+        const orderB = b.sort_order ?? 9999;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.name.localeCompare(b.name, 'ru');
+      });
+  }, [categories, searchQuery]);
 
   const selectedCategoryData = selectedCategory
     ? categories.find((c) => c.id === selectedCategory)
