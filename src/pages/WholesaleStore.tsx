@@ -280,10 +280,10 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
 
           {/* Products */}
           <main className="flex-1 min-w-0">
-            {/* Mobile/Tablet category selector */}
-            <div className="lg:hidden mb-4">
+            {/* Category selector - visible on all screen sizes */}
+            <div className="mb-4">
               <div className="flex items-center gap-2">
-                <div className="flex-1">
+                <div className="flex-1 max-w-xs">
                   <WholesaleCategorySelector
                     categories={categories}
                     selectedCategory={selectedCategory}
