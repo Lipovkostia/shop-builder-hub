@@ -149,5 +149,62 @@ export function useStoreCategories(storeId: string | null) {
     }
   }, []);
 
-  return { categories, loading, refetch: fetchCategories, createCategory, updateCategoryOrder };
+  // Update category name
+  const updateCategory = useCallback(async (id: string, name: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .update({ name })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      setCategories(prev =>
+        prev.map(c => c.id === id ? { ...c, name } : c)
+      );
+      return true;
+    } catch (error) {
+      console.error('Error updating category:', error);
+      return false;
+    }
+  }, []);
+
+  // Delete category
+  const deleteCategory = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      // First delete all child categories
+      const childIds = categories.filter(c => c.parent_id === id).map(c => c.id);
+      if (childIds.length > 0) {
+        const { error: childError } = await supabase
+          .from('categories')
+          .delete()
+          .in('id', childIds);
+        if (childError) throw childError;
+      }
+
+      // Then delete the category itself
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      setCategories(prev => prev.filter(c => c.id !== id && c.parent_id !== id));
+      return true;
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      return false;
+    }
+  }, [categories]);
+
+  return { 
+    categories, 
+    loading, 
+    refetch: fetchCategories, 
+    createCategory, 
+    updateCategoryOrder,
+    updateCategory,
+    deleteCategory,
+  };
 }
