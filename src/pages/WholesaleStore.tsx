@@ -22,8 +22,127 @@ import { WholesaleLivestreamBlock } from "@/components/wholesale/WholesaleLivest
 import { WholesaleCartSheet } from "@/components/wholesale/WholesaleCartSheet";
 import { WholesaleCartDrawer } from "@/components/wholesale/WholesaleCartDrawer";
 import { WholesaleCategorySelector } from "@/components/wholesale/WholesaleCategorySelector";
+import { getDescendantIds, buildCategoryTree, filterTreeWithProducts, CategoryTree, getParentChain } from "@/lib/categoryUtils";
+import { ChevronDown as ChevronDownIcon } from "lucide-react";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
+
+// Sidebar categories component with hierarchy
+interface WholesaleSidebarCategoriesProps {
+  categories: { id: string; name: string; parent_id: string | null; product_count?: number; slug: string; image_url: string | null }[];
+  selectedCategory: string | null;
+  onSelectCategory: (categoryId: string | null) => void;
+  totalProducts: number;
+}
+
+function WholesaleSidebarCategories({
+  categories,
+  selectedCategory,
+  onSelectCategory,
+  totalProducts,
+}: WholesaleSidebarCategoriesProps) {
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
+
+  const categoryTree = useMemo(() => {
+    const tree = buildCategoryTree(categories);
+    return filterTreeWithProducts(tree);
+  }, [categories]);
+
+  // Auto-expand parents when child is selected
+  useEffect(() => {
+    if (selectedCategory) {
+      const parentChain = getParentChain(selectedCategory, categories);
+      if (parentChain.length > 0) {
+        setExpandedCategories(prev => {
+          const newExpanded = [...prev];
+          parentChain.forEach(id => {
+            if (!newExpanded.includes(id)) newExpanded.push(id);
+          });
+          return newExpanded;
+        });
+      }
+    }
+  }, [selectedCategory, categories]);
+
+  const toggleExpanded = (categoryId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedCategories(prev =>
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+  const renderCategory = (cat: CategoryTree, depth: number = 0): React.ReactNode => {
+    const hasChildren = cat.children.length > 0;
+    const isExpanded = expandedCategories.includes(cat.id);
+    const isSelected = selectedCategory === cat.id;
+
+    return (
+      <div key={cat.id}>
+        <button
+          onClick={() => {
+            onSelectCategory(cat.id);
+            if (hasChildren && !isExpanded) {
+              setExpandedCategories(prev => [...prev, cat.id]);
+            }
+          }}
+          className={cn(
+            "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
+            isSelected 
+              ? "bg-primary text-primary-foreground" 
+              : "hover:bg-muted"
+          )}
+          style={{ paddingLeft: 12 + depth * 12 }}
+        >
+          <span className="truncate">{cat.name}</span>
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-xs opacity-70">{cat.totalProductCount}</span>
+            {hasChildren && (
+              <span
+                onClick={(e) => toggleExpanded(cat.id, e)}
+                className={cn(
+                  "p-0.5 rounded hover:bg-black/10 transition-colors",
+                  isSelected && "hover:bg-white/20"
+                )}
+              >
+                <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
+              </span>
+            )}
+          </div>
+        </button>
+        {hasChildren && isExpanded && (
+          <div className="border-l border-muted ml-4">
+            {cat.children.map(child => renderCategory(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-2">
+        Категории
+      </h2>
+      <nav className="space-y-1">
+        <button
+          onClick={() => onSelectCategory(null)}
+          className={cn(
+            "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+            !selectedCategory 
+              ? "bg-primary text-primary-foreground" 
+              : "hover:bg-muted"
+          )}
+        >
+          Все товары
+          <span className="float-right text-xs opacity-70">{totalProducts}</span>
+        </button>
+        {categoryTree.map(cat => renderCategory(cat, 0))}
+      </nav>
+    </div>
+  );
+}
 
 interface WholesaleStoreProps {
   subdomain?: string;
@@ -54,9 +173,12 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
       );
     }
 
+    // Category filter - includes subcategories (hierarchical)
     if (selectedCategory) {
+      const relevantCategoryIds = getDescendantIds(selectedCategory, categories);
       result = result.filter((p) => 
-        p.category_ids.includes(selectedCategory) || p.category_id === selectedCategory
+        relevantCategoryIds.some(catId => p.category_ids.includes(catId)) || 
+        (p.category_id && relevantCategoryIds.includes(p.category_id))
       );
     }
 
@@ -214,40 +336,12 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
               )}
               
               {/* Categories */}
-              <div>
-                <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-2">
-                  Категории
-                </h2>
-                <nav className="space-y-1">
-                  <button
-                    onClick={() => setSelectedCategory(null)}
-                    className={cn(
-                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
-                      !selectedCategory 
-                        ? "bg-primary text-primary-foreground" 
-                        : "hover:bg-muted"
-                    )}
-                  >
-                    Все товары
-                    <span className="float-right text-xs opacity-70">{products.length}</span>
-                  </button>
-                  {categories.filter(c => c.product_count && c.product_count > 0).map((cat) => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setSelectedCategory(cat.id)}
-                      className={cn(
-                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
-                        selectedCategory === cat.id 
-                          ? "bg-primary text-primary-foreground" 
-                          : "hover:bg-muted"
-                      )}
-                    >
-                      {cat.name}
-                      <span className="float-right text-xs opacity-70">{cat.product_count}</span>
-                    </button>
-                  ))}
-                </nav>
-              </div>
+              <WholesaleSidebarCategories
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onSelectCategory={setSelectedCategory}
+                totalProducts={products.length}
+              />
 
               {/* Contact info */}
               {(store.contact_phone || store.contact_email) && (

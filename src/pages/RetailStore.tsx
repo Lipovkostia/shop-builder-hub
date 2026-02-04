@@ -23,6 +23,7 @@ import { RetailFavoritesSheet } from "@/components/retail/RetailFavoritesSheet";
 import { RetailFavoritesDrawer } from "@/components/retail/RetailFavoritesDrawer";
 import { CategoryProductsSection } from "@/components/retail/CategoryProductsSection";
 import { FlyToCartAnimation, triggerFlyToCart } from "@/components/retail/FlyToCartAnimation";
+import { getDescendantIds } from "@/lib/categoryUtils";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 
@@ -99,14 +100,18 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
       );
     }
 
-    // Category filter - check both category_id and category_ids array
+    // Category filter - includes subcategories (hierarchical)
     if (selectedCategories.length > 0) {
+      // Get all descendant category IDs for hierarchical filtering
+      const allRelevantCategoryIds = new Set<string>();
+      selectedCategories.forEach(catId => {
+        getDescendantIds(catId, categories).forEach(id => allRelevantCategoryIds.add(id));
+      });
+
       result = result.filter((p) => {
-        // Check if any selected category matches product's categories
         const productCategoryIds = p.category_ids || [];
-        return selectedCategories.some(catId => 
-          productCategoryIds.includes(catId) || p.category_id === catId
-        );
+        return productCategoryIds.some(catId => allRelevantCategoryIds.has(catId)) || 
+               (p.category_id && allRelevantCategoryIds.has(p.category_id));
       });
     }
 
