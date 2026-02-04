@@ -1,14 +1,50 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sparkles, Mic, X } from "lucide-react";
 import { AIAssistantPanel } from "./AIAssistantPanel";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface AIAssistantBannerProps {
   storeId: string | null;
 }
 
+const BANNER_DISMISSED_KEY = "ai_assistant_banner_dismissed";
+
 export function AIAssistantBanner({ storeId }: AIAssistantBannerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  // Check localStorage on mount
+  useEffect(() => {
+    const dismissed = localStorage.getItem(BANNER_DISMISSED_KEY);
+    if (dismissed === "true") {
+      setIsDismissed(true);
+    }
+  }, []);
+
+  const handleCloseClick = () => {
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmDismiss = () => {
+    localStorage.setItem(BANNER_DISMISSED_KEY, "true");
+    setIsDismissed(true);
+    setShowConfirmDialog(false);
+  };
+
+  const handleCancelDismiss = () => {
+    setIsDismissed(true); // Just hide for this session
+    setShowConfirmDialog(false);
+  };
 
   if (isDismissed) return null;
 
@@ -20,7 +56,7 @@ export function AIAssistantBanner({ storeId }: AIAssistantBannerProps) {
         
         {/* Close button */}
         <button
-          onClick={() => setIsDismissed(true)}
+          onClick={handleCloseClick}
           className="absolute top-2 right-2 p-1 rounded-full hover:bg-white/20 transition-colors z-10"
         >
           <X className="w-4 h-4" />
@@ -67,6 +103,27 @@ export function AIAssistantBanner({ storeId }: AIAssistantBannerProps) {
         onOpenChange={setIsOpen}
         storeId={storeId}
       />
+
+      {/* Confirm dismiss dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Скрыть баннер AI Помощника?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы можете скрыть баннер навсегда или только на текущую сессию. 
+              AI Помощник всегда доступен через кнопку в шапке.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDismiss}>
+              Только сейчас
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDismiss}>
+              Больше не показывать
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
