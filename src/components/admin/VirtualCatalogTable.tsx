@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, memo } from "react";
+import React, { useRef, useCallback, memo, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,8 @@ import { InlinePrimaryCategoryCell } from "./InlinePrimaryCategoryCell";
 import { InlinePriceCell } from "./InlinePriceCell";
 import { InlineMarkupCell } from "./InlineMarkupCell";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ResizableColumnHeader } from "./ResizableColumnHeader";
+import { useResizableColumns, ColumnConfig } from "@/hooks/useResizableColumns";
 import {
   Product,
   ProductStatus,
@@ -68,6 +70,27 @@ interface VirtualCatalogTableProps {
   onOpenCategoryOrder: () => void;
 }
 
+// Column definitions with default and min widths
+const COLUMN_CONFIGS: ColumnConfig[] = [
+  { id: 'bulkCheckbox', minWidth: 32, defaultWidth: 40 },
+  { id: 'photo', minWidth: 50, defaultWidth: 60 },
+  { id: 'name', minWidth: 100, defaultWidth: 180 },
+  { id: 'description', minWidth: 80, defaultWidth: 200 },
+  { id: 'primaryCategory', minWidth: 80, defaultWidth: 120 },
+  { id: 'subcategories', minWidth: 80, defaultWidth: 140 },
+  { id: 'unit', minWidth: 50, defaultWidth: 80 },
+  { id: 'volume', minWidth: 50, defaultWidth: 80 },
+  { id: 'type', minWidth: 60, defaultWidth: 100 },
+  { id: 'buyPrice', minWidth: 60, defaultWidth: 90 },
+  { id: 'markup', minWidth: 80, defaultWidth: 120 },
+  { id: 'price', minWidth: 70, defaultWidth: 100 },
+  { id: 'priceFull', minWidth: 60, defaultWidth: 90 },
+  { id: 'priceHalf', minWidth: 50, defaultWidth: 90 },
+  { id: 'priceQuarter', minWidth: 50, defaultWidth: 90 },
+  { id: 'pricePortion', minWidth: 50, defaultWidth: 90 },
+  { id: 'status', minWidth: 70, defaultWidth: 100 },
+];
+
 // Memoized row component with optimized comparison
 const CatalogRow = memo(({
   product,
@@ -82,6 +105,7 @@ const CatalogRow = memo(({
   effectivePortionPrices,
   isSelected,
   visibleColumns,
+  columnWidths,
   categories,
   storeCategories,
   unitOptions,
@@ -106,6 +130,7 @@ const CatalogRow = memo(({
   effectivePortionPrices: { halfPricePerKg?: number; quarterPricePerKg?: number; portionPrice?: number } | null;
   isSelected: boolean;
   visibleColumns: CatalogVisibleColumns;
+  columnWidths: Record<string, number>;
   categories: CategoryOption[];
   storeCategories: CategoryOption[];
   unitOptions: { value: string; label: string }[];
@@ -135,13 +160,15 @@ const CatalogRow = memo(({
     })
     .map(c => ({ value: c.id, label: c.name, sort_order: c.sort_order }));
 
+  const getWidth = (id: string) => columnWidths[id] ?? 100;
+
   return (
     <div
       style={style}
       className={`flex items-center border-b border-border ${isSelected ? "bg-primary/10" : "hover:bg-muted/50"}`}
     >
       {visibleColumns.bulkCheckbox && (
-        <div className="flex-shrink-0 w-[40px] px-2">
+        <div className="flex-shrink-0 px-2 overflow-hidden" style={{ width: getWidth('bulkCheckbox'), maxWidth: getWidth('bulkCheckbox') }}>
           <div
             onClick={(e) => onSelectProduct(product.id, e.shiftKey)}
             className="cursor-pointer"
@@ -152,7 +179,7 @@ const CatalogRow = memo(({
       )}
       
       {visibleColumns.photo && (
-        <div className="flex-shrink-0 w-[60px] px-2">
+        <div className="flex-shrink-0 px-2 overflow-hidden" style={{ width: getWidth('photo'), maxWidth: getWidth('photo') }}>
           <img
             src={product.image}
             alt={baseName}
@@ -164,7 +191,7 @@ const CatalogRow = memo(({
       )}
 
       {visibleColumns.name && (
-        <div className="flex-shrink-0 w-[180px] px-2 font-medium">
+        <div className="flex-shrink-0 px-2 font-medium overflow-hidden" style={{ width: getWidth('name'), maxWidth: getWidth('name') }}>
           <InlineEditableCell
             value={baseName}
             onSave={(newName) => {
@@ -178,7 +205,7 @@ const CatalogRow = memo(({
       )}
 
       {visibleColumns.description && (
-        <div className="flex-shrink-0 w-[200px] px-2">
+        <div className="flex-shrink-0 px-2 overflow-hidden" style={{ width: getWidth('description'), maxWidth: getWidth('description') }}>
           <InlineEditableCell
             value={baseDescription || ""}
             onSave={(newDesc) => {
@@ -193,7 +220,7 @@ const CatalogRow = memo(({
       )}
 
       {visibleColumns.primaryCategory && (
-        <div className="flex-shrink-0 w-[120px] px-2">
+        <div className="flex-shrink-0 px-2 overflow-hidden" style={{ width: getWidth('primaryCategory'), maxWidth: getWidth('primaryCategory') }}>
           <InlinePrimaryCategoryCell
             value={effectivePrimaryCategory}
             options={categories.map(c => ({
@@ -216,7 +243,7 @@ const CatalogRow = memo(({
       )}
 
       {visibleColumns.subcategories && (
-        <div className="flex-shrink-0 w-[140px] px-2">
+        <div className="flex-shrink-0 px-2 overflow-hidden" style={{ width: getWidth('subcategories'), maxWidth: getWidth('subcategories') }}>
           <InlineMultiSelectCell
             values={effectiveCategories || []}
             options={subcategoryOptions}
@@ -238,7 +265,7 @@ const CatalogRow = memo(({
       )}
 
       {visibleColumns.unit && (
-        <div className="flex-shrink-0 w-[80px] px-2">
+        <div className="flex-shrink-0 px-2 overflow-hidden" style={{ width: getWidth('unit'), maxWidth: getWidth('unit') }}>
           <InlineSelectCell
             value={baseUnit}
             options={unitOptions}
@@ -254,7 +281,7 @@ const CatalogRow = memo(({
       )}
 
       {visibleColumns.volume && (
-        <div className="flex-shrink-0 w-[80px] px-2">
+        <div className="flex-shrink-0 px-2 overflow-hidden" style={{ width: getWidth('volume'), maxWidth: getWidth('volume') }}>
           <InlinePriceCell
             value={baseUnitWeight}
             onSave={(newVolume) => {
@@ -269,7 +296,7 @@ const CatalogRow = memo(({
       )}
 
       {visibleColumns.type && (
-        <div className="flex-shrink-0 w-[100px] px-2">
+        <div className="flex-shrink-0 px-2 overflow-hidden" style={{ width: getWidth('type'), maxWidth: getWidth('type') }}>
           <InlineSelectCell
             value={basePackagingType || "piece"}
             options={packagingOptions}
@@ -285,7 +312,7 @@ const CatalogRow = memo(({
       )}
 
       {visibleColumns.buyPrice && (
-        <div className="flex-shrink-0 w-[90px] px-2">
+        <div className="flex-shrink-0 px-2 overflow-hidden" style={{ width: getWidth('buyPrice'), maxWidth: getWidth('buyPrice') }}>
           <InlinePriceCell
             value={product.buyPrice}
             onSave={(newBuyPrice) => {
@@ -300,7 +327,7 @@ const CatalogRow = memo(({
       )}
 
       {visibleColumns.markup && (
-        <div className="flex-shrink-0 w-[120px] px-2">
+        <div className="flex-shrink-0 px-2 overflow-hidden" style={{ width: getWidth('markup'), maxWidth: getWidth('markup') }}>
           <InlineMarkupCell
             value={effectiveMarkup}
             onSave={(markup) => {
@@ -311,21 +338,21 @@ const CatalogRow = memo(({
       )}
 
       {visibleColumns.price && (
-        <div className="flex-shrink-0 w-[100px] px-2 font-medium">
-          <span className="text-xs">{formatPrice(salePrice)}/{baseUnit}</span>
+        <div className="flex-shrink-0 px-2 font-medium overflow-hidden" style={{ width: getWidth('price'), maxWidth: getWidth('price') }}>
+          <span className="text-xs truncate block">{formatPrice(salePrice)}/{baseUnit}</span>
         </div>
       )}
 
       {visibleColumns.priceFull && (
-        <div className="flex-shrink-0 w-[90px] px-2">
+        <div className="flex-shrink-0 px-2 overflow-hidden" style={{ width: getWidth('priceFull'), maxWidth: getWidth('priceFull') }}>
           {packagingPrices ? (
-            <span className="text-xs font-medium">{formatPrice(packagingPrices.full)}</span>
+            <span className="text-xs font-medium truncate block">{formatPrice(packagingPrices.full)}</span>
           ) : "-"}
         </div>
       )}
 
       {visibleColumns.priceHalf && (
-        <div className="flex-shrink-0 w-[90px] px-2">
+        <div className="flex-shrink-0 px-2 overflow-hidden" style={{ width: getWidth('priceHalf'), maxWidth: getWidth('priceHalf') }}>
           <InlinePriceCell
             value={effectivePortionPrices?.halfPricePerKg}
             onSave={(value) => {
@@ -340,7 +367,7 @@ const CatalogRow = memo(({
       )}
 
       {visibleColumns.priceQuarter && (
-        <div className="flex-shrink-0 w-[90px] px-2">
+        <div className="flex-shrink-0 px-2 overflow-hidden" style={{ width: getWidth('priceQuarter'), maxWidth: getWidth('priceQuarter') }}>
           <InlinePriceCell
             value={effectivePortionPrices?.quarterPricePerKg}
             onSave={(value) => {
@@ -355,7 +382,7 @@ const CatalogRow = memo(({
       )}
 
       {visibleColumns.pricePortion && (
-        <div className="flex-shrink-0 w-[90px] px-2">
+        <div className="flex-shrink-0 px-2 overflow-hidden" style={{ width: getWidth('pricePortion'), maxWidth: getWidth('pricePortion') }}>
           <InlinePriceCell
             value={effectivePortionPrices?.portionPrice}
             onSave={(value) => {
@@ -370,7 +397,7 @@ const CatalogRow = memo(({
       )}
 
       {visibleColumns.status && (
-        <div className="flex-shrink-0 w-[100px] px-2">
+        <div className="flex-shrink-0 px-2 overflow-hidden" style={{ width: getWidth('status'), maxWidth: getWidth('status') }}>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -405,7 +432,7 @@ const CatalogRow = memo(({
   );
 }, (prev, next) => {
   // Custom comparison - only re-render when relevant data changes
-  // IMPORTANT: Include visibleColumns to re-render when column visibility changes
+  // IMPORTANT: Include visibleColumns and columnWidths to re-render when they change
   return prev.product.id === next.product.id &&
          prev.product.name === next.product.name &&
          prev.product.description === next.product.description &&
@@ -425,29 +452,39 @@ const CatalogRow = memo(({
          JSON.stringify(prev.effectiveMarkup) === JSON.stringify(next.effectiveMarkup) &&
          JSON.stringify(prev.effectivePortionPrices) === JSON.stringify(next.effectivePortionPrices) &&
          // Check column visibility changes
-         JSON.stringify(prev.visibleColumns) === JSON.stringify(next.visibleColumns);
+         JSON.stringify(prev.visibleColumns) === JSON.stringify(next.visibleColumns) &&
+         // Check column widths changes
+         prev.columnWidths === next.columnWidths;
 });
 
 CatalogRow.displayName = 'CatalogRow';
 
 // Loading skeleton row
-const SkeletonRow = memo(({ style, visibleColumns }: { style: React.CSSProperties; visibleColumns: CatalogVisibleColumns }) => (
-  <div style={style} className="flex items-center border-b border-border">
-    {visibleColumns.bulkCheckbox && <div className="flex-shrink-0 w-[40px] px-2"><Skeleton className="h-4 w-4" /></div>}
-    {visibleColumns.photo && <div className="flex-shrink-0 w-[60px] px-2"><Skeleton className="h-10 w-10 rounded" /></div>}
-    {visibleColumns.name && <div className="flex-shrink-0 w-[180px] px-2"><Skeleton className="h-4 w-32" /></div>}
-    {visibleColumns.description && <div className="flex-shrink-0 w-[200px] px-2"><Skeleton className="h-4 w-40" /></div>}
-    {visibleColumns.primaryCategory && <div className="flex-shrink-0 w-[120px] px-2"><Skeleton className="h-6 w-20" /></div>}
-    {visibleColumns.subcategories && <div className="flex-shrink-0 w-[140px] px-2"><Skeleton className="h-6 w-24" /></div>}
-    {visibleColumns.unit && <div className="flex-shrink-0 w-[80px] px-2"><Skeleton className="h-4 w-12" /></div>}
-    {visibleColumns.volume && <div className="flex-shrink-0 w-[80px] px-2"><Skeleton className="h-4 w-12" /></div>}
-    {visibleColumns.type && <div className="flex-shrink-0 w-[100px] px-2"><Skeleton className="h-4 w-16" /></div>}
-    {visibleColumns.buyPrice && <div className="flex-shrink-0 w-[90px] px-2"><Skeleton className="h-4 w-14" /></div>}
-    {visibleColumns.markup && <div className="flex-shrink-0 w-[120px] px-2"><Skeleton className="h-4 w-20" /></div>}
-    {visibleColumns.price && <div className="flex-shrink-0 w-[100px] px-2"><Skeleton className="h-4 w-16" /></div>}
-    {visibleColumns.status && <div className="flex-shrink-0 w-[100px] px-2"><Skeleton className="h-6 w-16" /></div>}
-  </div>
-));
+const SkeletonRow = memo(({ style, visibleColumns, columnWidths }: { 
+  style: React.CSSProperties; 
+  visibleColumns: CatalogVisibleColumns;
+  columnWidths: Record<string, number>;
+}) => {
+  const getWidth = (id: string) => columnWidths[id] ?? 100;
+  
+  return (
+    <div style={style} className="flex items-center border-b border-border">
+      {visibleColumns.bulkCheckbox && <div className="flex-shrink-0 px-2" style={{ width: getWidth('bulkCheckbox') }}><Skeleton className="h-4 w-4" /></div>}
+      {visibleColumns.photo && <div className="flex-shrink-0 px-2" style={{ width: getWidth('photo') }}><Skeleton className="h-10 w-10 rounded" /></div>}
+      {visibleColumns.name && <div className="flex-shrink-0 px-2" style={{ width: getWidth('name') }}><Skeleton className="h-4 w-32" /></div>}
+      {visibleColumns.description && <div className="flex-shrink-0 px-2" style={{ width: getWidth('description') }}><Skeleton className="h-4 w-40" /></div>}
+      {visibleColumns.primaryCategory && <div className="flex-shrink-0 px-2" style={{ width: getWidth('primaryCategory') }}><Skeleton className="h-6 w-20" /></div>}
+      {visibleColumns.subcategories && <div className="flex-shrink-0 px-2" style={{ width: getWidth('subcategories') }}><Skeleton className="h-6 w-24" /></div>}
+      {visibleColumns.unit && <div className="flex-shrink-0 px-2" style={{ width: getWidth('unit') }}><Skeleton className="h-4 w-12" /></div>}
+      {visibleColumns.volume && <div className="flex-shrink-0 px-2" style={{ width: getWidth('volume') }}><Skeleton className="h-4 w-12" /></div>}
+      {visibleColumns.type && <div className="flex-shrink-0 px-2" style={{ width: getWidth('type') }}><Skeleton className="h-4 w-16" /></div>}
+      {visibleColumns.buyPrice && <div className="flex-shrink-0 px-2" style={{ width: getWidth('buyPrice') }}><Skeleton className="h-4 w-14" /></div>}
+      {visibleColumns.markup && <div className="flex-shrink-0 px-2" style={{ width: getWidth('markup') }}><Skeleton className="h-4 w-20" /></div>}
+      {visibleColumns.price && <div className="flex-shrink-0 px-2" style={{ width: getWidth('price') }}><Skeleton className="h-4 w-16" /></div>}
+      {visibleColumns.status && <div className="flex-shrink-0 px-2" style={{ width: getWidth('status') }}><Skeleton className="h-6 w-16" /></div>}
+    </div>
+  );
+});
 
 SkeletonRow.displayName = 'SkeletonRow';
 
@@ -475,6 +512,12 @@ export function VirtualCatalogTable({
   
   const ROW_HEIGHT = 48;
   
+  // Use resizable columns hook with localStorage persistence
+  const { columnWidths, setColumnWidth, getTotalWidth } = useResizableColumns(
+    COLUMN_CONFIGS,
+    `catalog-${catalogId}`
+  );
+  
   const virtualizer = useVirtualizer({
     count: products.length,
     getScrollElement: () => parentRef.current,
@@ -486,25 +529,11 @@ export function VirtualCatalogTable({
     onSelectProduct(productId, shiftKey);
   }, [onSelectProduct]);
 
-  // Calculate total width based on visible columns
-  const totalWidth = 
-    (visibleColumns.bulkCheckbox ? 40 : 0) +
-    (visibleColumns.photo ? 60 : 0) +
-    (visibleColumns.name ? 180 : 0) +
-    (visibleColumns.description ? 200 : 0) +
-    (visibleColumns.primaryCategory ? 120 : 0) +
-    (visibleColumns.subcategories ? 140 : 0) +
-    (visibleColumns.unit ? 80 : 0) +
-    (visibleColumns.volume ? 80 : 0) +
-    (visibleColumns.type ? 100 : 0) +
-    (visibleColumns.buyPrice ? 90 : 0) +
-    (visibleColumns.markup ? 120 : 0) +
-    (visibleColumns.price ? 100 : 0) +
-    (visibleColumns.priceFull ? 90 : 0) +
-    (visibleColumns.priceHalf ? 90 : 0) +
-    (visibleColumns.priceQuarter ? 90 : 0) +
-    (visibleColumns.pricePortion ? 90 : 0) +
-    (visibleColumns.status ? 100 : 0);
+  // Calculate total width based on visible columns and their current widths
+  const totalWidth = useMemo(() => getTotalWidth(visibleColumns), [getTotalWidth, visibleColumns, columnWidths]);
+
+  const getWidth = useCallback((id: string) => columnWidths[id] ?? COLUMN_CONFIGS.find(c => c.id === id)?.defaultWidth ?? 100, [columnWidths]);
+  const getMinWidth = useCallback((id: string) => COLUMN_CONFIGS.find(c => c.id === id)?.minWidth ?? 40, []);
 
   return (
     <div
@@ -517,23 +546,176 @@ export function VirtualCatalogTable({
         className="sticky top-0 z-10 bg-muted/50 border-b border-border flex items-center font-medium text-xs text-muted-foreground"
         style={{ minWidth: totalWidth }}
       >
-        {visibleColumns.bulkCheckbox && <div className="flex-shrink-0 w-[40px] px-2 py-2">✓</div>}
-        {visibleColumns.photo && <div className="flex-shrink-0 w-[60px] px-2 py-2">Фото</div>}
-        {visibleColumns.name && <div className="flex-shrink-0 w-[180px] px-2 py-2">Название</div>}
-        {visibleColumns.description && <div className="flex-shrink-0 w-[200px] px-2 py-2">Описание</div>}
-        {visibleColumns.primaryCategory && <div className="flex-shrink-0 w-[120px] px-2 py-2">Категория</div>}
-        {visibleColumns.subcategories && <div className="flex-shrink-0 w-[140px] px-2 py-2">Подкатегория</div>}
-        {visibleColumns.unit && <div className="flex-shrink-0 w-[80px] px-2 py-2">Ед. изм.</div>}
-        {visibleColumns.volume && <div className="flex-shrink-0 w-[80px] px-2 py-2">Объем</div>}
-        {visibleColumns.type && <div className="flex-shrink-0 w-[100px] px-2 py-2">Вид</div>}
-        {visibleColumns.buyPrice && <div className="flex-shrink-0 w-[90px] px-2 py-2">Себест-ть</div>}
-        {visibleColumns.markup && <div className="flex-shrink-0 w-[120px] px-2 py-2">Наценка</div>}
-        {visibleColumns.price && <div className="flex-shrink-0 w-[100px] px-2 py-2">Цена</div>}
-        {visibleColumns.priceFull && <div className="flex-shrink-0 w-[90px] px-2 py-2">Целая</div>}
-        {visibleColumns.priceHalf && <div className="flex-shrink-0 w-[90px] px-2 py-2">½</div>}
-        {visibleColumns.priceQuarter && <div className="flex-shrink-0 w-[90px] px-2 py-2">¼</div>}
-        {visibleColumns.pricePortion && <div className="flex-shrink-0 w-[90px] px-2 py-2">Порция</div>}
-        {visibleColumns.status && <div className="flex-shrink-0 w-[100px] px-2 py-2">Статус</div>}
+        {visibleColumns.bulkCheckbox && (
+          <ResizableColumnHeader
+            columnId="bulkCheckbox"
+            width={getWidth('bulkCheckbox')}
+            minWidth={getMinWidth('bulkCheckbox')}
+            onWidthChange={setColumnWidth}
+          >
+            ✓
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.photo && (
+          <ResizableColumnHeader
+            columnId="photo"
+            width={getWidth('photo')}
+            minWidth={getMinWidth('photo')}
+            onWidthChange={setColumnWidth}
+          >
+            Фото
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.name && (
+          <ResizableColumnHeader
+            columnId="name"
+            width={getWidth('name')}
+            minWidth={getMinWidth('name')}
+            onWidthChange={setColumnWidth}
+          >
+            Название
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.description && (
+          <ResizableColumnHeader
+            columnId="description"
+            width={getWidth('description')}
+            minWidth={getMinWidth('description')}
+            onWidthChange={setColumnWidth}
+          >
+            Описание
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.primaryCategory && (
+          <ResizableColumnHeader
+            columnId="primaryCategory"
+            width={getWidth('primaryCategory')}
+            minWidth={getMinWidth('primaryCategory')}
+            onWidthChange={setColumnWidth}
+          >
+            Категория
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.subcategories && (
+          <ResizableColumnHeader
+            columnId="subcategories"
+            width={getWidth('subcategories')}
+            minWidth={getMinWidth('subcategories')}
+            onWidthChange={setColumnWidth}
+          >
+            Подкатегория
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.unit && (
+          <ResizableColumnHeader
+            columnId="unit"
+            width={getWidth('unit')}
+            minWidth={getMinWidth('unit')}
+            onWidthChange={setColumnWidth}
+          >
+            Ед. изм.
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.volume && (
+          <ResizableColumnHeader
+            columnId="volume"
+            width={getWidth('volume')}
+            minWidth={getMinWidth('volume')}
+            onWidthChange={setColumnWidth}
+          >
+            Объем
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.type && (
+          <ResizableColumnHeader
+            columnId="type"
+            width={getWidth('type')}
+            minWidth={getMinWidth('type')}
+            onWidthChange={setColumnWidth}
+          >
+            Вид
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.buyPrice && (
+          <ResizableColumnHeader
+            columnId="buyPrice"
+            width={getWidth('buyPrice')}
+            minWidth={getMinWidth('buyPrice')}
+            onWidthChange={setColumnWidth}
+          >
+            Себест-ть
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.markup && (
+          <ResizableColumnHeader
+            columnId="markup"
+            width={getWidth('markup')}
+            minWidth={getMinWidth('markup')}
+            onWidthChange={setColumnWidth}
+          >
+            Наценка
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.price && (
+          <ResizableColumnHeader
+            columnId="price"
+            width={getWidth('price')}
+            minWidth={getMinWidth('price')}
+            onWidthChange={setColumnWidth}
+          >
+            Цена
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.priceFull && (
+          <ResizableColumnHeader
+            columnId="priceFull"
+            width={getWidth('priceFull')}
+            minWidth={getMinWidth('priceFull')}
+            onWidthChange={setColumnWidth}
+          >
+            Целая
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.priceHalf && (
+          <ResizableColumnHeader
+            columnId="priceHalf"
+            width={getWidth('priceHalf')}
+            minWidth={getMinWidth('priceHalf')}
+            onWidthChange={setColumnWidth}
+          >
+            ½
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.priceQuarter && (
+          <ResizableColumnHeader
+            columnId="priceQuarter"
+            width={getWidth('priceQuarter')}
+            minWidth={getMinWidth('priceQuarter')}
+            onWidthChange={setColumnWidth}
+          >
+            ¼
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.pricePortion && (
+          <ResizableColumnHeader
+            columnId="pricePortion"
+            width={getWidth('pricePortion')}
+            minWidth={getMinWidth('pricePortion')}
+            onWidthChange={setColumnWidth}
+          >
+            Порция
+          </ResizableColumnHeader>
+        )}
+        {visibleColumns.status && (
+          <ResizableColumnHeader
+            columnId="status"
+            width={getWidth('status')}
+            minWidth={getMinWidth('status')}
+            onWidthChange={setColumnWidth}
+          >
+            Статус
+          </ResizableColumnHeader>
+        )}
       </div>
 
       {/* Virtual rows container */}
@@ -577,6 +759,7 @@ export function VirtualCatalogTable({
               effectivePortionPrices={effectivePortionPrices}
               isSelected={selectedBulkProducts.has(product.id)}
               visibleColumns={visibleColumns}
+              columnWidths={columnWidths}
               categories={categories}
               storeCategories={storeCategories}
               unitOptions={unitOptions}
