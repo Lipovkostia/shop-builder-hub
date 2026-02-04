@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Check, X, Plus, ChevronDown, Folder, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
+// Simple debounce utility
+function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  return ((...args: Parameters<T>) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  }) as T;
+}
 
 interface CategoryOption {
   value: string;
@@ -43,7 +52,13 @@ export function InlinePrimaryCategoryCell({
   const [isOpen, setIsOpen] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newOptionValue, setNewOptionValue] = useState("");
+  const [localValue, setLocalValue] = useState<string | null>(value);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync local value with prop
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
 
   // Filter to show only root categories (parent_id is null)
   const rootCategories = options.filter(opt => !opt.parent_id);
@@ -54,10 +69,19 @@ export function InlinePrimaryCategoryCell({
     }
   }, [isAddingNew]);
 
-  const handleSelect = (optionValue: string | null) => {
-    onSave(optionValue);
+  // Debounced save to reduce DB calls
+  const debouncedSave = useMemo(
+    () => debounce((newValue: string | null) => {
+      onSave(newValue);
+    }, 150),
+    [onSave]
+  );
+
+  const handleSelect = useCallback((optionValue: string | null) => {
+    setLocalValue(optionValue); // Instant UI update
+    debouncedSave(optionValue); // Debounced DB save
     setIsOpen(false);
-  };
+  }, [debouncedSave]);
 
   const handleAddNew = async () => {
     const trimmed = newOptionValue.trim();
@@ -78,15 +102,15 @@ export function InlinePrimaryCategoryCell({
     setIsAddingNew(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       handleAddNew();
     } else if (e.key === "Escape") {
       handleCancelAdd();
     }
-  };
+  }, [handleAddNew, handleCancelAdd]);
 
-  const selectedLabel = value 
+  const selectedLabel = localValue 
     ? rootCategories.find(o => o.value === value)?.label 
     : null;
 
@@ -95,12 +119,12 @@ export function InlinePrimaryCategoryCell({
       <PopoverTrigger asChild>
         <button
           className={`flex items-center gap-1 h-6 px-1.5 text-xs border border-dashed rounded-md min-w-[80px] max-w-[150px] hover:bg-muted/50 transition-colors ${
-            value 
+            localValue 
               ? "bg-primary/5 border-primary/30 text-foreground" 
               : "border-border text-muted-foreground"
           } ${className}`}
         >
-          {value ? (
+          {localValue ? (
             <FolderOpen className="h-2.5 w-2.5 flex-shrink-0" />
           ) : (
             <Folder className="h-2.5 w-2.5 flex-shrink-0" />
@@ -121,7 +145,7 @@ export function InlinePrimaryCategoryCell({
           <div
             onClick={() => handleSelect(null)}
             className={`flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted text-sm cursor-pointer ${
-              !value ? "bg-muted" : ""
+              !localValue ? "bg-muted" : ""
             }`}
           >
             <span className="text-muted-foreground">— Без категории</span>
@@ -131,7 +155,7 @@ export function InlinePrimaryCategoryCell({
             rootCategories
               .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
               .map((option) => {
-                const isSelected = value === option.value;
+                const isSelected = localValue === option.value;
                 return (
                   <div
                     key={option.value}
