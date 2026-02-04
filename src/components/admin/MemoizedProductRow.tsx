@@ -2,7 +2,7 @@ import React, { memo, useCallback } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, ChevronUp, ChevronDown, Plus, Lock, Unlock } from "lucide-react";
+import { GripVertical, Plus, Lock, Unlock } from "lucide-react";
 import { InlineEditableCell } from "./InlineEditableCell";
 import { InlineSelectCell } from "./InlineSelectCell";
 import { InlineMultiSelectCell } from "./InlineMultiSelectCell";
@@ -214,33 +214,28 @@ function ProductRowComponent({
 
         {/* Photo */}
         {visibleColumns.photo && (
-          <div className="w-12 flex-shrink-0">
+          <div className="w-12 flex-shrink-0 flex items-center justify-center">
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-auto px-1 gap-1 flex items-center"
+              className="h-8 w-8 p-0 relative"
               onClick={handleToggleExpansion}
             >
               {product.image ? (
                 <img
                   src={product.image}
                   alt={product.name}
-                  className="w-6 h-6 rounded object-cover flex-shrink-0"
+                  className="w-6 h-6 rounded object-cover"
                 />
               ) : (
-                <div className="w-6 h-6 rounded bg-muted flex items-center justify-center flex-shrink-0 hover:bg-primary/10 transition-colors">
+                <div className="w-6 h-6 rounded bg-muted flex items-center justify-center hover:bg-primary/10 transition-colors">
                   <Plus className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
               )}
               {displayImages.length > 0 && (
-                <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] rounded-full w-4 h-4 flex items-center justify-center">
                   {displayImages.length}
-                </Badge>
-              )}
-              {isExpanded ? (
-                <ChevronUp className="h-3 w-3 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                </span>
               )}
             </Button>
           </div>
