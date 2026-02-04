@@ -3,6 +3,7 @@ import { X, Trash2, Package, Tag, Check, FolderPlus, FolderMinus } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -18,12 +19,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Product, PackagingType, MarkupSettings, ProductStatus } from "./types";
 import { InlineMarkupCell } from "./InlineMarkupCell";
+import { ChevronDown, Layers } from "lucide-react";
 
 interface Catalog {
   id: string;
   name: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  sort_order?: number | null;
 }
 
 interface BulkEditPanelProps {
@@ -39,6 +52,9 @@ interface BulkEditPanelProps {
   onCreateCatalogAndAdd?: (catalogName: string) => void;
   onRemoveFromCatalog?: () => void;
   currentCatalogName?: string;
+  // New props for bulk category editing
+  categories?: Category[];
+  onBulkSetCategories?: (categoryIds: string[]) => void;
 }
 
 export function BulkEditPanel({
@@ -54,6 +70,8 @@ export function BulkEditPanel({
   onCreateCatalogAndAdd,
   onRemoveFromCatalog,
   currentCatalogName,
+  categories = [],
+  onBulkSetCategories,
 }: BulkEditPanelProps) {
   const [editField, setEditField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
@@ -64,6 +82,9 @@ export function BulkEditPanel({
   const [selectedCatalogId, setSelectedCatalogId] = useState<string>("");
   const [newCatalogName, setNewCatalogName] = useState("");
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  // Category bulk editing state
+  const [selectedBulkCategories, setSelectedBulkCategories] = useState<string[]>([]);
+  const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
 
   const handleApply = () => {
     if (!editField) return;
@@ -130,6 +151,22 @@ export function BulkEditPanel({
     }
   };
 
+  const handleApplyCategories = () => {
+    if (onBulkSetCategories && selectedBulkCategories.length > 0) {
+      onBulkSetCategories(selectedBulkCategories);
+      setSelectedBulkCategories([]);
+      setIsCategoryPopoverOpen(false);
+    }
+  };
+
+  const toggleCategorySelection = (categoryId: string) => {
+    setSelectedBulkCategories(prev => 
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
   if (selectedCount === 0) return null;
 
   return (
@@ -179,6 +216,76 @@ export function BulkEditPanel({
                 <FolderPlus className="h-4 w-4 mr-1" />
                 В прайс-лист
               </Button>
+              <div className="w-px h-6 bg-primary-foreground/20 mx-1" />
+            </>
+          )}
+
+          {/* Bulk category editing */}
+          {onBulkSetCategories && categories.length > 0 && (
+            <>
+              <Popover open={isCategoryPopoverOpen} onOpenChange={(open) => {
+                setIsCategoryPopoverOpen(open);
+                if (!open) setSelectedBulkCategories([]);
+              }}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-8"
+                  >
+                    <Layers className="h-4 w-4 mr-1" />
+                    Категории
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-2" align="start">
+                  <div className="text-sm font-medium mb-2">Установить категории</div>
+                  <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto mb-3">
+                    {categories
+                      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                      .map((category) => {
+                        const isSelected = selectedBulkCategories.includes(category.id);
+                        return (
+                          <div
+                            key={category.id}
+                            onClick={() => toggleCategorySelection(category.id)}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                          >
+                            <Checkbox 
+                              checked={isSelected} 
+                              className="h-4 w-4 pointer-events-none" 
+                            />
+                            <span className="text-sm truncate">{category.name}</span>
+                          </div>
+                        );
+                      })}
+                    {categories.length === 0 && (
+                      <p className="text-sm text-muted-foreground px-2 py-1">Нет категорий</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleApplyCategories}
+                      disabled={selectedBulkCategories.length === 0}
+                      className="flex-1"
+                    >
+                      <Check className="h-3 w-3 mr-1" />
+                      Применить
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedBulkCategories([]);
+                        setIsCategoryPopoverOpen(false);
+                      }}
+                    >
+                      Отмена
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
               <div className="w-px h-6 bg-primary-foreground/20 mx-1" />
             </>
           )}

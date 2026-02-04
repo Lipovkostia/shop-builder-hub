@@ -810,6 +810,7 @@ export default function AdminPanel({
   const [selectedCatalogProducts, setSelectedCatalogProducts] = useState<Set<string>>(new Set());
   const [editingCatalogName, setEditingCatalogName] = useState(false);
   const [selectedCatalogBulkProducts, setSelectedCatalogBulkProducts] = useState<Set<string>>(new Set());
+  const [lastSelectedCatalogProductId, setLastSelectedCatalogProductId] = useState<string | null>(null);
   const [expandedCatalogId, setExpandedCatalogId] = useState<string | null>(null);
   const [catalogSettingsOpen, setCatalogSettingsOpen] = useState<string | null>(null);
   const [editingCatalogListName, setEditingCatalogListName] = useState<string | null>(null);
@@ -4625,6 +4626,20 @@ export default function AdminPanel({
                     unitOptions={allUnitOptions}
                     packagingOptions={allPackagingOptions}
                     showDelete={false}
+                    categories={categories}
+                    onBulkSetCategories={(categoryIds) => {
+                      if (currentCatalog) {
+                        const count = selectedCatalogBulkProducts.size;
+                        selectedCatalogBulkProducts.forEach(productId => {
+                          updateCatalogProductPricing(currentCatalog.id, productId, { categories: categoryIds });
+                        });
+                        setSelectedCatalogBulkProducts(new Set());
+                        toast({
+                          title: "Категории обновлены",
+                          description: `Категории установлены для ${count} товаров`,
+                        });
+                      }
+                    }}
                   />
 
                   <p className="text-xs text-muted-foreground mb-2">
@@ -4729,11 +4744,34 @@ export default function AdminPanel({
                               >
                                 {catalogVisibleColumns.bulkCheckbox && (
                                   <ResizableTableCell columnId="bulkCheckbox">
-                                    <Checkbox
-                                      checked={selectedCatalogBulkProducts.has(product.id)}
-                                      onCheckedChange={() => {
+                                    <div
+                                      onClick={(e) => {
+                                        const shiftKey = e.shiftKey;
+                                        const filteredCatalogProducts = allProducts
+                                          .filter(p => selectedCatalogProducts.has(p.id))
+                                          .filter(p => !catalogProductSearch || p.name.toLowerCase().includes(catalogProductSearch.toLowerCase()));
+                                        
                                         setSelectedCatalogBulkProducts(prev => {
                                           const newSet = new Set(prev);
+                                          
+                                          // If Shift is pressed and we have a last selected product, select range
+                                          if (shiftKey && lastSelectedCatalogProductId) {
+                                            const lastIndex = filteredCatalogProducts.findIndex(p => p.id === lastSelectedCatalogProductId);
+                                            const currentIndex = filteredCatalogProducts.findIndex(p => p.id === product.id);
+                                            
+                                            if (lastIndex !== -1 && currentIndex !== -1) {
+                                              const startIndex = Math.min(lastIndex, currentIndex);
+                                              const endIndex = Math.max(lastIndex, currentIndex);
+                                              
+                                              // Add all products in range
+                                              for (let i = startIndex; i <= endIndex; i++) {
+                                                newSet.add(filteredCatalogProducts[i].id);
+                                              }
+                                              return newSet;
+                                            }
+                                          }
+                                          
+                                          // Normal toggle behavior
                                           if (newSet.has(product.id)) {
                                             newSet.delete(product.id);
                                           } else {
@@ -4741,8 +4779,17 @@ export default function AdminPanel({
                                           }
                                           return newSet;
                                         });
+                                        
+                                        // Always update last selected
+                                        setLastSelectedCatalogProductId(product.id);
                                       }}
-                                    />
+                                      className="cursor-pointer"
+                                    >
+                                      <Checkbox
+                                        checked={selectedCatalogBulkProducts.has(product.id)}
+                                        className="pointer-events-none"
+                                      />
+                                    </div>
                                   </ResizableTableCell>
                                 )}
                                 {/* Фото - из ассортимента (только чтение) */}
