@@ -173,13 +173,18 @@ export function useWholesaleStore(subdomain: string | undefined) {
 
       if (catError) throw catError;
 
-      // Count products per category
-      const categoriesWithCount = (data || []).map((cat) => ({
-        ...cat,
-        product_count: products.filter((p) => 
-          p.category_ids.includes(cat.id) || p.category_id === cat.id
-        ).length,
-      }));
+      // Count products per category - ensure string comparison for UUIDs
+      const categoriesWithCount = (data || []).map((cat) => {
+        const catIdStr = String(cat.id);
+        const count = products.filter((p) => 
+          p.category_ids.some(cid => String(cid) === catIdStr) || 
+          String(p.category_id) === catIdStr
+        ).length;
+        return {
+          ...cat,
+          product_count: count,
+        };
+      });
 
       setCategories(categoriesWithCount);
     } catch (err) {
