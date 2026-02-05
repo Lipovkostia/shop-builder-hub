@@ -48,6 +48,9 @@ export interface RetailSettings {
   retail_delivery_info: string | null;
   retail_delivery_free_from: number | null;
   retail_delivery_region: string | null;
+  // Footer content fields
+  retail_footer_delivery_payment: string | null;
+  retail_footer_returns: string | null;
 }
 
 export function useRetailSettings(storeId: string | null) {
@@ -65,7 +68,7 @@ export function useRetailSettings(storeId: string | null) {
     try {
       const { data, error } = await supabase
         .from("stores")
-        .select("retail_enabled, retail_theme, retail_logo_url, retail_name, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id, retail_phone, telegram_username, whatsapp_phone, retail_delivery_time, retail_delivery_info, retail_delivery_free_from, retail_delivery_region")
+        .select("retail_enabled, retail_theme, retail_logo_url, retail_name, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id, retail_phone, telegram_username, whatsapp_phone, retail_delivery_time, retail_delivery_info, retail_delivery_free_from, retail_delivery_region, retail_footer_delivery_payment, retail_footer_returns")
         .eq("id", storeId)
         .single();
 
@@ -89,6 +92,8 @@ export function useRetailSettings(storeId: string | null) {
         retail_delivery_info: (data as { retail_delivery_info?: string | null }).retail_delivery_info || null,
         retail_delivery_free_from: (data as { retail_delivery_free_from?: number | null }).retail_delivery_free_from || null,
         retail_delivery_region: (data as { retail_delivery_region?: string | null }).retail_delivery_region || null,
+        retail_footer_delivery_payment: (data as { retail_footer_delivery_payment?: string | null }).retail_footer_delivery_payment || null,
+        retail_footer_returns: (data as { retail_footer_returns?: string | null }).retail_footer_returns || null,
       });
     } catch (err) {
       console.error("Error fetching retail settings:", err);
@@ -558,6 +563,38 @@ export function useRetailSettings(storeId: string | null) {
     }
   }, [storeId, toast]);
 
+  const updateFooterSettings = useCallback(async (footer: { 
+    retail_footer_delivery_payment: string | null; 
+    retail_footer_returns: string | null;
+  }) => {
+    if (!storeId) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("stores")
+        .update(footer)
+        .eq("id", storeId);
+
+      if (error) throw error;
+
+      setSettings(prev => prev ? { ...prev, ...footer } : null);
+      toast({
+        title: "Контент футера сохранён",
+        description: "Информация в подвале сайта обновлена",
+      });
+    } catch (err) {
+      console.error("Error updating footer settings:", err);
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Не удалось сохранить контент футера",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [storeId, toast]);
+
   return {
     settings,
     loading,
@@ -570,6 +607,7 @@ export function useRetailSettings(storeId: string | null) {
     updateRetailCatalog,
     updateContactSettings,
     updateDeliverySettings,
+    updateFooterSettings,
     uploadRetailLogo,
     uploadFavicon,
     deleteRetailLogo,

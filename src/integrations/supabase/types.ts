@@ -1227,6 +1227,8 @@ export type Database = {
           retail_delivery_region: string | null
           retail_delivery_time: string | null
           retail_enabled: boolean | null
+          retail_footer_delivery_payment: string | null
+          retail_footer_returns: string | null
           retail_logo_url: string | null
           retail_name: string | null
           retail_phone: string | null
@@ -1274,6 +1276,8 @@ export type Database = {
           retail_delivery_region?: string | null
           retail_delivery_time?: string | null
           retail_enabled?: boolean | null
+          retail_footer_delivery_payment?: string | null
+          retail_footer_returns?: string | null
           retail_logo_url?: string | null
           retail_name?: string | null
           retail_phone?: string | null
@@ -1321,6 +1325,8 @@ export type Database = {
           retail_delivery_region?: string | null
           retail_delivery_time?: string | null
           retail_enabled?: boolean | null
+          retail_footer_delivery_payment?: string | null
+          retail_footer_returns?: string | null
           retail_logo_url?: string | null
           retail_name?: string | null
           retail_phone?: string | null

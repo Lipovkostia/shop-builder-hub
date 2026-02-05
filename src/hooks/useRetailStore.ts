@@ -53,6 +53,9 @@ export interface RetailStore {
   retail_delivery_info: string | null;
   retail_delivery_free_from: number | null;
   retail_delivery_region: string | null;
+  // Footer content fields
+  retail_footer_delivery_payment: string | null;
+  retail_footer_returns: string | null;
 }
 
 export interface RetailProduct {
