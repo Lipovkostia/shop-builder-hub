@@ -30,6 +30,11 @@ export interface RetailStore {
   retail_phone: string | null;
   telegram_username: string | null;
   whatsapp_phone: string | null;
+  // Delivery info fields
+  retail_delivery_time: string | null;
+  retail_delivery_info: string | null;
+  retail_delivery_free_from: number | null;
+  retail_delivery_region: string | null;
 }
 
 export interface RetailProduct {

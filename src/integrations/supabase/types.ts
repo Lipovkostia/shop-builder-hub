@@ -1222,6 +1222,10 @@ export type Database = {
           primary_color: string | null
           products_count: number | null
           retail_catalog_id: string | null
+          retail_delivery_free_from: number | null
+          retail_delivery_info: string | null
+          retail_delivery_region: string | null
+          retail_delivery_time: string | null
           retail_enabled: boolean | null
           retail_logo_url: string | null
           retail_name: string | null
@@ -1265,6 +1269,10 @@ export type Database = {
           primary_color?: string | null
           products_count?: number | null
           retail_catalog_id?: string | null
+          retail_delivery_free_from?: number | null
+          retail_delivery_info?: string | null
+          retail_delivery_region?: string | null
+          retail_delivery_time?: string | null
           retail_enabled?: boolean | null
           retail_logo_url?: string | null
           retail_name?: string | null
@@ -1308,6 +1316,10 @@ export type Database = {
           primary_color?: string | null
           products_count?: number | null
           retail_catalog_id?: string | null
+          retail_delivery_free_from?: number | null
+          retail_delivery_info?: string | null
+          retail_delivery_region?: string | null
+          retail_delivery_time?: string | null
           retail_enabled?: boolean | null
           retail_logo_url?: string | null
           retail_name?: string | null

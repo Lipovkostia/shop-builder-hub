@@ -24,6 +24,11 @@ export interface RetailSettings {
   retail_phone: string | null;
   telegram_username: string | null;
   whatsapp_phone: string | null;
+  // Delivery info fields
+  retail_delivery_time: string | null;
+  retail_delivery_info: string | null;
+  retail_delivery_free_from: number | null;
+  retail_delivery_region: string | null;
 }
 
 export function useRetailSettings(storeId: string | null) {
@@ -41,7 +46,7 @@ export function useRetailSettings(storeId: string | null) {
     try {
       const { data, error } = await supabase
         .from("stores")
-        .select("retail_enabled, retail_theme, retail_logo_url, retail_name, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id, retail_phone, telegram_username, whatsapp_phone")
+        .select("retail_enabled, retail_theme, retail_logo_url, retail_name, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id, retail_phone, telegram_username, whatsapp_phone, retail_delivery_time, retail_delivery_info, retail_delivery_free_from, retail_delivery_region")
         .eq("id", storeId)
         .single();
 
@@ -61,6 +66,10 @@ export function useRetailSettings(storeId: string | null) {
         retail_phone: data.retail_phone,
         telegram_username: data.telegram_username,
         whatsapp_phone: data.whatsapp_phone,
+        retail_delivery_time: (data as { retail_delivery_time?: string | null }).retail_delivery_time || null,
+        retail_delivery_info: (data as { retail_delivery_info?: string | null }).retail_delivery_info || null,
+        retail_delivery_free_from: (data as { retail_delivery_free_from?: number | null }).retail_delivery_free_from || null,
+        retail_delivery_region: (data as { retail_delivery_region?: string | null }).retail_delivery_region || null,
       });
     } catch (err) {
       console.error("Error fetching retail settings:", err);
@@ -496,6 +505,40 @@ export function useRetailSettings(storeId: string | null) {
     }
   }, [storeId, toast]);
 
+  const updateDeliverySettings = useCallback(async (delivery: { 
+    retail_delivery_time: string | null; 
+    retail_delivery_info: string | null;
+    retail_delivery_free_from: number | null;
+    retail_delivery_region: string | null;
+  }) => {
+    if (!storeId) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("stores")
+        .update(delivery)
+        .eq("id", storeId);
+
+      if (error) throw error;
+
+      setSettings(prev => prev ? { ...prev, ...delivery } : null);
+      toast({
+        title: "Настройки доставки сохранены",
+        description: "Информация о доставке обновлена",
+      });
+    } catch (err) {
+      console.error("Error updating delivery settings:", err);
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Не удалось сохранить настройки доставки",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [storeId, toast]);
+
   return {
     settings,
     loading,
@@ -507,6 +550,7 @@ export function useRetailSettings(storeId: string | null) {
     updateCustomDomain,
     updateRetailCatalog,
     updateContactSettings,
+    updateDeliverySettings,
     uploadRetailLogo,
     uploadFavicon,
     deleteRetailLogo,

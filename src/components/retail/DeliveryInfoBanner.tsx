@@ -5,8 +5,10 @@ import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 interface DeliveryInfoBannerProps {
   isExpanded: boolean;
   onToggle: () => void;
-  nextDeliveryTime: string;
-  deliveryInfo: string;
+  nextDeliveryTime: string | null;
+  deliveryInfo: string | null;
+  deliveryFreeFrom: number | null;
+  deliveryRegion: string | null;
 }
 
 export function DeliveryInfoBanner({
@@ -14,7 +16,14 @@ export function DeliveryInfoBanner({
   onToggle,
   nextDeliveryTime,
   deliveryInfo,
+  deliveryFreeFrom,
+  deliveryRegion,
 }: DeliveryInfoBannerProps) {
+  // Don't render if no delivery time is set
+  if (!nextDeliveryTime) {
+    return null;
+  }
+
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
       {/* Mobile delivery trigger */}
@@ -50,19 +59,27 @@ export function DeliveryInfoBanner({
                 <p className="font-medium text-sm">
                   Ближайшая доставка сегодня в {nextDeliveryTime}
                 </p>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {deliveryInfo}
-                </p>
-                <div className="flex flex-wrap gap-3 pt-2">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--delivery))]" />
-                    Бесплатная доставка от 3 000 ₽
+                {deliveryInfo && (
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {deliveryInfo}
+                  </p>
+                )}
+                {(deliveryFreeFrom || deliveryRegion) && (
+                  <div className="flex flex-wrap gap-3 pt-2">
+                    {deliveryFreeFrom && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--delivery))]" />
+                        Бесплатная доставка от {deliveryFreeFrom.toLocaleString('ru-RU')} ₽
+                      </div>
+                    )}
+                    {deliveryRegion && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--delivery))]" />
+                        Доставка по {deliveryRegion}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--delivery))]" />
-                    Доставка по Москве и МО
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

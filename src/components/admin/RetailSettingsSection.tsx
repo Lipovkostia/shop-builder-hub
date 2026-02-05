@@ -13,7 +13,8 @@ import {
   Info,
   Package,
   Phone,
-  MessageCircle
+  MessageCircle,
+  Truck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
     updateCustomDomain,
     updateRetailCatalog,
     updateContactSettings,
+    updateDeliverySettings,
     uploadRetailLogo,
     uploadFavicon,
     deleteRetailLogo,
@@ -65,6 +67,12 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [retailName, setRetailName] = useState("");
   
+  // Delivery settings states
+  const [deliveryTime, setDeliveryTime] = useState("");
+  const [deliveryInfo, setDeliveryInfo] = useState("");
+  const [deliveryFreeFrom, setDeliveryFreeFrom] = useState("");
+  const [deliveryRegion, setDeliveryRegion] = useState("");
+  
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
 
@@ -79,6 +87,11 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
       setTelegramUsername(settings.telegram_username || "");
       setWhatsappPhone(settings.whatsapp_phone || "");
       setRetailName(settings.retail_name || "");
+      // Delivery settings
+      setDeliveryTime(settings.retail_delivery_time || "");
+      setDeliveryInfo(settings.retail_delivery_info || "");
+      setDeliveryFreeFrom(settings.retail_delivery_free_from?.toString() || "");
+      setDeliveryRegion(settings.retail_delivery_region || "");
     }
   }, [settings]);
 
@@ -166,6 +179,15 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
       retail_phone: retailPhone || null,
       telegram_username: telegramUsername || null,
       whatsapp_phone: whatsappPhone || null,
+    });
+  };
+
+  const handleSaveDelivery = () => {
+    updateDeliverySettings({
+      retail_delivery_time: deliveryTime || null,
+      retail_delivery_info: deliveryInfo || null,
+      retail_delivery_free_from: deliveryFreeFrom ? parseFloat(deliveryFreeFrom) : null,
+      retail_delivery_region: deliveryRegion || null,
     });
   };
 
@@ -377,6 +399,82 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
                 <Button onClick={handleSaveContacts} disabled={saving}>
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Сохранить контакты
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Delivery Info Settings */}
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <Truck className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground">Информация о доставке</h3>
+                <p className="text-sm text-muted-foreground">
+                  Настройте блок с информацией о доставке, который показывается покупателям
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm text-muted-foreground mb-2 block">
+                    Время ближайшей доставки
+                  </Label>
+                  <Input
+                    value={deliveryTime}
+                    onChange={(e) => setDeliveryTime(e.target.value)}
+                    placeholder="14:00"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Например: 14:00, 18:00, завтра
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="text-sm text-muted-foreground mb-2 block">
+                    Бесплатная доставка от (₽)
+                  </Label>
+                  <Input
+                    type="number"
+                    value={deliveryFreeFrom}
+                    onChange={(e) => setDeliveryFreeFrom(e.target.value)}
+                    placeholder="3000"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">
+                  Регион доставки
+                </Label>
+                <Input
+                  value={deliveryRegion}
+                  onChange={(e) => setDeliveryRegion(e.target.value)}
+                  placeholder="Москва и МО"
+                />
+              </div>
+
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">
+                  Подробности о доставке
+                </Label>
+                <Textarea
+                  value={deliveryInfo}
+                  onChange={(e) => setDeliveryInfo(e.target.value)}
+                  placeholder="Доставляем ежедневно с 10:00 до 22:00. Минимальный заказ — 1 000 ₽."
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Этот текст отображается при раскрытии блока доставки
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <Button onClick={handleSaveDelivery} disabled={saving}>
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Сохранить настройки доставки
                 </Button>
               </div>
             </div>

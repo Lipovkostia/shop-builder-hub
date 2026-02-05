@@ -32,8 +32,8 @@ export function RetailTopBar({
   const [deliveryExpanded, setDeliveryExpanded] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  // Placeholder delivery time - can be from store settings later
-  const nextDeliveryTime = "14:00";
+  // Get delivery time from store settings
+  const nextDeliveryTime = store.retail_delivery_time;
 
   // Helper to format phone for WhatsApp link (remove spaces, + etc)
   const formatWhatsAppPhone = (phone: string) => {
@@ -121,19 +121,21 @@ export function RetailTopBar({
             )}
           </div>
 
-          {/* Center - Delivery info (desktop) */}
-          <button
-            onClick={() => setDeliveryExpanded(!deliveryExpanded)}
-            className="hidden md:flex items-center gap-2.5 text-sm font-medium text-foreground hover:text-muted-foreground transition-colors"
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--delivery))] opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-[hsl(var(--delivery))]"></span>
-            </span>
-            <span className="uppercase tracking-wide text-xs">
-              Ближайшая доставка в {nextDeliveryTime}
-            </span>
-          </button>
+          {/* Center - Delivery info (desktop) - only show if delivery time is set */}
+          {nextDeliveryTime && (
+            <button
+              onClick={() => setDeliveryExpanded(!deliveryExpanded)}
+              className="hidden md:flex items-center gap-2.5 text-sm font-medium text-foreground hover:text-muted-foreground transition-colors"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--delivery))] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[hsl(var(--delivery))]"></span>
+              </span>
+              <span className="uppercase tracking-wide text-xs">
+                Ближайшая доставка в {nextDeliveryTime}
+              </span>
+            </button>
+          )}
 
           {/* Right side - Icons (desktop only for cart/search) */}
           <div className="flex items-center gap-0.5">
@@ -207,8 +209,10 @@ export function RetailTopBar({
       <DeliveryInfoBanner
         isExpanded={deliveryExpanded}
         onToggle={() => setDeliveryExpanded(!deliveryExpanded)}
-        nextDeliveryTime={nextDeliveryTime}
-        deliveryInfo={store.description || "Информация о доставке будет добавлена в настройках магазина"}
+        nextDeliveryTime={store.retail_delivery_time}
+        deliveryInfo={store.retail_delivery_info}
+        deliveryFreeFrom={store.retail_delivery_free_from}
+        deliveryRegion={store.retail_delivery_region}
       />
     </div>
   );
