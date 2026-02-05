@@ -29,6 +29,7 @@ export interface ColumnMapping {
   // Step 2: Which fields to update (column index or null if not updating)
   fieldsToUpdate: {
     buyPrice: number | null;
+    price: number | null;
     unit: number | null;
     name: number | null;
     description: number | null;
@@ -67,6 +68,7 @@ interface ExcelColumnMappingProps {
 // Base update fields (shown in price-list mode)
 const baseUpdateFields = [
   { key: 'buyPrice', label: 'Себестоимость', description: 'Закупочная цена товара' },
+  { key: 'price', label: 'Цена', description: 'Отпускная цена товара' },
   { key: 'unit', label: 'Единица измерения', description: 'кг, шт, л и т.д.' },
   { key: 'name', label: 'Название', description: 'Обновить название товара' },
 ] as const;
@@ -74,6 +76,7 @@ const baseUpdateFields = [
 // Additional fields for assortment mode
 const assortmentFields = [
   { key: 'buyPrice', label: 'Себестоимость', description: 'Закупочная цена товара' },
+  { key: 'price', label: 'Цена', description: 'Отпускная цена товара' },
   { key: 'unit', label: 'Единица измерения', description: 'кг, шт, л и т.д.' },
   { key: 'name', label: 'Название', description: 'Обновить название товара' },
   { key: 'description', label: 'Описание', description: 'Описание товара' },
@@ -100,6 +103,7 @@ export function ExcelColumnMapping({
   // Track which update fields are enabled
   const [enabledFields, setEnabledFields] = useState<Record<string, boolean>>({
     buyPrice: mapping.fieldsToUpdate.buyPrice !== null,
+    price: mapping.fieldsToUpdate.price !== null,
     unit: mapping.fieldsToUpdate.unit !== null,
     name: mapping.fieldsToUpdate.name !== null,
     description: mapping.fieldsToUpdate.description !== null,

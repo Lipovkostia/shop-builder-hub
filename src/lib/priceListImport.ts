@@ -52,6 +52,7 @@ export interface ExtendedColumnMapping {
   identifierColumn: number | null;
   fieldsToUpdate: {
     buyPrice: number | null;
+    price: number | null;
     unit: number | null;
     name: number | null;
     description: number | null;
@@ -867,6 +868,14 @@ export async function importProductsWithMapping(
         }
       }
       
+      if (fieldsToUpdate.price !== null) {
+        const priceRaw = row[fieldsToUpdate.price];
+        const price = parsePrice(priceRaw as string | number);
+        if (price > 0) {
+          product.price = price;
+        }
+      }
+      
       if (fieldsToUpdate.unit !== null) {
         const unitRaw = row[fieldsToUpdate.unit];
         const unit = String(unitRaw || '').trim();
@@ -991,6 +1000,10 @@ export async function importProductsWithMapping(
           updateData.buy_price = product.buyPrice;
         }
         
+        if (product.price !== undefined) {
+          updateData.price = product.price;
+        }
+        
         if (product.unit !== undefined) {
           updateData.unit = product.unit;
         }
@@ -1045,8 +1058,8 @@ export async function importProductsWithMapping(
             name: productName,
             sku: product.identifierType === 'sku' ? product.identifier : null,
             slug: slug,
-            price: product.buyPrice || 0,
-            buy_price: product.buyPrice || 0,
+            price: product.price ?? product.buyPrice ?? 0,
+            buy_price: product.buyPrice ?? null,
             markup_type: 'percent',
             markup_value: 0,
             is_active: true,
@@ -1126,6 +1139,7 @@ interface ParsedAssortmentProduct {
   identifierType: 'sku' | 'name';
   rowIndex: number;
   buyPrice?: number;
+  price?: number;
   unit?: string;
   name?: string;
   description?: string;

@@ -53,6 +53,7 @@ export function ExcelImportSection({ storeId, onBack, onComplete }: ExcelImportS
     identifierColumn: null,
     fieldsToUpdate: {
       buyPrice: null,
+      price: null,
       unit: null,
       name: null,
       description: null,
@@ -260,6 +261,7 @@ export function ExcelImportSection({ storeId, onBack, onComplete }: ExcelImportS
         identifierColumn: preview.suggestedSkuColumn ?? preview.suggestedNameColumn,
         fieldsToUpdate: {
           buyPrice: preview.suggestedPriceColumn,
+          price: null,
           unit: null,
           name: preview.suggestedSkuColumn !== null ? preview.suggestedNameColumn : null,
           description: null,
