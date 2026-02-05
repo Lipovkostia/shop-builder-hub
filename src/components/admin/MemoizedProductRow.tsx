@@ -29,6 +29,7 @@ export interface VisibleColumns {
   type: boolean;
   volume: boolean;
   cost: boolean;
+  price: boolean;
   groups: boolean;
   catalogs: boolean;
   sync: boolean;
@@ -169,6 +170,10 @@ function ProductRowComponent({
 
   const handleUpdateCost = useCallback((newCost: number | undefined) => {
     onUpdateProduct({ ...product, buyPrice: newCost });
+  }, [onUpdateProduct, product]);
+
+  const handleUpdatePrice = useCallback((newPrice: number | undefined) => {
+    onUpdateProduct({ ...product, pricePerUnit: newPrice ?? 0 });
   }, [onUpdateProduct, product]);
 
   const handleUpdateGroups = useCallback((selectedIds: string[]) => {
@@ -329,12 +334,23 @@ function ProductRowComponent({
           </div>
         )}
 
-        {/* Cost */}
+        {/* Cost (Себестоимость) */}
         {visibleColumns.cost && (
           <div className="w-16 flex-shrink-0">
             <InlinePriceCell
               value={product.buyPrice}
               onSave={handleUpdateCost}
+              placeholder="—"
+            />
+          </div>
+        )}
+
+        {/* Price (Отпускная цена) */}
+        {visibleColumns.price && (
+          <div className="w-16 flex-shrink-0">
+            <InlinePriceCell
+              value={product.pricePerUnit}
+              onSave={handleUpdatePrice}
               placeholder="0"
             />
           </div>
@@ -476,6 +492,7 @@ function areEqual(prevProps: MemoizedProductRowProps, nextProps: MemoizedProduct
   if (prevCols.type !== nextCols.type) return false;
   if (prevCols.volume !== nextCols.volume) return false;
   if (prevCols.cost !== nextCols.cost) return false;
+  if (prevCols.price !== nextCols.price) return false;
   if (prevCols.groups !== nextCols.groups) return false;
   if (prevCols.catalogs !== nextCols.catalogs) return false;
   if (prevCols.sync !== nextCols.sync) return false;

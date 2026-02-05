@@ -148,6 +148,7 @@ export interface AllProductsFilters {
   type: string;
   volume: string;
   cost: string;
+  price: string;
   status: string;
   sync: string;
   groups: string[];
@@ -370,6 +371,15 @@ export function VirtualProductTable({
               <ColumnFilter 
                 value={filters.cost} 
                 onChange={(v) => onFiltersChange({...filters, cost: v})}
+                placeholder="Себест..."
+              />
+            </div>
+          )}
+          {visibleColumns.price && (
+            <div className="w-16 flex-shrink-0">
+              <ColumnFilter 
+                value={filters.price} 
+                onChange={(v) => onFiltersChange({...filters, price: v})}
                 placeholder="Цена..."
               />
             </div>
