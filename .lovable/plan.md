@@ -1,126 +1,46 @@
 
-# План: Добавление редактирования отпускной цены в прайс-листе
 
-## Описание задачи
-В текущей реализации столбик "Цена" редактирует только себестоимость (buy_price). Нужно добавить возможность редактировать отпускную цену (price) напрямую, независимо от себестоимости.
+# План: Исправление импорта отпускной цены (поле "Цена") из Excel
+
+## Описание проблемы
+При импорте из Excel с выбранным полем "Цена" (отпускная цена) без "Себестоимость" кнопка "Импортировать" не работает, потому что проверка в коде не учитывает поле `price`.
+
+## Причина
+В файле `AIAssistantPanel.tsx` (строка 439) есть проверка:
+```typescript
+const hasFieldToUpdate = fieldsToUpdate.buyPrice !== null || fieldsToUpdate.unit !== null || fieldsToUpdate.name !== null;
+```
+Поле `price` отсутствует в этой проверке, поэтому система считает, что нечего обновлять.
 
 ## Решение
-Добавить новую колонку "Цена" для редактирования отпускной цены, а текущую колонку переименовать в "Себестоимость" для ясности.
 
-## Изменения
+### 1. AIAssistantPanel.tsx — исправить проверку на наличие полей для обновления
 
-### 1. MemoizedProductRow.tsx
+Добавить `fieldsToUpdate.price` в проверку:
 
-**Добавить новое поле в интерфейс VisibleColumns:**
 ```typescript
-export interface VisibleColumns {
-  photo: boolean;
-  name: boolean;
-  sku: boolean;
-  desc: boolean;
-  source: boolean;
-  unit: boolean;
-  type: boolean;
-  volume: boolean;
-  cost: boolean;      // Себестоимость (buy_price)
-  price: boolean;     // НОВОЕ: Отпускная цена (price/pricePerUnit)
-  groups: boolean;
-  catalogs: boolean;
-  sync: boolean;
-}
+// Строка 439
+const hasFieldToUpdate = 
+  fieldsToUpdate.buyPrice !== null || 
+  fieldsToUpdate.price !== null ||      // Добавить эту проверку
+  fieldsToUpdate.unit !== null || 
+  fieldsToUpdate.name !== null;
 ```
-
-**Добавить обработчик для редактирования цены:**
-```typescript
-const handleUpdatePrice = useCallback((newPrice: number | undefined) => {
-  onUpdateProduct({ ...product, pricePerUnit: newPrice ?? 0 });
-}, [onUpdateProduct, product]);
-```
-
-**Добавить новую колонку между cost и groups:**
-```tsx
-{/* Price */}
-{visibleColumns.price && (
-  <div className="w-16 flex-shrink-0">
-    <InlinePriceCell
-      value={product.pricePerUnit}
-      onSave={handleUpdatePrice}
-      placeholder="0"
-    />
-  </div>
-)}
-```
-
-**Обновить функцию areEqual для мемоизации:**
-```typescript
-if (prevCols.price !== nextCols.price) return false;
-```
-
-### 2. VirtualProductTable.tsx
-
-**Добавить поле price в AllProductsFilters:**
-```typescript
-export interface AllProductsFilters {
-  name: string;
-  sku: string;
-  desc: string;
-  source: string;
-  unit: string;
-  type: string;
-  volume: string;
-  cost: string;      // Фильтр по себестоимости
-  price: string;     // НОВОЕ: Фильтр по цене
-  status: string;
-  sync: string;
-  groups: string[];
-}
-```
-
-**Обновить заголовки столбцов:**
-- Колонка cost: placeholder "Себест..." (сокращённо от "Себестоимость")
-- Колонка price: placeholder "Цена..."
-
-**Добавить заголовок и фильтр для колонки price (после cost):**
-```tsx
-{visibleColumns.price && (
-  <div className="w-16 flex-shrink-0">
-    <ColumnFilter 
-      value={filters.price} 
-      onChange={(v) => onFiltersChange({...filters, price: v})}
-      placeholder="Цена..."
-    />
-  </div>
-)}
-```
-
-### 3. ProductsSection.tsx
-
-**Обновить defaultVisibleColumns:**
-```typescript
-const defaultVisibleColumns: VisibleColumns = {
-  // ... existing fields
-  cost: true,
-  price: true,  // НОВОЕ
-  groups: true,
-  // ...
-};
-```
-
-**Обновить defaultFilters:**
-```typescript
-const defaultFilters: AllProductsFilters = {
-  // ... existing fields
-  cost: "",
-  price: "",  // НОВОЕ
-  // ...
-};
-```
-
-**Добавить чекбокс "Цена" в меню настройки колонок** (после "Себестоимость").
 
 ## Результат
-После изменений пользователь сможет:
-- Редактировать себестоимость в столбике "Себестоимость"
-- Редактировать отпускную цену в столбике "Цена"
-- Оставить себестоимость пустой и задать только отпускную цену
-- Отпускная цена будет отображаться в карточках товаров
+После исправления:
+- Пользователь сможет выбрать только поле "Цена" и успешно импортировать
+- Отпускная цена будет обновляться независимо от себестоимости
+- Импорт будет работать с любой комбинацией полей
+
+## Дополнительные улучшения (опционально)
+
+### Умный функционал — автоматический расчёт наценки
+Можно добавить дополнительную логику при импорте:
+- Если указаны и себестоимость и цена → автоматически рассчитать наценку
+- Формула: `markup_value = ((price / buyPrice) - 1) * 100`
+- Это позволит сохранять наценку для будущих пересчётов при изменении себестоимости
+
+### Предпросмотр в диалоге
+Убедиться, что в предпросмотре данных корректно отображается колонка "Цена" с её значениями (уже работает, так как используется общий механизм `selectedUpdateColumns`).
+
