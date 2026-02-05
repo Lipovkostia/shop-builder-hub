@@ -63,6 +63,7 @@ export interface Product {
   category?: string;              // Категория товара (legacy, для обратной совместимости)
   categories?: string[];          // Категории товара (массив ID категорий)
   syncedMoyskladImages?: string[]; // URL изображений из МойСклад которые были синхронизированы
+  isFixedPrice?: boolean;           // Фиксированная цена (игнорировать наценку)
 }
 
 // Категория товара
