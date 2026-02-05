@@ -318,26 +318,28 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
             }
             successCount++;
           } else if (response.action === "update_prices") {
-            let markupType = product.new_markup_type;
-            let markupValue = product.new_markup_value;
-
-            // If target_price is set, calculate markup from it
+            // Цены обновляем в catalog_product_settings для текущего каталога
             if (product.target_price !== undefined && product.target_price !== null) {
-              const currentProduct = storeProducts?.find(p => p.id === product.id);
-              const buyPrice = currentProduct?.buy_price || product.buy_price || 0;
-              
-              if (buyPrice > 0) {
-                markupType = "rubles";
-                markupValue = product.target_price - buyPrice;
-              }
-            }
-
-            if (markupType && markupValue !== undefined) {
-              await updateProduct(product.id, {
-                markup_type: markupType,
-                markup_value: markupValue,
-              });
+              // Если указана целевая цена, сохраняем как фиксированную для этого каталога
+              await updateProductSettings(effectiveCatalogId!, product.id, {
+                fixed_price: product.target_price,
+                is_fixed_price: true,
+              }, false); // false = не синхронизировать в другие каталоги
               successCount++;
+            } else {
+              // Если указана наценка, обновляем наценку в настройках каталога
+              let markupType = product.new_markup_type;
+              let markupValue = product.new_markup_value;
+
+              if (markupType && markupValue !== undefined) {
+                await updateProductSettings(effectiveCatalogId!, product.id, {
+                  markup_type: markupType,
+                  markup_value: markupValue,
+                  is_fixed_price: false,
+                  fixed_price: null,
+                }, false); // false = не синхронизировать в другие каталоги
+                successCount++;
+              }
             }
           }
         } catch (err) {
@@ -364,7 +366,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       });
       setState("error" as AssistantState);
     }
-  }, [response, selectedProducts, catalogs, storeProducts, updateProductSettings, updateProduct, toast, setState, onOpenChange]);
+  }, [response, selectedProducts, catalogs, effectiveCatalogId, updateProductSettings, toast, setState, onOpenChange]);
 
   // Excel file selection handler - shows column mapping
   const handleExcelFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -631,8 +631,8 @@ export async function importProductsToCatalogExtended(
         }
         
         if (fieldsToUpdate.includes('price') && excelProduct.price !== undefined) {
-          updateData.price = excelProduct.price;
-          updateData.is_fixed_price = true;  // Фиксируем цену при импорте
+          // Цены сохраняем в catalog_product_settings, а не в products
+          // Это позволяет иметь разные цены в разных прайс-листах
         }
         
         if (fieldsToUpdate.includes('unit') && excelProduct.unit) {
@@ -643,7 +643,7 @@ export async function importProductsToCatalogExtended(
           updateData.name = excelProduct.name;
         }
         
-        // Only update if there's something to update
+        // Only update products table if there's something to update (excluding price)
         if (Object.keys(updateData).length > 0) {
           const { error: updateError } = await supabase
             .from('products')
@@ -652,29 +652,42 @@ export async function importProductsToCatalogExtended(
           
           if (updateError) {
             progress.errors.push(`Ошибка обновления "${excelProduct.name || excelProduct.sku}": ${updateError.message}`);
-          } else {
-            progress.matched++;
-            
-            // Ensure product is visible in this catalog
-            await supabase
-              .from('product_catalog_visibility')
-              .upsert({
-                product_id: existingProduct.id,
-                catalog_id: catalogId
-              }, { onConflict: 'product_id,catalog_id' });
-            
-            // Update status to in_stock in catalog settings
-            await supabase
-              .from('catalog_product_settings')
-              .upsert({
-                product_id: existingProduct.id,
-                catalog_id: catalogId,
-                status: 'in_stock',
-                markup_type: 'percent',
-                markup_value: 0
-              }, { onConflict: 'product_id,catalog_id' });
+            continue;
           }
         }
+        
+        progress.matched++;
+        
+        // Ensure product is visible in this catalog
+        await supabase
+          .from('product_catalog_visibility')
+          .upsert({
+            product_id: existingProduct.id,
+            catalog_id: catalogId
+          }, { onConflict: 'product_id,catalog_id' });
+        
+        // Update catalog settings with catalog-specific fixed price
+        const catalogSettingsData: {
+          product_id: string;
+          catalog_id: string;
+          status: string;
+          fixed_price?: number;
+          is_fixed_price?: boolean;
+        } = {
+          product_id: existingProduct.id,
+          catalog_id: catalogId,
+          status: 'in_stock',
+        };
+        
+        // Если цена указана, сохраняем её как фиксированную для этого каталога
+        if (fieldsToUpdate.includes('price') && excelProduct.price !== undefined) {
+          catalogSettingsData.fixed_price = excelProduct.price;
+          catalogSettingsData.is_fixed_price = true;
+        }
+        
+        await supabase
+          .from('catalog_product_settings')
+          .upsert(catalogSettingsData, { onConflict: 'product_id,catalog_id' });
       } else {
         // No match - create new product (only if we have name)
         if (!excelProduct.name) {
@@ -691,14 +704,14 @@ export async function importProductsToCatalogExtended(
             name: excelProduct.name,
             sku: excelProduct.sku || null,
             slug: slug,
-            price: excelProduct.price ?? excelProduct.buyPrice ?? 0,
+            price: excelProduct.buyPrice ?? 0, // Базовая цена = себестоимость (если указана)
             buy_price: excelProduct.buyPrice || null,
             markup_type: 'percent',
             markup_value: 0,
             is_active: true,
             quantity: 0,
             unit: excelProduct.unit || 'кг',
-            is_fixed_price: excelProduct.price !== undefined  // Фиксируем если указана цена
+            is_fixed_price: false  // Фикс.цена теперь в catalog_product_settings
           })
           .select('id')
           .single();
@@ -717,16 +730,32 @@ export async function importProductsToCatalogExtended(
               catalog_id: catalogId
             });
           
-          // Set catalog settings
+          // Set catalog settings with catalog-specific fixed price
+          const newProductSettings: {
+            product_id: string;
+            catalog_id: string;
+            status: string;
+            markup_type: string;
+            markup_value: number;
+            fixed_price?: number;
+            is_fixed_price?: boolean;
+          } = {
+            product_id: newProduct.id,
+            catalog_id: catalogId,
+            status: 'in_stock',
+            markup_type: 'percent',
+            markup_value: 0
+          };
+          
+          // Если цена указана, сохраняем её как фиксированную для этого каталога
+          if (excelProduct.price !== undefined) {
+            newProductSettings.fixed_price = excelProduct.price;
+            newProductSettings.is_fixed_price = true;
+          }
+          
           await supabase
             .from('catalog_product_settings')
-            .insert({
-              product_id: newProduct.id,
-              catalog_id: catalogId,
-              status: 'in_stock',
-              markup_type: 'percent',
-              markup_value: 0
-            });
+            .insert(newProductSettings);
         }
       }
     }

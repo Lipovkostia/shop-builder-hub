@@ -10,6 +10,8 @@ export interface CatalogProductSetting {
   markup_type: string;
   markup_value: number;
   status: string;
+  fixed_price: number | null;
+  is_fixed_price: boolean;
   portion_prices: {
     halfPricePerKg?: number;
     quarterPricePerKg?: number;
@@ -26,6 +28,8 @@ const formatSetting = (raw: any): CatalogProductSetting => ({
   markup_type: raw.markup_type || 'percent',
   markup_value: raw.markup_value || 0,
   status: raw.status || 'in_stock',
+  fixed_price: raw.fixed_price ?? null,
+  is_fixed_price: raw.is_fixed_price ?? false,
   portion_prices: raw.portion_prices as CatalogProductSetting['portion_prices'],
 });
 
@@ -147,6 +151,8 @@ export function useCatalogProductSettings(storeId: string | null) {
         markup_type: 'percent',
         markup_value: 0,
         status: anySettingWithStatus.status, // Use synced status
+        fixed_price: null, // Catalog-specific - not inherited
+        is_fixed_price: false,
         portion_prices: null,
       };
     }
@@ -192,6 +198,8 @@ export function useCatalogProductSettings(storeId: string | null) {
         markup_type: updates.markup_type || 'percent',
         markup_value: updates.markup_value || 0,
         status: updates.status || 'in_stock',
+        fixed_price: updates.fixed_price ?? null,
+        is_fixed_price: updates.is_fixed_price ?? false,
         portion_prices: updates.portion_prices || null,
       };
       setSettings(prev => {
@@ -218,6 +226,8 @@ export function useCatalogProductSettings(storeId: string | null) {
             markup_type: updates.markup_type ?? existing.markup_type,
             markup_value: updates.markup_value ?? existing.markup_value,
             status: updates.status ?? existing.status,
+            fixed_price: updates.fixed_price ?? existing.fixed_price,
+            is_fixed_price: updates.is_fixed_price ?? existing.is_fixed_price,
             portion_prices: updates.portion_prices ?? existing.portion_prices,
           })
           .eq('id', existing.id);
@@ -234,6 +244,8 @@ export function useCatalogProductSettings(storeId: string | null) {
             markup_type: updates.markup_type || 'percent',
             markup_value: updates.markup_value || 0,
             status: updates.status || 'in_stock',
+            fixed_price: updates.fixed_price ?? null,
+            is_fixed_price: updates.is_fixed_price ?? false,
             portion_prices: updates.portion_prices || null,
           }, { onConflict: 'catalog_id,product_id' })
           .select()
@@ -254,6 +266,8 @@ export function useCatalogProductSettings(storeId: string | null) {
                   markup_type: data.markup_type || 'percent',
                   markup_value: data.markup_value || 0,
                   status: data.status || 'in_stock',
+                  fixed_price: data.fixed_price ?? null,
+                  is_fixed_price: data.is_fixed_price ?? false,
                   portion_prices: data.portion_prices as CatalogProductSetting['portion_prices'],
                 }
               : s
