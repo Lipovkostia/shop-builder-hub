@@ -4698,7 +4698,7 @@ export default function AdminPanel({
                           {catalogVisibleColumns.photo && <ResizableTableHead columnId="photo">Фото</ResizableTableHead>}
                           {catalogVisibleColumns.name && <ResizableTableHead columnId="name">Название</ResizableTableHead>}
                           {catalogVisibleColumns.description && <ResizableTableHead columnId="description">Описание</ResizableTableHead>}
-                          {catalogVisibleColumns.categories && <ResizableTableHead columnId="categories">Категории</ResizableTableHead>}
+                          {catalogVisibleColumns.categories && <ResizableTableHead columnId="categories">Главная категория</ResizableTableHead>}
                           {catalogVisibleColumns.unit && <ResizableTableHead columnId="unit">Ед. изм.</ResizableTableHead>}
                           {catalogVisibleColumns.volume && <ResizableTableHead columnId="volume">Объем</ResizableTableHead>}
                           {catalogVisibleColumns.type && <ResizableTableHead columnId="type">Вид</ResizableTableHead>}
