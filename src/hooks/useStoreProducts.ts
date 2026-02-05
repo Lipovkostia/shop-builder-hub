@@ -36,6 +36,7 @@ export interface StoreProduct {
   moysklad_account_id: string | null;
   auto_sync: boolean | null;
   source: string | null;
+  is_fixed_price: boolean | null;
 }
 
 export function useStoreProducts(storeId: string | null) {

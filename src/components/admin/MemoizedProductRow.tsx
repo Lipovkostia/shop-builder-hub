@@ -104,9 +104,13 @@ function ProductRowComponent({
   onNavigateToCatalog,
   optimisticImages,
 }: MemoizedProductRowProps) {
-  const salePrice = product.buyPrice && product.markup
-    ? calculateSalePrice(product.buyPrice, product.markup)
-    : product.pricePerUnit;
+  // If fixed price is enabled, use pricePerUnit directly
+  // Otherwise calculate from buyPrice + markup, or fall back to pricePerUnit
+  const salePrice = product.isFixedPrice
+    ? product.pricePerUnit
+    : (product.buyPrice && product.markup
+        ? calculateSalePrice(product.buyPrice, product.markup)
+        : product.pricePerUnit);
 
   const packagingPrices = calculatePackagingPrices(
     salePrice,
@@ -173,7 +177,12 @@ function ProductRowComponent({
   }, [onUpdateProduct, product]);
 
   const handleUpdatePrice = useCallback((newPrice: number | undefined) => {
-    onUpdateProduct({ ...product, pricePerUnit: newPrice ?? 0 });
+    // When editing price manually, automatically enable fixed price
+    onUpdateProduct({ ...product, pricePerUnit: newPrice ?? 0, isFixedPrice: true });
+  }, [onUpdateProduct, product]);
+
+  const handleToggleFixedPrice = useCallback(() => {
+    onUpdateProduct({ ...product, isFixedPrice: !product.isFixedPrice });
   }, [onUpdateProduct, product]);
 
   const handleUpdateGroups = useCallback((selectedIds: string[]) => {
@@ -347,7 +356,20 @@ function ProductRowComponent({
 
         {/* Price (Отпускная цена) */}
         {visibleColumns.price && (
-          <div className="w-16 flex-shrink-0">
+          <div className="w-20 flex-shrink-0 flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 flex-shrink-0"
+              onClick={handleToggleFixedPrice}
+              title={product.isFixedPrice 
+                ? "Фиксированная цена (кликните для расчёта по наценке)" 
+                : "Цена по наценке (кликните для фиксации)"}
+            >
+              {product.isFixedPrice 
+                ? <Lock className="h-3 w-3 text-amber-500" /> 
+                : <Unlock className="h-3 w-3 text-muted-foreground/40" />}
+            </Button>
             <InlinePriceCell
               value={product.pricePerUnit}
               onSave={handleUpdatePrice}
@@ -457,6 +479,7 @@ function areEqual(prevProps: MemoizedProductRowProps, nextProps: MemoizedProduct
   if (prevProduct.autoSync !== nextProduct.autoSync) return false;
   if (prevProduct.source !== nextProduct.source) return false;
   if (prevProduct.image !== nextProduct.image) return false;
+  if (prevProduct.isFixedPrice !== nextProduct.isFixedPrice) return false;
   
   // Check images array
   const prevImages = prevProduct.images || [];

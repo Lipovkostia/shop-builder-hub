@@ -735,6 +735,7 @@ export default function AdminPanel({
         accountId: sp.moysklad_account_id || undefined,
         syncedMoyskladImages: sp.synced_moysklad_images || [],
         status: sp.is_active ? "in_stock" as const : "hidden" as const,
+        isFixedPrice: sp.is_fixed_price || false,
       }));
   }, [supabaseProducts]);
   
@@ -2988,6 +2989,7 @@ export default function AdminPanel({
       accountId: sp.moysklad_account_id || undefined,
       syncedMoyskladImages: sp.synced_moysklad_images || [],
       status: sp.is_active ? "in_stock" as const : "hidden" as const,
+      isFixedPrice: sp.is_fixed_price || false,
     })) as Product[];
   }, [supabaseProducts]);
 
@@ -3018,6 +3020,7 @@ export default function AdminPanel({
       images: updatedProduct.images || null,
       is_active: updatedProduct.status !== "hidden",
       auto_sync: updatedProduct.autoSync || false,
+      is_fixed_price: updatedProduct.isFixedPrice || false,
     });
 
     if (result) {
