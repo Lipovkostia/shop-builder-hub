@@ -64,7 +64,9 @@ export type Database = {
           catalog_id: string
           categories: string[] | null
           created_at: string
+          fixed_price: number | null
           id: string
+          is_fixed_price: boolean | null
           markup_type: string | null
           markup_value: number | null
           portion_prices: Json | null
@@ -77,7 +79,9 @@ export type Database = {
           catalog_id: string
           categories?: string[] | null
           created_at?: string
+          fixed_price?: number | null
           id?: string
+          is_fixed_price?: boolean | null
           markup_type?: string | null
           markup_value?: number | null
           portion_prices?: Json | null
@@ -90,7 +94,9 @@ export type Database = {
           catalog_id?: string
           categories?: string[] | null
           created_at?: string
+          fixed_price?: number | null
           id?: string
+          is_fixed_price?: boolean | null
           markup_type?: string | null
           markup_value?: number | null
           portion_prices?: Json | null

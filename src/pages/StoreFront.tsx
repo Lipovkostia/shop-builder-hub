@@ -155,15 +155,20 @@ function ProductCard({
   };
 
   // Расчёт цен с учётом наценки (используем настройки каталога, если есть)
-  // Если установлена фиксированная цена (замок) — используем её напрямую
-  const isFixedPrice = product.is_fixed_price === true;
+  // Приоритет: 1) catalog_product_settings.fixed_price, 2) products.is_fixed_price, 3) наценка
+  const catalogIsFixedPrice = catalogSettings?.is_fixed_price === true;
+  const catalogFixedPrice = catalogSettings?.fixed_price;
+  const productIsFixedPrice = product.is_fixed_price === true;
   
   let salePrice: number;
-  if (isFixedPrice && product.price != null && product.price > 0) {
-    // Фиксированная цена: игнорируем себестоимость и наценку
+  if (catalogIsFixedPrice && catalogFixedPrice != null && catalogFixedPrice > 0) {
+    // Приоритет 1: фикс.цена из настроек каталога
+    salePrice = catalogFixedPrice;
+  } else if (productIsFixedPrice && product.price != null && product.price > 0) {
+    // Приоритет 2: фикс.цена из products (для обратной совместимости)
     salePrice = product.price;
   } else {
-    // Расчётная цена: себестоимость + наценка
+    // Приоритет 3: Расчётная цена: себестоимость + наценка
     const buyPrice = product.buy_price || product.price;
     const catalogMarkup = catalogSettings?.markup_value && catalogSettings.markup_value > 0
       ? { type: (catalogSettings.markup_type === 'fixed' ? 'rubles' : catalogSettings.markup_type) as "percent" | "rubles", value: catalogSettings.markup_value }
