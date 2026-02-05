@@ -659,34 +659,36 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                 </p>
               </div>
               
-              <div className="space-y-2">
-                {catalogs.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>Прайс-листы не найдены</p>
-                    <p className="text-xs mt-1">Сначала создайте прайс-лист</p>
-                  </div>
-                ) : (
-                  catalogs.map((catalog) => (
-                    <Button
-                      key={catalog.id}
-                      variant={selectedCatalogId === catalog.id ? "default" : "outline"}
-                      className="w-full justify-start h-auto py-3"
-                      onClick={() => handleSelectCatalog({ id: catalog.id, name: catalog.name })}
-                    >
-                      <BookOpen className="h-4 w-4 mr-3 shrink-0" />
-                      <div className="text-left">
-                        <p className="font-medium">{catalog.name}</p>
-                        {catalog.description && (
-                          <p className="text-xs text-muted-foreground font-normal">{catalog.description}</p>
+              <ScrollArea className="flex-1 max-h-[calc(100vh-320px)]">
+                <div className="space-y-2 pr-4">
+                  {catalogs.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Прайс-листы не найдены</p>
+                      <p className="text-xs mt-1">Сначала создайте прайс-лист</p>
+                    </div>
+                  ) : (
+                    catalogs.map((catalog) => (
+                      <Button
+                        key={catalog.id}
+                        variant={selectedCatalogId === catalog.id ? "default" : "outline"}
+                        className="w-full justify-start h-auto py-3"
+                        onClick={() => handleSelectCatalog({ id: catalog.id, name: catalog.name })}
+                      >
+                        <BookOpen className="h-4 w-4 mr-3 shrink-0" />
+                        <div className="text-left">
+                          <p className="font-medium">{catalog.name}</p>
+                          {catalog.description && (
+                            <p className="text-xs text-muted-foreground font-normal">{catalog.description}</p>
+                          )}
+                        </div>
+                        {catalog.is_default && (
+                          <Badge variant="secondary" className="ml-auto text-xs">По умолчанию</Badge>
                         )}
-                      </div>
-                      {catalog.is_default && (
-                        <Badge variant="secondary" className="ml-auto text-xs">По умолчанию</Badge>
-                      )}
-                    </Button>
-                  ))
-                )}
-              </div>
+                      </Button>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
               
               {showCatalogSelector && effectiveCatalogId && (
                 <Button
