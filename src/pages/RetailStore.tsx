@@ -194,12 +194,14 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
   }, [selectedCategory, categories]);
 
   // Group products by category for "All Products" view
+  // IMPORTANT: We use an array to preserve the order from categories (which comes from catalog_category_settings)
   const productsByCategory = useMemo(() => {
     if (selectedCategory) return null; // Not needed when a specific category is selected
     
-    const grouped = new Map<string, { category: typeof categories[0]; products: typeof products }>();
+    // Build ordered array instead of Map to preserve category order
+    const orderedCategories: { category: typeof categories[0]; products: typeof products }[] = [];
     
-    // First, organize products by their categories
+    // Iterate through categories in their sorted order (from useRetailStore)
     categories.forEach(cat => {
       const categoryProducts = products.filter(p => {
         const productCategoryIds = p.category_ids || [];
@@ -207,7 +209,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
       });
       
       if (categoryProducts.length > 0) {
-        grouped.set(cat.id, { category: cat, products: categoryProducts });
+        orderedCategories.push({ category: cat, products: categoryProducts });
       }
     });
     
@@ -217,7 +219,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
       return productCategoryIds.length === 0 && !p.category_id;
     });
     
-    return { grouped, uncategorized };
+    return { orderedCategories, uncategorized };
   }, [selectedCategory, products, categories]);
 
   // Check for active filters
@@ -432,7 +434,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
               </div>
 
               {/* Category sections with horizontal scrolling */}
-              {Array.from(productsByCategory.grouped.values()).map(({ category, products: catProducts }) => (
+              {productsByCategory.orderedCategories.map(({ category, products: catProducts }) => (
                 <CategoryProductsSection
                   key={category.id}
                   category={category}
