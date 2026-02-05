@@ -48,6 +48,7 @@ const defaultVisibleColumns: VisibleColumns = {
   type: true,
   volume: true,
   cost: true,
+  price: true,
   groups: true,
   catalogs: true,
   sync: true,
@@ -62,6 +63,7 @@ const defaultFilters: AllProductsFilters = {
   type: "all",
   volume: "",
   cost: "",
+  price: "",
   status: "all",
   sync: "all",
   groups: [],
@@ -169,6 +171,10 @@ export function ProductsSection({
       if (filters.cost) {
         const costStr = product.buyPrice?.toString() || "";
         if (!costStr.includes(filters.cost)) return false;
+      }
+      if (filters.price) {
+        const priceStr = product.pricePerUnit?.toString() || "";
+        if (!priceStr.includes(filters.price)) return false;
       }
       if (filters.sync !== "all" && product.source === "moysklad") {
         if (filters.sync === "synced" && !product.autoSync) return false;
@@ -420,7 +426,10 @@ export function ProductsSection({
               Объём
             </DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem checked={visibleColumns.cost} onCheckedChange={() => toggleColumn("cost")}>
-              Закупочная
+              Себестоимость
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={visibleColumns.price} onCheckedChange={() => toggleColumn("price")}>
+              Цена
             </DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem checked={visibleColumns.groups} onCheckedChange={() => toggleColumn("groups")}>
               Группы
