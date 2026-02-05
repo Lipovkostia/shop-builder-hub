@@ -35,6 +35,7 @@ interface WholesaleCategorySelectorProps {
   onDeleteCategory?: (id: string) => Promise<boolean>;
   onUpdateOrder?: (orderedIds: string[]) => Promise<void>;
   isAdmin?: boolean;
+  catalogs?: { id: string; name: string }[];
 }
 
 export function WholesaleCategorySelector({
@@ -47,6 +48,7 @@ export function WholesaleCategorySelector({
   onDeleteCategory,
   onUpdateOrder,
   isAdmin = false,
+  catalogs = [],
 }: WholesaleCategorySelectorProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -357,6 +359,7 @@ export function WholesaleCategorySelector({
           onUpdateCategory={onUpdateCategory}
           onDeleteCategory={onDeleteCategory}
           onUpdateOrder={onUpdateOrder}
+          catalogs={catalogs}
         />
       )}
     </div>

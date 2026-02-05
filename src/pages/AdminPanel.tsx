@@ -6203,6 +6203,7 @@ export default function AdminPanel({
         onUpdateCategory={updateCategory}
         onDeleteCategory={deleteCategory}
         onUpdateOrder={updateCategoryOrder}
+        catalogs={catalogs.map(c => ({ id: c.id, name: c.name }))}
       />
 
       {/* Catalog Export Dialog */}

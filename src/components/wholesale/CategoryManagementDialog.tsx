@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { GripVertical, Plus, Pencil, Trash2, ChevronRight, FolderPlus, X, Check, Settings } from "lucide-react";
+import { GripVertical, Plus, Pencil, Trash2, ChevronRight, FolderPlus, X, Check, Settings, RotateCcw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +38,19 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useCatalogCategorySettings } from "@/hooks/useCatalogCategorySettings";
+
+interface Catalog {
+  id: string;
+  name: string;
+}
 
 interface Category {
   id: string;
@@ -45,6 +58,9 @@ interface Category {
   parent_id: string | null;
   sort_order?: number | null;
   product_count?: number;
+  // For catalog-specific display
+  display_name?: string;
+  catalog_sort_order?: number | null;
 }
 
 interface CategoryManagementDialogProps {
@@ -55,6 +71,8 @@ interface CategoryManagementDialogProps {
   onUpdateCategory: (id: string, name: string) => Promise<boolean>;
   onDeleteCategory: (id: string) => Promise<boolean>;
   onUpdateOrder: (orderedIds: string[]) => Promise<void>;
+  catalogs?: Catalog[];
+  selectedCatalogId?: string | null;
 }
 
 function SortableCategoryItem({
@@ -67,6 +85,8 @@ function SortableCategoryItem({
   onAddSubcategory,
   hasChildren,
   depth = 0,
+  showCustomName = false,
+  customName,
 }: {
   category: Category;
   children?: React.ReactNode;
@@ -77,6 +97,8 @@ function SortableCategoryItem({
   onAddSubcategory: () => void;
   hasChildren: boolean;
   depth?: number;
+  showCustomName?: boolean;
+  customName?: string | null;
 }) {
   const {
     attributes,
@@ -122,7 +144,10 @@ function SortableCategoryItem({
         )}
         
         <span className={cn("flex-1 text-sm font-medium", !hasChildren && "ml-6")}>
-          {category.name}
+          {customName || category.name}
+          {customName && customName !== category.name && (
+            <span className="text-xs text-muted-foreground ml-1">({category.name})</span>
+          )}
         </span>
         
         {category.product_count !== undefined && category.product_count > 0 && (
@@ -175,6 +200,8 @@ export function CategoryManagementDialog({
   onUpdateCategory,
   onDeleteCategory,
   onUpdateOrder,
+  catalogs = [],
+  selectedCatalogId: initialCatalogId,
 }: CategoryManagementDialogProps) {
   const [orderedCategories, setOrderedCategories] = useState<Category[]>([]);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
@@ -185,13 +212,40 @@ export function CategoryManagementDialog({
   const [newCategoryParentId, setNewCategoryParentId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(initialCatalogId || null);
+  const [editingCustomNameId, setEditingCustomNameId] = useState<string | null>(null);
+  const [customNameValue, setCustomNameValue] = useState("");
+
+  // Catalog-specific category settings
+  const {
+    settings: catalogCategorySettings,
+    getCustomName,
+    updateCustomName,
+    updateSortOrders,
+    loading: loadingCatalogSettings,
+  } = useCatalogCategorySettings(selectedCatalogId);
+
+  // Check if we're in catalog-specific mode
+  const isCatalogMode = selectedCatalogId !== null && selectedCatalogId !== "global";
 
   useEffect(() => {
     if (open) {
-      // Sort by sort_order, then by name
+      // Sort categories based on mode
       const sorted = [...categories].sort((a, b) => {
-        const orderA = a.sort_order ?? 999999;
-        const orderB = b.sort_order ?? 999999;
+        let orderA: number;
+        let orderB: number;
+        
+        if (isCatalogMode) {
+          // Use catalog-specific sort order if available
+          const settingA = catalogCategorySettings.find(s => s.category_id === a.id);
+          const settingB = catalogCategorySettings.find(s => s.category_id === b.id);
+          orderA = settingA?.sort_order ?? a.sort_order ?? 999999;
+          orderB = settingB?.sort_order ?? b.sort_order ?? 999999;
+        } else {
+          orderA = a.sort_order ?? 999999;
+          orderB = b.sort_order ?? 999999;
+        }
+        
         if (orderA !== orderB) return orderA - orderB;
         return a.name.localeCompare(b.name);
       });
@@ -202,7 +256,7 @@ export function CategoryManagementDialog({
         .map(c => c.id);
       setExpandedIds(parentIds);
     }
-  }, [open, categories]);
+  }, [open, categories, isCatalogMode, catalogCategorySettings]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -265,6 +319,42 @@ export function CategoryManagementDialog({
     cancelEdit();
   };
 
+  // Custom name editing for catalog mode
+  const startCustomNameEdit = (category: Category) => {
+    setEditingCustomNameId(category.id);
+    setCustomNameValue(getCustomName(category.id) || category.name);
+  };
+
+  const cancelCustomNameEdit = () => {
+    setEditingCustomNameId(null);
+    setCustomNameValue("");
+  };
+
+  const saveCustomNameEdit = async () => {
+    if (!editingCustomNameId) return;
+    
+    const category = categories.find(c => c.id === editingCustomNameId);
+    const newName = customNameValue.trim();
+    
+    // If custom name equals original name, set to null (use original)
+    const customName = newName === category?.name ? null : newName || null;
+    
+    const success = await updateCustomName(editingCustomNameId, customName);
+    if (success) {
+      toast.success(customName ? "Название для прайс-листа обновлено" : "Используется оригинальное название");
+    } else {
+      toast.error("Ошибка при обновлении названия");
+    }
+    cancelCustomNameEdit();
+  };
+
+  const resetCustomName = async (categoryId: string) => {
+    const success = await updateCustomName(categoryId, null);
+    if (success) {
+      toast.success("Название сброшено на оригинальное");
+    }
+  };
+
   const startCreate = (parentId: string | null = null) => {
     setIsCreating(true);
     setNewCategoryName("");
@@ -308,7 +398,13 @@ export function CategoryManagementDialog({
   const handleSaveOrder = async () => {
     setIsSaving(true);
     try {
-      await onUpdateOrder(orderedCategories.map(c => c.id));
+      if (isCatalogMode) {
+        // Save catalog-specific order
+        await updateSortOrders(orderedCategories.map(c => c.id));
+      } else {
+        // Save global order
+        await onUpdateOrder(orderedCategories.map(c => c.id));
+      }
       toast.success("Порядок сохранён");
       onOpenChange(false);
     } catch (error) {
@@ -322,8 +418,40 @@ export function CategoryManagementDialog({
     const children = getChildren(category.id);
     const hasChildren = children.length > 0;
     const isExpanded = expandedIds.includes(category.id);
+    const customName = isCatalogMode ? getCustomName(category.id) : null;
 
-    if (editingId === category.id) {
+    // Editing custom name for catalog mode
+    if (isCatalogMode && editingCustomNameId === category.id) {
+      return (
+        <div key={category.id} className={cn("flex items-center gap-2 px-3 py-2.5 bg-muted border rounded-lg mb-1", depth > 0 && "ml-6")}>
+          <Input
+            value={customNameValue}
+            onChange={(e) => setCustomNameValue(e.target.value)}
+            placeholder={category.name}
+            className="flex-1 h-8"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") saveCustomNameEdit();
+              if (e.key === "Escape") cancelCustomNameEdit();
+            }}
+          />
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={saveCustomNameEdit}>
+            <Check className="h-4 w-4 text-primary" />
+          </Button>
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={cancelCustomNameEdit}>
+            <X className="h-4 w-4" />
+          </Button>
+          {customName && (
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => resetCustomName(category.id)} title="Сбросить название">
+              <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+          )}
+        </div>
+      );
+    }
+
+    // Editing global category name
+    if (!isCatalogMode && editingId === category.id) {
       return (
         <div key={category.id} className={cn("flex items-center gap-2 px-3 py-2.5 bg-muted border rounded-lg mb-1", depth > 0 && "ml-6")}>
           <Input
@@ -346,6 +474,32 @@ export function CategoryManagementDialog({
       );
     }
 
+    // Render category item in catalog mode
+    if (isCatalogMode) {
+      return (
+        <SortableCategoryItem
+          key={category.id}
+          category={category}
+          isExpanded={isExpanded}
+          onToggleExpand={() => toggleExpand(category.id)}
+          onEdit={() => startCustomNameEdit(category)}
+          onDelete={() => {}} // No delete in catalog mode
+          onAddSubcategory={() => {}} // No subcategory creation in catalog mode
+          hasChildren={hasChildren}
+          depth={depth}
+          showCustomName={true}
+          customName={customName}
+        >
+          {hasChildren && isExpanded && (
+            <div className="mt-1">
+              {children.map(child => renderCategory(child, depth + 1))}
+            </div>
+          )}
+        </SortableCategoryItem>
+      );
+    }
+
+    // Render category item in global mode
     return (
       <SortableCategoryItem
         key={category.id}
@@ -425,8 +579,42 @@ export function CategoryManagementDialog({
           </DialogHeader>
           
           <div className="flex-1 overflow-hidden flex flex-col">
-            {/* Add new root category button */}
-            <div className="mb-4">
+            {/* Catalog selector */}
+            {catalogs.length > 0 && (
+              <div className="mb-4">
+                <label className="text-sm font-medium mb-1.5 block text-muted-foreground">
+                  Настройки для:
+                </label>
+                <Select
+                  value={selectedCatalogId || "global"}
+                  onValueChange={(value) => setSelectedCatalogId(value === "global" ? null : value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Выберите прайс-лист" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="global">
+                      <span className="font-medium">Глобальные настройки</span>
+                      <span className="text-xs text-muted-foreground ml-2">(для всех прайс-листов)</span>
+                    </SelectItem>
+                    {catalogs.map(catalog => (
+                      <SelectItem key={catalog.id} value={catalog.id}>
+                        {catalog.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {isCatalogMode && (
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Измените названия и порядок категорий только для этого прайс-листа
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Add new root category button (only in global mode) */}
+            {!isCatalogMode && (
+              <div className="mb-4">
               {isCreating && newCategoryParentId === null ? (
                 <div className="flex items-center gap-2 px-3 py-2.5 bg-muted border rounded-lg">
                   <Input
@@ -457,11 +645,16 @@ export function CategoryManagementDialog({
                   Добавить категорию
                 </Button>
               )}
-            </div>
+              </div>
+            )}
 
             {/* Categories list */}
             <div className="flex-1 overflow-y-auto min-h-0">
-              {rootCategories.length === 0 && !isCreating ? (
+              {loadingCatalogSettings ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  Загрузка...
+                </p>
+              ) : rootCategories.length === 0 && !isCreating ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
                   Нет категорий
                 </p>
@@ -489,7 +682,7 @@ export function CategoryManagementDialog({
               Отмена
             </Button>
             <Button onClick={handleSaveOrder} disabled={isSaving}>
-              {isSaving ? "Сохранение..." : "Сохранить порядок"}
+              {isSaving ? "Сохранение..." : isCatalogMode ? "Сохранить для прайс-листа" : "Сохранить порядок"}
             </Button>
           </div>
         </DialogContent>
