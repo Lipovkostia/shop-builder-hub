@@ -511,27 +511,20 @@ const GuestCatalogView = () => {
   }, []);
 
   // Get available categories from products' catalog_categories
+  // Categories are already ordered by catalog-specific sort_order from useGuestCatalog
   const availableCategories = useMemo(() => {
     // Collect unique category IDs from all products
-    const categoryIds = [...new Set(
+    const categoryIds = new Set(
       products
         .flatMap(p => p.catalog_categories || [])
         .filter(Boolean)
-    )];
+    );
     
-    // Map to category info and sort
-    return categoryIds
-      .map(id => {
-        const cat = storeCategories.find(c => c.id === id);
-        return cat ? { id: cat.id, name: cat.name, sort_order: cat.sort_order } : null;
-      })
-      .filter((c): c is { id: string; name: string; sort_order: number | null } => c !== null)
-      .sort((a, b) => {
-        const orderA = a.sort_order ?? 999999;
-        const orderB = b.sort_order ?? 999999;
-        if (orderA !== orderB) return orderA - orderB;
-        return a.name.localeCompare(b.name, 'ru');
-      });
+    // Filter storeCategories to only those used in products
+    // Keep the order from storeCategories (already sorted by catalog-specific order)
+    return storeCategories
+      .filter(cat => categoryIds.has(cat.id))
+      .map(cat => ({ id: cat.id, name: cat.name, sort_order: cat.sort_order }));
   }, [products, storeCategories]);
 
   // Get unique statuses
@@ -928,7 +921,7 @@ const GuestCatalogView = () => {
               >
                 <LayoutGrid className="w-4 h-4" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="min-w-[160px] bg-popover z-50">
+              <DropdownMenuContent align="center" className="min-w-[200px] max-h-[60vh] overflow-y-auto bg-popover z-50">
                 <DropdownMenuItem onClick={() => setSelectedCategory(null)} className="cursor-pointer">
                   <div className="flex items-center gap-2">
                     {!selectedCategory && <Check className="w-4 h-4 text-primary" />}
