@@ -6,13 +6,15 @@ import {
   Package, 
   TrendingUp, 
   ShoppingCart,
-  RefreshCw
+  RefreshCw,
+  Link2
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { ProductMatchingDialog } from './ProductMatchingDialog';
 
 interface StatsData {
   sellers: { total: number; today: number };
@@ -102,6 +104,7 @@ export default function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardP
   const [stats, setStats] = useState<StatsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showMatchingDialog, setShowMatchingDialog] = useState(false);
   const { toast } = useToast();
 
   const fetchStats = async (showRefresh = false) => {
@@ -167,16 +170,31 @@ export default function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardP
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold">Статистика платформы</h2>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => fetchStats(true)}
-          disabled={isRefreshing}
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-          Обновить
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setShowMatchingDialog(true)}
+          >
+            <Link2 className="h-4 w-4 mr-2" />
+            Сопоставление
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => fetchStats(true)}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Обновить
+          </Button>
+        </div>
       </div>
+
+      <ProductMatchingDialog
+        open={showMatchingDialog}
+        onOpenChange={setShowMatchingDialog}
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Row 1: Sellers & Customers */}

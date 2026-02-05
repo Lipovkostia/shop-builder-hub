@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      canonical_products: {
+        Row: {
+          canonical_name: string
+          canonical_sku: string | null
+          created_at: string
+          description: string | null
+          id: string
+          images: string[] | null
+          packaging_type: string | null
+          unit: string | null
+          unit_weight: number | null
+          updated_at: string
+        }
+        Insert: {
+          canonical_name: string
+          canonical_sku?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: string[] | null
+          packaging_type?: string | null
+          unit?: string | null
+          unit_weight?: number | null
+          updated_at?: string
+        }
+        Update: {
+          canonical_name?: string
+          canonical_sku?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: string[] | null
+          packaging_type?: string | null
+          unit?: string | null
+          unit_weight?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       catalog_category_settings: {
         Row: {
           catalog_id: string
@@ -619,6 +658,51 @@ export type Database = {
         }
         Relationships: []
       }
+      product_aliases: {
+        Row: {
+          alias_type: string
+          alias_value: string
+          canonical_product_id: string
+          created_at: string
+          id: string
+          source: string | null
+          store_id: string | null
+        }
+        Insert: {
+          alias_type: string
+          alias_value: string
+          canonical_product_id: string
+          created_at?: string
+          id?: string
+          source?: string | null
+          store_id?: string | null
+        }
+        Update: {
+          alias_type?: string
+          alias_value?: string
+          canonical_product_id?: string
+          created_at?: string
+          id?: string
+          source?: string | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_aliases_canonical_product_id_fkey"
+            columns: ["canonical_product_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_aliases_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_catalog_visibility: {
         Row: {
           catalog_id: string
@@ -805,6 +889,7 @@ export type Database = {
         Row: {
           auto_sync: boolean | null
           buy_price: number | null
+          canonical_product_id: string | null
           category_id: string | null
           compare_price: number | null
           created_at: string
@@ -847,6 +932,7 @@ export type Database = {
         Insert: {
           auto_sync?: boolean | null
           buy_price?: number | null
+          canonical_product_id?: string | null
           category_id?: string | null
           compare_price?: number | null
           created_at?: string
@@ -889,6 +975,7 @@ export type Database = {
         Update: {
           auto_sync?: boolean | null
           buy_price?: number | null
+          canonical_product_id?: string | null
           category_id?: string | null
           compare_price?: number | null
           created_at?: string
@@ -929,6 +1016,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "products_canonical_product_id_fkey"
+            columns: ["canonical_product_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "products_category_id_fkey"
             columns: ["category_id"]
