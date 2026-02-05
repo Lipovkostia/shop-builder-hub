@@ -7,7 +7,8 @@ export interface PriceListProduct {
   name: string;           // Product name
   
   // Fields to update
-  buyPrice?: number;      // Buy price (optional)
+  buyPrice?: number;      // Buy price (optional) - себестоимость
+  price?: number;         // Selling price (optional) - отпускная цена
   unit?: string;          // Unit of measurement (optional)
   rawPrice?: string;      // Original price string
 }
@@ -381,10 +382,18 @@ export function parseProductsWithExtendedMapping(
     
     if (fieldsToUpdate.buyPrice !== null) {
       const priceRaw = row[fieldsToUpdate.buyPrice];
-      const price = parsePrice(priceRaw as string | number);
-      if (price > 0) {
-        product.buyPrice = price;
+      const parsedPrice = parsePrice(priceRaw as string | number);
+      if (parsedPrice > 0) {
+        product.buyPrice = parsedPrice;
         product.rawPrice = String(priceRaw);
+      }
+    }
+    
+    if (fieldsToUpdate.price !== null) {
+      const priceRaw = row[fieldsToUpdate.price];
+      const parsedPrice = parsePrice(priceRaw as string | number);
+      if (parsedPrice > 0) {
+        product.price = parsedPrice;
       }
     }
     
@@ -406,7 +415,7 @@ export function parseProductsWithExtendedMapping(
     
     // For name-based identification, we need at least one field to update
     if (mapping.identifierType === 'name') {
-      if (product.buyPrice === undefined && product.unit === undefined) {
+      if (product.buyPrice === undefined && product.price === undefined && product.unit === undefined) {
         continue;
       }
     }
@@ -537,7 +546,7 @@ export async function importProductsToCatalogExtended(
   storeId: string,
   catalogId: string,
   identifierType: 'sku' | 'name',
-  fieldsToUpdate: ('buyPrice' | 'unit' | 'name')[],
+  fieldsToUpdate: ('buyPrice' | 'price' | 'unit' | 'name')[],
   onProgress: (progress: PriceListImportProgress) => void
 ): Promise<PriceListImportResult> {
   const progress: PriceListImportProgress = {
@@ -613,10 +622,16 @@ export async function importProductsToCatalogExtended(
         
         if (fieldsToUpdate.includes('buyPrice') && excelProduct.buyPrice !== undefined) {
           updateData.buy_price = excelProduct.buyPrice;
-          updateData.markup_type = 'percent';
-          updateData.markup_value = 0;
-          // Update price to match buy_price (0% markup)
-          updateData.price = excelProduct.buyPrice;
+          // If only buyPrice is set (no separate price), update price to match
+          if (!fieldsToUpdate.includes('price') || excelProduct.price === undefined) {
+            updateData.markup_type = 'percent';
+            updateData.markup_value = 0;
+            updateData.price = excelProduct.buyPrice;
+          }
+        }
+        
+        if (fieldsToUpdate.includes('price') && excelProduct.price !== undefined) {
+          updateData.price = excelProduct.price;
         }
         
         if (fieldsToUpdate.includes('unit') && excelProduct.unit) {
@@ -675,8 +690,8 @@ export async function importProductsToCatalogExtended(
             name: excelProduct.name,
             sku: excelProduct.sku || null,
             slug: slug,
-            price: excelProduct.buyPrice || 0,
-            buy_price: excelProduct.buyPrice || 0,
+            price: excelProduct.price ?? excelProduct.buyPrice ?? 0,
+            buy_price: excelProduct.buyPrice || null,
             markup_type: 'percent',
             markup_value: 0,
             is_active: true,
