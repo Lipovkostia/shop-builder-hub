@@ -14,7 +14,8 @@ import {
   Package,
   Phone,
   MessageCircle,
-  Truck
+  Truck,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
     updateRetailCatalog,
     updateContactSettings,
     updateDeliverySettings,
+    updateFooterSettings,
     uploadRetailLogo,
     uploadFavicon,
     deleteRetailLogo,
@@ -73,6 +75,10 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
   const [deliveryFreeFrom, setDeliveryFreeFrom] = useState("");
   const [deliveryRegion, setDeliveryRegion] = useState("");
   
+  // Footer content states
+  const [footerDeliveryPayment, setFooterDeliveryPayment] = useState("");
+  const [footerReturns, setFooterReturns] = useState("");
+  
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
 
@@ -92,6 +98,9 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
       setDeliveryInfo(settings.retail_delivery_info || "");
       setDeliveryFreeFrom(settings.retail_delivery_free_from?.toString() || "");
       setDeliveryRegion(settings.retail_delivery_region || "");
+      // Footer content settings
+      setFooterDeliveryPayment(settings.retail_footer_delivery_payment || "");
+      setFooterReturns(settings.retail_footer_returns || "");
     }
   }, [settings]);
 
@@ -188,6 +197,13 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
       retail_delivery_info: deliveryInfo || null,
       retail_delivery_free_from: deliveryFreeFrom ? parseFloat(deliveryFreeFrom) : null,
       retail_delivery_region: deliveryRegion || null,
+    });
+  };
+
+  const handleSaveFooter = () => {
+    updateFooterSettings({
+      retail_footer_delivery_payment: footerDeliveryPayment || null,
+      retail_footer_returns: footerReturns || null,
     });
   };
 
@@ -475,6 +491,58 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
                 <Button onClick={handleSaveDelivery} disabled={saving}>
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Сохранить настройки доставки
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Content Settings */}
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground">Контент подвала сайта</h3>
+                <p className="text-sm text-muted-foreground">
+                  Информация, отображаемая в раскрывающихся блоках внизу страницы
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">
+                  Доставка и оплата
+                </Label>
+                <Textarea
+                  value={footerDeliveryPayment}
+                  onChange={(e) => setFooterDeliveryPayment(e.target.value)}
+                  placeholder="Опишите условия доставки и способы оплаты..."
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Этот текст появится при раскрытии блока «Доставка и оплата» в футере
+                </p>
+              </div>
+
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">
+                  Возврат и обмен
+                </Label>
+                <Textarea
+                  value={footerReturns}
+                  onChange={(e) => setFooterReturns(e.target.value)}
+                  placeholder="Опишите условия возврата и обмена товаров..."
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Этот текст появится при раскрытии блока «Возврат и обмен» в футере
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <Button onClick={handleSaveFooter} disabled={saving}>
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Сохранить контент футера
                 </Button>
               </div>
             </div>
