@@ -995,6 +995,7 @@ export default function AdminPanel({
     name: true,
     description: true,
     categories: true,
+    subcategory: true,
     unit: true,
     volume: true,
     type: true,
@@ -1013,7 +1014,8 @@ export default function AdminPanel({
     photo: "Фото",
     name: "Название",
     description: "Описание",
-    categories: "Категории",
+    categories: "Главная категория",
+    subcategory: "Подкатегория",
     unit: "Ед. изм.",
     volume: "Объем",
     type: "Вид",
@@ -4699,6 +4701,7 @@ export default function AdminPanel({
                           {catalogVisibleColumns.name && <ResizableTableHead columnId="name">Название</ResizableTableHead>}
                           {catalogVisibleColumns.description && <ResizableTableHead columnId="description">Описание</ResizableTableHead>}
                           {catalogVisibleColumns.categories && <ResizableTableHead columnId="categories">Главная категория</ResizableTableHead>}
+                          {catalogVisibleColumns.subcategory && <ResizableTableHead columnId="subcategory">Подкатегория</ResizableTableHead>}
                           {catalogVisibleColumns.unit && <ResizableTableHead columnId="unit">Ед. изм.</ResizableTableHead>}
                           {catalogVisibleColumns.volume && <ResizableTableHead columnId="volume">Объем</ResizableTableHead>}
                           {catalogVisibleColumns.type && <ResizableTableHead columnId="type">Вид</ResizableTableHead>}
@@ -4857,6 +4860,12 @@ export default function AdminPanel({
                                       allowAddNew={true}
                                       showReorderButton={true}
                                     />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Подкатегория - пока заглушка */}
+                                {catalogVisibleColumns.subcategory && (
+                                  <ResizableTableCell columnId="subcategory">
+                                    <span className="text-muted-foreground text-xs">—</span>
                                   </ResizableTableCell>
                                 )}
                                 {/* Единица измерения - редактируемая, сохраняется в ассортимент */}
