@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useMemo } from "react";
+import React, { useRef, useCallback } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { MemoizedProductRow, VisibleColumns } from "./MemoizedProductRow";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,26 +17,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Product, Catalog, ProductGroup } from "./types";
-import { ResizableColumnHeader } from "./ResizableColumnHeader";
-import { useResizableColumns, ColumnConfig } from "@/hooks/useResizableColumns";
-
-// =============== COLUMN CONFIGURATION ===============
-const COLUMN_CONFIGS: ColumnConfig[] = [
-  { id: 'drag', minWidth: 32, defaultWidth: 32 },
-  { id: 'checkbox', minWidth: 32, defaultWidth: 32 },
-  { id: 'photo', minWidth: 48, defaultWidth: 48 },
-  { id: 'name', minWidth: 120, defaultWidth: 220 },
-  { id: 'sku', minWidth: 60, defaultWidth: 80 },
-  { id: 'desc', minWidth: 80, defaultWidth: 100 },
-  { id: 'source', minWidth: 50, defaultWidth: 64 },
-  { id: 'unit', minWidth: 50, defaultWidth: 64 },
-  { id: 'type', minWidth: 60, defaultWidth: 80 },
-  { id: 'volume', minWidth: 50, defaultWidth: 64 },
-  { id: 'cost', minWidth: 50, defaultWidth: 64 },
-  { id: 'groups', minWidth: 80, defaultWidth: 96 },
-  { id: 'catalogs', minWidth: 100, defaultWidth: 112 },
-  { id: 'sync', minWidth: 40, defaultWidth: 48 },
-];
 
 // =============== FILTER COMPONENTS ===============
 function ColumnFilter({ 
@@ -209,7 +189,7 @@ interface VirtualProductTableProps {
 }
 
 const ROW_HEIGHT = 48;
-const EXPANDED_ROW_HEIGHT = 180;
+const EXPANDED_ROW_HEIGHT = 180; // Увеличенная высота для галереи изображений
 const OVERSCAN = 5;
 
 export function VirtualProductTable({
@@ -245,30 +225,6 @@ export function VirtualProductTable({
   optimisticImagePreviews = {},
 }: VirtualProductTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
-
-  // Resizable columns
-  const { columnWidths, setColumnWidth, getColumnWidth, getTotalWidth } = useResizableColumns(
-    COLUMN_CONFIGS,
-    'products-assortment'
-  );
-
-  // Calculate total width based on visible columns
-  const totalWidth = useMemo(() => {
-    let width = getColumnWidth('drag') + getColumnWidth('checkbox'); // Always visible
-    if (visibleColumns.photo) width += getColumnWidth('photo');
-    if (visibleColumns.name) width += getColumnWidth('name');
-    if (visibleColumns.sku) width += getColumnWidth('sku');
-    if (visibleColumns.desc) width += getColumnWidth('desc');
-    if (visibleColumns.source) width += getColumnWidth('source');
-    if (visibleColumns.unit) width += getColumnWidth('unit');
-    if (visibleColumns.type) width += getColumnWidth('type');
-    if (visibleColumns.volume) width += getColumnWidth('volume');
-    if (visibleColumns.cost) width += getColumnWidth('cost');
-    if (visibleColumns.groups) width += getColumnWidth('groups');
-    if (visibleColumns.catalogs) width += getColumnWidth('catalogs');
-    if (visibleColumns.sync) width += getColumnWidth('sync');
-    return width;
-  }, [visibleColumns, getColumnWidth, columnWidths]);
 
   // Calculate row heights considering expanded images
   const getItemSize = useCallback((index: number) => {
@@ -310,30 +266,16 @@ export function VirtualProductTable({
 
   return (
     <div className="border rounded-lg overflow-hidden">
-      {/* Single scroll container for header + body */}
-      <div 
-        ref={parentRef}
-        className="overflow-auto"
-        style={{ height: 'calc(100vh - 300px)', minHeight: '400px' }}
-      >
-        {/* Sticky Header */}
-        <div 
-          className="sticky top-0 z-10 bg-muted/30 border-b flex items-center gap-2 px-2 py-2 min-h-[40px]"
-          style={{ minWidth: totalWidth }}
-        >
-          {/* Drag handle column - not resizable */}
-          <div 
-            className="flex-shrink-0 flex items-center justify-center"
-            style={{ width: getColumnWidth('drag') }}
-          >
+      {/* Sticky Header */}
+      <div className="overflow-x-auto bg-muted/30 border-b">
+        <div className="flex items-center gap-2 px-2 py-2 min-h-[40px]">
+          {/* Drag handle column */}
+          <div className="w-8 flex-shrink-0 flex items-center justify-center">
             <GripVertical className="h-3 w-3 text-muted-foreground/50" />
           </div>
           
-          {/* Checkbox column - not resizable */}
-          <div 
-            className="flex-shrink-0 flex items-center justify-center"
-            style={{ width: getColumnWidth('checkbox') }}
-          >
+          {/* Checkbox column */}
+          <div className="w-8 flex-shrink-0 flex items-center justify-center">
             <Checkbox
               checked={allSelected}
               onCheckedChange={onSelectAll}
@@ -341,67 +283,40 @@ export function VirtualProductTable({
           </div>
           
           {visibleColumns.photo && (
-            <ResizableColumnHeader
-              columnId="photo"
-              width={getColumnWidth('photo')}
-              minWidth={48}
-              onWidthChange={setColumnWidth}
-              className="text-xs font-medium text-muted-foreground"
-            >
+            <div className="w-12 flex-shrink-0 text-xs font-medium text-muted-foreground">
               Фото
-            </ResizableColumnHeader>
+            </div>
           )}
           {visibleColumns.name && (
-            <ResizableColumnHeader
-              columnId="name"
-              width={getColumnWidth('name')}
-              minWidth={120}
-              onWidthChange={setColumnWidth}
-              className="flex flex-col gap-1"
-            >
-              <span className="text-xs font-medium text-muted-foreground">Название</span>
+            <div className="flex-1 min-w-[150px]">
+              <div className="text-xs font-medium text-muted-foreground mb-1">Название</div>
               <ColumnFilter 
                 value={filters.name} 
                 onChange={(v) => onFiltersChange({...filters, name: v})}
                 placeholder="Поиск..."
               />
-            </ResizableColumnHeader>
+            </div>
           )}
           {visibleColumns.sku && (
-            <ResizableColumnHeader
-              columnId="sku"
-              width={getColumnWidth('sku')}
-              minWidth={60}
-              onWidthChange={setColumnWidth}
-            >
+            <div className="w-20 flex-shrink-0">
               <ColumnFilter 
                 value={filters.sku || ""} 
                 onChange={(v) => onFiltersChange({...filters, sku: v})}
                 placeholder="SKU..."
               />
-            </ResizableColumnHeader>
+            </div>
           )}
           {visibleColumns.desc && (
-            <ResizableColumnHeader
-              columnId="desc"
-              width={getColumnWidth('desc')}
-              minWidth={80}
-              onWidthChange={setColumnWidth}
-            >
+            <div className="w-24 flex-shrink-0">
               <ColumnFilter 
                 value={filters.desc} 
                 onChange={(v) => onFiltersChange({...filters, desc: v})}
                 placeholder="Описание..."
               />
-            </ResizableColumnHeader>
+            </div>
           )}
           {visibleColumns.source && (
-            <ResizableColumnHeader
-              columnId="source"
-              width={getColumnWidth('source')}
-              minWidth={50}
-              onWidthChange={setColumnWidth}
-            >
+            <div className="w-16 flex-shrink-0">
               <SelectFilter
                 value={filters.source}
                 onChange={(v) => onFiltersChange({...filters, source: v})}
@@ -411,15 +326,10 @@ export function VirtualProductTable({
                 ]}
                 placeholder="Все"
               />
-            </ResizableColumnHeader>
+            </div>
           )}
           {visibleColumns.unit && (
-            <ResizableColumnHeader
-              columnId="unit"
-              width={getColumnWidth('unit')}
-              minWidth={50}
-              onWidthChange={setColumnWidth}
-            >
+            <div className="w-16 flex-shrink-0">
               <SelectFilter
                 value={filters.unit}
                 onChange={(v) => onFiltersChange({...filters, unit: v})}
@@ -431,15 +341,10 @@ export function VirtualProductTable({
                 ]}
                 placeholder="Все"
               />
-            </ResizableColumnHeader>
+            </div>
           )}
           {visibleColumns.type && (
-            <ResizableColumnHeader
-              columnId="type"
-              width={getColumnWidth('type')}
-              minWidth={60}
-              onWidthChange={setColumnWidth}
-            >
+            <div className="w-20 flex-shrink-0">
               <SelectFilter
                 value={filters.type}
                 onChange={(v) => onFiltersChange({...filters, type: v})}
@@ -449,43 +354,28 @@ export function VirtualProductTable({
                 ]}
                 placeholder="Все"
               />
-            </ResizableColumnHeader>
+            </div>
           )}
           {visibleColumns.volume && (
-            <ResizableColumnHeader
-              columnId="volume"
-              width={getColumnWidth('volume')}
-              minWidth={50}
-              onWidthChange={setColumnWidth}
-            >
+            <div className="w-16 flex-shrink-0">
               <ColumnFilter 
                 value={filters.volume} 
                 onChange={(v) => onFiltersChange({...filters, volume: v})}
                 placeholder="Объём..."
               />
-            </ResizableColumnHeader>
+            </div>
           )}
           {visibleColumns.cost && (
-            <ResizableColumnHeader
-              columnId="cost"
-              width={getColumnWidth('cost')}
-              minWidth={50}
-              onWidthChange={setColumnWidth}
-            >
+            <div className="w-16 flex-shrink-0">
               <ColumnFilter 
                 value={filters.cost} 
                 onChange={(v) => onFiltersChange({...filters, cost: v})}
                 placeholder="Цена..."
               />
-            </ResizableColumnHeader>
+            </div>
           )}
           {visibleColumns.groups && (
-            <ResizableColumnHeader
-              columnId="groups"
-              width={getColumnWidth('groups')}
-              minWidth={80}
-              onWidthChange={setColumnWidth}
-            >
+            <div className="w-24 flex-shrink-0">
               <MultiSelectFilter
                 values={filters.groups}
                 onChange={(v) => onFiltersChange({...filters, groups: v})}
@@ -495,26 +385,13 @@ export function VirtualProductTable({
                 ]}
                 placeholder="Все"
               />
-            </ResizableColumnHeader>
+            </div>
           )}
           {visibleColumns.catalogs && (
-            <ResizableColumnHeader
-              columnId="catalogs"
-              width={getColumnWidth('catalogs')}
-              minWidth={100}
-              onWidthChange={setColumnWidth}
-              className="text-xs font-medium text-muted-foreground"
-            >
-              Каталоги
-            </ResizableColumnHeader>
+            <div className="w-28 flex-shrink-0 text-xs font-medium text-muted-foreground">Каталоги</div>
           )}
           {visibleColumns.sync && (
-            <ResizableColumnHeader
-              columnId="sync"
-              width={getColumnWidth('sync')}
-              minWidth={40}
-              onWidthChange={setColumnWidth}
-            >
+            <div className="w-12 flex-shrink-0">
               <SelectFilter
                 value={filters.sync}
                 onChange={(v) => onFiltersChange({...filters, sync: v})}
@@ -524,15 +401,21 @@ export function VirtualProductTable({
                 ]}
                 placeholder="Все"
               />
-            </ResizableColumnHeader>
+            </div>
           )}
         </div>
+      </div>
 
-        {/* Virtualized Body */}
+      {/* Virtualized Body */}
+      <div 
+        ref={parentRef}
+        className="overflow-y-auto overflow-x-hidden"
+        style={{ height: 'calc(100vh - 300px)', minHeight: '400px' }}
+      >
         <div
           style={{
             height: `${totalSize}px`,
-            minWidth: totalWidth,
+            width: '100%',
             position: 'relative',
           }}
         >
@@ -541,6 +424,7 @@ export function VirtualProductTable({
             if (!product) return null;
 
             const isExpanded = expandedAssortmentImages === product.id;
+            const rowHeight = isExpanded ? EXPANDED_ROW_HEIGHT : ROW_HEIGHT;
             
             // Combine real images with optimistic previews
             const optimisticPreviews = optimisticImagePreviews[product.id] || [];
@@ -554,7 +438,6 @@ export function VirtualProductTable({
                   top: 0,
                   left: 0,
                   width: '100%',
-                  minWidth: totalWidth,
                   minHeight: `${virtualRow.size}px`,
                   transform: `translateY(${virtualRow.start}px)`,
                   zIndex: isExpanded ? 10 : 1,
@@ -588,7 +471,6 @@ export function VirtualProductTable({
                   onAddCustomPackaging={onAddCustomPackaging}
                   onNavigateToCatalog={onNavigateToCatalog}
                   optimisticImages={allImages}
-                  columnWidths={columnWidths}
                 />
               </div>
             );

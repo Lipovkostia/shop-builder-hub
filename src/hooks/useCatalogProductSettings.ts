@@ -6,7 +6,6 @@ export interface CatalogProductSetting {
   id: string;
   catalog_id: string;
   product_id: string;
-  primary_category_id: string | null;
   categories: string[];
   markup_type: string;
   markup_value: number;
@@ -23,7 +22,6 @@ const formatSetting = (raw: any): CatalogProductSetting => ({
   id: raw.id,
   catalog_id: raw.catalog_id,
   product_id: raw.product_id,
-  primary_category_id: raw.primary_category_id || null,
   categories: raw.categories || [],
   markup_type: raw.markup_type || 'percent',
   markup_value: raw.markup_value || 0,
@@ -145,7 +143,6 @@ export function useCatalogProductSettings(storeId: string | null) {
         id: `fallback_${catalogId}_${productId}`,
         catalog_id: catalogId,
         product_id: productId,
-        primary_category_id: null, // Default - catalog-specific fields are not inherited
         categories: [], // Default - catalog-specific fields are not inherited
         markup_type: 'percent',
         markup_value: 0,
@@ -191,7 +188,6 @@ export function useCatalogProductSettings(storeId: string | null) {
         id: tempId,
         catalog_id: catalogId,
         product_id: productId,
-        primary_category_id: updates.primary_category_id ?? null,
         categories: updates.categories || [],
         markup_type: updates.markup_type || 'percent',
         markup_value: updates.markup_value || 0,
@@ -218,7 +214,6 @@ export function useCatalogProductSettings(storeId: string | null) {
         const { error } = await supabase
           .from('catalog_product_settings')
           .update({
-            primary_category_id: updates.primary_category_id ?? existing.primary_category_id,
             categories: updates.categories ?? existing.categories,
             markup_type: updates.markup_type ?? existing.markup_type,
             markup_value: updates.markup_value ?? existing.markup_value,
@@ -235,7 +230,6 @@ export function useCatalogProductSettings(storeId: string | null) {
           .upsert({
             catalog_id: catalogId,
             product_id: productId,
-            primary_category_id: updates.primary_category_id ?? null,
             categories: updates.categories || [],
             markup_type: updates.markup_type || 'percent',
             markup_value: updates.markup_value || 0,
@@ -256,7 +250,6 @@ export function useCatalogProductSettings(storeId: string | null) {
                   id: data.id,
                   catalog_id: data.catalog_id,
                   product_id: data.product_id,
-                  primary_category_id: data.primary_category_id || null,
                   categories: data.categories || [],
                   markup_type: data.markup_type || 'percent',
                   markup_value: data.markup_value || 0,
@@ -328,82 +321,11 @@ export function useCatalogProductSettings(storeId: string | null) {
     }
   }, [settings, fetchSettings]);
 
-  // Batch update for bulk editing operations - single DB query for all products
-  const bulkUpdateProductSettings = useCallback(async (
-    catalogId: string,
-    productIds: string[],
-    updates: Partial<Omit<CatalogProductSetting, 'id' | 'catalog_id' | 'product_id'>>
-  ) => {
-    if (productIds.length === 0 || !catalogId) return;
-
-    // Optimistic update - apply immediately to UI
-    setSettings(prev => prev.map(s => 
-      productIds.includes(s.product_id) && s.catalog_id === catalogId
-        ? { ...s, ...updates }
-        : s
-    ));
-
-    try {
-      // Build update object with only defined fields
-      const updatePayload: Record<string, unknown> = {};
-      if (updates.primary_category_id !== undefined) updatePayload.primary_category_id = updates.primary_category_id;
-      if (updates.categories !== undefined) updatePayload.categories = updates.categories;
-      if (updates.markup_type !== undefined) updatePayload.markup_type = updates.markup_type;
-      if (updates.markup_value !== undefined) updatePayload.markup_value = updates.markup_value;
-      if (updates.status !== undefined) updatePayload.status = updates.status;
-      if (updates.portion_prices !== undefined) updatePayload.portion_prices = updates.portion_prices;
-
-      // Single query for all products - update existing settings
-      const { error } = await supabase
-        .from('catalog_product_settings')
-        .update(updatePayload)
-        .eq('catalog_id', catalogId)
-        .in('product_id', productIds);
-
-      if (error) throw error;
-
-      // For products that don't have settings yet, create them
-      const existingProductIds = new Set(
-        settings
-          .filter(s => s.catalog_id === catalogId)
-          .map(s => s.product_id)
-      );
-      const newProductIds = productIds.filter(id => !existingProductIds.has(id));
-
-      if (newProductIds.length > 0) {
-        const { error: insertError } = await supabase
-          .from('catalog_product_settings')
-          .insert(
-            newProductIds.map(productId => ({
-              catalog_id: catalogId,
-              product_id: productId,
-              primary_category_id: updates.primary_category_id ?? null,
-              categories: updates.categories || [],
-              markup_type: updates.markup_type || 'percent',
-              markup_value: updates.markup_value || 0,
-              status: updates.status || 'in_stock',
-              portion_prices: updates.portion_prices || null,
-            }))
-          );
-
-        if (insertError) throw insertError;
-      }
-
-      // Refetch to sync with DB
-      await fetchSettings();
-    } catch (error) {
-      console.error('Error bulk updating catalog product settings:', error);
-      // Revert on error
-      await fetchSettings();
-    }
-  }, [settings, fetchSettings]);
-
   return {
     settings,
     loading,
     getProductSettings,
     updateProductSettings,
-    bulkUpdateProductSettings,
     refetch: fetchSettings,
   };
 }

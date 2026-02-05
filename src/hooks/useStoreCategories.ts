@@ -86,8 +86,8 @@ export function useStoreCategories(storeId: string | null) {
     };
   }, [storeId]);
 
-  // Create new category (optionally as subcategory with parent_id)
-  const createCategory = useCallback(async (name: string, parentId?: string | null): Promise<StoreCategory | null> => {
+  // Create new category
+  const createCategory = useCallback(async (name: string): Promise<StoreCategory | null> => {
     if (!storeId) return null;
 
     // Create slug from name with unique timestamp suffix to avoid duplicates
@@ -106,7 +106,6 @@ export function useStoreCategories(storeId: string | null) {
           store_id: storeId,
           name: name,
           slug: slug,
-          parent_id: parentId || null,
         })
         .select()
         .single();
@@ -149,62 +148,5 @@ export function useStoreCategories(storeId: string | null) {
     }
   }, []);
 
-  // Update category name
-  const updateCategory = useCallback(async (id: string, name: string): Promise<boolean> => {
-    try {
-      const { error } = await supabase
-        .from('categories')
-        .update({ name })
-        .eq('id', id);
-
-      if (error) throw error;
-      
-      setCategories(prev =>
-        prev.map(c => c.id === id ? { ...c, name } : c)
-      );
-      return true;
-    } catch (error) {
-      console.error('Error updating category:', error);
-      return false;
-    }
-  }, []);
-
-  // Delete category
-  const deleteCategory = useCallback(async (id: string): Promise<boolean> => {
-    try {
-      // First delete all child categories
-      const childIds = categories.filter(c => c.parent_id === id).map(c => c.id);
-      if (childIds.length > 0) {
-        const { error: childError } = await supabase
-          .from('categories')
-          .delete()
-          .in('id', childIds);
-        if (childError) throw childError;
-      }
-
-      // Then delete the category itself
-      const { error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      
-      setCategories(prev => prev.filter(c => c.id !== id && c.parent_id !== id));
-      return true;
-    } catch (error) {
-      console.error('Error deleting category:', error);
-      return false;
-    }
-  }, [categories]);
-
-  return { 
-    categories, 
-    loading, 
-    refetch: fetchCategories, 
-    createCategory, 
-    updateCategoryOrder,
-    updateCategory,
-    deleteCategory,
-  };
+  return { categories, loading, refetch: fetchCategories, createCategory, updateCategoryOrder };
 }

@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState, useMemo } from "react";
-import { X, ChevronRight, ChevronDown, Package, Sparkles } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { X, ChevronRight, Package, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RetailCategory } from "@/hooks/useRetailStore";
-import { buildCategoryTree, filterTreeWithProducts, getParentChain, CategoryTree } from "@/lib/categoryUtils";
 
 interface RetailCatalogSheetProps {
   open: boolean;
@@ -22,7 +21,6 @@ export function RetailCatalogSheet({
   storeName,
 }: RetailCatalogSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
-  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
   // Handle escape key
   useEffect(() => {
@@ -47,151 +45,16 @@ export function RetailCatalogSheet({
     };
   }, [open]);
 
-  // Build category tree
-  const categoryTree = useMemo(() => {
-    const tree = buildCategoryTree(categories);
-    return filterTreeWithProducts(tree);
-  }, [categories]);
-
-  // Auto-expand parent categories when a child is selected
-  useEffect(() => {
-    if (selectedCategory) {
-      const parentChain = getParentChain(selectedCategory, categories);
-      if (parentChain.length > 0) {
-        setExpandedCategories(prev => {
-          const newExpanded = [...prev];
-          parentChain.forEach(parentId => {
-            if (!newExpanded.includes(parentId)) {
-              newExpanded.push(parentId);
-            }
-          });
-          return newExpanded;
-        });
-      }
-    }
-  }, [selectedCategory, categories]);
-
   const handleCategoryClick = (categoryId: string | null) => {
     onCategorySelect(categoryId);
     onOpenChange(false);
   };
 
-  const toggleExpanded = (categoryId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setExpandedCategories(prev =>
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
-    );
-  };
+  // Filter categories to only show those with products
+  const categoriesWithProducts = categories.filter(cat => (cat.product_count || 0) > 0);
 
   // Calculate total products
-  const totalProducts = categories.reduce((sum, cat) => sum + (cat.product_count || 0), 0);
-
-  // Recursive category renderer
-  const renderCategory = (category: CategoryTree, depth: number = 0, index: number = 0) => {
-    const hasChildren = category.children.length > 0;
-    const isExpanded = expandedCategories.includes(category.id);
-    const isSelected = selectedCategory === category.id;
-
-    return (
-      <div key={category.id}>
-        <button
-          onClick={() => {
-            handleCategoryClick(category.id);
-            if (hasChildren && !isExpanded) {
-              setExpandedCategories(prev => [...prev, category.id]);
-            }
-          }}
-          className={cn(
-            "w-full flex items-center gap-4 px-5 py-3.5 transition-all duration-200",
-            "hover:bg-primary/5 active:bg-primary/10",
-            isSelected
-              ? "bg-primary/10 border-l-4 border-primary"
-              : "border-l-4 border-transparent"
-          )}
-          style={{
-            paddingLeft: 20 + depth * 16,
-            animationDelay: `${index * 30}ms`,
-          }}
-        >
-          {/* Category image or placeholder */}
-          <div className={cn(
-            "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden transition-all",
-            isSelected
-              ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
-              : "",
-            depth > 0 && "w-8 h-8 rounded-lg"
-          )}>
-            {category.image_url ? (
-              <img
-                src={category.image_url}
-                alt={category.name}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-                <span className={cn(
-                  "font-semibold text-muted-foreground/70",
-                  depth > 0 ? "text-sm" : "text-base"
-                )}>
-                  {category.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Category info */}
-          <div className="flex-1 text-left min-w-0">
-            <p className={cn(
-              "font-medium truncate",
-              isSelected ? "text-primary" : "text-foreground",
-              depth > 0 ? "text-sm" : "text-[15px]"
-            )}>
-              {category.name}
-            </p>
-            {category.totalProductCount > 0 && (
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {category.totalProductCount} {getProductWord(category.totalProductCount)}
-              </p>
-            )}
-          </div>
-
-          {/* Expand/collapse + arrow */}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {hasChildren && (
-              <span 
-                onClick={(e) => toggleExpanded(category.id, e)}
-                className={cn(
-                  "p-1.5 rounded-full hover:bg-muted transition-colors",
-                  isExpanded ? "rotate-0" : ""
-                )}
-              >
-                {isExpanded 
-                  ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  : <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                }
-              </span>
-            )}
-            {!hasChildren && (
-              <ChevronRight className={cn(
-                "h-4 w-4 transition-transform",
-                isSelected ? "text-primary translate-x-1" : "text-muted-foreground"
-              )} />
-            )}
-          </div>
-        </button>
-
-        {/* Children */}
-        {hasChildren && isExpanded && (
-          <div className="border-l-2 border-muted ml-7">
-            {category.children.map((child, i) => renderCategory(child, depth + 1, i))}
-          </div>
-        )}
-      </div>
-    );
-  };
+  const totalProducts = categoriesWithProducts.reduce((sum, cat) => sum + (cat.product_count || 0), 0);
 
   return (
     <>
@@ -288,9 +151,9 @@ export function RetailCatalogSheet({
               <div className="flex-1 h-px bg-border/50" />
             </div>
 
-            {/* Categories tree - with extra bottom padding for mobile nav */}
+            {/* Categories list - with extra bottom padding for mobile nav */}
             <div className="pb-24">
-              {categoryTree.length === 0 ? (
+              {categoriesWithProducts.length === 0 ? (
                 <div className="px-5 py-8 text-center">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
                     <Sparkles className="h-7 w-7 text-muted-foreground" />
@@ -298,7 +161,78 @@ export function RetailCatalogSheet({
                   <p className="text-muted-foreground">Категории скоро появятся</p>
                 </div>
               ) : (
-                categoryTree.map((category, index) => renderCategory(category, 0, index))
+                categoriesWithProducts.map((category, index) => (
+                  <button
+                    key={category.id}
+                    onClick={() => handleCategoryClick(category.id)}
+                    className={cn(
+                      "w-full flex items-center gap-4 px-5 py-3.5 transition-all duration-200",
+                      "hover:bg-primary/5 active:bg-primary/10",
+                      selectedCategory === category.id
+                        ? "bg-primary/10 border-l-4 border-primary"
+                        : "border-l-4 border-transparent"
+                    )}
+                    style={{
+                      animationDelay: `${index * 30}ms`,
+                    }}
+                  >
+                    {/* Category image or placeholder */}
+                    <div className={cn(
+                      "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden transition-all",
+                      selectedCategory === category.id
+                        ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                        : ""
+                    )}>
+                      {category.image_url ? (
+                        <img
+                          src={category.image_url}
+                          alt={category.name}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
+                          <span className="text-lg font-semibold text-muted-foreground/70">
+                            {category.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Category info */}
+                    <div className="flex-1 text-left min-w-0">
+                      <p className={cn(
+                        "font-medium text-[15px] truncate",
+                        selectedCategory === category.id ? "text-primary" : "text-foreground"
+                      )}>
+                        {category.name}
+                      </p>
+                      {category.product_count !== undefined && category.product_count > 0 && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {category.product_count} {getProductWord(category.product_count)}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Product count badge + arrow */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {category.product_count !== undefined && category.product_count > 0 && (
+                        <span className={cn(
+                          "text-xs font-medium px-2 py-1 rounded-full",
+                          selectedCategory === category.id
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground"
+                        )}>
+                          {category.product_count}
+                        </span>
+                      )}
+                      <ChevronRight className={cn(
+                        "h-4 w-4 transition-transform",
+                        selectedCategory === category.id ? "text-primary translate-x-1" : "text-muted-foreground"
+                      )} />
+                    </div>
+                  </button>
+                ))
               )}
             </div>
           </div>

@@ -1,163 +1,142 @@
 
-# План: Восстановление горизонтальной прокрутки и изменения ширины столбцов в таблице Ассортимента
+# План: Реализация корзины для оптового магазина
 
-## Проблема
+## Обзор
 
-В таблице Ассортимента (`VirtualProductTable`) сломаны две функции:
-1. **Горизонтальная прокрутка** — заблокирована из-за `overflow-x-hidden` на контейнере виртуализированных строк
-2. **Изменение ширины столбцов** — отсутствует, так как компонент не использует систему resizable-колонок
+Создадим полноценную корзину и оформление заказов для оптового B2B магазина по аналогии с розничным магазином. Заказы будут автоматически попадать в личный кабинет продавца с пометкой "Опт".
 
-## Причины
+## Текущее состояние
 
-При сравнении с работающей таблицей Прайс-листа (`VirtualCatalogTable`) выявлены ключевые различия:
+- Оптовый магазин (`/wholesale/:subdomain`) уже использует хук `useRetailCart` для управления корзиной
+- Корзина добавляется/отображается, но нет UI для просмотра и оформления заказа
+- Есть минимальная сумма заказа (`wholesale_min_order_amount`), которая должна проверяться
+- Нужно создать страницу оформления заказа и Edge Function для создания оптовых заказов
 
-| Аспект | VirtualCatalogTable (работает) | VirtualProductTable (сломан) |
-|--------|-------------------------------|------------------------------|
-| Контейнер | `overflow-auto` | `overflow-y-auto overflow-x-hidden` |
-| Колонки | `useResizableColumns` + `ResizableColumnHeader` | Простые `div` с фиксированными ширинами |
-| Скролл | Единый контейнер для header и body | Раздельные контейнеры |
-
-## Решение
-
-### Шаг 1: Единый контейнер прокрутки
-
-Объединить header и body таблицы в один scroll-контейнер с `overflow-auto`:
+## Архитектура решения
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│ Внешний контейнер (overflow: auto)                           │
-│ ┌──────────────────────────────────────────────────────────┐ │
-│ │ Header (sticky top: 0)                                   │ │
-│ │ [Фото] [Название] [SKU] [Описание] [Ед.] [Тип] [Объём]...│ │
-│ └──────────────────────────────────────────────────────────┘ │
-│ ┌──────────────────────────────────────────────────────────┐ │
-│ │ Body (виртуализированные строки)                         │ │
-│ │ ...                                                      │ │
-│ └──────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
++-------------------+     +---------------------+     +----------------------+
+|  WholesaleStore   | --> | WholesaleCartSheet  | --> | WholesaleCheckout    |
+|  (каталог товаров)|     | (просмотр корзины)  |     | (оформление заказа)  |
++-------------------+     +---------------------+     +----------------------+
+                                    |                           |
+                                    v                           v
+                          +---------------------+     +------------------------+
+                          | WholesaleCartDrawer |     | create-wholesale-order |
+                          | (десктоп версия)    |     | (Edge Function)        |
+                          +---------------------+     +------------------------+
+                                                                |
+                                                                v
+                                                      +-------------------+
+                                                      | orders table      |
+                                                      | (source: wholesale)|
+                                                      +-------------------+
 ```
 
-### Шаг 2: Интеграция системы изменения ширины колонок
+## Детальный план реализации
 
-Добавить использование существующих компонентов:
-- `useResizableColumns` — хук для управления и сохранения ширин
-- `ResizableColumnHeader` — заголовок с drag-ручкой для resize
+### Этап 1: Компоненты корзины (UI)
 
-### Шаг 3: Обновление строк для использования columnWidths
+#### 1.1 Создать `WholesaleCartSheet.tsx` (мобильная версия)
+- Скопировать структуру из `RetailCartSheet.tsx`
+- Адаптировать маршруты для wholesale (`/wholesale/:subdomain/checkout`)
+- Добавить проверку минимальной суммы заказа
+- Показывать предупреждение если сумма меньше минимальной
 
-Передать `columnWidths` в `MemoizedProductRow` для синхронизации ширин с заголовками.
+#### 1.2 Создать `WholesaleCartDrawer.tsx` (десктопная версия)
+- Скопировать структуру из `RetailCartDrawer.tsx`
+- Адаптировать для wholesale
+- Добавить индикатор минимальной суммы
 
----
+### Этап 2: Страница оформления заказа
 
-## Технические детали
+#### 2.1 Создать `WholesaleCheckout.tsx`
+- Скопировать структуру из `RetailCheckout.tsx`
+- Форма: Компания/ИП, Контактное лицо, Телефон, Email, Комментарий
+- Убрать поле адреса доставки (для B2B обычно обсуждается отдельно)
+- Добавить валидацию минимальной суммы заказа
+- Интеграция с Edge Function `create-wholesale-order`
 
-### Изменения в `VirtualProductTable.tsx`
+### Этап 3: Edge Function для оптовых заказов
 
-**1. Импорты:**
-```typescript
-import { ResizableColumnHeader } from "./ResizableColumnHeader";
-import { useResizableColumns, ColumnConfig } from "@/hooks/useResizableColumns";
-```
+#### 3.1 Создать `create-wholesale-order/index.ts`
+- Валидация данных заказа
+- Проверка минимальной суммы заказа
+- Генерация номера заказа с префиксом `W` (wholesale)
+- Сохранение в таблицу `orders` с `source: wholesale`
+- Отправка уведомления продавцу
 
-**2. Определение конфигурации колонок:**
-```typescript
-const COLUMN_CONFIGS: ColumnConfig[] = [
-  { id: 'drag', minWidth: 32, defaultWidth: 32 },
-  { id: 'checkbox', minWidth: 32, defaultWidth: 32 },
-  { id: 'photo', minWidth: 48, defaultWidth: 48 },
-  { id: 'name', minWidth: 120, defaultWidth: 220 },
-  { id: 'sku', minWidth: 60, defaultWidth: 80 },
-  { id: 'desc', minWidth: 80, defaultWidth: 100 },
-  { id: 'source', minWidth: 50, defaultWidth: 64 },
-  { id: 'unit', minWidth: 50, defaultWidth: 64 },
-  { id: 'type', minWidth: 60, defaultWidth: 80 },
-  { id: 'volume', minWidth: 50, defaultWidth: 64 },
-  { id: 'cost', minWidth: 50, defaultWidth: 64 },
-  { id: 'groups', minWidth: 80, defaultWidth: 96 },
-  { id: 'catalogs', minWidth: 100, defaultWidth: 112 },
-  { id: 'sync', minWidth: 40, defaultWidth: 48 },
-];
-```
+### Этап 4: Интеграция в WholesaleStore
 
-**3. Использование хука:**
-```typescript
-const { columnWidths, setColumnWidth, getTotalWidth } = useResizableColumns(
-  COLUMN_CONFIGS,
-  'products-assortment'
-);
+#### 4.1 Обновить `WholesaleStore.tsx`
+- Добавить компоненты WholesaleCartSheet/Drawer
+- Подключить открытие/закрытие корзины
+- Передать минимальную сумму заказа в компоненты корзины
 
-const totalWidth = useMemo(
-  () => getTotalWidth(visibleColumns), 
-  [getTotalWidth, visibleColumns, columnWidths]
-);
-```
+#### 4.2 Добавить маршрут в `App.tsx`
+- Добавить роут `/wholesale/:subdomain/checkout`
 
-**4. Структура контейнера (единый scroll):**
-```tsx
-<div 
-  ref={parentRef}
-  className="overflow-auto"  // ← Горизонтальный + вертикальный скролл
-  style={{ height: 'calc(100vh - 300px)', minHeight: '400px' }}
->
-  {/* Header - sticky */}
-  <div 
-    className="sticky top-0 z-10 bg-muted/30 border-b flex items-center"
-    style={{ minWidth: totalWidth }}
-  >
-    <ResizableColumnHeader columnId="photo" ...>Фото</ResizableColumnHeader>
-    <ResizableColumnHeader columnId="name" ...>Название</ResizableColumnHeader>
-    ...
-  </div>
+### Этап 5: Конфигурация Edge Function
 
-  {/* Virtualized Body */}
-  <div style={{ height: totalSize, minWidth: totalWidth, position: 'relative' }}>
-    {virtualItems.map(...)}
-  </div>
-</div>
-```
+#### 5.1 Обновить `supabase/config.toml`
+- Добавить конфигурацию для `create-wholesale-order`
 
-### Изменения в `MemoizedProductRow.tsx`
+## Файлы для создания/изменения
 
-Добавить проп `columnWidths` и применять ширины к каждой ячейке:
+| Файл | Действие |
+|------|----------|
+| `src/components/wholesale/WholesaleCartSheet.tsx` | Создать |
+| `src/components/wholesale/WholesaleCartDrawer.tsx` | Создать |
+| `src/pages/WholesaleCheckout.tsx` | Создать |
+| `supabase/functions/create-wholesale-order/index.ts` | Создать |
+| `src/pages/WholesaleStore.tsx` | Изменить |
+| `src/App.tsx` | Изменить |
+| `supabase/config.toml` | Изменить |
 
-```tsx
-interface MemoizedProductRowProps {
-  // ... existing props
-  columnWidths: Record<string, number>;
+## Особенности B2B корзины
+
+1. **Минимальный заказ** - блокировка оформления если сумма меньше `wholesale_min_order_amount`
+2. **Нумерация заказов** - префикс `W` для оптовых заказов (W-XXXX)
+3. **Данные в заказе** - `source: wholesale` для фильтрации в ЛК продавца
+4. **Форма заказа** - упрощенная для B2B (без адреса, с полем "Компания")
+
+## Техническая реализация
+
+### Edge Function: create-wholesale-order
+
+```text
+POST /functions/v1/create-wholesale-order
+{
+  storeId: string,
+  companyName: string,
+  contactName: string,
+  phone: string,
+  email?: string,
+  comment?: string,
+  items: [{productId, productName, quantity, price, unit}]
 }
 
-// В рендере:
-{visibleColumns.name && (
-  <div 
-    className="flex-shrink-0 overflow-hidden"
-    style={{ 
-      width: columnWidths.name, 
-      maxWidth: columnWidths.name 
-    }}
-  >
-    <InlineEditableCell ... />
-  </div>
-)}
+Response:
+{
+  success: boolean,
+  orderNumber: string,
+  orderId: string,
+  total: number
+}
 ```
 
----
+### Маршрутизация
 
-## Файлы для изменения
+```text
+/wholesale/:subdomain          - каталог товаров (существует)
+/wholesale/:subdomain/product/:slug  - страница товара (существует)
+/wholesale/:subdomain/checkout - оформление заказа (новый)
+```
 
-1. **`src/components/admin/VirtualProductTable.tsx`**
-   - Добавить импорты `ResizableColumnHeader` и `useResizableColumns`
-   - Определить `COLUMN_CONFIGS`
-   - Заменить структуру контейнера на единый scroll
-   - Заменить простые заголовки на `ResizableColumnHeader`
-   - Передать `columnWidths` в строки
+## Ожидаемый результат
 
-2. **`src/components/admin/MemoizedProductRow.tsx`**
-   - Добавить проп `columnWidths`
-   - Применить динамические ширины к ячейкам
-
-## Результат
-
-После изменений таблица Ассортимента будет:
-- Поддерживать горизонтальную прокрутку при большом количестве видимых колонок
-- Позволять изменять ширину каждой колонки перетаскиванием
-- Сохранять настроенные ширины в localStorage
+- Покупатель может добавлять товары в корзину
+- Корзина открывается по клику на иконку (Sheet на мобильном, Drawer на десктопе)
+- При оформлении проверяется минимальная сумма заказа
+- Заказы попадают в ЛК продавца с меткой "Опт" (wholesale)
+- Продавец получает уведомление о новом заказе

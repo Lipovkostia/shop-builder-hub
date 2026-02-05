@@ -72,7 +72,6 @@ interface MemoizedProductRowProps {
   onAddCustomPackaging: (type: string) => void;
   onNavigateToCatalog?: (catalogId: string) => void;
   optimisticImages?: string[];
-  columnWidths: Record<string, number>;
 }
 
 function ProductRowComponent({
@@ -103,7 +102,6 @@ function ProductRowComponent({
   onAddCustomPackaging,
   onNavigateToCatalog,
   optimisticImages,
-  columnWidths,
 }: MemoizedProductRowProps) {
   const salePrice = product.buyPrice && product.markup
     ? calculateSalePrice(product.buyPrice, product.markup)
@@ -199,17 +197,13 @@ function ProductRowComponent({
       {/* Main row */}
       <div className="flex items-center gap-2 px-2 py-2 hover:bg-muted/30 transition-colors min-h-[48px]">
         {/* Drag handle */}
-        <div 
-          className="flex-shrink-0 flex items-center justify-center cursor-grab"
-          style={{ width: columnWidths.drag, maxWidth: columnWidths.drag }}
-        >
+        <div className="w-8 flex-shrink-0 flex items-center justify-center cursor-grab">
           <GripVertical className="h-3 w-3 text-muted-foreground/50" />
         </div>
 
         {/* Checkbox */}
         <div 
-          className="flex-shrink-0 flex items-center justify-center cursor-pointer"
-          style={{ width: columnWidths.checkbox, maxWidth: columnWidths.checkbox }}
+          className="w-8 flex-shrink-0 flex items-center justify-center cursor-pointer"
           onClick={handleToggleSelection}
         >
           <Checkbox
@@ -220,10 +214,7 @@ function ProductRowComponent({
 
         {/* Photo */}
         {visibleColumns.photo && (
-          <div 
-            className="flex-shrink-0 flex items-center justify-center overflow-hidden"
-            style={{ width: columnWidths.photo, maxWidth: columnWidths.photo }}
-          >
+          <div className="w-12 flex-shrink-0 flex items-center justify-center">
             <Button
               variant="ghost"
               size="sm"
@@ -252,10 +243,7 @@ function ProductRowComponent({
 
         {/* Name */}
         {visibleColumns.name && (
-          <div 
-            className="flex-shrink-0 overflow-hidden"
-            style={{ width: columnWidths.name, maxWidth: columnWidths.name }}
-          >
+          <div className="flex-1 min-w-[150px]">
             <InlineEditableCell
               value={product.name}
               onSave={handleUpdateName}
@@ -266,10 +254,7 @@ function ProductRowComponent({
 
         {/* SKU */}
         {visibleColumns.sku && (
-          <div 
-            className="flex-shrink-0 overflow-hidden"
-            style={{ width: columnWidths.sku, maxWidth: columnWidths.sku }}
-          >
+          <div className="w-20 flex-shrink-0">
             <InlineEditableCell
               value={product.sku || ""}
               onSave={handleUpdateSku}
@@ -281,10 +266,7 @@ function ProductRowComponent({
 
         {/* Description */}
         {visibleColumns.desc && (
-          <div 
-            className="flex-shrink-0 overflow-hidden"
-            style={{ width: columnWidths.desc, maxWidth: columnWidths.desc }}
-          >
+          <div className="w-24 flex-shrink-0">
             <InlineEditableCell
               value={product.description || ""}
               onSave={handleUpdateDesc}
@@ -296,10 +278,7 @@ function ProductRowComponent({
 
         {/* Source */}
         {visibleColumns.source && (
-          <div 
-            className="flex-shrink-0 overflow-hidden"
-            style={{ width: columnWidths.source, maxWidth: columnWidths.source }}
-          >
+          <div className="w-16 flex-shrink-0">
             {product.source === "moysklad" ? (
               <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 whitespace-nowrap">
                 МС
@@ -314,10 +293,7 @@ function ProductRowComponent({
 
         {/* Unit */}
         {visibleColumns.unit && (
-          <div 
-            className="flex-shrink-0 overflow-hidden"
-            style={{ width: columnWidths.unit, maxWidth: columnWidths.unit }}
-          >
+          <div className="w-16 flex-shrink-0">
             <InlineSelectCell
               value={product.unit}
               options={allUnitOptions}
@@ -330,10 +306,7 @@ function ProductRowComponent({
 
         {/* Type */}
         {visibleColumns.type && (
-          <div 
-            className="flex-shrink-0 overflow-hidden"
-            style={{ width: columnWidths.type, maxWidth: columnWidths.type }}
-          >
+          <div className="w-20 flex-shrink-0">
             <InlineSelectCell
               value={product.packagingType || (product.productType === "weight" ? "head" : "piece")}
               options={allPackagingOptions}
@@ -346,10 +319,7 @@ function ProductRowComponent({
 
         {/* Volume */}
         {visibleColumns.volume && (
-          <div 
-            className="flex-shrink-0 overflow-hidden"
-            style={{ width: columnWidths.volume, maxWidth: columnWidths.volume }}
-          >
+          <div className="w-16 flex-shrink-0">
             <InlinePriceCell
               value={product.unitWeight}
               onSave={handleUpdateVolume}
@@ -361,10 +331,7 @@ function ProductRowComponent({
 
         {/* Cost */}
         {visibleColumns.cost && (
-          <div 
-            className="flex-shrink-0 overflow-hidden"
-            style={{ width: columnWidths.cost, maxWidth: columnWidths.cost }}
-          >
+          <div className="w-16 flex-shrink-0">
             <InlinePriceCell
               value={product.buyPrice}
               onSave={handleUpdateCost}
@@ -375,10 +342,7 @@ function ProductRowComponent({
 
         {/* Groups */}
         {visibleColumns.groups && (
-          <div 
-            className="flex-shrink-0 overflow-hidden"
-            style={{ width: columnWidths.groups, maxWidth: columnWidths.groups }}
-          >
+          <div className="w-24 flex-shrink-0">
             <InlineMultiSelectCell
               values={productGroupIds}
               options={productGroups.map(g => ({ value: g.id, label: g.name }))}
@@ -396,10 +360,7 @@ function ProductRowComponent({
 
         {/* Catalogs */}
         {visibleColumns.catalogs && (
-          <div 
-            className="flex-shrink-0 overflow-hidden"
-            style={{ width: columnWidths.catalogs, maxWidth: columnWidths.catalogs }}
-          >
+          <div className="w-28 flex-shrink-0">
             <InlineMultiSelectCell
               values={Array.from(catalogVisibility)}
               options={catalogs.map(c => ({ value: c.id, label: c.name }))}
@@ -418,10 +379,7 @@ function ProductRowComponent({
 
         {/* Sync */}
         {visibleColumns.sync && (
-          <div 
-            className="flex-shrink-0 overflow-hidden"
-            style={{ width: columnWidths.sync, maxWidth: columnWidths.sync }}
-          >
+          <div className="w-12 flex-shrink-0">
             {product.source === "moysklad" && (
               <Button
                 variant="ghost"
@@ -521,17 +479,6 @@ function areEqual(prevProps: MemoizedProductRowProps, nextProps: MemoizedProduct
   if (prevCols.groups !== nextCols.groups) return false;
   if (prevCols.catalogs !== nextCols.catalogs) return false;
   if (prevCols.sync !== nextCols.sync) return false;
-  
-  // Check column widths - compare by reference since they should be the same object if unchanged
-  if (prevProps.columnWidths !== nextProps.columnWidths) {
-    // Deep check only if references differ
-    const prevWidths = prevProps.columnWidths;
-    const nextWidths = nextProps.columnWidths;
-    const keys = ['drag', 'checkbox', 'photo', 'name', 'sku', 'desc', 'source', 'unit', 'type', 'volume', 'cost', 'groups', 'catalogs', 'sync'];
-    for (const key of keys) {
-      if (prevWidths[key] !== nextWidths[key]) return false;
-    }
-  }
   
   // All checks passed
   return true;

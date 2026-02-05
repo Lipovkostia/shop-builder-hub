@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Check, X, Plus, ChevronDown, Tag, ExternalLink, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,15 +9,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
-// Simple debounce utility
-function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
-  let timeoutId: ReturnType<typeof setTimeout>;
-  return ((...args: Parameters<T>) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), delay);
-  }) as T;
-}
 
 interface SelectOption {
   value: string;
@@ -79,25 +70,17 @@ export function InlineMultiSelectCell({
     }
   }, [isAddingNew]);
 
-  // Debounced save to reduce DB calls during rapid selections
-  const debouncedSave = useMemo(
-    () => debounce((newValues: string[]) => {
-      onSave(newValues);
-    }, 150),
-    [onSave]
-  );
-
-  const handleToggle = useCallback((optionValue: string) => {
+  const handleToggle = (optionValue: string) => {
     setDraftValues((prev) => {
       const next = prev.includes(optionValue)
         ? prev.filter((v) => v !== optionValue)
         : [...prev, optionValue];
-      debouncedSave(next); // Use debounced save
+      onSave(next);
       return next;
     });
-  }, [debouncedSave]);
+  };
 
-  const handleAddNew = useCallback(async () => {
+  const handleAddNew = async () => {
     const trimmed = newOptionValue.trim();
     if (trimmed && onAddOption) {
       const result = await onAddOption(trimmed);
@@ -111,20 +94,20 @@ export function InlineMultiSelectCell({
       setNewOptionValue("");
       setIsAddingNew(false);
     }
-  }, [newOptionValue, onAddOption, draftValues, onSave]);
+  };
 
-  const handleCancelAdd = useCallback(() => {
+  const handleCancelAdd = () => {
     setNewOptionValue("");
     setIsAddingNew(false);
-  }, []);
+  };
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       handleAddNew();
     } else if (e.key === "Escape") {
       handleCancelAdd();
     }
-  }, [handleAddNew, handleCancelAdd]);
+  };
 
   const selectedLabels = values
     .map(v => options.find(o => o.value === v)?.label)

@@ -80,8 +80,6 @@ import { InlineProductRow } from "@/components/admin/InlineProductRow";
 import { InlineEditableCell } from "@/components/admin/InlineEditableCell";
 import { InlineSelectCell } from "@/components/admin/InlineSelectCell";
 import { InlineMultiSelectCell } from "@/components/admin/InlineMultiSelectCell";
-import { InlinePrimaryCategoryCell } from "@/components/admin/InlinePrimaryCategoryCell";
-import { VirtualCatalogTable } from "@/components/admin/VirtualCatalogTable";
 import { InlinePriceCell } from "@/components/admin/InlinePriceCell";
 import { InlineMarkupCell } from "@/components/admin/InlineMarkupCell";
 import { MobileTabNav } from "@/components/admin/MobileTabNav";
@@ -100,7 +98,7 @@ import { useCatalogProductSettings } from "@/hooks/useCatalogProductSettings";
 import { useProductGroups } from "@/hooks/useProductGroups";
 import { useProductCategories } from "@/hooks/useProductCategories";
 import { useStoreCategories, StoreCategory } from "@/hooks/useStoreCategories";
-import { CategoryManagementDialog } from "@/components/wholesale/CategoryManagementDialog";
+import { CategoryOrderDialog } from "@/components/admin/CategoryOrderDialog";
 import { useStoreNotificationSettings } from "@/hooks/useStoreNotificationSettings";
 import { useMoyskladOrders } from "@/hooks/useMoyskladOrders";
 import { Textarea } from "@/components/ui/textarea";
@@ -631,7 +629,6 @@ export default function AdminPanel({
     settings: catalogProductSettings,
     getProductSettings: getCatalogProductSettingsFromDB,
     updateProductSettings: updateCatalogProductSettingsInDB,
-    bulkUpdateProductSettings: bulkUpdateCatalogProductSettingsInDB,
     refetch: refetchCatalogProductSettings
   } = useCatalogProductSettings(effectiveStoreId);
   
@@ -652,7 +649,7 @@ export default function AdminPanel({
   } = useProductCategories(effectiveStoreId);
 
   // Store categories from Supabase
-  const { categories: storeCategories, loading: categoriesLoading, createCategory, updateCategoryOrder, updateCategory, deleteCategory, refetch: refetchCategories } = useStoreCategories(effectiveStoreId);
+  const { categories: storeCategories, loading: categoriesLoading, createCategory, updateCategoryOrder, refetch: refetchCategories } = useStoreCategories(effectiveStoreId);
   const [categoryOrderDialogOpen, setCategoryOrderDialogOpen] = useState(false);
   // ================ END SUPABASE DATA HOOKS ================
   
@@ -803,15 +800,8 @@ export default function AdminPanel({
     console.log('setCatalogs now routes through Supabase');
   }, []);
   
-  // Initialize catalog view and current catalog from URL params
-  const [catalogView, setCatalogView] = useState<CatalogView>(() => {
-    const catalogId = searchParams.get('catalogId');
-    return catalogId ? "detail" : "list";
-  });
+  const [catalogView, setCatalogView] = useState<CatalogView>("list");
   const [currentCatalog, setCurrentCatalog] = useState<Catalog | null>(null);
-  const [pendingCatalogId, setPendingCatalogId] = useState<string | null>(() => {
-    return searchParams.get('catalogId');
-  });
   const [newCatalogName, setNewCatalogName] = useState("");
   const [newCatalogDescription, setNewCatalogDescription] = useState("");
   const [newCatalogCategories, setNewCatalogCategories] = useState<Set<string>>(new Set());
@@ -1003,8 +993,7 @@ export default function AdminPanel({
     photo: true,
     name: true,
     description: true,
-    primaryCategory: true,
-    subcategories: true,
+    categories: true,
     unit: true,
     volume: true,
     type: true,
@@ -1023,8 +1012,7 @@ export default function AdminPanel({
     photo: "Фото",
     name: "Название",
     description: "Описание",
-    primaryCategory: "Категория",
-    subcategories: "Подкатегория",
+    categories: "Категории",
     unit: "Ед. изм.",
     volume: "Объем",
     type: "Вид",
@@ -1122,59 +1110,6 @@ export default function AdminPanel({
       toast({
         title: "Ошибка",
         description: "Не удалось создать категорию",
-        variant: "destructive",
-      });
-      return null;
-    }
-  }, [effectiveStoreId, storeCategories, toast, createCategory, refetchCategories]);
-
-  // Add new subcategory handler - creates with parent_id
-  const handleAddSubcategory = useCallback(async (categoryName: string, parentCategoryId: string | null): Promise<string | null> => {
-    if (!effectiveStoreId) return null;
-    if (!parentCategoryId) {
-      toast({
-        title: "Выберите категорию",
-        description: "Сначала выберите родительскую категорию для подкатегории",
-        variant: "destructive",
-      });
-      return null;
-    }
-
-    const normalized = categoryName.trim();
-    if (!normalized) return null;
-
-    // Check if subcategory already exists under this parent (case-insensitive)
-    const existing = storeCategories.find(
-      (c) => c.name.toLowerCase() === normalized.toLowerCase() && c.parent_id === parentCategoryId
-    );
-
-    if (existing) {
-      toast({
-        title: "Подкатегория уже существует",
-        description: `Подкатегория "${normalized}" уже есть в этой категории`,
-      });
-      return existing.id;
-    }
-
-    try {
-      const created = await createCategory(normalized, parentCategoryId);
-
-      if (!created) throw new Error("createCategory returned null");
-
-      toast({
-        title: "Подкатегория создана",
-        description: `Подкатегория "${normalized}" успешно добавлена`,
-      });
-
-      // Safety: if realtime is delayed, force refresh
-      refetchCategories();
-
-      return created.id;
-    } catch (error) {
-      console.error("Error creating subcategory:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось создать подкатегорию",
         variant: "destructive",
       });
       return null;
@@ -1302,43 +1237,12 @@ export default function AdminPanel({
     if (section === "import") {
       setImportView("accounts");
     } else if (section === "catalogs") {
-      // Only reset to list if there's no catalogId in URL
-      const catalogIdInUrl = searchParams.get('catalogId');
-      if (!catalogIdInUrl) {
-        setCatalogView("list");
-        // Reset currentCatalog to force re-read from catalogs array with fresh product data
-        setCurrentCatalog(null);
-        setSelectedCatalogProducts(new Set());
-      }
-      // Remove catalogId from URL when going back to catalogs list without explicit catalog
-      const newParamsForCatalogs = new URLSearchParams(newParams);
-      newParamsForCatalogs.delete('catalogId');
-      setSearchParams(newParamsForCatalogs, { replace: true });
+      setCatalogView("list");
+      // Reset currentCatalog to force re-read from catalogs array with fresh product data
+      setCurrentCatalog(null);
+      setSelectedCatalogProducts(new Set());
     }
   }, [searchParams, setSearchParams]);
-
-  // Restore catalog from URL when catalogs are loaded
-  useEffect(() => {
-    if (!pendingCatalogId || supabaseCatalogs.length === 0 || catalogsLoading) return;
-    
-    const supabaseCatalog = supabaseCatalogs.find(c => c.id === pendingCatalogId);
-    if (supabaseCatalog) {
-      const legacyCatalog: Catalog = {
-        id: supabaseCatalog.id,
-        name: supabaseCatalog.name,
-        description: supabaseCatalog.description || undefined,
-        productIds: Object.entries(productCatalogVisibility)
-          .filter(([_, catalogsSet]) => catalogsSet.has(supabaseCatalog.id))
-          .map(([productId]) => productId),
-        categoryIds: [],
-        createdAt: supabaseCatalog.created_at,
-      };
-      setCurrentCatalog(legacyCatalog);
-      setSelectedCatalogProducts(new Set(legacyCatalog.productIds));
-      setCatalogView("detail");
-    }
-    setPendingCatalogId(null);
-  }, [pendingCatalogId, supabaseCatalogs, productCatalogVisibility, catalogsLoading]);
 
   // Initialize profile and store data when profile section is active
   useEffect(() => {
@@ -2198,11 +2102,6 @@ export default function AdminPanel({
       setCurrentCatalog(legacyCatalog);
       setSelectedCatalogProducts(new Set(legacyCatalog.productIds));
       setCatalogView("detail");
-      
-      // Save catalogId to URL for persistence on refresh
-      const newParams = new URLSearchParams(searchParams);
-      newParams.set('catalogId', freshCatalog.id);
-      setSearchParams(newParams, { replace: true });
     }
   };
 
@@ -2282,7 +2181,6 @@ export default function AdminPanel({
         value: dbSettings.markup_value
       } : undefined,
       status: dbSettings.status as ProductStatus,
-      primary_category_id: dbSettings.primary_category_id,
       categories: dbSettings.categories,
       portionPrices: dbSettings.portion_prices || undefined,
     };
@@ -2306,9 +2204,6 @@ export default function AdminPanel({
 
     const dbUpdates: Parameters<typeof updateCatalogProductSettingsInDB>[2] = {};
 
-    if (updates.primary_category_id !== undefined) {
-      dbUpdates.primary_category_id = updates.primary_category_id;
-    }
     if (updates.categories !== undefined) {
       dbUpdates.categories = updates.categories;
     }
@@ -2325,43 +2220,6 @@ export default function AdminPanel({
 
     await updateCatalogProductSettingsInDB(catalogId, productId, dbUpdates);
   }, [updateCatalogProductSettingsInDB, user, toast]);
-
-  // Bulk update catalog-specific pricing for multiple products (batch DB operation)
-  const bulkUpdateCatalogProductPricing = useCallback(async (
-    catalogId: string,
-    productIds: string[],
-    updates: Partial<CatalogProductPricing>
-  ) => {
-    if (!user) {
-      toast({
-        title: "Требуется вход",
-        description: "Войдите в аккаунт продавца, чтобы сохранять изменения в прайс-листе.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const dbUpdates: Parameters<typeof bulkUpdateCatalogProductSettingsInDB>[2] = {};
-
-    if (updates.primary_category_id !== undefined) {
-      dbUpdates.primary_category_id = updates.primary_category_id;
-    }
-    if (updates.categories !== undefined) {
-      dbUpdates.categories = updates.categories;
-    }
-    if (updates.markup !== undefined) {
-      dbUpdates.markup_type = updates.markup?.type === "rubles" ? "fixed" : "percent";
-      dbUpdates.markup_value = updates.markup?.value || 0;
-    }
-    if (updates.status !== undefined) {
-      dbUpdates.status = updates.status;
-    }
-    if (updates.portionPrices !== undefined) {
-      dbUpdates.portion_prices = updates.portionPrices;
-    }
-
-    await bulkUpdateCatalogProductSettingsInDB(catalogId, productIds, dbUpdates);
-  }, [bulkUpdateCatalogProductSettingsInDB, user, toast]);
 
   // Get effective sale price for catalog (using catalog markup or falling back to base product)
   const getCatalogSalePrice = (product: Product, catalogPricing?: CatalogProductPricing): number => {
@@ -3505,11 +3363,6 @@ export default function AdminPanel({
                       setCurrentCatalog(legacyCatalog);
                       setSelectedCatalogProducts(new Set(legacyCatalog.productIds));
                       setCatalogView("detail");
-                      
-                      // Save catalogId to URL for persistence on refresh
-                      const newParams = new URLSearchParams(searchParams);
-                      newParams.set('catalogId', supabaseCatalog.id);
-                      setSearchParams(newParams, { replace: true });
                     }, 0);
                   }
                 }}
@@ -4463,10 +4316,6 @@ export default function AdminPanel({
                           setCurrentCatalog(null);
                           setSelectedCatalogProducts(new Set());
                           setCatalogProductSearch("");
-                          // Remove catalogId from URL
-                          const newParams = new URLSearchParams(searchParams);
-                          newParams.delete('catalogId');
-                          setSearchParams(newParams, { replace: true });
                         }}
                       >
                         <ArrowLeft className="h-4 w-4 mr-2" />
@@ -4777,37 +4626,17 @@ export default function AdminPanel({
                     unitOptions={allUnitOptions}
                     packagingOptions={allPackagingOptions}
                     showDelete={false}
-                    categories={categories.map(c => ({ 
-                      id: c.id, 
-                      name: c.name, 
-                      sort_order: c.sort_order,
-                      parent_id: storeCategories.find(sc => sc.id === c.id)?.parent_id || null
-                    }))}
-                    onBulkSetPrimaryCategory={(categoryId) => {
-                      if (currentCatalog) {
-                        const count = selectedCatalogBulkProducts.size;
-                        const productIds = Array.from(selectedCatalogBulkProducts);
-                        // Use batch operation instead of forEach
-                        bulkUpdateCatalogProductPricing(currentCatalog.id, productIds, { primary_category_id: categoryId });
-                        setSelectedCatalogBulkProducts(new Set());
-                        toast({
-                          title: "Категория обновлена",
-                          description: categoryId 
-                            ? `Главная категория установлена для ${count} товаров`
-                            : `Главная категория убрана у ${count} товаров`,
-                        });
-                      }
-                    }}
+                    categories={categories}
                     onBulkSetCategories={(categoryIds) => {
                       if (currentCatalog) {
                         const count = selectedCatalogBulkProducts.size;
-                        const productIds = Array.from(selectedCatalogBulkProducts);
-                        // Use batch operation instead of forEach
-                        bulkUpdateCatalogProductPricing(currentCatalog.id, productIds, { categories: categoryIds });
+                        selectedCatalogBulkProducts.forEach(productId => {
+                          updateCatalogProductPricing(currentCatalog.id, productId, { categories: categoryIds });
+                        });
                         setSelectedCatalogBulkProducts(new Set());
                         toast({
-                          title: "Подкатегории обновлены",
-                          description: `Подкатегории установлены для ${count} товаров`,
+                          title: "Категории обновлены",
+                          description: `Категории установлены для ${count} товаров`,
                         });
                       }
                     }}
@@ -4816,65 +4645,411 @@ export default function AdminPanel({
                   <p className="text-xs text-muted-foreground mb-2">
                     * Фото, название, описание, ед. изм., объём и вид синхронизируются из ассортимента. Категории, наценка и цены порций — индивидуальны для каждого прайс-листа. Статус синхронизируется с витриной.
                   </p>
-                  <VirtualCatalogTable
-                    products={allProducts
-                      .filter(p => selectedCatalogProducts.has(p.id))
-                      .filter(p => !catalogProductSearch || p.name.toLowerCase().includes(catalogProductSearch.toLowerCase()))
-                    }
-                    catalogId={currentCatalog.id}
-                    visibleColumns={catalogVisibleColumns}
-                    selectedBulkProducts={selectedCatalogBulkProducts}
-                    lastSelectedProductId={lastSelectedCatalogProductId}
-                    categories={categories}
-                    storeCategories={storeCategories}
-                    unitOptions={allUnitOptions}
-                    packagingOptions={allPackagingOptions}
-                    getCatalogProductPricing={getCatalogProductPricing}
-                    getCatalogSalePrice={getCatalogSalePrice}
-                    getCatalogProductStatus={getCatalogProductStatus}
-                    updateProduct={updateProduct}
-                    updateCatalogProductPricing={updateCatalogProductPricing}
-                    onSelectProduct={(productId, shiftKey) => {
-                      const filteredCatalogProducts = allProducts
-                        .filter(p => selectedCatalogProducts.has(p.id))
-                        .filter(p => !catalogProductSearch || p.name.toLowerCase().includes(catalogProductSearch.toLowerCase()));
-                      
-                      setSelectedCatalogBulkProducts(prev => {
-                        const newSet = new Set(prev);
-                        
-                        // If Shift is pressed and we have a last selected product, select range
-                        if (shiftKey && lastSelectedCatalogProductId) {
-                          const lastIndex = filteredCatalogProducts.findIndex(p => p.id === lastSelectedCatalogProductId);
-                          const currentIndex = filteredCatalogProducts.findIndex(p => p.id === productId);
-                          
-                          if (lastIndex !== -1 && currentIndex !== -1) {
-                            const startIndex = Math.min(lastIndex, currentIndex);
-                            const endIndex = Math.max(lastIndex, currentIndex);
+                  <div className="bg-card rounded-lg border border-border overflow-x-auto">
+                    <ResizableTable
+                      storageKey="catalog-products-table"
+                      columns={[
+                        ...(catalogVisibleColumns.bulkCheckbox ? [{ id: "bulkCheckbox", minWidth: 40, defaultWidth: 40 }] : []),
+                        ...(catalogVisibleColumns.photo ? [{ id: "photo", minWidth: 50, defaultWidth: 60 }] : []),
+                        ...(catalogVisibleColumns.name ? [{ id: "name", minWidth: 120, defaultWidth: 180 }] : []),
+                        ...(catalogVisibleColumns.description ? [{ id: "description", minWidth: 100, defaultWidth: 200 }] : []),
+                        ...(catalogVisibleColumns.categories ? [{ id: "categories", minWidth: 100, defaultWidth: 140 }] : []),
+                        ...(catalogVisibleColumns.unit ? [{ id: "unit", minWidth: 60, defaultWidth: 80 }] : []),
+                        ...(catalogVisibleColumns.volume ? [{ id: "volume", minWidth: 60, defaultWidth: 80 }] : []),
+                        ...(catalogVisibleColumns.type ? [{ id: "type", minWidth: 80, defaultWidth: 100 }] : []),
+                        ...(catalogVisibleColumns.buyPrice ? [{ id: "buyPrice", minWidth: 70, defaultWidth: 90 }] : []),
+                        ...(catalogVisibleColumns.markup ? [{ id: "markup", minWidth: 110, defaultWidth: 120 }] : []),
+                        ...(catalogVisibleColumns.price ? [{ id: "price", minWidth: 80, defaultWidth: 100 }] : []),
+                        ...(catalogVisibleColumns.priceFull ? [{ id: "priceFull", minWidth: 70, defaultWidth: 90 }] : []),
+                        ...(catalogVisibleColumns.priceHalf ? [{ id: "priceHalf", minWidth: 70, defaultWidth: 90 }] : []),
+                        ...(catalogVisibleColumns.priceQuarter ? [{ id: "priceQuarter", minWidth: 70, defaultWidth: 90 }] : []),
+                        ...(catalogVisibleColumns.pricePortion ? [{ id: "pricePortion", minWidth: 70, defaultWidth: 90 }] : []),
+                        ...(catalogVisibleColumns.status ? [{ id: "status", minWidth: 80, defaultWidth: 100 }] : []),
+                      ]}
+                    >
+                      <ResizableTableHeader>
+                        <ResizableTableRow>
+                          {catalogVisibleColumns.bulkCheckbox && (
+                            <ResizableTableHead columnId="bulkCheckbox">
+                              <Checkbox
+                                checked={(() => {
+                                  const catalogProducts = allProducts.filter(p => selectedCatalogProducts.has(p.id));
+                                  return catalogProducts.length > 0 && catalogProducts.every(p => selectedCatalogBulkProducts.has(p.id));
+                                })()}
+                                onCheckedChange={() => {
+                                  const catalogProductIds = allProducts.filter(p => selectedCatalogProducts.has(p.id)).map(p => p.id);
+                                  const allSelected = catalogProductIds.every(id => selectedCatalogBulkProducts.has(id));
+                                  if (allSelected) {
+                                    setSelectedCatalogBulkProducts(new Set());
+                                  } else {
+                                    setSelectedCatalogBulkProducts(new Set(catalogProductIds));
+                                  }
+                                }}
+                              />
+                            </ResizableTableHead>
+                          )}
+                          {catalogVisibleColumns.photo && <ResizableTableHead columnId="photo">Фото</ResizableTableHead>}
+                          {catalogVisibleColumns.name && <ResizableTableHead columnId="name">Название</ResizableTableHead>}
+                          {catalogVisibleColumns.description && <ResizableTableHead columnId="description">Описание</ResizableTableHead>}
+                          {catalogVisibleColumns.categories && <ResizableTableHead columnId="categories">Категории</ResizableTableHead>}
+                          {catalogVisibleColumns.unit && <ResizableTableHead columnId="unit">Ед. изм.</ResizableTableHead>}
+                          {catalogVisibleColumns.volume && <ResizableTableHead columnId="volume">Объем</ResizableTableHead>}
+                          {catalogVisibleColumns.type && <ResizableTableHead columnId="type">Вид</ResizableTableHead>}
+                          {catalogVisibleColumns.buyPrice && <ResizableTableHead columnId="buyPrice">Себест-ть</ResizableTableHead>}
+                          {catalogVisibleColumns.markup && <ResizableTableHead columnId="markup">Наценка</ResizableTableHead>}
+                          {catalogVisibleColumns.price && <ResizableTableHead columnId="price">Цена</ResizableTableHead>}
+                          {catalogVisibleColumns.priceFull && <ResizableTableHead columnId="priceFull">Целая</ResizableTableHead>}
+                          {catalogVisibleColumns.priceHalf && <ResizableTableHead columnId="priceHalf">½</ResizableTableHead>}
+                          {catalogVisibleColumns.priceQuarter && <ResizableTableHead columnId="priceQuarter">¼</ResizableTableHead>}
+                          {catalogVisibleColumns.pricePortion && <ResizableTableHead columnId="pricePortion">Порция</ResizableTableHead>}
+                          {catalogVisibleColumns.status && <ResizableTableHead columnId="status">Статус</ResizableTableHead>}
+                        </ResizableTableRow>
+                      </ResizableTableHeader>
+                      <ResizableTableBody>
+                        {allProducts
+                          .filter(p => selectedCatalogProducts.has(p.id))
+                          .filter(p => !catalogProductSearch || p.name.toLowerCase().includes(catalogProductSearch.toLowerCase()))
+                          .map((product) => {
+                            // Get catalog-specific pricing/data
+                            const catalogPricing = currentCatalog ? getCatalogProductPricing(currentCatalog.id, product.id) : undefined;
                             
-                            // Add all products in range
-                            for (let i = startIndex; i <= endIndex; i++) {
-                              newSet.add(filteredCatalogProducts[i].id);
-                            }
-                            return newSet;
-                          }
-                        }
-                        
-                        // Normal toggle behavior
-                        if (newSet.has(productId)) {
-                          newSet.delete(productId);
-                        } else {
-                          newSet.add(productId);
-                        }
-                        return newSet;
-                      });
-                      
-                      // Always update last selected
-                      setLastSelectedCatalogProductId(productId);
-                    }}
-                    onAddCategory={handleAddCategory}
-                    onAddSubcategory={handleAddSubcategory}
-                    onOpenCategoryOrder={() => setCategoryOrderDialogOpen(true)}
-                  />
+                            // Base product info (synced from assortment - read only in catalogs)
+                            // These fields are always from the base product and cannot be edited per catalog
+                            const baseName = product.name;
+                            const baseDescription = product.description;
+                            const baseUnit = product.unit;
+                            const baseUnitWeight = product.unitWeight;
+                            const basePackagingType = product.packagingType;
+                            
+                            // Catalog-specific values (editable per catalog)
+                            const effectiveCategories = catalogPricing?.categories ?? product.categories;
+                            const effectiveMarkup = catalogPricing?.markup ?? product.markup;
+                            const effectivePortionPrices = catalogPricing?.portionPrices ?? product.portionPrices;
+                            const effectiveStatus = getCatalogProductStatus(product, catalogPricing);
+                            
+                            // Calculate prices using catalog-specific markup but base product unitWeight
+                            const salePrice = getCatalogSalePrice(product, catalogPricing);
+                            const packagingPrices = calculatePackagingPrices(
+                              salePrice,
+                              baseUnitWeight,
+                              basePackagingType,
+                              product.customVariantPrices,
+                              effectivePortionPrices
+                            );
+                            
+                            return (
+                              <ResizableTableRow
+                                key={product.id}
+                                className={`${selectedCatalogProducts.has(product.id) ? "bg-primary/5" : ""} ${selectedCatalogBulkProducts.has(product.id) ? "bg-primary/10" : ""}`}
+                              >
+                                {catalogVisibleColumns.bulkCheckbox && (
+                                  <ResizableTableCell columnId="bulkCheckbox">
+                                    <div
+                                      onClick={(e) => {
+                                        const shiftKey = e.shiftKey;
+                                        const filteredCatalogProducts = allProducts
+                                          .filter(p => selectedCatalogProducts.has(p.id))
+                                          .filter(p => !catalogProductSearch || p.name.toLowerCase().includes(catalogProductSearch.toLowerCase()));
+                                        
+                                        setSelectedCatalogBulkProducts(prev => {
+                                          const newSet = new Set(prev);
+                                          
+                                          // If Shift is pressed and we have a last selected product, select range
+                                          if (shiftKey && lastSelectedCatalogProductId) {
+                                            const lastIndex = filteredCatalogProducts.findIndex(p => p.id === lastSelectedCatalogProductId);
+                                            const currentIndex = filteredCatalogProducts.findIndex(p => p.id === product.id);
+                                            
+                                            if (lastIndex !== -1 && currentIndex !== -1) {
+                                              const startIndex = Math.min(lastIndex, currentIndex);
+                                              const endIndex = Math.max(lastIndex, currentIndex);
+                                              
+                                              // Add all products in range
+                                              for (let i = startIndex; i <= endIndex; i++) {
+                                                newSet.add(filteredCatalogProducts[i].id);
+                                              }
+                                              return newSet;
+                                            }
+                                          }
+                                          
+                                          // Normal toggle behavior
+                                          if (newSet.has(product.id)) {
+                                            newSet.delete(product.id);
+                                          } else {
+                                            newSet.add(product.id);
+                                          }
+                                          return newSet;
+                                        });
+                                        
+                                        // Always update last selected
+                                        setLastSelectedCatalogProductId(product.id);
+                                      }}
+                                      className="cursor-pointer"
+                                    >
+                                      <Checkbox
+                                        checked={selectedCatalogBulkProducts.has(product.id)}
+                                        className="pointer-events-none"
+                                      />
+                                    </div>
+                                  </ResizableTableCell>
+                                )}
+                                {/* Фото - из ассортимента (только чтение) */}
+                                {catalogVisibleColumns.photo && (
+                                  <ResizableTableCell columnId="photo">
+                                    <img
+                                      src={product.image}
+                                      alt={baseName}
+                                      className="w-10 h-10 rounded object-cover"
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Название - редактируемое, сохраняется в ассортимент */}
+                                {catalogVisibleColumns.name && (
+                                  <ResizableTableCell columnId="name" className="font-medium">
+                                    <InlineEditableCell
+                                      value={baseName}
+                                      onSave={(newName) => {
+                                        if (newName && newName !== baseName) {
+                                          updateProduct({ ...product, name: newName });
+                                        }
+                                      }}
+                                      placeholder="Название"
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Описание - редактируемое, сохраняется в ассортимент */}
+                                {catalogVisibleColumns.description && (
+                                  <ResizableTableCell columnId="description">
+                                    <InlineEditableCell
+                                      value={baseDescription || ""}
+                                      onSave={(newDesc) => {
+                                        if (newDesc !== baseDescription) {
+                                          updateProduct({ ...product, description: newDesc });
+                                        }
+                                      }}
+                                      placeholder="Описание..."
+                                      className="text-muted-foreground text-xs"
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Категории - независимые для каждого каталога */}
+                                {catalogVisibleColumns.categories && (
+                                  <ResizableTableCell columnId="categories">
+                                    <InlineMultiSelectCell
+                                      values={effectiveCategories || []}
+                                      options={categories.map(c => ({ value: c.id, label: c.name, sort_order: c.sort_order }))}
+                                      onSave={(selectedIds) => {
+                                        if (currentCatalog) {
+                                          updateCatalogProductPricing(currentCatalog.id, product.id, { categories: selectedIds });
+                                        }
+                                      }}
+                                      onAddOption={handleAddCategory}
+                                      onReorder={() => setCategoryOrderDialogOpen(true)}
+                                      placeholder="Категории..."
+                                      addNewPlaceholder="Новая категория..."
+                                      addNewButtonLabel="Создать категорию"
+                                      allowAddNew={true}
+                                      showReorderButton={true}
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Единица измерения - редактируемая, сохраняется в ассортимент */}
+                                {catalogVisibleColumns.unit && (
+                                  <ResizableTableCell columnId="unit">
+                                    <InlineSelectCell
+                                      value={baseUnit}
+                                      options={allUnitOptions}
+                                      onSave={(newUnit) => {
+                                        if (newUnit !== baseUnit) {
+                                          updateProduct({ ...product, unit: newUnit });
+                                        }
+                                      }}
+                                      onAddOption={(newUnit) => setCustomUnits(prev => [...prev, newUnit])}
+                                      addNewPlaceholder="Ед..."
+                                      allowAddNew={true}
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Объём - редактируемый, сохраняется в ассортимент */}
+                                {catalogVisibleColumns.volume && (
+                                  <ResizableTableCell columnId="volume">
+                                    <InlinePriceCell
+                                      value={baseUnitWeight}
+                                      onSave={(newVolume) => {
+                                        if (newVolume !== baseUnitWeight) {
+                                          updateProduct({ ...product, unitWeight: newVolume });
+                                        }
+                                      }}
+                                      placeholder="0"
+                                      suffix={baseUnit}
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Вид упаковки - редактируемый, сохраняется в ассортимент */}
+                                {catalogVisibleColumns.type && (
+                                  <ResizableTableCell columnId="type">
+                                    <InlineSelectCell
+                                      value={basePackagingType || "piece"}
+                                      options={allPackagingOptions}
+                                      onSave={(newType) => {
+                                        if (newType !== basePackagingType) {
+                                          updateProduct({ ...product, packagingType: newType as PackagingType });
+                                        }
+                                      }}
+                                      onAddOption={(newType) => setCustomPackagingTypes(prev => [...prev, newType])}
+                                      addNewPlaceholder="Вид..."
+                                      allowAddNew={true}
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Себестоимость - редактируемая, сохраняется в ассортимент */}
+                                {catalogVisibleColumns.buyPrice && (
+                                  <ResizableTableCell columnId="buyPrice">
+                                    <InlinePriceCell
+                                      value={product.buyPrice}
+                                      onSave={(newBuyPrice) => {
+                                        if (newBuyPrice !== product.buyPrice) {
+                                          updateProduct({ ...product, buyPrice: newBuyPrice });
+                                        }
+                                      }}
+                                      placeholder="—"
+                                      suffix="₽"
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Наценка - независимая для каждого каталога */}
+                                {catalogVisibleColumns.markup && (
+                                  <ResizableTableCell columnId="markup">
+                                    <InlineMarkupCell
+                                      value={effectiveMarkup}
+                                      onSave={(markup) => {
+                                        if (currentCatalog) {
+                                          updateCatalogProductPricing(currentCatalog.id, product.id, { markup });
+                                        }
+                                      }}
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {catalogVisibleColumns.price && (
+                                  <ResizableTableCell columnId="price" className="font-medium">
+                                    <span className="text-xs">{formatPrice(salePrice)}/{baseUnit}</span>
+                                  </ResizableTableCell>
+                                )}
+                                {catalogVisibleColumns.priceFull && (
+                                  <ResizableTableCell columnId="priceFull">
+                                    {packagingPrices ? (
+                                      <span className="text-xs font-medium">{formatPrice(packagingPrices.full)}</span>
+                                    ) : "-"}
+                                  </ResizableTableCell>
+                                )}
+                                {/* Цена за ½ - независимая для каждого каталога */}
+                                {catalogVisibleColumns.priceHalf && (
+                                  <ResizableTableCell columnId="priceHalf">
+                                    <div className="flex flex-col gap-0.5">
+                                      <InlinePriceCell
+                                        value={effectivePortionPrices?.halfPricePerKg}
+                                        onSave={(value) => {
+                                          if (currentCatalog) {
+                                            updateCatalogProductPricing(currentCatalog.id, product.id, { 
+                                              portionPrices: { 
+                                                ...effectivePortionPrices, 
+                                                halfPricePerKg: value 
+                                              } 
+                                            });
+                                          }
+                                        }}
+                                        placeholder="—"
+                                        suffix=""
+                                      />
+                                    </div>
+                                  </ResizableTableCell>
+                                )}
+                                {/* Цена за ¼ - независимая для каждого каталога */}
+                                {catalogVisibleColumns.priceQuarter && (
+                                  <ResizableTableCell columnId="priceQuarter">
+                                    <div className="flex flex-col gap-0.5">
+                                      <InlinePriceCell
+                                        value={effectivePortionPrices?.quarterPricePerKg}
+                                        onSave={(value) => {
+                                          if (currentCatalog) {
+                                            updateCatalogProductPricing(currentCatalog.id, product.id, { 
+                                              portionPrices: { 
+                                                ...effectivePortionPrices, 
+                                                quarterPricePerKg: value 
+                                              } 
+                                            });
+                                          }
+                                        }}
+                                        placeholder="—"
+                                        suffix=""
+                                      />
+                                    </div>
+                                  </ResizableTableCell>
+                                )}
+                                {/* Цена за порцию - независимая для каждого каталога */}
+                                {catalogVisibleColumns.pricePortion && (
+                                  <ResizableTableCell columnId="pricePortion">
+                                    <InlinePriceCell
+                                      value={effectivePortionPrices?.portionPrice}
+                                      onSave={(value) => {
+                                        if (currentCatalog) {
+                                          updateCatalogProductPricing(currentCatalog.id, product.id, { 
+                                            portionPrices: { 
+                                              ...effectivePortionPrices, 
+                                              portionPrice: value 
+                                            } 
+                                          });
+                                        }
+                                      }}
+                                      placeholder="—"
+                                      suffix=""
+                                    />
+                                  </ResizableTableCell>
+                                )}
+                                {/* Статус - синхронизируется с витриной */}
+                                {catalogVisibleColumns.status && (
+                                  <ResizableTableCell columnId="status">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        if (!currentCatalog) return;
+                                        const nextStatus: ProductStatus = 
+                                          effectiveStatus === "in_stock" ? "pre_order" :
+                                          effectiveStatus === "pre_order" ? "out_of_stock" :
+                                          effectiveStatus === "out_of_stock" ? "hidden" : "in_stock";
+                                        updateCatalogProductPricing(currentCatalog.id, product.id, { status: nextStatus });
+                                      }}
+                                      onTouchEnd={(e) => {
+                                        e.stopPropagation();
+                                      }}
+                                      className="focus:outline-none touch-manipulation p-1"
+                                      style={{ touchAction: 'manipulation' }}
+                                    >
+                                      <Badge
+                                        variant={effectiveStatus === "hidden" ? "outline" : effectiveStatus === "in_stock" ? "default" : "secondary"}
+                                        className={`text-xs cursor-pointer transition-colors select-none ${
+                                          effectiveStatus === "hidden"
+                                            ? "bg-muted/50 text-muted-foreground border-dashed"
+                                            : effectiveStatus === "in_stock"
+                                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800"
+                                              : effectiveStatus === "pre_order"
+                                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 hover:bg-blue-200 dark:hover:bg-blue-800"
+                                                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                        }`}
+                                      >
+                                        {effectiveStatus === "hidden" ? "Скрыт" : 
+                                         effectiveStatus === "in_stock" ? "В наличии" : 
+                                         effectiveStatus === "pre_order" ? "Под заказ" : "Нет"}
+                                      </Badge>
+                                    </button>
+                                  </ResizableTableCell>
+                                )}
+                              </ResizableTableRow>
+                            );
+                          })}
+                      </ResizableTableBody>
+                    </ResizableTable>
+                  </div>
                 </>
               )}
             </>
@@ -6194,16 +6369,18 @@ export default function AdminPanel({
         </DialogContent>
       </Dialog>
 
-      {/* Category Management Dialog */}
-      <CategoryManagementDialog
+      {/* Category Order Dialog */}
+      <CategoryOrderDialog
         open={categoryOrderDialogOpen}
         onOpenChange={setCategoryOrderDialogOpen}
         categories={storeCategories}
-        onCreateCategory={createCategory}
-        onUpdateCategory={updateCategory}
-        onDeleteCategory={deleteCategory}
-        onUpdateOrder={updateCategoryOrder}
-        catalogs={catalogs.map(c => ({ id: c.id, name: c.name }))}
+        onSave={async (orderedIds) => {
+          await updateCategoryOrder(orderedIds);
+          toast({
+            title: "Порядок сохранён",
+            description: "Порядок отображения категорий обновлён",
+          });
+        }}
       />
 
       {/* Catalog Export Dialog */}

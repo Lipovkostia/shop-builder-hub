@@ -56,7 +56,6 @@ export interface RetailCategory {
   name: string;
   slug: string;
   image_url: string | null;
-  parent_id: string | null;
   product_count?: number;
 }
 
@@ -150,7 +149,7 @@ export function useRetailStore(subdomain: string | undefined) {
     try {
       const { data, error: catError } = await supabase
         .from("categories")
-        .select("id, name, slug, image_url, parent_id")
+        .select("id, name, slug, image_url")
         .eq("store_id", store.id)
         .order("sort_order");
 

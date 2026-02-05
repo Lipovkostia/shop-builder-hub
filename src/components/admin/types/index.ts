@@ -117,8 +117,7 @@ export interface CatalogProductPricing {
   markup?: MarkupSettings;              // Наценка для этого каталога
   portionPrices?: PortionPrices;        // Цены порций для этого каталога
   status?: ProductStatus;               // Статус в этом каталоге
-  primary_category_id?: string | null;  // Главная категория (родительская)
-  categories?: string[];                // Подкатегории в этом каталоге
+  categories?: string[];                // Категории в этом каталоге
 }
 
 export interface Catalog {
