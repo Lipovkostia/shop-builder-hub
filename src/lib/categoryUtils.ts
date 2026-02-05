@@ -10,11 +10,15 @@ export interface CategoryWithParent {
   parent_id: string | null;
   sort_order?: number | null;
   product_count?: number;
+  // Catalog-specific overrides
+  custom_name?: string | null;
+  catalog_sort_order?: number | null;
 }
 
 export interface CategoryTree extends CategoryWithParent {
   children: CategoryTree[];
   totalProductCount: number; // Sum of this category + all descendants
+  display_name: string; // The name to display (custom_name or name)
 }
 
 /**
@@ -24,12 +28,12 @@ export function buildCategoryTree<T extends CategoryWithParent>(categories: T[])
   const map = new Map<string, CategoryTree>();
   const roots: CategoryTree[] = [];
 
-  // Sort helper - preserves original order from database query (which is already sorted by sort_order, name)
+  // Sort helper - use catalog_sort_order if available, otherwise sort_order
   const sortByOrder = (a: CategoryTree, b: CategoryTree) => {
-    const orderA = a.sort_order ?? 9999;
-    const orderB = b.sort_order ?? 9999;
+    const orderA = a.catalog_sort_order ?? a.sort_order ?? 9999;
+    const orderB = b.catalog_sort_order ?? b.sort_order ?? 9999;
     if (orderA !== orderB) return orderA - orderB;
-    return a.name.localeCompare(b.name, 'ru');
+    return a.display_name.localeCompare(b.display_name, 'ru');
   };
 
   // Initialize all nodes
@@ -37,7 +41,8 @@ export function buildCategoryTree<T extends CategoryWithParent>(categories: T[])
     map.set(cat.id, { 
       ...cat, 
       children: [],
-      totalProductCount: cat.product_count || 0
+      totalProductCount: cat.product_count || 0,
+      display_name: cat.custom_name || cat.name,
     });
   });
 

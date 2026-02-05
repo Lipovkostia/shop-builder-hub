@@ -22,6 +22,8 @@ interface Category {
   product_count?: number;
   slug?: string;
   image_url?: string | null;
+  custom_name?: string | null;
+  catalog_sort_order?: number | null;
 }
 
 interface WholesaleCategorySelectorProps {
@@ -102,7 +104,7 @@ export function WholesaleCategorySelector({
     ? categories.find((c) => c.id === selectedCategory)
     : null;
 
-  const selectedCategoryName = selectedCategoryData?.name || "Все товары";
+  const selectedCategoryName = selectedCategoryData?.custom_name || selectedCategoryData?.name || "Все товары";
 
   const selectedCategoryCount = selectedCategoryData?.product_count || totalProductsCount;
 
@@ -157,7 +159,7 @@ export function WholesaleCategorySelector({
                 !isSelected && "ml-7"
               )}
             >
-              {cat.name}
+              {cat.display_name}
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
