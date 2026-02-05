@@ -2224,6 +2224,10 @@ export default function AdminPanel({
 
   // Get effective sale price for catalog (using catalog markup or falling back to base product)
   const getCatalogSalePrice = (product: Product, catalogPricing?: CatalogProductPricing): number => {
+    // If fixed price is enabled, use pricePerUnit directly
+    if (product.isFixedPrice) {
+      return product.pricePerUnit || 0;
+    }
     const buyPrice = product.buyPrice || 0;
     const markup = catalogPricing?.markup !== undefined ? catalogPricing.markup : product.markup;
     return calculateSalePrice(buyPrice, markup);
@@ -4934,7 +4938,34 @@ export default function AdminPanel({
                                 )}
                                 {catalogVisibleColumns.price && (
                                   <ResizableTableCell columnId="price" className="font-medium">
-                                    <span className="text-xs">{formatPrice(salePrice)}/{baseUnit}</span>
+                                    <div className="flex items-center gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-5 w-5 flex-shrink-0"
+                                        onClick={() => {
+                                          updateProduct({ ...product, isFixedPrice: !product.isFixedPrice });
+                                        }}
+                                        title={product.isFixedPrice 
+                                          ? "Фиксированная цена (кликните для расчёта по наценке)" 
+                                          : "Цена по наценке (кликните для фиксации)"}
+                                      >
+                                        {product.isFixedPrice 
+                                          ? <Lock className="h-3 w-3 text-amber-500" /> 
+                                          : <Unlock className="h-3 w-3 text-muted-foreground/40" />}
+                                      </Button>
+                                      <InlinePriceCell
+                                        value={product.pricePerUnit}
+                                        onSave={(newPrice) => {
+                                          if (newPrice !== product.pricePerUnit) {
+                                            // When editing price manually, automatically enable fixed price
+                                            updateProduct({ ...product, pricePerUnit: newPrice ?? 0, isFixedPrice: true });
+                                          }
+                                        }}
+                                        placeholder="0"
+                                        suffix={`₽/${baseUnit}`}
+                                      />
+                                    </div>
                                   </ResizableTableCell>
                                 )}
                                 {catalogVisibleColumns.priceFull && (
