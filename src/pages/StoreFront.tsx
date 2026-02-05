@@ -647,6 +647,8 @@ function ProductCard({
               portion_prices: catalogSettings.portion_prices,
               status: catalogSettings.status,
               categories: catalogSettings.categories,
+              fixed_price: catalogSettings.fixed_price,
+              is_fixed_price: catalogSettings.is_fixed_price,
             } : undefined}
             onCatalogSettingsChange={onCatalogSettingsChange}
             storeId={product.store_id}

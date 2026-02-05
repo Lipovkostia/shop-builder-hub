@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { X, ChevronDown, Plus, Search } from "lucide-react";
+import { X, ChevronDown, Plus, Search, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,6 +29,8 @@ interface CatalogSettings {
   } | null;
   status?: string;
   categories?: string[];
+  fixed_price?: number | null;
+  is_fixed_price?: boolean;
 }
 
 interface ProductEditPanelProps {
@@ -88,6 +90,14 @@ export function ProductEditPanel({
   );
   const [pricePortion, setPricePortion] = useState(
     catalogSettings?.portion_prices?.portionPrice?.toString() || product.price_portion?.toString() || ""
+  );
+  
+  // Catalog-specific fixed price
+  const [catalogFixedPrice, setCatalogFixedPrice] = useState(
+    catalogSettings?.fixed_price?.toString() || ""
+  );
+  const [isCatalogFixedPrice, setIsCatalogFixedPrice] = useState(
+    catalogSettings?.is_fixed_price || false
   );
   
   // Product-level fields
@@ -170,6 +180,8 @@ export function ProductEditPanel({
         catalogSettings?.portion_prices?.portionPrice?.toString() || product.price_portion?.toString() || ""
       );
       setSelectedCategories(catalogSettings?.categories || []);
+      setCatalogFixedPrice(catalogSettings?.fixed_price?.toString() || "");
+      setIsCatalogFixedPrice(catalogSettings?.is_fixed_price || false);
     }
   }, [catalogSettings, catalogId, product]);
 
@@ -234,6 +246,8 @@ export function ProductEditPanel({
           },
           status,
           categories: selectedCategories,
+          fixed_price: isCatalogFixedPrice ? (parseFloat(catalogFixedPrice) || null) : null,
+          is_fixed_price: isCatalogFixedPrice,
         });
       } else if (catalogId && onStatusChange && status !== currentStatus) {
         // Fallback: just update status if no onCatalogSettingsChange
@@ -258,6 +272,8 @@ export function ProductEditPanel({
     priceHalf,
     priceQuarter,
     pricePortion,
+    catalogFixedPrice,
+    isCatalogFixedPrice,
     selectedCategories,
     selectedCatalogs,
     product.id,
@@ -291,7 +307,7 @@ export function ProductEditPanel({
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [name, buyPrice, markupType, markupValue, unit, packagingType, unitWeight, status, categoryId, priceHalf, priceQuarter, pricePortion, selectedCategories, selectedCatalogs]);
+  }, [name, buyPrice, markupType, markupValue, unit, packagingType, unitWeight, status, categoryId, priceHalf, priceQuarter, pricePortion, catalogFixedPrice, isCatalogFixedPrice, selectedCategories, selectedCatalogs]);
 
   const toggleCatalog = (catalogId: string) => {
     setSelectedCatalogs(prev => 
@@ -423,10 +439,38 @@ export function ProductEditPanel({
 
         {/* Цена */}
         <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Цена</label>
-          <div className="h-7 mt-0.5 flex items-center px-2 rounded-md bg-primary/10 border border-primary/20">
-            <span className="text-xs font-semibold text-primary">{calculateSalePrice().toFixed(0)} ₽</span>
-          </div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+            Цена
+            {isCatalogFixedPrice && <Lock className="h-2.5 w-2.5 text-primary" />}
+          </label>
+          {isCatalogFixedPrice || !buyPrice ? (
+            <div className="flex items-center gap-1 mt-0.5">
+              <Input
+                type="number"
+                value={catalogFixedPrice}
+                onChange={(e) => {
+                  setCatalogFixedPrice(e.target.value);
+                  if (e.target.value) {
+                    setIsCatalogFixedPrice(true);
+                  }
+                }}
+                placeholder={calculateSalePrice().toFixed(0)}
+                className="h-7 text-xs w-full"
+              />
+              <span className="text-[10px] text-muted-foreground shrink-0">₽</span>
+            </div>
+          ) : (
+            <div 
+              className="h-7 mt-0.5 flex items-center px-2 rounded-md bg-primary/10 border border-primary/20 cursor-pointer hover:bg-primary/20 transition-colors"
+              onClick={() => {
+                setCatalogFixedPrice(calculateSalePrice().toFixed(0));
+                setIsCatalogFixedPrice(true);
+              }}
+              title="Нажмите, чтобы установить фикс. цену"
+            >
+              <span className="text-xs font-semibold text-primary">{calculateSalePrice().toFixed(0)} ₽</span>
+            </div>
+          )}
         </div>
 
         {/* Цены фасовки в одной строке */}
