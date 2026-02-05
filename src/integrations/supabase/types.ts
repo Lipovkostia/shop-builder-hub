@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      catalog_category_settings: {
+        Row: {
+          catalog_id: string
+          category_id: string
+          created_at: string
+          custom_name: string | null
+          id: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          catalog_id: string
+          category_id: string
+          created_at?: string
+          custom_name?: string | null
+          id?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          catalog_id?: string
+          category_id?: string
+          created_at?: string
+          custom_name?: string | null
+          id?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_category_settings_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_category_settings_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalog_product_settings: {
         Row: {
           catalog_id: string
@@ -23,6 +68,7 @@ export type Database = {
           markup_type: string | null
           markup_value: number | null
           portion_prices: Json | null
+          primary_category_id: string | null
           product_id: string
           status: string | null
           updated_at: string
@@ -35,6 +81,7 @@ export type Database = {
           markup_type?: string | null
           markup_value?: number | null
           portion_prices?: Json | null
+          primary_category_id?: string | null
           product_id: string
           status?: string | null
           updated_at?: string
@@ -47,6 +94,7 @@ export type Database = {
           markup_type?: string | null
           markup_value?: number | null
           portion_prices?: Json | null
+          primary_category_id?: string | null
           product_id?: string
           status?: string | null
           updated_at?: string
@@ -57,6 +105,13 @@ export type Database = {
             columns: ["catalog_id"]
             isOneToOne: false
             referencedRelation: "catalogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_product_settings_primary_category_id_fkey"
+            columns: ["primary_category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
             referencedColumns: ["id"]
           },
           {
