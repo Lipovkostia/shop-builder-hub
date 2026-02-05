@@ -436,7 +436,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     
     // Check that at least one update field is selected
     const { fieldsToUpdate } = columnMapping;
-    const hasFieldToUpdate = fieldsToUpdate.buyPrice !== null || fieldsToUpdate.unit !== null || fieldsToUpdate.name !== null;
+    const hasFieldToUpdate = fieldsToUpdate.buyPrice !== null || fieldsToUpdate.price !== null || fieldsToUpdate.unit !== null || fieldsToUpdate.name !== null;
     if (!hasFieldToUpdate) return;
     
     // Show parsing status
