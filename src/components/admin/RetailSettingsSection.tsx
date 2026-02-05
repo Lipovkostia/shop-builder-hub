@@ -639,11 +639,253 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
                 ))}
               </div>
             </div>
+          </div>
 
-            <div className="pt-4">
+          {/* Font Settings Section */}
+          <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+            <div className="flex items-start gap-3 mb-2">
+              <div>
+                <h3 className="font-semibold text-foreground">Настройки шрифтов</h3>
+                <p className="text-sm text-muted-foreground">
+                  Настройте шрифты для различных элементов каталога
+                </p>
+              </div>
+            </div>
+
+            {/* Catalog general font */}
+            <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+              <h4 className="text-sm font-medium text-foreground">Общий шрифт каталога</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Семейство шрифта</Label>
+                  <Select
+                    value={theme.fonts?.catalog?.family || "system"}
+                    onValueChange={(value) => setTheme({
+                      ...theme,
+                      fonts: {
+                        ...theme.fonts,
+                        catalog: { ...theme.fonts?.catalog, family: value === "system" ? undefined : value }
+                      }
+                    })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Системный" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="system">Системный</SelectItem>
+                      <SelectItem value="Inter">Inter</SelectItem>
+                      <SelectItem value="Roboto">Roboto</SelectItem>
+                      <SelectItem value="Open Sans">Open Sans</SelectItem>
+                      <SelectItem value="Montserrat">Montserrat</SelectItem>
+                      <SelectItem value="Playfair Display">Playfair Display</SelectItem>
+                      <SelectItem value="Cormorant Garamond">Cormorant Garamond</SelectItem>
+                      <SelectItem value="PT Sans">PT Sans</SelectItem>
+                      <SelectItem value="PT Serif">PT Serif</SelectItem>
+                      <SelectItem value="Nunito">Nunito</SelectItem>
+                      <SelectItem value="Raleway">Raleway</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Размер</Label>
+                  <Select
+                    value={theme.fonts?.catalog?.size || "normal"}
+                    onValueChange={(value) => setTheme({
+                      ...theme,
+                      fonts: {
+                        ...theme.fonts,
+                        catalog: { ...theme.fonts?.catalog, size: value === "normal" ? undefined : value }
+                      }
+                    })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Обычный" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="small">Маленький</SelectItem>
+                      <SelectItem value="normal">Обычный</SelectItem>
+                      <SelectItem value="large">Большой</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Product Name font */}
+            <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+              <h4 className="text-sm font-medium text-foreground">Название товара</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Семейство шрифта</Label>
+                  <Select
+                    value={theme.fonts?.productName?.family || "inherit"}
+                    onValueChange={(value) => setTheme({
+                      ...theme,
+                      fonts: {
+                        ...theme.fonts,
+                        productName: { ...theme.fonts?.productName, family: value === "inherit" ? undefined : value }
+                      }
+                    })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Как в каталоге" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inherit">Как в каталоге</SelectItem>
+                      <SelectItem value="Inter">Inter</SelectItem>
+                      <SelectItem value="Roboto">Roboto</SelectItem>
+                      <SelectItem value="Open Sans">Open Sans</SelectItem>
+                      <SelectItem value="Montserrat">Montserrat</SelectItem>
+                      <SelectItem value="Playfair Display">Playfair Display</SelectItem>
+                      <SelectItem value="Cormorant Garamond">Cormorant Garamond</SelectItem>
+                      <SelectItem value="PT Sans">PT Sans</SelectItem>
+                      <SelectItem value="PT Serif">PT Serif</SelectItem>
+                      <SelectItem value="Nunito">Nunito</SelectItem>
+                      <SelectItem value="Raleway">Raleway</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Размер</Label>
+                  <Select
+                    value={theme.fonts?.productName?.size || "normal"}
+                    onValueChange={(value) => setTheme({
+                      ...theme,
+                      fonts: {
+                        ...theme.fonts,
+                        productName: { ...theme.fonts?.productName, size: value === "normal" ? undefined : value }
+                      }
+                    })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Обычный" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="small">Маленький</SelectItem>
+                      <SelectItem value="normal">Обычный</SelectItem>
+                      <SelectItem value="large">Большой</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Product Price font */}
+            <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+              <h4 className="text-sm font-medium text-foreground">Цена товара</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Семейство шрифта</Label>
+                  <Select
+                    value={theme.fonts?.productPrice?.family || "inherit"}
+                    onValueChange={(value) => setTheme({
+                      ...theme,
+                      fonts: {
+                        ...theme.fonts,
+                        productPrice: { ...theme.fonts?.productPrice, family: value === "inherit" ? undefined : value }
+                      }
+                    })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Как в каталоге" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inherit">Как в каталоге</SelectItem>
+                      <SelectItem value="Inter">Inter</SelectItem>
+                      <SelectItem value="Roboto">Roboto</SelectItem>
+                      <SelectItem value="Open Sans">Open Sans</SelectItem>
+                      <SelectItem value="Montserrat">Montserrat</SelectItem>
+                      <SelectItem value="PT Sans">PT Sans</SelectItem>
+                      <SelectItem value="JetBrains Mono">JetBrains Mono (моноширинный)</SelectItem>
+                      <SelectItem value="Roboto Mono">Roboto Mono (моноширинный)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Размер</Label>
+                  <Select
+                    value={theme.fonts?.productPrice?.size || "normal"}
+                    onValueChange={(value) => setTheme({
+                      ...theme,
+                      fonts: {
+                        ...theme.fonts,
+                        productPrice: { ...theme.fonts?.productPrice, size: value === "normal" ? undefined : value }
+                      }
+                    })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Обычный" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="small">Маленький</SelectItem>
+                      <SelectItem value="normal">Обычный</SelectItem>
+                      <SelectItem value="large">Большой</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Product Description font */}
+            <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+              <h4 className="text-sm font-medium text-foreground">Описание товара</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Семейство шрифта</Label>
+                  <Select
+                    value={theme.fonts?.productDescription?.family || "inherit"}
+                    onValueChange={(value) => setTheme({
+                      ...theme,
+                      fonts: {
+                        ...theme.fonts,
+                        productDescription: { ...theme.fonts?.productDescription, family: value === "inherit" ? undefined : value }
+                      }
+                    })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Как в каталоге" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inherit">Как в каталоге</SelectItem>
+                      <SelectItem value="Inter">Inter</SelectItem>
+                      <SelectItem value="Roboto">Roboto</SelectItem>
+                      <SelectItem value="Open Sans">Open Sans</SelectItem>
+                      <SelectItem value="Lora">Lora</SelectItem>
+                      <SelectItem value="Merriweather">Merriweather</SelectItem>
+                      <SelectItem value="PT Serif">PT Serif</SelectItem>
+                      <SelectItem value="Georgia">Georgia</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Размер</Label>
+                  <Select
+                    value={theme.fonts?.productDescription?.size || "normal"}
+                    onValueChange={(value) => setTheme({
+                      ...theme,
+                      fonts: {
+                        ...theme.fonts,
+                        productDescription: { ...theme.fonts?.productDescription, size: value === "normal" ? undefined : value }
+                      }
+                    })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Обычный" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="small">Маленький</SelectItem>
+                      <SelectItem value="normal">Обычный</SelectItem>
+                      <SelectItem value="large">Большой</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2">
               <Button onClick={handleSaveTheme} disabled={saving}>
                 {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Сохранить дизайн
+                Сохранить настройки шрифтов
               </Button>
             </div>
           </div>
