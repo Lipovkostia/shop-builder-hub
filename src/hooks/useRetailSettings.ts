@@ -7,6 +7,25 @@ export interface RetailTheme {
   accentColor?: string;
   headerStyle?: "minimal" | "full" | "centered";
   productCardStyle?: "modern" | "classic" | "compact";
+  // Font settings
+  fonts?: {
+    productName?: {
+      family?: string;
+      size?: string;
+    };
+    productPrice?: {
+      family?: string;
+      size?: string;
+    };
+    productDescription?: {
+      family?: string;
+      size?: string;
+    };
+    catalog?: {
+      family?: string;
+      size?: string;
+    };
+  };
 }
 
 export interface RetailSettings {

@@ -19,6 +19,24 @@ export interface RetailStore {
     accentColor?: string;
     headerStyle?: string;
     productCardStyle?: string;
+    fonts?: {
+      productName?: {
+        family?: string;
+        size?: string;
+      };
+      productPrice?: {
+        family?: string;
+        size?: string;
+      };
+      productDescription?: {
+        family?: string;
+        size?: string;
+      };
+      catalog?: {
+        family?: string;
+        size?: string;
+      };
+    };
   };
   retail_logo_url: string | null;
   seo_title: string | null;

@@ -3,7 +3,14 @@ import { Heart, ImageOff, Plus, Minus, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { RetailProduct } from "@/hooks/useRetailStore";
+import type { RetailProduct, RetailStore } from "@/hooks/useRetailStore";
+
+interface FontSettings {
+  productName?: { family?: string; size?: string };
+  productPrice?: { family?: string; size?: string };
+  productDescription?: { family?: string; size?: string };
+  catalog?: { family?: string; size?: string };
+}
 
 interface RetailProductCardProps {
   product: RetailProduct;
@@ -18,6 +25,7 @@ interface RetailProductCardProps {
   onExpandChange?: (productId: string | null) => void; // Callback to update expanded state
   expandedDescriptionCardId?: string | null; // Global state for which card has expanded description
   onDescriptionExpandChange?: (productId: string | null) => void; // Callback to update description expanded state
+  fontSettings?: FontSettings;
 }
 
 function formatPrice(price: number): string {
@@ -30,6 +38,29 @@ function formatPrice(price: number): string {
 function formatUnit(unit: string | null): string {
   if (!unit) return "";
   return unit;
+}
+
+// Helper to get font style object from settings
+function getFontStyle(settings?: { family?: string; size?: string }): React.CSSProperties {
+  const style: React.CSSProperties = {};
+  
+  if (settings?.family && settings.family !== 'inherit' && settings.family !== 'system') {
+    style.fontFamily = `"${settings.family}", sans-serif`;
+  }
+  
+  if (settings?.size) {
+    switch (settings.size) {
+      case 'small':
+        style.fontSize = '0.75rem';
+        break;
+      case 'large':
+        style.fontSize = '1rem';
+        break;
+      // 'normal' uses default sizing
+    }
+  }
+  
+  return style;
 }
 
 export function RetailProductCard({ 
@@ -45,6 +76,7 @@ export function RetailProductCard({
   onExpandChange,
   expandedDescriptionCardId,
   onDescriptionExpandChange,
+  fontSettings,
 }: RetailProductCardProps) {
   const isMobile = useIsMobile();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -498,10 +530,16 @@ export function RetailProductCard({
           >
             {/* Scrollable description content - no header, just content */}
             <div className="flex-1 overflow-y-auto scrollbar-thin p-3 min-h-0">
-              <h4 className="font-medium text-sm leading-snug text-foreground mb-2">
+              <h4 
+                className="font-medium text-sm leading-snug text-foreground mb-2"
+                style={getFontStyle(fontSettings?.productName)}
+              >
                 {product.name}
               </h4>
-              <p className="text-xs leading-relaxed text-foreground/80">
+              <p 
+                className="text-xs leading-relaxed text-foreground/80"
+                style={getFontStyle(fontSettings?.productDescription)}
+              >
                 {product.description}
               </p>
             </div>
@@ -704,10 +742,13 @@ export function RetailProductCard({
               hasDescription && "cursor-pointer group"
             )}
           >
-            <h3 className={cn(
-              "font-medium text-sm leading-snug text-foreground line-clamp-2 flex-1",
-              hasDescription && "group-hover:text-primary transition-colors"
-            )}>
+            <h3 
+              className={cn(
+                "font-medium text-sm leading-snug text-foreground line-clamp-2 flex-1",
+                hasDescription && "group-hover:text-primary transition-colors"
+              )}
+              style={getFontStyle(fontSettings?.productName)}
+            >
               {product.name}
             </h3>
             {hasDescription && (
@@ -756,7 +797,7 @@ export function RetailProductCard({
               </div>
               
               {/* Bottom row: price per unit */}
-              <div className="flex items-center gap-0.5">
+              <div className="flex items-center gap-0.5" style={getFontStyle(fontSettings?.productPrice)}>
                 <span className="font-semibold text-xs leading-tight">{formatPrice(product.price)}</span>
                 {product.unit && (
                   <span className="text-[9px] opacity-70 leading-tight">/ {formatUnit(product.unit)}</span>

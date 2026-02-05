@@ -75,6 +75,56 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
     setCurrentPriceRange(priceRange);
   }, [priceRange]);
 
+  // Load Google Fonts dynamically based on theme settings
+  useEffect(() => {
+    if (!store?.retail_theme?.fonts) return;
+
+    const fonts = store.retail_theme.fonts;
+    const fontFamilies = new Set<string>();
+
+    // Collect all unique font families
+    if (fonts.catalog?.family && fonts.catalog.family !== 'system' && fonts.catalog.family !== 'inherit') {
+      fontFamilies.add(fonts.catalog.family);
+    }
+    if (fonts.productName?.family && fonts.productName.family !== 'inherit') {
+      fontFamilies.add(fonts.productName.family);
+    }
+    if (fonts.productPrice?.family && fonts.productPrice.family !== 'inherit') {
+      fontFamilies.add(fonts.productPrice.family);
+    }
+    if (fonts.productDescription?.family && fonts.productDescription.family !== 'inherit') {
+      fontFamilies.add(fonts.productDescription.family);
+    }
+
+    if (fontFamilies.size === 0) return;
+
+    // Create Google Fonts link
+    const fontQuery = Array.from(fontFamilies)
+      .map(f => f.replace(/ /g, '+') + ':wght@400;500;600;700')
+      .join('&family=');
+    const linkId = 'retail-google-fonts';
+    
+    // Remove existing link if any
+    const existingLink = document.getElementById(linkId);
+    if (existingLink) {
+      existingLink.remove();
+    }
+
+    // Add new link
+    const link = document.createElement('link');
+    link.id = linkId;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${fontQuery}&display=swap`;
+    document.head.appendChild(link);
+
+    return () => {
+      const linkToRemove = document.getElementById(linkId);
+      if (linkToRemove) {
+        linkToRemove.remove();
+      }
+    };
+  }, [store?.retail_theme?.fonts]);
+
   // Sync selected categories with single category selector
   useEffect(() => {
     if (selectedCategory) {
@@ -361,6 +411,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                         onExpandChange={setExpandedCardId}
                         expandedDescriptionCardId={expandedDescriptionCardId}
                         onDescriptionExpandChange={setExpandedDescriptionCardId}
+                        fontSettings={store?.retail_theme?.fonts}
                       />
                     </div>
                   ))}
@@ -400,6 +451,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                       onExpandChange={setExpandedCardId}
                       expandedDescriptionCardId={expandedDescriptionCardId}
                       onDescriptionExpandChange={setExpandedDescriptionCardId}
+                      fontSettings={store?.retail_theme?.fonts}
                     />
                   )}
                 />
@@ -434,6 +486,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                             onExpandChange={setExpandedCardId}
                             expandedDescriptionCardId={expandedDescriptionCardId}
                             onDescriptionExpandChange={setExpandedDescriptionCardId}
+                            fontSettings={store?.retail_theme?.fonts}
                           />
                         </div>
                       ))}
@@ -477,6 +530,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                         onExpandChange={setExpandedCardId}
                         expandedDescriptionCardId={expandedDescriptionCardId}
                         onDescriptionExpandChange={setExpandedDescriptionCardId}
+                        fontSettings={store?.retail_theme?.fonts}
                       />
                     </div>
                   ))}
