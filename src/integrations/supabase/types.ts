@@ -1495,6 +1495,17 @@ export type Database = {
           store_name: string
         }[]
       }
+      get_catalog_categories_ordered: {
+        Args: { _catalog_id: string; _store_id: string }
+        Returns: {
+          id: string
+          image_url: string
+          name: string
+          parent_id: string
+          slug: string
+          sort_order: number
+        }[]
+      }
       get_catalog_products_public: {
         Args: { _access_code: string }
         Returns: {

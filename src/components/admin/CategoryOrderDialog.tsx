@@ -36,6 +36,8 @@ interface CategoryOrderDialogProps {
   onOpenChange: (open: boolean) => void;
   categories: Category[];
   onSave: (orderedIds: string[]) => Promise<void>;
+  catalogId?: string | null;
+  catalogName?: string;
 }
 
 function SortableCategoryItem({ category }: { category: Category }) {
@@ -78,6 +80,8 @@ export function CategoryOrderDialog({
   onOpenChange,
   categories,
   onSave,
+  catalogId,
+  catalogName,
 }: CategoryOrderDialogProps) {
   const [orderedCategories, setOrderedCategories] = useState<Category[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -132,7 +136,17 @@ export function CategoryOrderDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Порядок отображения категорий</DialogTitle>
+          <DialogTitle>
+            {catalogId && catalogName 
+              ? `Порядок категорий: ${catalogName}`
+              : "Порядок отображения категорий"
+            }
+          </DialogTitle>
+          {catalogId && (
+            <p className="text-sm text-muted-foreground">
+              Этот порядок будет применён на витрине, подключённой к данному прайс-листу
+            </p>
+          )}
         </DialogHeader>
         <div className="py-4">
           {orderedCategories.length === 0 ? (

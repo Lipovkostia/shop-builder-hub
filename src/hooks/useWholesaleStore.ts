@@ -164,16 +164,32 @@ export function useWholesaleStore(subdomain: string | undefined) {
     if (!store?.id) return;
 
     try {
-      const { data, error: catError } = await supabase
-        .from("categories")
-        .select("id, name, slug, image_url")
-        .eq("store_id", store.id)
-        .order("sort_order");
+      let categoriesData: { id: string; name: string; slug: string; image_url: string | null }[] = [];
+      
+      // Use catalog-specific ordering if wholesale catalog is set
+      if (store.wholesale_catalog_id) {
+        const { data, error: rpcError } = await supabase
+          .rpc('get_catalog_categories_ordered' as any, {
+            _catalog_id: store.wholesale_catalog_id,
+            _store_id: store.id
+          });
+        
+        if (rpcError) throw rpcError;
+        categoriesData = data || [];
+      } else {
+        // Fallback to global sort order
+        const { data, error: catError } = await supabase
+          .from("categories")
+          .select("id, name, slug, image_url")
+          .eq("store_id", store.id)
+          .order("sort_order");
 
-      if (catError) throw catError;
+        if (catError) throw catError;
+        categoriesData = data || [];
+      }
 
       // Count products per category
-      const categoriesWithCount = (data || []).map((cat) => ({
+      const categoriesWithCount = categoriesData.map((cat) => ({
         ...cat,
         product_count: products.filter((p) => 
           p.category_ids.includes(cat.id) || p.category_id === cat.id
@@ -184,7 +200,7 @@ export function useWholesaleStore(subdomain: string | undefined) {
     } catch (err) {
       console.error("Error fetching categories:", err);
     }
-  }, [store?.id, products]);
+  }, [store?.id, store?.wholesale_catalog_id, products]);
 
   useEffect(() => {
     setLoading(true);
