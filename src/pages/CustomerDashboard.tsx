@@ -860,6 +860,42 @@ const CustomerDashboard = () => {
   const currentStoreCustomerId = currentCatalog?.store_customer_id || null;
   const { categories: storeCategories } = useStoreCategories(currentStoreId);
   
+  // State for catalog-specific ordered categories (loaded via RPC)
+  const [catalogSpecificCategories, setCatalogSpecificCategories] = useState<typeof storeCategories>([]);
+  
+  // Load catalog-specific categories with proper sort order when catalog changes
+  useEffect(() => {
+    const catalogId = currentCatalog?.catalog_id;
+    if (!catalogId || !currentStoreId) {
+      setCatalogSpecificCategories([]);
+      return;
+    }
+    
+    supabase
+      .rpc('get_catalog_categories_ordered', {
+        _catalog_id: catalogId,
+        _store_id: currentStoreId
+      })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Error loading catalog categories:', error);
+          return;
+        }
+        if (data) {
+          setCatalogSpecificCategories(data.map((c: any) => ({
+            id: c.id,
+            store_id: currentStoreId,
+            name: c.name,
+            slug: c.slug,
+            description: null,
+            parent_id: c.parent_id,
+            sort_order: c.sort_order,
+            image_url: c.image_url,
+          })));
+        }
+      });
+  }, [currentCatalog?.catalog_id, currentStoreId]);
+  
   // Draft order hook for real-time cart sync
   const {
     draftOrder,
@@ -967,7 +1003,7 @@ const CustomerDashboard = () => {
   }, [currentCatalog?.catalog_id]);
   
   // Extract unique category IDs from products and map to names
-  // Keep the sort_order from storeCategories (already sorted by seller)
+  // Uses catalog-specific categories (already ordered by RPC) instead of global categories
   const availableCategories = useMemo(() => {
     const categoryIds = [...new Set(
       products
@@ -975,21 +1011,11 @@ const CustomerDashboard = () => {
         .filter(Boolean)
     )];
     
-    // Map IDs to {id, name, sort_order} objects using storeCategories
-    return categoryIds
-      .map(id => {
-        const cat = storeCategories.find(c => c.id === id);
-        return cat ? { id: cat.id, name: cat.name, sort_order: cat.sort_order } : null;
-      })
-      .filter((c): c is { id: string; name: string; sort_order: number | null } => c !== null)
-      .sort((a, b) => {
-        // Sort by sort_order (null values go to end), then by name
-        const orderA = a.sort_order ?? 999999;
-        const orderB = b.sort_order ?? 999999;
-        if (orderA !== orderB) return orderA - orderB;
-        return a.name.localeCompare(b.name);
-      });
-  }, [products, storeCategories]);
+    // Filter catalog-specific categories (already sorted by RPC!) to only include those with products
+    return catalogSpecificCategories
+      .filter(cat => categoryIds.includes(cat.id))
+      .map(cat => ({ id: cat.id, name: cat.name, sort_order: cat.sort_order }));
+  }, [products, catalogSpecificCategories]);
   
   // Extract unique statuses from products
   const availableStatuses = useMemo(() => {

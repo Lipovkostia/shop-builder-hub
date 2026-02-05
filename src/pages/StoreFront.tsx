@@ -1026,6 +1026,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const { settings: catalogProductSettings, getProductSettings, updateProductSettings, refetch: refetchCatalogSettings } = useCatalogProductSettings(store?.id || null);
   const { categories } = useStoreCategories(store?.id || null);
   
+  // State for catalog-specific ordered categories (loaded via RPC)
+  const [catalogSpecificCategories, setCatalogSpecificCategories] = useState<typeof categories>([]);
+  
   // Check for temp super admin from localStorage (used when super admin navigates from super admin panel)
   const isTempSuperAdmin = typeof window !== 'undefined' && localStorage.getItem('temp_super_admin') === 'true';
   
@@ -1145,6 +1148,39 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
       setSelectedCatalog(catalogs[0].id);
     }
   }, [catalogs, selectedCatalogState, setSelectedCatalog]);
+  
+  // Load catalog-specific categories with proper sort order when catalog changes
+  useEffect(() => {
+    if (!selectedCatalog || !store?.id) {
+      setCatalogSpecificCategories([]);
+      return;
+    }
+    
+    supabase
+      .rpc('get_catalog_categories_ordered', {
+        _catalog_id: selectedCatalog,
+        _store_id: store.id
+      })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Error loading catalog categories:', error);
+          return;
+        }
+        if (data) {
+          setCatalogSpecificCategories(data.map((c: any) => ({
+            id: c.id,
+            store_id: store.id,
+            name: c.name,
+            slug: c.slug,
+            description: null,
+            parent_id: c.parent_id,
+            sort_order: c.sort_order,
+            image_url: c.image_url,
+          })));
+        }
+      });
+  }, [selectedCatalog, store?.id]);
+  
   const [showImages, setShowImages] = useState(true);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [galleryOpenProductId, setGalleryOpenProductId] = useState<string | null>(null);
@@ -1475,6 +1511,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const showCatalogHint = !selectedCatalog && accessibleCatalogs.length > 0 && displayProducts.length > 0;
 
   // Get categories that exist in the current catalog (from products visible in this catalog)
+  // Uses catalog-specific categories (already ordered by RPC) instead of global categories
   const catalogCategories = useMemo(() => {
     if (!selectedCatalog) return [];
     
@@ -1492,9 +1529,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
       productCategories.forEach((catId) => categoryIds.add(catId));
     });
     
-    // Filter the categories list to only include those that exist in this catalog
-    return categories.filter((cat) => categoryIds.has(cat.id));
-  }, [selectedCatalog, displayProducts, productVisibility, getProductSettings, categories]);
+    // Filter catalog-specific categories (already sorted by RPC!) to only include those with products
+    return catalogSpecificCategories.filter((cat) => categoryIds.has(cat.id));
+  }, [selectedCatalog, displayProducts, productVisibility, getProductSettings, catalogSpecificCategories]);
 
   // Handle add to cart
   const handleAddToCart = (productId: string, variantIndex: number, price: number) => {
