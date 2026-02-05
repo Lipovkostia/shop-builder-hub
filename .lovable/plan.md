@@ -1,37 +1,99 @@
 
-
-# План: Автоматическая фиксация цены при импорте через AI-ассистента
+# План: Исправление отображения фиксированной цены на витрине
 
 ## Проблема
-При импорте прайса через умного помощника цена устанавливается в столбик "Цена", но в каталоге всё равно используется расчёт на основе себестоимости. Это происходит потому, что при импорте не устанавливается флаг `is_fixed_price: true`.
+При импорте цены через Excel/AI-ассистент:
+1. В столбике "Цена" устанавливается новая цена ✓
+2. Ставится флаг `is_fixed_price = true` (замок) ✓
+3. **НО** на витрине всё равно показывается цена рассчитанная по себестоимости ✗
+
+## Причина
+Функция `get_retail_products_public`, которая возвращает товары для витрины, не учитывает флаг `is_fixed_price`. Сейчас она проверяет `price > 0`, но продолжает рассчитывать по наценке.
 
 ## Решение
-При импорте цены из Excel автоматически включать флаг `is_fixed_price`, чтобы импортированная цена использовалась напрямую в каталоге.
+Обновить SQL-функцию `get_retail_products_public` чтобы:
+- Если `is_fixed_price = true` → всегда использовать `p.price` напрямую
+- Иначе → рассчитывать цену по себестоимости и наценке
 
 ## Изменения
 
-### 1. priceListImport.ts — установка is_fixed_price при импорте цены
+### Миграция БД — обновить функцию get_retail_products_public
 
-Добавить `is_fixed_price: true` когда импортируется поле "Цена":
-
-**Строки 633-635** — при обновлении существующего товара:
-```typescript
-if (fieldsToUpdate.includes('price') && excelProduct.price !== undefined) {
-  updateData.price = excelProduct.price;
-  updateData.is_fixed_price = true;  // Фиксируем цену при импорте
-}
+```sql
+CREATE OR REPLACE FUNCTION public.get_retail_products_public(_subdomain text)
+RETURNS TABLE (
+  id uuid,
+  name text,
+  description text,
+  price double precision,
+  compare_price double precision,
+  images text[],
+  unit text,
+  sku text,
+  quantity double precision,
+  slug text,
+  packaging_type text,
+  category_id text,
+  category_ids text[],
+  category_name text,
+  catalog_status text
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  WITH s AS (
+    SELECT id, retail_catalog_id
+    FROM public.stores
+    WHERE subdomain = _subdomain
+      AND status = 'active'::public.store_status
+      AND retail_enabled = true
+    LIMIT 1
+  ),
+  settings AS (
+    SELECT cps.product_id,
+           cps.markup_type,
+           cps.markup_value,
+           cps.status,
+           cps.categories
+    FROM public.catalog_product_settings cps
+    JOIN s ON cps.catalog_id = s.retail_catalog_id
+  ),
+  vis AS (
+    SELECT pcv.product_id
+    FROM public.product_catalog_visibility pcv
+    JOIN s ON pcv.catalog_id = s.retail_catalog_id
+  )
+  SELECT
+    p.id,
+    p.name,
+    p.description,
+    (
+      CASE
+        -- Фиксированная цена: используем price напрямую
+        WHEN p.is_fixed_price = true AND p.price IS NOT NULL THEN p.price::double precision
+        -- Иначе: рассчитываем по наценке
+        WHEN p.buy_price IS NOT NULL AND p.buy_price > 0 AND st.markup_type = 'percent' THEN (p.buy_price * (1 + COALESCE(st.markup_value, 0) / 100))::double precision
+        WHEN p.buy_price IS NOT NULL AND p.buy_price > 0 AND (st.markup_type = 'fixed' OR st.markup_type = 'rubles') THEN (p.buy_price + COALESCE(st.markup_value, 0))::double precision
+        -- Fallback: если ничего не подошло, используем price
+        ELSE COALESCE(p.price, 0)::double precision
+      END
+    ) AS price,
+    ...остальные поля без изменений...
+  FROM vis
+  JOIN public.products p ON p.id = vis.product_id
+  ...остальная часть запроса без изменений...
+$$;
 ```
 
-**При создании нового товара** (около строки 693):
-```typescript
-is_fixed_price: excelProduct.price !== undefined,  // Если указана цена, фиксируем
+## Ключевое изменение
+Добавлен приоритет для `is_fixed_price`:
+```sql
+WHEN p.is_fixed_price = true AND p.price IS NOT NULL THEN p.price::double precision
 ```
 
-## Логика
-- Если при импорте указана колонка "Цена" (`price`) — автоматически ставим `is_fixed_price: true`
-- Это заставит каталог использовать именно эту цену, а не расчёт по себестоимости
-- Если в будущем пользователь захочет вернуться к расчёту по наценке — он может нажать на иконку замка
+Этот CASE идёт **первым**, поэтому когда замок включён — цена берётся напрямую из `price`, игнорируя себестоимость и наценку.
 
 ## Файлы для изменения
-- `src/lib/priceListImport.ts`
-
+- Новая миграция БД с `CREATE OR REPLACE FUNCTION`
