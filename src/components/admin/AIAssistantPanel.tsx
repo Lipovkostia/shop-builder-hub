@@ -532,8 +532,9 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     });
     
     // Determine which fields to update based on mapping
-    const fieldsToUpdateArray: ('buyPrice' | 'unit' | 'name')[] = [];
+    const fieldsToUpdateArray: ('buyPrice' | 'price' | 'unit' | 'name')[] = [];
     if (columnMapping.fieldsToUpdate.buyPrice !== null) fieldsToUpdateArray.push('buyPrice');
+    if (columnMapping.fieldsToUpdate.price !== null) fieldsToUpdateArray.push('price');
     if (columnMapping.fieldsToUpdate.unit !== null) fieldsToUpdateArray.push('unit');
     if (columnMapping.fieldsToUpdate.name !== null) fieldsToUpdateArray.push('name');
     
