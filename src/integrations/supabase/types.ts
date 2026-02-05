@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      catalog_category_settings: {
+        Row: {
+          catalog_id: string
+          category_id: string
+          created_at: string
+          custom_name: string | null
+          id: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          catalog_id: string
+          category_id: string
+          created_at?: string
+          custom_name?: string | null
+          id?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          catalog_id?: string
+          category_id?: string
+          created_at?: string
+          custom_name?: string | null
+          id?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_category_settings_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_category_settings_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalog_product_settings: {
         Row: {
           catalog_id: string
