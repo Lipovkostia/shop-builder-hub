@@ -155,15 +155,25 @@ function ProductCard({
   };
 
   // Расчёт цен с учётом наценки (используем настройки каталога, если есть)
-  const buyPrice = product.buy_price || product.price;
-  const catalogMarkup = catalogSettings?.markup_value && catalogSettings.markup_value > 0
-    ? { type: (catalogSettings.markup_type === 'fixed' ? 'rubles' : catalogSettings.markup_type) as "percent" | "rubles", value: catalogSettings.markup_value }
-    : undefined;
-  const productMarkup = product.markup_type && product.markup_value 
-    ? { type: product.markup_type as "percent" | "rubles", value: product.markup_value }
-    : undefined;
-  const markup = catalogMarkup || productMarkup;
-  const salePrice = calculateSalePrice(buyPrice, markup) || product.price;
+  // Если установлена фиксированная цена (замок) — используем её напрямую
+  const isFixedPrice = product.is_fixed_price === true;
+  
+  let salePrice: number;
+  if (isFixedPrice && product.price != null && product.price > 0) {
+    // Фиксированная цена: игнорируем себестоимость и наценку
+    salePrice = product.price;
+  } else {
+    // Расчётная цена: себестоимость + наценка
+    const buyPrice = product.buy_price || product.price;
+    const catalogMarkup = catalogSettings?.markup_value && catalogSettings.markup_value > 0
+      ? { type: (catalogSettings.markup_type === 'fixed' ? 'rubles' : catalogSettings.markup_type) as "percent" | "rubles", value: catalogSettings.markup_value }
+      : undefined;
+    const productMarkup = product.markup_type && product.markup_value 
+      ? { type: product.markup_type as "percent" | "rubles", value: product.markup_value }
+      : undefined;
+    const markup = catalogMarkup || productMarkup;
+    salePrice = calculateSalePrice(buyPrice, markup) || product.price;
+  }
   
   // Цены порций из настроек каталога или товара
   const portionPriceHalf = catalogSettings?.portion_prices?.halfPricePerKg || product.price_half;
