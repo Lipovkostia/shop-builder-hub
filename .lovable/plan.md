@@ -1,48 +1,152 @@
 
-Контекст по скрину и почему так происходит
-- Вы смотрите не “публичную розничную витрину” (страница RetailStore), а “витрину внутри кабинета продавца” (страница StoreFront в SellerWorkspace).
-- Для публичной розничной витрины мы уже поправили backend-функцию `get_retail_products_public`, чтобы она учитывала `is_fixed_price`.
-- Но в кабинете продавца витрина считает цену на фронтенде в `src/pages/StoreFront.tsx` и сейчас там логика всегда опирается на `buy_price` (+ наценка), игнорируя `is_fixed_price`. Поэтому, даже если “Цена” = 8888 и стоит замок, карточка на витрине показывает 3 (себестоимость) или цену от неё.
+# План: Независимые цены для разных прайс-листов
 
-Цель
-- Если у товара стоит замок (флаг `is_fixed_price = true`) и заполнена “Цена” (`price > 0`), то в витрине кабинета продавца показывать именно `price` и не рассчитывать цену от `buy_price`/наценки.
+## Проблема
+При импорте/обновлении цены в одном прайс-листе, эта цена применяется ко **всем** прайс-листам. Причина: цена хранится в общей таблице `products`, а не в индивидуальных настройках каталога `catalog_product_settings`.
 
-Что именно изменим (frontend)
-1) Исправить расчёт `salePrice` в `src/pages/StoreFront.tsx` (в компоненте карточки товара, который начинается примерно около строк 120+)
-   - Сейчас:
-     - `buyPrice = product.buy_price || product.price`
-     - `salePrice = calculateSalePrice(buyPrice, markup) || product.price`
-     - Это приводит к тому, что если `buy_price` есть (например 3), то salePrice становится 3 даже при наличии фиксированной “Цена” 8888.
-   - Сделаем:
-     - Ввести проверку `const isFixed = product.is_fixed_price === true`
-     - Если `isFixed && product.price != null && product.price > 0`:
-       - `salePrice = product.price`
-       - и дальше все производные цены (упаковка/полная цена) считаются от этого `salePrice`
-     - Иначе (не фиксированная цена):
-       - вычислять `salePrice` по текущей логике от `buy_price` + наценка (каталожная или товарная), с аккуратным fallback на `product.price`.
+## Текущая архитектура
 
-2) Проверить, что все места отображения цены внутри StoreFront используют именно `salePrice`
-   - В этом файле от `salePrice` уже считаются `packagingPrices` и `fullPrice`, поэтому после пункта (1) визуально должно сразу стать корректно.
-   - Если найдём ещё “сырой” вывод `product.buy_price`/`product.price` в тексте карточки (не через `salePrice`), заменим на `salePrice` там же в `StoreFront.tsx`.
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│                         products                                 │
+│ ─────────────────────────────────────────────────────────────── │
+│ id, name, buy_price, price, markup_type, markup_value,          │
+│ is_fixed_price  ← ОБЩИЕ для всех прайс-листов!                  │
+└──────────────────────────────────────────────────────────────────┘
+                              │
+                    ┌─────────┴─────────┐
+                    ▼                   ▼
+┌──────────────────────────┐  ┌──────────────────────────┐
+│ catalog_product_settings │  │ catalog_product_settings │
+│ (Прайс-лист A)           │  │ (Прайс-лист B)           │
+│ ─────────────────────────│  │ ─────────────────────────│
+│ markup_type, markup_value│  │ markup_type, markup_value│
+│ status, categories       │  │ status, categories       │
+│ НЕТ price/is_fixed_price!│  │ НЕТ price/is_fixed_price!│
+└──────────────────────────┘  └──────────────────────────┘
+```
 
-Что изменим (backend) — не требуется
-- Для публичной розничной витрины backend-логика уже обновлена.
-- Эта проблема на скрине именно про кабинет/витрину продавца, там цена считается на клиенте.
+## Решение
 
-Проверка после изменений (обязательно)
-1) В админке:
-   - У товара “Альпийский цветок” убедиться, что:
-     - “Цена” = 8888
-     - замок включён (is_fixed_price = true)
-     - “Себестоимость” = 3 (или любая другая)
-2) В витрине кабинета продавца (вкладка “Витрина” внутри workspace):
-   - Убедиться, что на карточке/в списке показывается 8888, а не 3.
-3) Дополнительно:
-   - Выключить замок у этого товара и убедиться, что цена снова становится расчётной (от себестоимости/наценки) — чтобы не сломать текущую логику.
+Добавить в `catalog_product_settings` два новых поля:
+- `fixed_price` (numeric) — индивидуальная фиксированная цена для этого каталога
+- `is_fixed_price` (boolean) — флаг фиксации цены для этого каталога
 
-Файлы, которые будем менять
-- `src/pages/StoreFront.tsx`
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│                         products                                 │
+│ ─────────────────────────────────────────────────────────────── │
+│ id, name, buy_price (себестоимость)                             │
+│ price, markup_type, markup_value ← БАЗОВЫЕ значения по умолчанию│
+└──────────────────────────────────────────────────────────────────┘
+                              │
+                    ┌─────────┴─────────┐
+                    ▼                   ▼
+┌──────────────────────────┐  ┌──────────────────────────┐
+│ catalog_product_settings │  │ catalog_product_settings │
+│ (Прайс-лист A)           │  │ (Прайс-лист B)           │
+│ ─────────────────────────│  │ ─────────────────────────│
+│ markup_type, markup_value│  │ markup_type, markup_value│
+│ fixed_price: 8888 ✓      │  │ fixed_price: 5000 ✓      │
+│ is_fixed_price: true ✓   │  │ is_fixed_price: true ✓   │
+└──────────────────────────┘  └──────────────────────────┘
+```
 
-Риски и нюансы
-- Если для некоторых каталогов у вас задана наценка, то при выключенном замке цена продолжит считаться от себестоимости — это ожидаемое поведение.
-- При включенном замке мы намеренно игнорируем себестоимость и наценки, чтобы “Цена” стала источником правды (как вы и ожидаете).
+## Изменения
+
+### 1. Миграция БД — добавить поля в catalog_product_settings
+
+```sql
+ALTER TABLE catalog_product_settings 
+ADD COLUMN IF NOT EXISTS fixed_price numeric DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS is_fixed_price boolean DEFAULT false;
+```
+
+### 2. Обновить функцию importProductsToCatalogExtended
+
+Вместо обновления `products.price` и `products.is_fixed_price`:
+- Обновлять `catalog_product_settings.fixed_price` и `catalog_product_settings.is_fixed_price`
+
+**Файл:** `src/lib/priceListImport.ts`
+
+Изменить логику в строках 633-636:
+```typescript
+// БЫЛО:
+if (fieldsToUpdate.includes('price') && excelProduct.price !== undefined) {
+  updateData.price = excelProduct.price;
+  updateData.is_fixed_price = true;
+}
+
+// СТАНЕТ:
+// Цены обновляются в catalog_product_settings, не в products
+if (fieldsToUpdate.includes('price') && excelProduct.price !== undefined) {
+  catalogSettingsUpdate.fixed_price = excelProduct.price;
+  catalogSettingsUpdate.is_fixed_price = true;
+}
+```
+
+### 3. Обновить useCatalogProductSettings hook
+
+Добавить поля `fixed_price` и `is_fixed_price` в интерфейс и обработку.
+
+**Файл:** `src/hooks/useCatalogProductSettings.ts`
+
+### 4. Обновить AI-ассистент
+
+При action "update_prices" обновлять `catalog_product_settings` для выбранного каталога, а не `products`.
+
+**Файл:** `src/components/admin/AIAssistantPanel.tsx`
+
+В функции handleApply изменить логику:
+```typescript
+// БЫЛО:
+await updateProduct(product.id, {
+  markup_type: markupType,
+  markup_value: markupValue,
+});
+
+// СТАНЕТ:
+await updateProductSettings(effectiveCatalogId, product.id, {
+  fixed_price: product.target_price,
+  is_fixed_price: true,
+});
+```
+
+### 5. Обновить функцию get_retail_products_public
+
+Учитывать `catalog_product_settings.fixed_price` и `catalog_product_settings.is_fixed_price`.
+
+**Файл:** Миграция БД
+
+```sql
+CASE
+  -- Приоритет 1: фикс.цена из настроек каталога
+  WHEN st.is_fixed_price = true AND st.fixed_price IS NOT NULL 
+    THEN st.fixed_price::double precision
+  -- Приоритет 2: фикс.цена из products (для обратной совместимости)
+  WHEN p.is_fixed_price = true AND p.price IS NOT NULL 
+    THEN p.price::double precision
+  -- Приоритет 3: расчёт по наценке
+  ...
+END
+```
+
+### 6. Обновить витрину продавца StoreFront.tsx
+
+Использовать `catalogSettings.fixed_price` при отображении.
+
+**Файл:** `src/pages/StoreFront.tsx`
+
+## Файлы для изменения
+
+1. **Миграция БД** — добавить поля в catalog_product_settings и обновить функцию get_retail_products_public
+2. `src/lib/priceListImport.ts` — импорт цен в catalog_product_settings
+3. `src/hooks/useCatalogProductSettings.ts` — расширить интерфейс
+4. `src/components/admin/AIAssistantPanel.tsx` — обновление цен через AI в catalog_product_settings
+5. `src/pages/StoreFront.tsx` — использовать fixed_price из настроек каталога
+
+## Обратная совместимость
+
+- Существующие товары с `products.is_fixed_price = true` продолжат работать
+- Новая логика приоритизирует `catalog_product_settings.fixed_price` над `products.price`
+- Если в настройках каталога нет фикс.цены, используется базовая логика (себестоимость + наценка или products.price)
