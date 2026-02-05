@@ -119,7 +119,7 @@ export function useStoreCategories(storeId: string | null) {
     }
   }, [storeId]);
 
-  // Update sort order for categories
+  // Update sort order for categories (global)
   const updateCategoryOrder = useCallback(async (orderedIds: string[]) => {
     try {
       // Update each category with its new sort_order
@@ -148,5 +148,40 @@ export function useStoreCategories(storeId: string | null) {
     }
   }, []);
 
-  return { categories, loading, refetch: fetchCategories, createCategory, updateCategoryOrder };
+  // Update sort order for categories within a specific catalog
+  const updateCatalogCategoryOrder = useCallback(async (catalogId: string, orderedIds: string[]) => {
+    try {
+      // Upsert each category setting with its new sort_order for this catalog
+      const upserts = orderedIds.map((categoryId, index) => 
+        supabase
+          .from('catalog_category_settings')
+          .upsert({
+            catalog_id: catalogId,
+            category_id: categoryId,
+            sort_order: index,
+            updated_at: new Date().toISOString()
+          }, { 
+            onConflict: 'catalog_id,category_id'
+          })
+      );
+      
+      await Promise.all(upserts);
+      
+      // Update local state to reflect new order
+      setCategories(prev => {
+        const categoryMap = new Map(prev.map(c => [c.id, c]));
+        return orderedIds
+          .map((id, index) => {
+            const cat = categoryMap.get(id);
+            return cat ? { ...cat, sort_order: index } : null;
+          })
+          .filter((c): c is StoreCategory => c !== null);
+      });
+    } catch (error) {
+      console.error('Error updating catalog category order:', error);
+      throw error;
+    }
+  }, []);
+
+  return { categories, loading, refetch: fetchCategories, createCategory, updateCategoryOrder, updateCatalogCategoryOrder };
 }

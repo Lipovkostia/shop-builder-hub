@@ -649,8 +649,9 @@ export default function AdminPanel({
   } = useProductCategories(effectiveStoreId);
 
   // Store categories from Supabase
-  const { categories: storeCategories, loading: categoriesLoading, createCategory, updateCategoryOrder, refetch: refetchCategories } = useStoreCategories(effectiveStoreId);
+  const { categories: storeCategories, loading: categoriesLoading, createCategory, updateCategoryOrder, updateCatalogCategoryOrder, refetch: refetchCategories } = useStoreCategories(effectiveStoreId);
   const [categoryOrderDialogOpen, setCategoryOrderDialogOpen] = useState(false);
+  const [categoryOrderCatalogId, setCategoryOrderCatalogId] = useState<string | null>(null);
   // ================ END SUPABASE DATA HOOKS ================
   
   const [activeSection, setActiveSection] = useState<ActiveSection>(() => {
@@ -4853,7 +4854,10 @@ export default function AdminPanel({
                                         }
                                       }}
                                       onAddOption={handleAddCategory}
-                                      onReorder={() => setCategoryOrderDialogOpen(true)}
+                                      onReorder={() => {
+                                        setCategoryOrderCatalogId(currentCatalog?.id || null);
+                                        setCategoryOrderDialogOpen(true);
+                                      }}
                                       placeholder="Категории..."
                                       addNewPlaceholder="Новая категория..."
                                       addNewButtonLabel="Создать категорию"
@@ -6415,13 +6419,26 @@ export default function AdminPanel({
       {/* Category Order Dialog */}
       <CategoryOrderDialog
         open={categoryOrderDialogOpen}
-        onOpenChange={setCategoryOrderDialogOpen}
+        onOpenChange={(open) => {
+          setCategoryOrderDialogOpen(open);
+          if (!open) setCategoryOrderCatalogId(null);
+        }}
         categories={storeCategories}
+        catalogId={categoryOrderCatalogId}
+        catalogName={categoryOrderCatalogId ? catalogs.find(c => c.id === categoryOrderCatalogId)?.name : undefined}
         onSave={async (orderedIds) => {
-          await updateCategoryOrder(orderedIds);
+          if (categoryOrderCatalogId) {
+            // Save to catalog-specific settings
+            await updateCatalogCategoryOrder(categoryOrderCatalogId, orderedIds);
+          } else {
+            // Save to global category order
+            await updateCategoryOrder(orderedIds);
+          }
           toast({
             title: "Порядок сохранён",
-            description: "Порядок отображения категорий обновлён",
+            description: categoryOrderCatalogId 
+              ? "Порядок категорий в прайс-листе обновлён и применён на витрине"
+              : "Порядок отображения категорий обновлён",
           });
         }}
       />
