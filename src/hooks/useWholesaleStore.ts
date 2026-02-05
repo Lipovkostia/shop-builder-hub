@@ -72,6 +72,9 @@ export interface WholesaleCategory {
   parent_id: string | null;
   sort_order?: number | null;
   product_count?: number;
+  // Catalog-specific overrides
+  custom_name?: string | null;
+  catalog_sort_order?: number | null;
 }
 
 export function useWholesaleStore(subdomain: string | undefined) {
@@ -175,6 +178,24 @@ export function useWholesaleStore(subdomain: string | undefined) {
 
       if (catError) throw catError;
 
+      // Fetch catalog-specific category settings if wholesale_catalog_id exists
+      let catalogSettings: Record<string, { custom_name: string | null; sort_order: number | null }> = {};
+      if (store.wholesale_catalog_id) {
+        const { data: settingsData } = await supabase
+          .from("catalog_category_settings")
+          .select("category_id, custom_name, sort_order")
+          .eq("catalog_id", store.wholesale_catalog_id);
+        
+        if (settingsData) {
+          settingsData.forEach((s: any) => {
+            catalogSettings[s.category_id] = {
+              custom_name: s.custom_name,
+              sort_order: s.sort_order,
+            };
+          });
+        }
+      }
+
       // Count products per category - ensure string comparison for UUIDs
       const categoriesWithCount = (data || []).map((cat) => {
         const catIdStr = String(cat.id);
@@ -182,17 +203,30 @@ export function useWholesaleStore(subdomain: string | undefined) {
           p.category_ids.some(cid => String(cid) === catIdStr) || 
           String(p.category_id) === catIdStr
         ).length;
+        
+        const settings = catalogSettings[cat.id];
+        
         return {
           ...cat,
           product_count: count,
+          custom_name: settings?.custom_name || null,
+          catalog_sort_order: settings?.sort_order ?? null,
         };
       });
 
-      setCategories(categoriesWithCount);
+      // Sort categories: use catalog_sort_order if available, otherwise use global sort_order
+      const sortedCategories = categoriesWithCount.sort((a, b) => {
+        const orderA = a.catalog_sort_order ?? a.sort_order ?? 9999;
+        const orderB = b.catalog_sort_order ?? b.sort_order ?? 9999;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.name.localeCompare(b.name, 'ru');
+      });
+
+      setCategories(sortedCategories);
     } catch (err) {
       console.error("Error fetching categories:", err);
     }
-  }, [store?.id, products]);
+  }, [store?.id, store?.wholesale_catalog_id, products]);
 
   useEffect(() => {
     setLoading(true);
