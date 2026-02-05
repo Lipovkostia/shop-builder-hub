@@ -632,6 +632,7 @@ export async function importProductsToCatalogExtended(
         
         if (fieldsToUpdate.includes('price') && excelProduct.price !== undefined) {
           updateData.price = excelProduct.price;
+          updateData.is_fixed_price = true;  // Фиксируем цену при импорте
         }
         
         if (fieldsToUpdate.includes('unit') && excelProduct.unit) {
@@ -696,7 +697,8 @@ export async function importProductsToCatalogExtended(
             markup_value: 0,
             is_active: true,
             quantity: 0,
-            unit: excelProduct.unit || 'кг'
+            unit: excelProduct.unit || 'кг',
+            is_fixed_price: excelProduct.price !== undefined  // Фиксируем если указана цена
           })
           .select('id')
           .single();
