@@ -1,76 +1,126 @@
 
-
-# План: Добавление возможности обновлять отпускную цену при импорте из Excel
+# План: Добавление редактирования отпускной цены в прайс-листе
 
 ## Описание задачи
-Сейчас при умной загрузке из Excel можно выбрать "Себестоимость" (закупочная цена, поле `buy_price`). Нужно добавить дополнительную опцию "Цена" (отпускная цена, поле `price`), чтобы пользователь мог обновлять именно ту цену, которая отображается в столбце "Цена" в прайс-листе.
+В текущей реализации столбик "Цена" редактирует только себестоимость (buy_price). Нужно добавить возможность редактировать отпускную цену (price) напрямую, независимо от себестоимости.
+
+## Решение
+Добавить новую колонку "Цена" для редактирования отпускной цены, а текущую колонку переименовать в "Себестоимость" для ясности.
 
 ## Изменения
 
-### 1. ExcelColumnMapping.tsx
-Добавить новое поле `price` (Цена/Отпускная цена) в список полей для обновления:
+### 1. MemoizedProductRow.tsx
 
-```text
-Текущие поля:
-- Себестоимость (buyPrice)
-- Единица измерения
-- Название
-- Описание
-- Группа
-- Объём
-- Фото
-
-Добавить после "Себестоимость":
-- Цена (price) — Отпускная цена товара
-```
-
-### 2. ColumnMapping интерфейс
-Расширить интерфейс `fieldsToUpdate` новым полем `price`:
-
+**Добавить новое поле в интерфейс VisibleColumns:**
 ```typescript
-fieldsToUpdate: {
-  buyPrice: number | null;
-  price: number | null;  // Новое поле
-  unit: number | null;
-  name: number | null;
-  // ...остальные поля
+export interface VisibleColumns {
+  photo: boolean;
+  name: boolean;
+  sku: boolean;
+  desc: boolean;
+  source: boolean;
+  unit: boolean;
+  type: boolean;
+  volume: boolean;
+  cost: boolean;      // Себестоимость (buy_price)
+  price: boolean;     // НОВОЕ: Отпускная цена (price/pricePerUnit)
+  groups: boolean;
+  catalogs: boolean;
+  sync: boolean;
 }
 ```
 
-### 3. priceListImport.ts
-Обновить функцию `importProductsWithMapping`:
-
-- Добавить поле `price` в интерфейс `ParsedAssortmentProduct`
-- Добавить парсинг колонки `price` при чтении файла
-- При обновлении товара добавить логику:
-  ```typescript
-  if (product.price !== undefined) {
-    updateData.price = product.price;
-  }
-  ```
-- При создании нового товара использовать `product.price` или `product.buyPrice`
-
-### 4. ExtendedColumnMapping интерфейс
-Синхронизировать интерфейс `ExtendedColumnMapping` в `priceListImport.ts`:
-
+**Добавить обработчик для редактирования цены:**
 ```typescript
-fieldsToUpdate: {
-  buyPrice: number | null;
-  price: number | null;  // Добавить
-  unit: number | null;
+const handleUpdatePrice = useCallback((newPrice: number | undefined) => {
+  onUpdateProduct({ ...product, pricePerUnit: newPrice ?? 0 });
+}, [onUpdateProduct, product]);
+```
+
+**Добавить новую колонку между cost и groups:**
+```tsx
+{/* Price */}
+{visibleColumns.price && (
+  <div className="w-16 flex-shrink-0">
+    <InlinePriceCell
+      value={product.pricePerUnit}
+      onSave={handleUpdatePrice}
+      placeholder="0"
+    />
+  </div>
+)}
+```
+
+**Обновить функцию areEqual для мемоизации:**
+```typescript
+if (prevCols.price !== nextCols.price) return false;
+```
+
+### 2. VirtualProductTable.tsx
+
+**Добавить поле price в AllProductsFilters:**
+```typescript
+export interface AllProductsFilters {
+  name: string;
+  sku: string;
+  desc: string;
+  source: string;
+  unit: string;
+  type: string;
+  volume: string;
+  cost: string;      // Фильтр по себестоимости
+  price: string;     // НОВОЕ: Фильтр по цене
+  status: string;
+  sync: string;
+  groups: string[];
+}
+```
+
+**Обновить заголовки столбцов:**
+- Колонка cost: placeholder "Себест..." (сокращённо от "Себестоимость")
+- Колонка price: placeholder "Цена..."
+
+**Добавить заголовок и фильтр для колонки price (после cost):**
+```tsx
+{visibleColumns.price && (
+  <div className="w-16 flex-shrink-0">
+    <ColumnFilter 
+      value={filters.price} 
+      onChange={(v) => onFiltersChange({...filters, price: v})}
+      placeholder="Цена..."
+    />
+  </div>
+)}
+```
+
+### 3. ProductsSection.tsx
+
+**Обновить defaultVisibleColumns:**
+```typescript
+const defaultVisibleColumns: VisibleColumns = {
+  // ... existing fields
+  cost: true,
+  price: true,  // НОВОЕ
+  groups: true,
   // ...
-}
+};
 ```
 
-## Технические детали
+**Обновить defaultFilters:**
+```typescript
+const defaultFilters: AllProductsFilters = {
+  // ... existing fields
+  cost: "",
+  price: "",  // НОВОЕ
+  // ...
+};
+```
 
-**Файлы для изменения:**
-- `src/components/admin/ExcelColumnMapping.tsx` — добавить новое поле в UI
-- `src/lib/priceListImport.ts` — добавить поддержку поля price в импорт и парсинг
-- `src/components/admin/ExcelImportSection.tsx` — инициализировать новое поле в mapping
+**Добавить чекбокс "Цена" в меню настройки колонок** (после "Себестоимость").
 
-**Логика:**
-- Поле "Цена" будет отображаться сразу после "Себестоимость"
-- Пользователь может выбрать обновлять либо себестоимость, либо цену, либо оба поля одновременно
-- Описание поля: "Отпускная цена товара"
-
+## Результат
+После изменений пользователь сможет:
+- Редактировать себестоимость в столбике "Себестоимость"
+- Редактировать отпускную цену в столбике "Цена"
+- Оставить себестоимость пустой и задать только отпускную цену
+- Отпускная цена будет отображаться в карточках товаров
