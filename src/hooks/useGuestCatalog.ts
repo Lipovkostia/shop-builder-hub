@@ -345,24 +345,29 @@ export function useGuestCatalog(accessCode: string | undefined) {
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Fetch categories for the store
+  // Fetch categories for the catalog with catalog-specific order
   const fetchCategories = useCallback(async () => {
-    if (!catalogInfo?.store_id) return;
+    if (!catalogInfo?.id || !catalogInfo?.store_id) return;
     
     try {
+      // Use RPC to get categories ordered by catalog-specific settings
       const { data, error: catError } = await supabase
-        .from('categories')
-        .select('id, name, sort_order')
-        .eq('store_id', catalogInfo.store_id)
-        .order('sort_order', { ascending: true });
+        .rpc('get_catalog_categories_ordered', {
+          _catalog_id: catalogInfo.id,
+          _store_id: catalogInfo.store_id
+        });
         
       if (!catError && data) {
-        setCategories(data);
+        setCategories(data.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          sort_order: c.sort_order
+        })));
       }
     } catch (err) {
       console.error('Error fetching categories:', err);
     }
-  }, [catalogInfo?.store_id]);
+  }, [catalogInfo?.id, catalogInfo?.store_id]);
 
   // Initial fetch
   useEffect(() => {
