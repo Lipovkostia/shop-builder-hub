@@ -103,8 +103,8 @@ function SortableCategoryItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 rounded-lg border p-3 ${
-        isChild ? "ml-8 border-border bg-card" : ""
+      className={`flex items-center gap-2 rounded-lg border p-1.5 px-2 ${
+        isChild ? "ml-6 border-border bg-card" : ""
       } ${
         item.isSection
           ? "border-primary/40 bg-primary/10 shadow-sm"
@@ -613,9 +613,9 @@ export function CategorySettingsSection({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="mb-4">
-        <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+    <div className="space-y-3">
+      <div className="mb-2">
+        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <Tag className="h-5 w-5" />
           Настройки категорий
         </h2>
@@ -691,8 +691,8 @@ export function CategorySettingsSection({
 
           {/* Category list */}
           {items.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Tag className="h-10 w-10 mx-auto mb-3 opacity-30" />
+            <div className="text-center py-6 text-muted-foreground">
+              <Tag className="h-8 w-8 mx-auto mb-3 opacity-30" />
               <p>Нет категорий для отображения</p>
               <p className="text-xs mt-1">Добавьте категории к товарам в ассортименте</p>
             </div>
@@ -704,7 +704,7 @@ export function CategorySettingsSection({
               onDragEnd={handleDragEnd}
             >
               <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-                <div className="space-y-1.5">
+                <div className="space-y-0.5">
                   {flatList.map(({ item, isChild }) => (
                     <SortableCategoryItem
                       key={item.id}
