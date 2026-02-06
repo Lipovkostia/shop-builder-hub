@@ -1,114 +1,38 @@
 
-# Исправления в системе категорий и разделов
+# Иконка категорий в шапке (WorkspaceHeader)
 
-## Проблема 1: После удаления раздел остаётся в списке
+## Что будет сделано
 
-**Причина**: `handleConfirmDelete` (строка 533) удаляет раздел только из локального состояния `items`, но НЕ вызывает `onDeleteCategory(id)` для удаления из базы данных. Также не удаляются связанные записи в `catalog_category_settings`.
+Иконка категорий (LayoutGrid) будет добавлена в основную шапку (`WorkspaceHeader`) слева, рядом с кнопкой "Витрина". Она будет видна и на мобильной, и на десктопной версии. При нажатии будет открываться выпадающий список категорий с иерархией разделов (как сейчас работает в панели инструментов).
 
-**Решение**: Добавить вызов `onDeleteCategory(deleteTarget.id)` внутри `handleConfirmDelete`, а также удалить записи из `catalog_category_settings` для этой категории.
+## Подход
 
----
+Поскольку данные о категориях и фильтрации живут внутри `StoreFront.tsx`, а шапка (`WorkspaceHeader`) — отдельный компонент выше по иерархии, нужно:
 
-## Проблема 2: После сохранения/обновления выбрасывает из вкладки "Настройки категорий"
+1. Пробросить состояние категорий из `StoreFront` наверх через `SellerWorkspace`
+2. Или (проще и чище) — вынести категорийный дропдаун прямо в `WorkspaceHeader`, передавая данные через пропсы
 
-**Причина**: В файле `AdminPanel.tsx` (строка 687) при восстановлении секции из URL параметра проверяются только секции: `products`, `import`, `catalogs`, `visibility`, `orders`, `clients`, `help`. Секция `category-settings` отсутствует в списке, поэтому при обновлении страницы происходит сброс на `products`.
-
-**Решение**: Добавить `"category-settings"` (а также другие отсутствующие секции: `profile`, `history`, `trash`, `retail`, `wholesale`) в условие проверки на строке 687.
-
----
-
-## Проблема 3: Раздел "Хамон" с подкатегориями не виден в каталоге
-
-**Причина**: В витрине (`StoreFront.tsx`, строка 1525) `catalogCategories` фильтрует категории по наличию товаров. Раздел-родитель (например "Хамон") может не иметь товаров, напрямую назначенных ему -- товары назначены только подкатегориям ("хамон без кости", "хамон на кости"). Также фильтр `topLevel` (строка 1867-1869) неверно определяет, какие категории являются верхнеуровневыми: он включает дочерние категории как "top level", если их родитель не найден в `catalogCategories`.
-
-**Решение**:
-- Изменить `catalogCategories` так, чтобы раздел-родитель включался в список, если хотя бы одна из его дочерних категорий имеет товары.
-- Исправить фильтр `topLevel` -- категория НЕ верхнеуровневая, если у неё есть `catalog_parent_id`, даже если родитель не в текущем отфильтрованном списке.
-
----
-
-## Проблема 4: Не видно количество товаров в каждой категории
-
-**Решение**: Добавить подсчёт товаров для каждой категории в `catalogCategories` и отображать счётчик в выпадающем списке категорий рядом с названием.
-
----
-
-## Проблема 5: Порядок категорий из настроек не транслируется на витрину
-
-**Причина**: `catalogCategories` уже использует порядок из RPC, но при построении иерархии в дропдауне `topLevel` формируется без учёта `sort_order`. Также разделы без товаров выпадают из списка (проблема 3), что ломает порядок.
-
-**Решение**: Исправление проблемы 3 автоматически исправит порядок. Дополнительно -- сохранять полный массив `catalogSpecificCategories` для построения иерархии, а `catalogCategories` использовать только для фильтрации по наличию товаров.
-
----
+Выбираю вариант с пробросом callback-ов: WorkspaceHeader получит список категорий, текущий фильтр и функцию смены фильтра. Категорийный дропдаун будет рендериться прямо в шапке.
 
 ## Техническая часть
 
 | Файл | Изменения |
 |------|-----------|
-| `src/components/admin/CategorySettingsSection.tsx` | (1) В `handleConfirmDelete` вызывать `onDeleteCategory(id)` и удалять `catalog_category_settings` записи |
-| `src/pages/AdminPanel.tsx` | (2) Строка 687: добавить `category-settings` в список восстанавливаемых секций |
-| `src/pages/StoreFront.tsx` | (3) Обновить `catalogCategories` -- включать разделы-родители, если у них есть дочерние с товарами. (4) Добавить подсчёт товаров по категориям. (5) Исправить `topLevel` фильтр -- не считать дочерние категории верхнеуровневыми |
+| `src/components/workspace/WorkspaceHeader.tsx` | Добавить пропсы для категорий (`categories`, `categoryFilter`, `onCategoryChange`, `expandedSections`, `onToggleSection`). Рендерить иконку LayoutGrid с DropdownMenu слева (рядом с "Витрина"). Показывать только когда `activeView === "storefront"` и есть категории. |
+| `src/pages/SellerWorkspace.tsx` | Пробросить категорийные данные из StoreFront в WorkspaceHeader через подъём состояния (lift state up). Добавить состояния `headerCategories`, `headerCategoryFilter`, callback-и. |
+| `src/pages/StoreFront.tsx` | Добавить пропсы `onCategoriesReady` / `onCategoryFilterChange` для синхронизации категорийного состояния с родительским компонентом. Вызывать эти callback-и при изменении `catalogCategories` и `categoryFilter`. |
 
-### Ключевые изменения в коде
+### Структура шапки после изменений
 
-**CategorySettingsSection.tsx -- `handleConfirmDelete`:**
-```typescript
-const handleConfirmDelete = async () => {
-  if (!deleteTarget) return;
-  try {
-    // Удалить из БД
-    await onDeleteCategory(deleteTarget.id);
-    // Удалить настройки каталога
-    if (selectedCatalogId) {
-      const idsToRemove = [deleteTarget.id, ...items.filter(i => i.parentCategoryId === deleteTarget.id).map(i => i.id)];
-      await supabase.from('catalog_category_settings').delete()
-        .eq('catalog_id', selectedCatalogId)
-        .in('category_id', idsToRemove);
-    }
-  } catch (e) { console.error(e); }
-  // Удалить из локального стейта
-  setItems(prev => prev.filter(i => i.id !== deleteTarget.id && i.parentCategoryId !== deleteTarget.id));
-  setDeleteTarget(null);
-  setHasChanges(true);
-};
+```text
+|  [LayoutGrid]  [Витрина]  |  [Заказы] [AI] [Настройки]  |          |
+|  ^ категории   ^ вкладка  |  ^ центр                     |  пусто   |
 ```
 
-**AdminPanel.tsx -- строка 687:**
-```typescript
-if (section === 'products' || section === 'import' || section === 'catalogs' || 
-    section === 'visibility' || section === 'orders' || section === 'clients' || 
-    section === 'help' || section === 'category-settings' || section === 'profile' || 
-    section === 'history' || section === 'trash' || section === 'retail' || 
-    section === 'wholesale') {
-  setActiveSection(section);
-}
-```
+### Ключевые моменты
 
-**StoreFront.tsx -- `catalogCategories`:**
-```typescript
-const catalogCategories = useMemo(() => {
-  if (!selectedCatalog) return [];
-  
-  // Собрать ID категорий с товарами и посчитать количество
-  const categoryCounts = new Map<string, number>();
-  displayProducts.forEach((p) => {
-    if (!productVisibility[p.id]?.has(selectedCatalog)) return;
-    const settings = getProductSettings(selectedCatalog, p.id);
-    (settings?.categories || []).forEach(catId => {
-      categoryCounts.set(catId, (categoryCounts.get(catId) || 0) + 1);
-    });
-  });
-  
-  // Включить разделы-родители, у которых есть дочерние с товарами
-  const parentIdsToInclude = new Set<string>();
-  catalogSpecificCategories.forEach(cat => {
-    if (cat.catalog_parent_id && categoryCounts.has(cat.id)) {
-      parentIdsToInclude.add(cat.catalog_parent_id);
-    }
-  });
-  
-  return catalogSpecificCategories
-    .filter(cat => categoryCounts.has(cat.id) || parentIdsToInclude.has(cat.id))
-    .map(cat => ({ ...cat, product_count: categoryCounts.get(cat.id) || 0 }));
-}, [...]);
-```
+- Иконка категорий видна только на витрине (`activeView === "storefront"`) и когда выбран каталог с категориями
+- Дропдаун содержит ту же иерархию разделов со стрелками expand/collapse
+- При выборе категории — фильтр применяется в StoreFront
+- Текущий дропдаун категорий в панели инструментов StoreFront остаётся как дублирующий элемент (для удобства)
+- Иконка подсвечивается, если активен фильтр по категории
