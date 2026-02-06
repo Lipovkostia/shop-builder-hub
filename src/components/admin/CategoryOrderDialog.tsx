@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { GripVertical, Pencil, Trash2 } from "lucide-react";
 import {
   Dialog,
@@ -200,16 +201,31 @@ export function CategoryOrderDialog({
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+
+    if (catalogId) {
+      supabase
+        .from('catalog_category_settings')
+        .select('category_id, sort_order')
+        .eq('catalog_id', catalogId)
+        .then(({ data }) => {
+          const orderMap = new Map(data?.map(d => [d.category_id, d.sort_order ?? 999999]) || []);
+          const sorted = [...categories].sort((a, b) => {
+            const orderA = orderMap.get(a.id) ?? a.sort_order ?? 999999;
+            const orderB = orderMap.get(b.id) ?? b.sort_order ?? 999999;
+            return orderA - orderB || a.name.localeCompare(b.name);
+          });
+          setOrderedCategories(sorted);
+        });
+    } else {
       const sorted = [...categories].sort((a, b) => {
         const orderA = a.sort_order ?? 999999;
         const orderB = b.sort_order ?? 999999;
-        if (orderA !== orderB) return orderA - orderB;
-        return a.name.localeCompare(b.name);
+        return orderA - orderB || a.name.localeCompare(b.name);
       });
       setOrderedCategories(sorted);
     }
-  }, [open, categories]);
+  }, [open, categories, catalogId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
