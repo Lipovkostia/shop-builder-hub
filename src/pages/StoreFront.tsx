@@ -1007,10 +1007,11 @@ interface StoreFrontProps {
   workspaceMode?: boolean;
   storeData?: any;
   onSwitchToAdmin?: (section?: string) => void;
+  catalogDropdownTrigger?: number;
 }
 
 // Main StoreFront Component
-export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }: StoreFrontProps = {}) {
+export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, catalogDropdownTrigger = 0 }: StoreFrontProps = {}) {
   const { subdomain } = useParams<{ subdomain: string }>();
   const navigate = useNavigate();
   const { user, profile, isSuperAdmin, loading: authLoading } = useAuth();
@@ -1242,6 +1243,13 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
       return () => clearTimeout(timer);
     }
   }, [isOnboardingActive, currentStep]);
+
+  // Open catalog dropdown when triggered from WorkspaceHeader
+  useEffect(() => {
+    if (catalogDropdownTrigger > 0) {
+      setCatalogDropdownOpen(true);
+    }
+  }, [catalogDropdownTrigger]);
   
   // Обработчик создания прайс-листа с переходом к следующему шагу
   const handleCreateCatalogClick = () => {
@@ -1673,36 +1681,17 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                 isSearchFocused ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'
               }`}
             >
-              {/* Селектор прайс-листа */}
+              {/* Селектор прайс-листа - триггер скрыт, dropdown открывается из WorkspaceHeader */}
               <DropdownMenu open={catalogDropdownOpen} onOpenChange={setCatalogDropdownOpen}>
                 <DropdownMenuTrigger 
                   className={`p-2 rounded hover:bg-muted transition-colors relative ${
                     showCatalogHint 
                       ? 'animate-attention-pulse bg-primary/20 ring-2 ring-primary z-20' 
-                      : ''
+                      : 'sr-only'
                   }`}
                   data-onboarding="catalog-folder"
                 >
                   <FolderOpen className={`w-4 h-4 ${showCatalogHint ? 'text-primary' : 'text-muted-foreground'}`} />
-                  
-                  {/* Прыгающая стрелка указывающая на иконку */}
-                  {showCatalogHint && (
-                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-1 flex items-center animate-bounce-arrow pointer-events-none">
-                      <svg 
-                        className="w-5 h-5 text-primary" 
-                        fill="none" 
-                        viewBox="0 0 24 24" 
-                        stroke="currentColor"
-                      >
-                        <path 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          strokeWidth={2.5} 
-                          d="M11 17l-5-5m0 0l5-5m-5 5h12" 
-                        />
-                      </svg>
-                    </div>
-                  )}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent 
                   align="start" 

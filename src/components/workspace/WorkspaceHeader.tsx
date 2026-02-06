@@ -13,6 +13,7 @@ interface WorkspaceHeaderProps {
   onViewChange: (view: ActiveView) => void;
   onOrdersClick?: () => void;
   ordersCount?: number;
+  onCatalogClick?: () => void;
 }
 
 export function WorkspaceHeader({
@@ -23,6 +24,7 @@ export function WorkspaceHeader({
   onViewChange,
   onOrdersClick,
   ordersCount = 0,
+  onCatalogClick,
 }: WorkspaceHeaderProps) {
   const onboarding = useOnboardingSafe();
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
@@ -47,8 +49,8 @@ export function WorkspaceHeader({
     <>
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="h-12 flex items-center justify-between px-3">
-          {/* Витрина - слева */}
-          <div className="flex-1">
+          {/* Витрина и Каталог - слева */}
+          <div className="flex-1 flex items-center gap-1">
             <button
               onClick={() => onViewChange("storefront")}
               data-onboarding-storefront-button
@@ -61,6 +63,14 @@ export function WorkspaceHeader({
               <StoreIcon className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Витрина</span>
             </button>
+            {onCatalogClick && (
+              <button
+                onClick={onCatalogClick}
+                className="flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              >
+                Каталог
+              </button>
+            )}
           </div>
 
           {/* Центральная часть - Заказы, AI, и Управление */}

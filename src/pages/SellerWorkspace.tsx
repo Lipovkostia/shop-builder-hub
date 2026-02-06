@@ -38,6 +38,7 @@ export default function SellerWorkspace() {
   const { orders } = useStoreOrders(hasFullAccess && store?.id ? store.id : null);
 
   const [activeView, setActiveView] = useState<ActiveView>(() => getInitialViewFromSearchParams(searchParams));
+  const [catalogDropdownTrigger, setCatalogDropdownTrigger] = useState(0);
 
   // Keep activeView in sync with URL (e.g. back/forward, manual edits)
   useEffect(() => {
@@ -137,6 +138,13 @@ export default function SellerWorkspace() {
             onViewChange={handleViewChange}
             onOrdersClick={() => handleSwitchToAdmin("orders")}
             ordersCount={orders.filter(o => o.status === 'pending').length}
+            onCatalogClick={() => {
+              // Switch to storefront if not already there, then open catalog dropdown
+              if (activeView !== "storefront") {
+                handleViewChange("storefront");
+              }
+              setCatalogDropdownTrigger(prev => prev + 1);
+            }}
           />
         )}
         
@@ -147,6 +155,7 @@ export default function SellerWorkspace() {
               workspaceMode={hasFullAccess}
               storeData={store}
               onSwitchToAdmin={handleSwitchToAdmin}
+              catalogDropdownTrigger={catalogDropdownTrigger}
             />
           </div>
           <div className={activeView === "admin" ? "block" : "hidden"}>
