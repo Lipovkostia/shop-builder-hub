@@ -438,7 +438,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     
     // Check that at least one update field is selected
     const { fieldsToUpdate } = columnMapping;
-    const hasFieldToUpdate = fieldsToUpdate.buyPrice !== null || fieldsToUpdate.price !== null || fieldsToUpdate.unit !== null || fieldsToUpdate.name !== null;
+    const hasFieldToUpdate = fieldsToUpdate.buyPrice !== null || fieldsToUpdate.price !== null || fieldsToUpdate.unit !== null || fieldsToUpdate.name !== null || fieldsToUpdate.photos !== null;
     if (!hasFieldToUpdate) return;
     
     // Show parsing status
@@ -530,15 +530,18 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       matched: 0,
       created: 0,
       hidden: 0,
-      errors: []
+      errors: [],
+      photosUploaded: 0,
+      photosTotal: 0,
     });
     
     // Determine which fields to update based on mapping
-    const fieldsToUpdateArray: ('buyPrice' | 'price' | 'unit' | 'name')[] = [];
+    const fieldsToUpdateArray: ('buyPrice' | 'price' | 'unit' | 'name' | 'photos')[] = [];
     if (columnMapping.fieldsToUpdate.buyPrice !== null) fieldsToUpdateArray.push('buyPrice');
     if (columnMapping.fieldsToUpdate.price !== null) fieldsToUpdateArray.push('price');
     if (columnMapping.fieldsToUpdate.unit !== null) fieldsToUpdateArray.push('unit');
     if (columnMapping.fieldsToUpdate.name !== null) fieldsToUpdateArray.push('name');
+    if (columnMapping.fieldsToUpdate.photos !== null) fieldsToUpdateArray.push('photos');
     
     try {
       const result = await importProductsToCatalogExtended(
@@ -550,7 +553,8 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
         (progress) => {
           setImportProgress({ ...progress });
           if (progress.status === 'processing') {
-            setImportStatus(`Обработка: ${progress.current} из ${progress.total}`);
+            const photoInfo = progress.photosTotal > 0 ? ` · Фото: ${progress.photosUploaded}/${progress.photosTotal}` : '';
+            setImportStatus(`Обработка: ${progress.current} из ${progress.total}${photoInfo}`);
           } else if (progress.status === 'complete') {
             setImportStatus('Импорт завершён!');
           }

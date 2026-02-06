@@ -11,6 +11,7 @@ export interface PriceListProduct {
   price?: number;         // Selling price (optional) - отпускная цена
   unit?: string;          // Unit of measurement (optional)
   rawPrice?: string;      // Original price string
+  photos?: string[];      // Photo URLs from Excel
 }
 
 export interface PriceListImportProgress {
@@ -22,6 +23,8 @@ export interface PriceListImportProgress {
   created: number;
   hidden: number;
   errors: string[];
+  photosUploaded: number;
+  photosTotal: number;
 }
 
 export interface PriceListImportResult {
@@ -413,9 +416,25 @@ export function parseProductsWithExtendedMapping(
       }
     }
     
+    // Parse photos column
+    if (fieldsToUpdate.photos !== null) {
+      const photosRaw = row[fieldsToUpdate.photos];
+      const photosStr = String(photosRaw || '').trim();
+      if (photosStr) {
+        const photoUrls = photosStr
+          .split(/[;,]/)
+          .map(u => u.trim())
+          .filter(u => u.length > 5 && (u.startsWith('http://') || u.startsWith('https://')));
+        if (photoUrls.length > 0) {
+          product.photos = photoUrls;
+        }
+      }
+    }
+    
     // For name-based identification, we need at least one field to update
     if (mapping.identifierType === 'name') {
-      if (product.buyPrice === undefined && product.price === undefined && product.unit === undefined) {
+      const hasUpdate = product.buyPrice !== undefined || product.price !== undefined || product.unit !== undefined || (product.photos && product.photos.length > 0);
+      if (!hasUpdate) {
         continue;
       }
     }
@@ -546,9 +565,14 @@ export async function importProductsToCatalogExtended(
   storeId: string,
   catalogId: string,
   identifierType: 'sku' | 'name',
-  fieldsToUpdate: ('buyPrice' | 'price' | 'unit' | 'name')[],
+  fieldsToUpdate: ('buyPrice' | 'price' | 'unit' | 'name' | 'photos')[],
   onProgress: (progress: PriceListImportProgress) => void
 ): Promise<PriceListImportResult> {
+  // Count total photos to upload
+  const totalPhotos = fieldsToUpdate.includes('photos')
+    ? products.reduce((sum, p) => sum + (p.photos?.length || 0), 0)
+    : 0;
+  
   const progress: PriceListImportProgress = {
     total: products.length,
     current: 0,
@@ -557,7 +581,9 @@ export async function importProductsToCatalogExtended(
     matched: 0,
     created: 0,
     hidden: 0,
-    errors: []
+    errors: [],
+    photosUploaded: 0,
+    photosTotal: totalPhotos,
   };
   
   onProgress(progress);
@@ -658,6 +684,33 @@ export async function importProductsToCatalogExtended(
         
         progress.matched++;
         
+        // Upload photos if provided
+        if (fieldsToUpdate.includes('photos') && excelProduct.photos && excelProduct.photos.length > 0) {
+          const uploadedUrls: string[] = [];
+          for (let imgIdx = 0; imgIdx < excelProduct.photos.length; imgIdx++) {
+            try {
+              progress.currentProduct = `Загрузка фото ${imgIdx + 1}/${excelProduct.photos.length}: ${excelProduct.name || excelProduct.sku}`;
+              onProgress(progress);
+              
+              const { data } = await supabase.functions.invoke('fetch-external-image', {
+                body: { imageUrl: excelProduct.photos[imgIdx], productId: existingProduct.id, imageIndex: imgIdx }
+              });
+              if (data?.url) {
+                uploadedUrls.push(data.url);
+                progress.photosUploaded++;
+                onProgress(progress);
+              }
+            } catch (imgErr) {
+              console.error(`Failed to upload photo for ${excelProduct.name}:`, imgErr);
+            }
+          }
+          if (uploadedUrls.length > 0) {
+            await supabase.from('products').update({
+              images: uploadedUrls
+            }).eq('id', existingProduct.id);
+          }
+        }
+        
         // Ensure product is visible in this catalog
         await supabase
           .from('product_catalog_visibility')
@@ -721,6 +774,33 @@ export async function importProductsToCatalogExtended(
         } else if (newProduct) {
           progress.created++;
           productsInExcel.add(newProduct.id);
+          
+          // Upload photos for new product
+          if (fieldsToUpdate.includes('photos') && excelProduct.photos && excelProduct.photos.length > 0) {
+            const uploadedUrls: string[] = [];
+            for (let imgIdx = 0; imgIdx < excelProduct.photos.length; imgIdx++) {
+              try {
+                progress.currentProduct = `Загрузка фото ${imgIdx + 1}/${excelProduct.photos.length}: ${excelProduct.name}`;
+                onProgress(progress);
+                
+                const { data } = await supabase.functions.invoke('fetch-external-image', {
+                  body: { imageUrl: excelProduct.photos[imgIdx], productId: newProduct.id, imageIndex: imgIdx }
+                });
+                if (data?.url) {
+                  uploadedUrls.push(data.url);
+                  progress.photosUploaded++;
+                  onProgress(progress);
+                }
+              } catch (imgErr) {
+                console.error(`Failed to upload photo for ${excelProduct.name}:`, imgErr);
+              }
+            }
+            if (uploadedUrls.length > 0) {
+              await supabase.from('products').update({
+                images: uploadedUrls
+              }).eq('id', newProduct.id);
+            }
+          }
           
           // Add to catalog visibility
           await supabase
@@ -857,7 +937,9 @@ export async function importProductsWithMapping(
     matched: 0,
     created: 0,
     hidden: 0,
-    errors: []
+    errors: [],
+    photosUploaded: 0,
+    photosTotal: 0,
   };
   
   onProgress(progress);
