@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store as StoreIcon, Package, LayoutGrid, Plus, LogIn, Sparkles, Users, Link2, Copy, Share2, ArrowDownAZ } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store as StoreIcon, Package, LayoutGrid, Plus, LogIn, Sparkles, Users, Link2, Copy, Share2, ArrowDownAZ, ChevronRight, ChevronDown, Folder } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 import { Badge } from "@/components/ui/badge";
@@ -1027,7 +1027,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const { categories } = useStoreCategories(store?.id || null);
   
   // State for catalog-specific ordered categories (loaded via RPC)
-  const [catalogSpecificCategories, setCatalogSpecificCategories] = useState<typeof categories>([]);
+  const [catalogSpecificCategories, setCatalogSpecificCategories] = useState<(typeof categories[0] & { catalog_parent_id?: string | null })[]>([]);
   
   // Check for temp super admin from localStorage (used when super admin navigates from super admin panel)
   const isTempSuperAdmin = typeof window !== 'undefined' && localStorage.getItem('temp_super_admin') === 'true';
@@ -1176,6 +1176,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
             parent_id: c.parent_id,
             sort_order: c.sort_order,
             image_url: c.image_url,
+            catalog_parent_id: c.catalog_parent_id || null,
           })));
         }
       });
@@ -1190,6 +1191,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInputValue, setSearchInputValue] = useState("");
   const [sortOrder, setSortOrder] = useState<'default' | 'asc' | 'desc'>('default');
+  const [expandedDropdownSections, setExpandedDropdownSections] = useState<Set<string>>(new Set());
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -1480,7 +1482,15 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
       // Apply category filter - use catalog-specific categories
       if (categoryFilter !== null) {
         const productCategories = catalogSettings?.categories || [];
-        if (!productCategories.includes(categoryFilter)) {
+        // Check if selected filter is a section (has children)
+        const childIds = catalogSpecificCategories
+          .filter(c => c.catalog_parent_id === categoryFilter)
+          .map(c => c.id);
+        const filterIds = childIds.length > 0
+          ? [categoryFilter, ...childIds]
+          : [categoryFilter];
+        
+        if (!filterIds.some(id => productCategories.includes(id))) {
           return false;
         }
       }
@@ -1505,7 +1515,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
     }
 
     return filtered;
-  }, [displayProducts, selectedCatalog, productVisibility, getProductSettings, isOwner, statusFilter, categoryFilter, searchQuery, sortOrder]);
+  }, [displayProducts, selectedCatalog, productVisibility, getProductSettings, isOwner, statusFilter, categoryFilter, searchQuery, sortOrder, catalogSpecificCategories]);
 
   // Show catalog hint when no catalog selected and there are catalogs to choose from
   const showCatalogHint = !selectedCatalog && accessibleCatalogs.length > 0 && displayProducts.length > 0;
@@ -1838,7 +1848,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                     <LayoutGrid className="w-4 h-4" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-[160px] max-h-[300px] overflow-y-auto">
+                <DropdownMenuContent align="end" className="min-w-[200px] max-h-[400px] overflow-y-auto bg-popover z-50">
                   <DropdownMenuItem
                     onClick={() => setCategoryFilter(null)}
                     className={`cursor-pointer ${categoryFilter === null ? 'font-semibold bg-primary/10' : ''}`}
@@ -1848,15 +1858,87 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                   {catalogCategories.length > 0 && (
                     <>
                       <DropdownMenuSeparator />
-                      {catalogCategories.map((cat) => (
-                        <DropdownMenuItem
-                          key={cat.id}
-                          onClick={() => setCategoryFilter(cat.id)}
-                          className={`cursor-pointer ${categoryFilter === cat.id ? 'font-semibold bg-primary/10' : ''}`}
-                        >
-                          {cat.name}
-                        </DropdownMenuItem>
-                      ))}
+                      {(() => {
+                        // Build hierarchy: sections (categories with children) and top-level categories
+                        const sections = catalogCategories.filter(cat => 
+                          catalogCategories.some(child => child.catalog_parent_id === cat.id)
+                        );
+                        const sectionIds = new Set(sections.map(s => s.id));
+                        const topLevel = catalogCategories.filter(cat => 
+                          !cat.catalog_parent_id || !sectionIds.has(cat.catalog_parent_id)
+                        );
+                        
+                        return topLevel.map((cat) => {
+                          const children = catalogCategories.filter(c => c.catalog_parent_id === cat.id);
+                          const isSection = children.length > 0;
+                          const isExpanded = expandedDropdownSections.has(cat.id);
+                          
+                          if (isSection) {
+                            return (
+                              <div key={cat.id}>
+                                <div
+                                  className={`flex items-center gap-1 px-2 py-1.5 text-sm cursor-pointer rounded-sm hover:bg-accent transition-colors ${
+                                    categoryFilter === cat.id ? 'bg-primary/10 font-semibold' : ''
+                                  }`}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setExpandedDropdownSections(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(cat.id)) next.delete(cat.id);
+                                      else next.add(cat.id);
+                                      return next;
+                                    });
+                                  }}
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                                  ) : (
+                                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                                  )}
+                                  <Folder className="w-3.5 h-3.5 text-primary/70 flex-shrink-0" />
+                                  <span className="font-semibold text-foreground">{cat.name}</span>
+                                </div>
+                                {isExpanded && (
+                                  <div>
+                                    {/* Show all in section */}
+                                    <DropdownMenuItem
+                                      onClick={() => setCategoryFilter(cat.id)}
+                                      className={`cursor-pointer pl-8 text-xs text-muted-foreground ${
+                                        categoryFilter === cat.id ? 'font-semibold bg-primary/10' : ''
+                                      }`}
+                                    >
+                                      Все в «{cat.name}»
+                                    </DropdownMenuItem>
+                                    {children.map(child => (
+                                      <DropdownMenuItem
+                                        key={child.id}
+                                        onClick={() => setCategoryFilter(child.id)}
+                                        className={`cursor-pointer pl-8 ${
+                                          categoryFilter === child.id ? 'font-semibold bg-primary/10' : ''
+                                        }`}
+                                      >
+                                        {child.name}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+                          
+                          // Regular category (no children, not inside a section)
+                          return (
+                            <DropdownMenuItem
+                              key={cat.id}
+                              onClick={() => setCategoryFilter(cat.id)}
+                              className={`cursor-pointer ${categoryFilter === cat.id ? 'font-semibold bg-primary/10' : ''}`}
+                            >
+                              {cat.name}
+                            </DropdownMenuItem>
+                          );
+                        });
+                      })()}
                     </>
                   )}
                 </DropdownMenuContent>
@@ -1933,8 +2015,8 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                   )}
                 </div>
 
-                {/* Фильтр по категориям */}
-                {categories.length > 0 && (
+                {/* Фильтр по категориям - иерархический */}
+                {catalogCategories.length > 0 && (
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-[10px] text-muted-foreground uppercase flex items-center gap-1">
                       <Tag className="w-3 h-3" />
@@ -1951,19 +2033,58 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                       >
                         Все
                       </button>
-                      {categories.map((cat) => (
-                        <button
-                          key={cat.id}
-                          onClick={() => setCategoryFilter(cat.id)}
-                          className={`px-2 py-0.5 text-[10px] rounded-full transition-colors ${
-                            categoryFilter === cat.id
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                          }`}
-                        >
-                          {cat.name}
-                        </button>
-                      ))}
+                      {(() => {
+                        const sectionIds = new Set(
+                          catalogCategories
+                            .filter(cat => catalogCategories.some(child => child.catalog_parent_id === cat.id))
+                            .map(s => s.id)
+                        );
+                        const topLevel = catalogCategories.filter(cat => 
+                          !cat.catalog_parent_id || !sectionIds.has(cat.catalog_parent_id)
+                        );
+                        
+                        return topLevel.flatMap((cat) => {
+                          const children = catalogCategories.filter(c => c.catalog_parent_id === cat.id);
+                          const isSection = children.length > 0;
+                          const childIds = children.map(c => c.id);
+                          const isActive = categoryFilter === cat.id || (isSection && childIds.includes(categoryFilter || ''));
+                          
+                          if (isSection) {
+                            return [
+                              <span key={`label-${cat.id}`} className="text-[10px] text-muted-foreground font-semibold ml-1">
+                                {cat.name}:
+                              </span>,
+                              ...children.map(child => (
+                                <button
+                                  key={child.id}
+                                  onClick={() => setCategoryFilter(child.id)}
+                                  className={`px-2 py-0.5 text-[10px] rounded-full transition-colors ${
+                                    categoryFilter === child.id
+                                      ? 'bg-primary text-primary-foreground'
+                                      : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                                  }`}
+                                >
+                                  {child.name}
+                                </button>
+                              ))
+                            ];
+                          }
+                          
+                          return [(
+                            <button
+                              key={cat.id}
+                              onClick={() => setCategoryFilter(cat.id)}
+                              className={`px-2 py-0.5 text-[10px] rounded-full transition-colors ${
+                                categoryFilter === cat.id
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                              }`}
+                            >
+                              {cat.name}
+                            </button>
+                          )];
+                        });
+                      })()}
                     </div>
                   </div>
                 )}
@@ -2112,18 +2233,70 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
               );
             }
 
-            // Group products by category (sorted by category sort_order)
+            // Group products by hierarchy: sections → subcategories → products
             const sortedCategories = [...catalogCategories].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+            
+            // Identify sections (categories that have children in this catalog)
+            const sections = sortedCategories.filter(cat => 
+              sortedCategories.some(child => child.catalog_parent_id === cat.id)
+            );
+            const sectionIds = new Set(sections.map(s => s.id));
+            // Top-level items: sections + categories not belonging to any section
+            const topLevelItems = sortedCategories.filter(cat => 
+              !cat.catalog_parent_id || !sectionIds.has(cat.catalog_parent_id)
+            );
+            
+            const getProductsForCategory = (catId: string) => {
+              return filteredProducts.filter((p) => {
+                const cs = selectedCatalog ? getProductSettings(selectedCatalog, p.id) : undefined;
+                return (cs?.categories || []).includes(catId);
+              });
+            };
             
             return (
               <>
-                {sortedCategories.map((category) => {
-                  const categoryProducts = filteredProducts.filter((p) => {
-                    const catalogSettings = selectedCatalog ? getProductSettings(selectedCatalog, p.id) : undefined;
-                    const productCategories = catalogSettings?.categories || [];
-                    return productCategories.includes(category.id);
-                  });
+                {topLevelItems.map((category) => {
+                  const children = sortedCategories.filter(c => c.catalog_parent_id === category.id);
+                  const isSection = children.length > 0;
                   
+                  if (isSection) {
+                    // Render section with subcategories
+                    const allSectionProducts = children.flatMap(child => getProductsForCategory(child.id));
+                    // Also include products directly assigned to the section category
+                    const directProducts = getProductsForCategory(category.id);
+                    const hasAnyProducts = allSectionProducts.length > 0 || directProducts.length > 0;
+                    
+                    if (!hasAnyProducts) return null;
+                    
+                    return (
+                      <div key={category.id}>
+                        {/* Section header */}
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-primary/5 to-transparent border-b border-border/50 sticky top-0 z-10 backdrop-blur-sm">
+                          <Folder className="w-3.5 h-3.5 text-primary/70" />
+                          <span className="text-xs font-bold text-foreground/90 uppercase tracking-wider">{category.name}</span>
+                        </div>
+                        {/* Direct products of section */}
+                        {directProducts.map(renderProductCard)}
+                        {/* Subcategories */}
+                        {children.map(child => {
+                          const childProducts = getProductsForCategory(child.id);
+                          if (childProducts.length === 0) return null;
+                          return (
+                            <div key={child.id}>
+                              <div className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-muted/40 to-transparent border-b border-border/50 sticky top-0 z-10 backdrop-blur-sm">
+                                <div className="w-0.5 h-3 rounded-full bg-primary/70" />
+                                <span className="text-[11px] font-semibold text-foreground/80 uppercase tracking-wider">{child.name}</span>
+                              </div>
+                              {childProducts.map(renderProductCard)}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  }
+                  
+                  // Regular category (not a section)
+                  const categoryProducts = getProductsForCategory(category.id);
                   if (categoryProducts.length === 0) return null;
                   
                   return (
