@@ -71,6 +71,7 @@ const baseUpdateFields = [
   { key: 'price', label: 'Цена', description: 'Отпускная цена товара' },
   { key: 'unit', label: 'Единица измерения', description: 'кг, шт, л и т.д.' },
   { key: 'name', label: 'Название', description: 'Обновить название товара' },
+  { key: 'photos', label: 'Фото', description: 'Ссылки на изображения через , или ;' },
 ] as const;
 
 // Additional fields for assortment mode
