@@ -4656,6 +4656,19 @@ export default function AdminPanel({
                         });
                       }
                     }}
+                    onBulkClearCategories={() => {
+                      if (currentCatalog) {
+                        const count = selectedCatalogBulkProducts.size;
+                        selectedCatalogBulkProducts.forEach(productId => {
+                          updateCatalogProductPricing(currentCatalog.id, productId, { categories: [] });
+                        });
+                        setSelectedCatalogBulkProducts(new Set());
+                        toast({
+                          title: "Категории сняты",
+                          description: `Категории очищены у ${count} товаров`,
+                        });
+                      }
+                    }}
                   />
 
                   <p className="text-xs text-muted-foreground mb-2">

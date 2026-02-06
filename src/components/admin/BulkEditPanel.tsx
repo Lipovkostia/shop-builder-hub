@@ -55,6 +55,7 @@ interface BulkEditPanelProps {
   // New props for bulk category editing
   categories?: Category[];
   onBulkSetCategories?: (categoryIds: string[]) => void;
+  onBulkClearCategories?: () => void;
 }
 
 export function BulkEditPanel({
@@ -72,6 +73,7 @@ export function BulkEditPanel({
   currentCatalogName,
   categories = [],
   onBulkSetCategories,
+  onBulkClearCategories,
 }: BulkEditPanelProps) {
   const [editField, setEditField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
@@ -263,6 +265,23 @@ export function BulkEditPanel({
                       <p className="text-sm text-muted-foreground px-2 py-1">Нет категорий</p>
                     )}
                   </div>
+                  {onBulkClearCategories && (
+                    <>
+                      <div className="border-t my-1" />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          onBulkClearCategories();
+                          setIsCategoryPopoverOpen(false);
+                        }}
+                        className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Снять все категории
+                      </Button>
+                    </>
+                  )}
                   <div className="flex gap-2">
                     <Button
                       size="sm"
