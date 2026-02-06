@@ -69,10 +69,11 @@ export function useStoreCategories(storeId: string | null) {
               return [...prev, newCategory];
             });
           } else if (payload.eventType === "UPDATE") {
-            const updated = payload.new as StoreCategory;
-            setCategories((prev) =>
-              prev.map((c) => (c.id === updated.id ? updated : c))
-            );
+            const updatedCat = payload.new as StoreCategory;
+            setCategories((prev) => {
+              const next = prev.map((c) => (c.id === updatedCat.id ? updatedCat : c));
+              return next.sort((a, b) => (a.sort_order ?? 999999) - (b.sort_order ?? 999999));
+            });
           } else if (payload.eventType === "DELETE") {
             const deletedId = (payload.old as any).id;
             setCategories((prev) => prev.filter((c) => c.id !== deletedId));
@@ -166,17 +167,6 @@ export function useStoreCategories(storeId: string | null) {
       );
       
       await Promise.all(upserts);
-      
-      // Update local state to reflect new order
-      setCategories(prev => {
-        const categoryMap = new Map(prev.map(c => [c.id, c]));
-        return orderedIds
-          .map((id, index) => {
-            const cat = categoryMap.get(id);
-            return cat ? { ...cat, sort_order: index } : null;
-          })
-          .filter((c): c is StoreCategory => c !== null);
-      });
     } catch (error) {
       console.error('Error updating catalog category order:', error);
       throw error;
