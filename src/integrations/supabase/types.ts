@@ -60,6 +60,7 @@ export type Database = {
           created_at: string
           custom_name: string | null
           id: string
+          parent_category_id: string | null
           sort_order: number | null
           updated_at: string
         }
@@ -69,6 +70,7 @@ export type Database = {
           created_at?: string
           custom_name?: string | null
           id?: string
+          parent_category_id?: string | null
           sort_order?: number | null
           updated_at?: string
         }
@@ -78,6 +80,7 @@ export type Database = {
           created_at?: string
           custom_name?: string | null
           id?: string
+          parent_category_id?: string | null
           sort_order?: number | null
           updated_at?: string
         }
@@ -92,6 +95,13 @@ export type Database = {
           {
             foreignKeyName: "catalog_category_settings_category_id_fkey"
             columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_category_settings_parent_category_id_fkey"
+            columns: ["parent_category_id"]
             isOneToOne: false
             referencedRelation: "categories"
             referencedColumns: ["id"]
@@ -1498,6 +1508,7 @@ export type Database = {
       get_catalog_categories_ordered: {
         Args: { _catalog_id: string; _store_id: string }
         Returns: {
+          catalog_parent_id: string
           id: string
           image_url: string
           name: string

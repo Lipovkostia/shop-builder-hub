@@ -85,6 +85,7 @@ import { CustomerAIAssistantBanner } from "@/components/customer/CustomerAIAssis
 import { CustomerAIAssistantPanel } from "@/components/customer/CustomerAIAssistantPanel";
 import { useCustomerAIAssistant, FoundItem } from "@/hooks/useCustomerAIAssistant";
 import { openWhatsAppWithOrder, WhatsAppOrderData } from "@/lib/whatsappUtils";
+import { buildCategoryTree, flattenCategoryTree, getAllDescendantIds } from "@/lib/categoryUtils";
 
 // Storage key for cart persistence
 const CART_STORAGE_KEY = 'customer_cart';
@@ -573,7 +574,7 @@ function CustomerHeader({
   onOpenCart: () => void;
   onOpenProfile: () => void;
   onOpenOrders: () => void;
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; parent_id?: string | null; catalog_parent_id?: string | null; sort_order?: number | null }[];
   selectedCategory: string | null;
   onSelectCategory: (categoryId: string | null) => void;
   searchQuery: string;
@@ -614,7 +615,7 @@ function CustomerHeader({
             >
               <LayoutGrid className="w-4 h-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="min-w-[160px] bg-popover z-50">
+            <DropdownMenuContent align="center" className="min-w-[200px] max-h-[60vh] overflow-y-auto bg-popover z-50">
               <DropdownMenuItem
                 onClick={() => onSelectCategory(null)}
                 className="cursor-pointer"
@@ -624,20 +625,24 @@ function CustomerHeader({
                   <span className={!selectedCategory ? "font-semibold" : ""}>Все категории</span>
                 </div>
               </DropdownMenuItem>
-              {categories.map((category) => (
-                <DropdownMenuItem
-                  key={category.id}
-                  onClick={() => onSelectCategory(category.id)}
-                  className="cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    {selectedCategory === category.id && <Check className="w-4 h-4 text-primary" />}
-                    <span className={selectedCategory === category.id ? "font-semibold" : ""}>
-                      {category.name}
-                    </span>
-                  </div>
-                </DropdownMenuItem>
-              ))}
+              {(() => {
+                const tree = buildCategoryTree(categories);
+                const flatList = flattenCategoryTree(tree);
+                return flatList.map((cat) => (
+                  <DropdownMenuItem
+                    key={cat.id}
+                    onClick={() => onSelectCategory(cat.id)}
+                    className="cursor-pointer"
+                  >
+                    <div className={`flex items-center gap-2 ${cat.depth > 0 ? 'pl-4' : ''}`}>
+                      {selectedCategory === cat.id && <Check className="w-4 h-4 text-primary" />}
+                      <span className={`${selectedCategory === cat.id ? "font-semibold" : ""} ${cat.isParent ? "font-semibold" : ""}`}>
+                        {cat.name}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                ));
+              })()}
               {categories.length === 0 && (
                 <DropdownMenuItem disabled>
                   <span className="text-muted-foreground">Нет категорий</span>
@@ -889,6 +894,7 @@ const CustomerDashboard = () => {
             slug: c.slug,
             description: null,
             parent_id: c.parent_id,
+            catalog_parent_id: c.catalog_parent_id,
             sort_order: c.sort_order,
             image_url: c.image_url,
           })));
