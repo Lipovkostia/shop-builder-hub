@@ -183,5 +183,29 @@ export function useStoreCategories(storeId: string | null) {
     }
   }, []);
 
-  return { categories, loading, refetch: fetchCategories, createCategory, updateCategoryOrder, updateCatalogCategoryOrder };
+  // Rename category
+  const renameCategory = useCallback(async (id: string, newName: string) => {
+    const { error } = await supabase
+      .from('categories')
+      .update({ name: newName })
+      .eq('id', id);
+    if (error) {
+      console.error('Error renaming category:', error);
+      throw error;
+    }
+  }, []);
+
+  // Delete category
+  const deleteCategory = useCallback(async (id: string) => {
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      console.error('Error deleting category:', error);
+      throw error;
+    }
+  }, []);
+
+  return { categories, loading, refetch: fetchCategories, createCategory, updateCategoryOrder, updateCatalogCategoryOrder, renameCategory, deleteCategory };
 }

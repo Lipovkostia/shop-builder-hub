@@ -649,7 +649,7 @@ export default function AdminPanel({
   } = useProductCategories(effectiveStoreId);
 
   // Store categories from Supabase
-  const { categories: storeCategories, loading: categoriesLoading, createCategory, updateCategoryOrder, updateCatalogCategoryOrder, refetch: refetchCategories } = useStoreCategories(effectiveStoreId);
+  const { categories: storeCategories, loading: categoriesLoading, createCategory, updateCategoryOrder, updateCatalogCategoryOrder, renameCategory, deleteCategory, refetch: refetchCategories } = useStoreCategories(effectiveStoreId);
   const [categoryOrderDialogOpen, setCategoryOrderDialogOpen] = useState(false);
   const [categoryOrderCatalogId, setCategoryOrderCatalogId] = useState<string | null>(null);
   // ================ END SUPABASE DATA HOOKS ================
@@ -6433,10 +6433,8 @@ export default function AdminPanel({
         catalogName={categoryOrderCatalogId ? catalogs.find(c => c.id === categoryOrderCatalogId)?.name : undefined}
         onSave={async (orderedIds) => {
           if (categoryOrderCatalogId) {
-            // Save to catalog-specific settings
             await updateCatalogCategoryOrder(categoryOrderCatalogId, orderedIds);
           } else {
-            // Save to global category order
             await updateCategoryOrder(orderedIds);
           }
           toast({
@@ -6445,6 +6443,14 @@ export default function AdminPanel({
               ? "Порядок категорий в прайс-листе обновлён и применён на витрине"
               : "Порядок отображения категорий обновлён",
           });
+        }}
+        onRename={async (id, newName) => {
+          await renameCategory(id, newName);
+          toast({ title: "Категория переименована" });
+        }}
+        onDelete={async (id) => {
+          await deleteCategory(id);
+          toast({ title: "Категория удалена" });
         }}
       />
 
