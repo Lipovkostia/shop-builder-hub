@@ -6426,13 +6426,13 @@ export default function AdminPanel({
         categories={storeCategories}
         catalogId={categoryOrderCatalogId}
         catalogName={categoryOrderCatalogId ? catalogs.find(c => c.id === categoryOrderCatalogId)?.name : undefined}
-        onSave={async (items) => {
+        onSave={async (orderedIds) => {
           if (categoryOrderCatalogId) {
-            // Save to catalog-specific settings (new hierarchy format)
-            await updateCatalogCategoryOrder(categoryOrderCatalogId, items);
+            // Save to catalog-specific settings
+            await updateCatalogCategoryOrder(categoryOrderCatalogId, orderedIds);
           } else {
-            // Save to global category order (new hierarchy format)
-            await updateCategoryOrder(items);
+            // Save to global category order
+            await updateCategoryOrder(orderedIds);
           }
           toast({
             title: "Порядок сохранён",

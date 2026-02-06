@@ -64,7 +64,6 @@ import {
   PlayCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { buildCategoryTree, flattenCategoryTree, getAllDescendantIds } from "@/lib/categoryUtils";
 
 // Utility functions
 function formatPriceSpaced(price: number): string {
@@ -929,20 +928,14 @@ const GuestCatalogView = () => {
                     <span className={!selectedCategory ? "font-semibold" : ""}>Все категории</span>
                   </div>
                 </DropdownMenuItem>
-                {(() => {
-                  const tree = buildCategoryTree(availableCategories.map(c => ({ ...c, parent_id: (c as any).parent_id, catalog_parent_id: (c as any).catalog_parent_id })));
-                  const flatList = flattenCategoryTree(tree);
-                  return flatList.map((cat) => (
-                    <DropdownMenuItem key={cat.id} onClick={() => setSelectedCategory(cat.id)} className="cursor-pointer">
-                      <div className={`flex items-center gap-2 ${cat.depth > 0 ? 'pl-4' : ''}`}>
-                        {selectedCategory === cat.id && <Check className="w-4 h-4 text-primary" />}
-                        <span className={`${selectedCategory === cat.id ? "font-semibold" : ""} ${cat.isParent ? "font-semibold" : ""}`}>
-                          {cat.name}
-                        </span>
-                      </div>
-                    </DropdownMenuItem>
-                  ));
-                })()}
+                {availableCategories.map((cat) => (
+                  <DropdownMenuItem key={cat.id} onClick={() => setSelectedCategory(cat.id)} className="cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      {selectedCategory === cat.id && <Check className="w-4 h-4 text-primary" />}
+                      <span className={selectedCategory === cat.id ? "font-semibold" : ""}>{cat.name}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
