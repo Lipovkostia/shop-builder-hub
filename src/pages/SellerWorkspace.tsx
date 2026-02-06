@@ -5,6 +5,7 @@ import { useStoreOrders } from "@/hooks/useOrders";
 import { useIsStoreOwner } from "@/hooks/useUserStore";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
+import type { StoreFrontCategory } from "./StoreFront";
 
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import StoreFront from "./StoreFront";
@@ -38,6 +39,24 @@ export default function SellerWorkspace() {
   const { orders } = useStoreOrders(hasFullAccess && store?.id ? store.id : null);
 
   const [activeView, setActiveView] = useState<ActiveView>(() => getInitialViewFromSearchParams(searchParams));
+  
+  // Category state lifted from StoreFront for header dropdown
+  const [headerCategories, setHeaderCategories] = useState<StoreFrontCategory[]>([]);
+  const [headerCategoryFilter, setHeaderCategoryFilter] = useState<string | null>(null);
+  const [externalCategoryFilter, setExternalCategoryFilter] = useState<string | null>(null);
+
+  const handleHeaderCategoryChange = useCallback((filter: string | null) => {
+    setHeaderCategoryFilter(filter);
+    setExternalCategoryFilter(filter);
+  }, []);
+
+  const handleCategoriesReady = useCallback((cats: StoreFrontCategory[]) => {
+    setHeaderCategories(cats);
+  }, []);
+
+  const handleCategoryFilterChange = useCallback((filter: string | null) => {
+    setHeaderCategoryFilter(filter);
+  }, []);
 
   // Keep activeView in sync with URL (e.g. back/forward, manual edits)
   useEffect(() => {
@@ -137,6 +156,9 @@ export default function SellerWorkspace() {
             onViewChange={handleViewChange}
             onOrdersClick={() => handleSwitchToAdmin("orders")}
             ordersCount={orders.filter(o => o.status === 'pending').length}
+            categories={headerCategories}
+            categoryFilter={headerCategoryFilter}
+            onCategoryChange={handleHeaderCategoryChange}
           />
         )}
         
@@ -147,6 +169,9 @@ export default function SellerWorkspace() {
               workspaceMode={hasFullAccess}
               storeData={store}
               onSwitchToAdmin={handleSwitchToAdmin}
+              onCategoriesReady={handleCategoriesReady}
+              onCategoryFilterChange={handleCategoryFilterChange}
+              externalCategoryFilter={externalCategoryFilter}
             />
           </div>
           <div className={activeView === "admin" ? "block" : "hidden"}>

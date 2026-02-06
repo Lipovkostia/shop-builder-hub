@@ -1002,15 +1002,26 @@ function StoreSkeleton() {
   );
 }
 
+// Category type exported for WorkspaceHeader
+export interface StoreFrontCategory {
+  id: string;
+  name: string;
+  catalog_parent_id?: string | null;
+  product_count: number;
+}
+
 // Props interface for workspace mode
 interface StoreFrontProps {
   workspaceMode?: boolean;
   storeData?: any;
   onSwitchToAdmin?: (section?: string) => void;
+  onCategoriesReady?: (categories: StoreFrontCategory[]) => void;
+  onCategoryFilterChange?: (filter: string | null) => void;
+  externalCategoryFilter?: string | null;
 }
 
 // Main StoreFront Component
-export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }: StoreFrontProps = {}) {
+export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, onCategoriesReady, onCategoryFilterChange, externalCategoryFilter }: StoreFrontProps = {}) {
   const { subdomain } = useParams<{ subdomain: string }>();
   const navigate = useNavigate();
   const { user, profile, isSuperAdmin, loading: authLoading } = useAuth();
@@ -1551,6 +1562,24 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
       .map(cat => ({ ...cat, product_count: categoryCounts.get(cat.id) || 0 }));
   }, [selectedCatalog, displayProducts, productVisibility, getProductSettings, catalogSpecificCategories]);
 
+  // Sync categories to parent (WorkspaceHeader)
+  useEffect(() => {
+    onCategoriesReady?.(catalogCategories);
+  }, [catalogCategories, onCategoriesReady]);
+
+  // Sync category filter changes to parent
+  const handleCategoryFilter = useCallback((filter: string | null) => {
+    setCategoryFilter(filter);
+    onCategoryFilterChange?.(filter);
+  }, [onCategoryFilterChange]);
+
+  // Accept external category filter from header
+  useEffect(() => {
+    if (externalCategoryFilter !== undefined && externalCategoryFilter !== categoryFilter) {
+      setCategoryFilter(externalCategoryFilter);
+    }
+  }, [externalCategoryFilter]);
+
   // Handle add to cart
   const handleAddToCart = (productId: string, variantIndex: number, price: number) => {
     setCart((prev) => {
@@ -1858,7 +1887,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-[200px] max-h-[400px] overflow-y-auto bg-popover z-50">
                   <DropdownMenuItem
-                    onClick={() => setCategoryFilter(null)}
+                    onClick={() => handleCategoryFilter(null)}
                     className={`cursor-pointer ${categoryFilter === null ? 'font-semibold bg-primary/10' : ''}`}
                   >
                     Все товары
@@ -1914,7 +1943,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                                   <div>
                                     {/* Show all in section */}
                                     <DropdownMenuItem
-                                      onClick={() => setCategoryFilter(cat.id)}
+                                      onClick={() => handleCategoryFilter(cat.id)}
                                       className={`cursor-pointer pl-8 text-xs text-muted-foreground ${
                                         categoryFilter === cat.id ? 'font-semibold bg-primary/10' : ''
                                       }`}
@@ -1924,7 +1953,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                                     {children.map(child => (
                                       <DropdownMenuItem
                                         key={child.id}
-                                        onClick={() => setCategoryFilter(child.id)}
+                                        onClick={() => handleCategoryFilter(child.id)}
                                         className={`cursor-pointer pl-8 ${
                                           categoryFilter === child.id ? 'font-semibold bg-primary/10' : ''
                                         }`}
@@ -1945,7 +1974,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                           return (
                             <DropdownMenuItem
                               key={cat.id}
-                              onClick={() => setCategoryFilter(cat.id)}
+                              onClick={() => handleCategoryFilter(cat.id)}
                               className={`cursor-pointer ${categoryFilter === cat.id ? 'font-semibold bg-primary/10' : ''}`}
                             >
                               {cat.name}
@@ -2041,7 +2070,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                     </span>
                     <div className="flex gap-1 flex-wrap">
                       <button
-                        onClick={() => setCategoryFilter(null)}
+                        onClick={() => handleCategoryFilter(null)}
                         className={`px-2 py-0.5 text-[10px] rounded-full transition-colors ${
                           categoryFilter === null
                             ? 'bg-primary text-primary-foreground'
@@ -2074,7 +2103,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                               ...children.map(child => (
                                 <button
                                   key={child.id}
-                                  onClick={() => setCategoryFilter(child.id)}
+                                  onClick={() => handleCategoryFilter(child.id)}
                                   className={`px-2 py-0.5 text-[10px] rounded-full transition-colors ${
                                     categoryFilter === child.id
                                       ? 'bg-primary text-primary-foreground'
@@ -2090,7 +2119,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                           return [(
                             <button
                               key={cat.id}
-                              onClick={() => setCategoryFilter(cat.id)}
+                              onClick={() => handleCategoryFilter(cat.id)}
                               className={`px-2 py-0.5 text-[10px] rounded-full transition-colors ${
                                 categoryFilter === cat.id
                                   ? 'bg-primary text-primary-foreground'
