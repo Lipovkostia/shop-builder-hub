@@ -1,134 +1,290 @@
 
-# План исправления: Порядок категорий в прайс-листе не транслируется в dropdown
+# План: Иерархия категорий с перетаскиванием (parent-subcategory)
 
-## Проблема
+## Цель
 
-На скриншоте видно, что в dropdown фильтра категорий (справа вверху на витрине StoreFront) категории отображаются **не в том порядке**, который установлен в прайс-листе через `catalog_category_settings`.
+Позволить продавцу организовывать категории в иерархию (главная категория → подкатегории) методом перетаскивания в диалоге "Порядок категорий". Покупатели будут видеть эту иерархию на витрине.
 
-### Корневая причина
+## Что увидит продавец
 
-В `StoreFront.tsx` категории загружаются через `useStoreCategories()`, который запрашивает их из таблицы `categories` с **глобальным** `sort_order`:
-
-```typescript
-const { categories } = useStoreCategories(store?.id || null);
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  Порядок категорий: Оптовый прайс                          │
+│  ─────────────────────────────────────────────────────────  │
+│                                                             │
+│  ⋮⋮ 🧀 Сыры                        [Сделать главной]       │
+│      ├── ⋮⋮ Порционный сыр                                 │
+│      ├── ⋮⋮ Вкусовые сыры с добавками                      │
+│      └── ⋮⋮ Смешанное молоко                               │
+│                                                             │
+│  ⋮⋮ 🥖 Деликатесы                  [Сделать главной]       │
+│      ├── ⋮⋮ Фуэт 2                                         │
+│      └── ⋮⋮ Горящие деликатесы                             │
+│                                                             │
+│  ⋮⋮ 🏷️ Бренды                      [Сделать главной]       │
+│      ├── ⋮⋮ Бренд Боерн тротс                              │
+│      └── ⋮⋮ Бренд Сыр Ландана                              │
+│                                                             │
+│                          [Отмена]  [Сохранить]              │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-Затем в `catalogCategories` категории просто фильтруются без пересортировки:
+**Механика drag-and-drop:**
+- Перетащить категорию НА другую → она становится подкатегорией
+- Перетащить подкатегорию МЕЖДУ главными → она становится главной
+- Перетащить подкатегорию внутри родителя → меняется порядок
+- Кнопка "Сделать главной" убирает категорию из родителя
 
-```typescript
-return categories.filter((cat) => categoryIds.has(cat.id));
+## Что увидит покупатель
+
+На витрине (GuestCatalogView, StoreFront, RetailStore):
+
+```text
+┌─────────────────────────┐
+│ ▼ Категории             │
+├─────────────────────────┤
+│   Все категории         │
+│ ▶ Сыры                  │  ← Главная (жирный шрифт)
+│     Порционный сыр      │  ← Подкатегория (с отступом)
+│     Вкусовые сыры       │
+│     Смешанное молоко    │
+│ ▶ Деликатесы            │
+│     Фуэт 2              │
+│     Горящие деликатесы  │
+│ ▶ Бренды                │
+│     Бренд Боерн тротс   │
+│     Бренд Сыр Ландана   │
+└─────────────────────────┘
 ```
 
-Это приводит к тому, что порядок из `catalog_category_settings` игнорируется.
+При выборе главной категории - показываются все товары из неё и подкатегорий.
 
 ---
 
-## Решение
+## Технические изменения
 
-### Файлы для изменения
+### 1. База данных
+
+**Добавить поле `parent_category_id` в `catalog_category_settings`:**
+
+```sql
+ALTER TABLE catalog_category_settings 
+ADD COLUMN parent_category_id UUID REFERENCES categories(id) ON DELETE SET NULL;
+```
+
+Это позволит задавать иерархию отдельно для каждого прайс-листа (каталога).
+
+**Обновить RPC `get_catalog_categories_ordered`:**
+
+```sql
+CREATE OR REPLACE FUNCTION get_catalog_categories_ordered(
+  _catalog_id UUID,
+  _store_id UUID
+)
+RETURNS TABLE (
+  id UUID,
+  name TEXT,
+  slug TEXT,
+  parent_id UUID,           -- Глобальный parent_id (fallback)
+  catalog_parent_id UUID,   -- Каталог-специфичный parent (приоритет)
+  sort_order INT,
+  image_url TEXT
+) AS $$
+SELECT 
+  c.id,
+  COALESCE(ccs.custom_name, c.name) as name,
+  c.slug,
+  c.parent_id,
+  ccs.parent_category_id as catalog_parent_id,
+  COALESCE(ccs.sort_order, c.sort_order, 999999) as sort_order,
+  c.image_url
+FROM categories c
+LEFT JOIN catalog_category_settings ccs 
+  ON ccs.category_id = c.id 
+  AND ccs.catalog_id = _catalog_id
+WHERE c.store_id = _store_id
+ORDER BY sort_order;
+$$ LANGUAGE SQL STABLE;
+```
+
+### 2. Обновить CategoryOrderDialog
 
 | Файл | Изменения |
 |------|-----------|
-| `src/pages/StoreFront.tsx` | Загружать категории с каталог-специфичным порядком через RPC |
-| `src/pages/CustomerDashboard.tsx` | Аналогичное исправление для дашборда покупателя |
+| `src/components/admin/CategoryOrderDialog.tsx` | Добавить вложенный drag-and-drop с поддержкой иерархии |
 
-### Изменения в StoreFront.tsx
+**Основные изменения:**
+- Использовать `@dnd-kit/sortable` с поддержкой вложенных контейнеров
+- Добавить состояние `hierarchyMap: Map<string | null, string[]>` для отслеживания parent → children
+- При перетаскивании определять:
+  - Drop на элемент → сделать child
+  - Drop между элементами → сделать sibling
+- Добавить кнопку "Сделать главной" (или иконку) для быстрого открепления от родителя
 
-1. **Добавить загрузку каталог-специфичных категорий** через RPC `get_catalog_categories_ordered`
-2. **Использовать эти категории вместо глобальных** в `catalogCategories`
-
-```text
-Текущая логика:
-  categories из useStoreCategories → глобальный sort_order → фильтрация
-
-Новая логика:
-  Когда selectedCatalog выбран:
-    → Вызвать RPC get_catalog_categories_ordered(catalog_id, store_id)
-    → Получить категории УЖЕ отсортированные по каталог-специфичному порядку
-    → Использовать их в catalogCategories
-```
-
-### Технический план
+**Структура данных для сохранения:**
 
 ```typescript
-// Добавить state для каталог-специфичных категорий
-const [catalogSpecificCategories, setCatalogSpecificCategories] = useState<StoreCategory[]>([]);
+interface CategoryHierarchyItem {
+  id: string;
+  parent_id: string | null;  // null = главная категория
+  sort_order: number;
+}
 
-// Загружать категории при смене каталога
-useEffect(() => {
-  if (selectedCatalog && store?.id) {
+// onSave теперь принимает полную иерархию
+onSave: (items: CategoryHierarchyItem[]) => Promise<void>
+```
+
+### 3. Обновить useStoreCategories
+
+| Файл | Изменения |
+|------|-----------|
+| `src/hooks/useStoreCategories.ts` | Обновить `updateCatalogCategoryOrder` для сохранения иерархии |
+
+```typescript
+const updateCatalogCategoryHierarchy = useCallback(async (
+  catalogId: string, 
+  items: { id: string; parent_id: string | null; sort_order: number }[]
+) => {
+  const upserts = items.map((item) => 
     supabase
-      .rpc('get_catalog_categories_ordered', {
-        _catalog_id: selectedCatalog,
-        _store_id: store.id
+      .from('catalog_category_settings')
+      .upsert({
+        catalog_id: catalogId,
+        category_id: item.id,
+        parent_category_id: item.parent_id,  // Каталог-специфичный parent
+        sort_order: item.sort_order,
+        updated_at: new Date().toISOString()
+      }, { 
+        onConflict: 'catalog_id,category_id'
       })
-      .then(({ data }) => {
-        if (data) {
-          setCatalogSpecificCategories(data.map(c => ({
-            id: c.id,
-            name: c.name,
-            slug: c.slug,
-            sort_order: c.sort_order,
-            // ... остальные поля
-          })));
-        }
-      });
-  }
-}, [selectedCatalog, store?.id]);
-
-// Обновить catalogCategories, чтобы использовать каталог-специфичный список
-const catalogCategories = useMemo(() => {
-  if (!selectedCatalog) return [];
+  );
   
-  // Собираем ID категорий из товаров каталога
-  const categoryIds = new Set<string>();
-  displayProducts.forEach((p) => {
-    if (!productVisibility[p.id]?.has(selectedCatalog)) return;
-    const catalogSettings = getProductSettings(selectedCatalog, p.id);
-    const productCategories = catalogSettings?.categories || [];
-    productCategories.forEach((catId) => categoryIds.add(catId));
+  await Promise.all(upserts);
+}, []);
+```
+
+### 4. Обновить витрины (покупательский вид)
+
+| Файл | Изменения |
+|------|-----------|
+| `src/pages/GuestCatalogView.tsx` | Рендерить иерархию с отступами в dropdown |
+| `src/pages/StoreFront.tsx` | То же самое |
+| `src/pages/CustomerDashboard.tsx` | То же самое |
+| `src/components/retail/RetailLayoutSidebar.tsx` | Рендерить дерево категорий |
+| `src/components/wholesale/WholesaleCategorySelector.tsx` | Добавить визуальную иерархию |
+
+**Логика построения дерева:**
+
+```typescript
+// Приоритет: catalog_parent_id > parent_id > null
+function buildCategoryTree(categories: CategoryWithHierarchy[]) {
+  const roots: CategoryNode[] = [];
+  const childrenMap = new Map<string, CategoryNode[]>();
+  
+  categories.forEach(cat => {
+    const parentId = cat.catalog_parent_id ?? cat.parent_id;
+    if (!parentId) {
+      roots.push({ ...cat, children: [] });
+    } else {
+      const siblings = childrenMap.get(parentId) || [];
+      siblings.push({ ...cat, children: [] });
+      childrenMap.set(parentId, siblings);
+    }
   });
   
-  // Фильтруем каталог-специфичные категории (уже отсортированы!)
-  return catalogSpecificCategories.filter((cat) => categoryIds.has(cat.id));
-}, [selectedCatalog, displayProducts, productVisibility, getProductSettings, catalogSpecificCategories]);
+  // Присоединить детей к родителям
+  roots.forEach(root => {
+    root.children = childrenMap.get(root.id) || [];
+  });
+  
+  return roots;
+}
+```
+
+**Рендеринг в dropdown с отступами:**
+
+```tsx
+{categoryTree.map(parent => (
+  <>
+    <DropdownMenuItem className="font-semibold">
+      {parent.name}
+    </DropdownMenuItem>
+    {parent.children.map(child => (
+      <DropdownMenuItem className="pl-6">
+        {child.name}
+      </DropdownMenuItem>
+    ))}
+  </>
+))}
 ```
 
 ---
 
-## Ожидаемый результат
+## Логика привязки товаров
 
-После изменений:
+**Текущее поведение:**
+- Товар привязывается к `primary_category_id` + массиву `categories` в `catalog_product_settings`
 
-1. Продавец открывает прайс-лист в админ-панели
-2. Нажимает «Порядок отображения» и перетаскивает категории
-3. Сохраняет → порядок записывается в `catalog_category_settings`
-4. На витрине StoreFront (и CustomerDashboard) dropdown с категориями показывает их в том же порядке
+**После изменений:**
+- Если товар привязан к подкатегории - при выборе родительской категории на витрине товар тоже отображается
+- Если выбрана подкатегория - показываются только товары этой подкатегории
+
+```typescript
+// Фильтрация товаров при выборе категории
+function getProductsForCategory(categoryId: string, allCategories: CategoryNode[]) {
+  // Найти все дочерние категории
+  const categoryIds = new Set<string>([categoryId]);
+  
+  function addChildren(parentId: string) {
+    const parent = allCategories.find(c => c.id === parentId);
+    parent?.children?.forEach(child => {
+      categoryIds.add(child.id);
+      addChildren(child.id);
+    });
+  }
+  
+  addChildren(categoryId);
+  
+  // Фильтровать товары по любой из категорий
+  return products.filter(p => 
+    p.catalog_categories?.some(catId => categoryIds.has(catId))
+  );
+}
+```
+
+---
+
+## Порядок реализации
+
+1. **Миграция БД** — добавить `parent_category_id` в `catalog_category_settings`
+2. **Обновить RPC** — возвращать каталог-специфичный parent
+3. **CategoryOrderDialog** — добавить вложенный drag-and-drop
+4. **useStoreCategories** — обновить функцию сохранения иерархии
+5. **Витрины** — рендерить иерархию с отступами и фильтрацией
+
+---
+
+## Визуальная демонстрация механики drag-and-drop
 
 ```text
-┌─────────────────────────────────────────────┐
-│  ПРАЙС-ЛИСТ "Оптовый прайс сайт"           │
-│  ─────────────────────────────────────────  │
-│  Порядок (сохранён в catalog_category_      │
-│  settings):                                 │
-│  0. Фуэт 2                                 │
-│  1. Бренд Боерн тротс                      │
-│  2. Вкусовые сыры с добавками              │
-│  3. Порционный сыр                         │
-│  4. Смешанное молоко                       │
-└─────────────────────────────────────────────┘
-           │
-           ▼
-┌─────────────────────────────────────────────┐
-│  ВИТРИНА (StoreFront) — dropdown категорий │
-│  ─────────────────────────────────────────  │
-│  ● Все товары                              │
-│  ─────────────────                         │
-│  ● Фуэт 2                                  │
-│  ● Бренд Боерн тротс                       │
-│  ● Вкусовые сыры с добавками               │
-│  ● Порционный сыр                          │
-│  ● Смешанное молоко                        │
-│  ...                                       │
-└─────────────────────────────────────────────┘
+ПЕРЕТАСКИВАНИЕ:
+
+1. Перетащить "Порционный сыр" НА "Сыры":
+   
+   До:                          После:
+   ⋮⋮ Порционный сыр            ⋮⋮ Сыры
+   ⋮⋮ Сыры                         └── ⋮⋮ Порционный сыр
+
+2. Перетащить подкатегорию ВЫШЕ главных:
+
+   До:                          После:
+   ⋮⋮ Сыры                      ⋮⋮ Порционный сыр  ← стала главной
+      └── ⋮⋮ Порционный сыр     ⋮⋮ Сыры
+
+3. Менять порядок внутри родителя:
+
+   До:                          После:
+   ⋮⋮ Сыры                      ⋮⋮ Сыры
+      ├── ⋮⋮ Порционный          ├── ⋮⋮ Вкусовые
+      └── ⋮⋮ Вкусовые            └── ⋮⋮ Порционный
 ```
