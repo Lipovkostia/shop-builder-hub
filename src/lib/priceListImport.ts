@@ -605,13 +605,13 @@ export async function importProductsToCatalogExtended(
     // Fetch existing products for the store
     const { data: existingProducts, error: fetchError } = await supabase
       .from('products')
-      .select('id, name, sku, buy_price, unit')
+      .select('id, name, sku, buy_price, unit, images')
       .eq('store_id', storeId);
     
     if (fetchError) throw fetchError;
     
     // Create a map for quick lookup based on identifier type
-    const productMap = new Map<string, { id: string; name: string; sku: string | null; buy_price: number | null; unit: string | null }>();
+    const productMap = new Map<string, { id: string; name: string; sku: string | null; buy_price: number | null; unit: string | null; images: string[] | null }>();
     existingProducts?.forEach(p => {
       if (identifierType === 'sku' && p.sku) {
         productMap.set(p.sku.toLowerCase().trim(), p);
@@ -705,8 +705,11 @@ export async function importProductsToCatalogExtended(
             }
           }
           if (uploadedUrls.length > 0) {
+            // Merge: new photos first (as primary), then keep existing
+            const existingImages = existingProduct.images || [];
+            const mergedImages = [...uploadedUrls, ...existingImages];
             await supabase.from('products').update({
-              images: uploadedUrls
+              images: mergedImages
             }).eq('id', existingProduct.id);
           }
         }
