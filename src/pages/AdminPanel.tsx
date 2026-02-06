@@ -116,6 +116,7 @@ import { RetailSettingsSection } from "@/components/admin/RetailSettingsSection"
 import { WholesaleSettingsSection } from "@/components/admin/WholesaleSettingsSection";
 import { FormingOrdersSection } from "@/components/admin/FormingOrdersSection";
 import { ProductsSection } from "@/components/admin/ProductsSection";
+import { CategorySettingsSection } from "@/components/admin/CategorySettingsSection";
 
 // Removed localStorage keys - now using Supabase
 
@@ -299,7 +300,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "wholesale";
+type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "wholesale" | "category-settings";
 type ImportView = "accounts" | "catalog";
 type ImportSource = "select" | "moysklad" | "excel" | "google-sheets";
 type CatalogView = "list" | "detail";
@@ -6378,6 +6379,17 @@ export default function AdminPanel({
                 </div>
               </div>
             </div>
+          )}
+
+          {activeSection === "category-settings" && effectiveStoreId && (
+            <CategorySettingsSection
+              storeId={effectiveStoreId}
+              catalogs={supabaseCatalogs}
+              categories={storeCategories}
+              onCreateCategory={createCategory}
+              onRenameCategory={renameCategory}
+              onDeleteCategory={deleteCategory}
+            />
           )}
         </main>
 
