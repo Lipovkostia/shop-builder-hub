@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { Tag, GripVertical, Pencil, Trash2, Plus, FolderOpen, ChevronDown, ChevronRight, Save, X, Check } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Tag, GripVertical, Pencil, Trash2, Plus, FolderOpen, ChevronDown, ChevronRight, Save, X, Check, ArrowRight, ArrowUpFromLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { StoreCategory } from "@/hooks/useStoreCategories";
@@ -17,7 +18,6 @@ import {
   useSensors,
   DragEndEvent,
   DragStartEvent,
-  DragOverlay,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -34,7 +34,7 @@ interface CategorySettingItem {
   customName: string | null;
   parentCategoryId: string | null;
   sortOrder: number;
-  isSection: boolean; // true = parent/section header created via catalog_category_settings
+  isSection: boolean;
 }
 
 interface CategorySettingsSectionProps {
@@ -60,6 +60,9 @@ function SortableCategoryItem({
   isExpanded,
   onToggleExpand,
   hasChildren,
+  sections,
+  onMoveToSection,
+  onRemoveFromParent,
 }: {
   item: CategorySettingItem;
   isChild: boolean;
@@ -73,6 +76,9 @@ function SortableCategoryItem({
   isExpanded: boolean;
   onToggleExpand: (id: string) => void;
   hasChildren: boolean;
+  sections: CategorySettingItem[];
+  onMoveToSection: (itemId: string, sectionId: string) => void;
+  onRemoveFromParent: (itemId: string) => void;
 }) {
   const {
     attributes,
@@ -90,16 +96,22 @@ function SortableCategoryItem({
   };
 
   const isEditing = editingId === item.id;
+  const isTopLevelNonSection = !isChild && !item.isSection;
+  const availableSections = sections.filter((s) => s.id !== item.id);
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 rounded-lg border border-border bg-card p-3 ${
-        isChild ? "ml-8" : ""
-      } ${item.isSection ? "border-primary/30 bg-primary/5" : ""} ${
-        isDragging ? "shadow-lg z-50" : ""
-      }`}
+      className={`flex items-center gap-2 rounded-lg border p-3 ${
+        isChild ? "ml-8 border-border bg-card" : ""
+      } ${
+        item.isSection
+          ? "border-primary/40 bg-primary/10 shadow-sm"
+          : !isChild
+          ? "border-border bg-card"
+          : ""
+      } ${isDragging ? "shadow-lg z-50" : ""}`}
     >
       <button
         {...attributes}
@@ -144,14 +156,63 @@ function SortableCategoryItem({
             </Button>
           </div>
         ) : (
-          <span className={`text-sm truncate ${item.isSection ? "font-semibold" : ""}`}>
-            {item.customName || item.name}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-sm truncate ${item.isSection ? "font-semibold text-primary" : ""}`}>
+              {item.customName || item.name}
+            </span>
+            {item.isSection && (
+              <span className="text-[10px] uppercase tracking-wider text-primary/60 font-medium">
+                раздел
+              </span>
+            )}
+          </div>
         )}
       </div>
 
       {!isEditing && (
         <div className="flex items-center gap-0.5 flex-shrink-0">
+          {/* Move to section button for top-level non-section categories */}
+          {isTopLevelNonSection && availableSections.length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  title="В раздел"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-1" align="end">
+                <p className="text-xs text-muted-foreground px-2 py-1.5 font-medium">Переместить в раздел</p>
+                {availableSections.map((section) => (
+                  <button
+                    key={section.id}
+                    className="flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground transition-colors text-left"
+                    onClick={() => onMoveToSection(item.id, section.id)}
+                  >
+                    <FolderOpen className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                    <span className="truncate">{section.customName || section.name}</span>
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+          )}
+
+          {/* Remove from section button for child categories */}
+          {isChild && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7"
+              title="Убрать из раздела"
+              onClick={() => onRemoveFromParent(item.id)}
+            >
+              <ArrowUpFromLine className="h-3.5 w-3.5" />
+            </Button>
+          )}
+
           <Button
             size="icon"
             variant="ghost"
@@ -215,18 +276,11 @@ export function CategorySettingsSection({
 
       if (error) throw error;
 
-      const settingsMap = new Map(
-        (settings || []).map((s) => [s.category_id, s])
-      );
-
-      // Build items: categories that exist in the store, enriched with catalog settings
-      const result: CategorySettingItem[] = [];
-
-      // First, add categories that have settings (in order)
       const orderedSettings = (settings || []).sort(
         (a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999)
       );
 
+      const result: CategorySettingItem[] = [];
       const addedIds = new Set<string>();
 
       for (const setting of orderedSettings) {
@@ -246,7 +300,6 @@ export function CategorySettingsSection({
         }
       }
 
-      // Then add categories without settings
       for (const cat of categories) {
         if (!addedIds.has(cat.id)) {
           result.push({
@@ -263,7 +316,6 @@ export function CategorySettingsSection({
       setItems(result);
       setHasChanges(false);
 
-      // Auto-expand all sections
       const sections = new Set(
         result.filter((i) => i.isSection).map((i) => i.id)
       );
@@ -288,11 +340,14 @@ export function CategorySettingsSection({
     }
   }, [selectedCatalogId, loadCatalogSettings]);
 
-  // Build flat display list (parents + children interleaved)
+  // Get sections list for the popover
+  const sectionsList = items.filter((i) => i.isSection && !i.parentCategoryId);
+
+  // Build flat display list
   const displayItems = useCallback(() => {
     const parents = items.filter((i) => !i.parentCategoryId);
     const childrenMap = new Map<string, CategorySettingItem[]>();
-    
+
     for (const item of items) {
       if (item.parentCategoryId) {
         const children = childrenMap.get(item.parentCategoryId) || [];
@@ -304,9 +359,8 @@ export function CategorySettingsSection({
     const result: { item: CategorySettingItem; isChild: boolean }[] = [];
     for (const parent of parents) {
       const hasChildren = childrenMap.has(parent.id);
-      // Mark as section if it has children
       result.push({ item: { ...parent, isSection: hasChildren || parent.isSection }, isChild: false });
-      
+
       if (expandedSections.has(parent.id) || !hasChildren) {
         const children = childrenMap.get(parent.id) || [];
         for (const child of children) {
@@ -332,7 +386,6 @@ export function CategorySettingsSection({
 
     const activeIdx = flatList.findIndex((f) => f.item.id === active.id);
     const overIdx = flatList.findIndex((f) => f.item.id === over.id);
-
     if (activeIdx === -1 || overIdx === -1) return;
 
     const activeItem = flatList[activeIdx].item;
@@ -342,9 +395,7 @@ export function CategorySettingsSection({
     if (overItem.isSection && !activeItem.isSection && !flatList[activeIdx].isChild) {
       setItems((prev) =>
         prev.map((i) =>
-          i.id === activeItem.id
-            ? { ...i, parentCategoryId: overItem.id }
-            : i
+          i.id === activeItem.id ? { ...i, parentCategoryId: overItem.id } : i
         )
       );
       setHasChanges(true);
@@ -356,14 +407,9 @@ export function CategorySettingsSection({
       const newParent = overItem.parentCategoryId;
       setItems((prev) => {
         const updated = prev.map((i) =>
-          i.id === activeItem.id
-            ? { ...i, parentCategoryId: newParent }
-            : i
+          i.id === activeItem.id ? { ...i, parentCategoryId: newParent } : i
         );
-        // Reorder within the same group
-        const siblings = updated.filter(
-          (i) => i.parentCategoryId === newParent
-        );
+        const siblings = updated.filter((i) => i.parentCategoryId === newParent);
         const oldChildIdx = siblings.findIndex((s) => s.id === active.id);
         const newChildIdx = siblings.findIndex((s) => s.id === over.id);
         if (oldChildIdx !== -1 && newChildIdx !== -1) {
@@ -403,7 +449,6 @@ export function CategorySettingsSection({
 
     setSaving(true);
     try {
-      // Build sorted list with proper sort_order
       const parents = items.filter((i) => !i.parentCategoryId);
       let globalOrder = 0;
       const upsertData: Array<{
@@ -438,7 +483,6 @@ export function CategorySettingsSection({
         }
       }
 
-      // Upsert all at once
       const { error } = await supabase
         .from("catalog_category_settings")
         .upsert(upsertData, { onConflict: "catalog_id,category_id" });
@@ -488,8 +532,6 @@ export function CategorySettingsSection({
   // Delete
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
-    
-    // Remove from items, also remove children if it's a section
     setItems((prev) =>
       prev.filter(
         (i) => i.id !== deleteTarget.id && i.parentCategoryId !== deleteTarget.id
@@ -509,18 +551,6 @@ export function CategorySettingsSection({
     });
   };
 
-  // Make a category a section (parent)
-  const handleMakeSection = (id: string) => {
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === id
-          ? { ...i, isSection: true, parentCategoryId: null }
-          : i
-      )
-    );
-    setHasChanges(true);
-  };
-
   // Remove from parent (make top-level)
   const handleRemoveFromParent = (id: string) => {
     setItems((prev) =>
@@ -531,26 +561,40 @@ export function CategorySettingsSection({
     setHasChanges(true);
   };
 
-  // Add new section
+  // Move category into a section
+  const handleMoveToSection = (itemId: string, sectionId: string) => {
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === itemId ? { ...i, parentCategoryId: sectionId } : i
+      )
+    );
+    // Auto-expand the target section
+    setExpandedSections((prev) => new Set(prev).add(sectionId));
+    setHasChanges(true);
+  };
+
+  // Add new section — inserts at the TOP
   const handleAddSection = async () => {
     if (!newSectionName.trim() || !storeId) return;
-    
+
     const created = await onCreateCategory(newSectionName.trim());
     if (created) {
       setItems((prev) => [
-        ...prev,
         {
           id: created.id,
           name: created.name,
           customName: null,
           parentCategoryId: null,
-          sortOrder: prev.length,
+          sortOrder: 0,
           isSection: true,
         },
+        ...prev,
       ]);
       setNewSectionName("");
       setShowNewSectionInput(false);
       setHasChanges(true);
+      // Auto-expand new section
+      setExpandedSections((prev) => new Set(prev).add(created.id));
     }
   };
 
@@ -662,6 +706,9 @@ export function CategorySettingsSection({
                       isExpanded={expandedSections.has(item.id)}
                       onToggleExpand={handleToggleExpand}
                       hasChildren={items.some((i) => i.parentCategoryId === item.id)}
+                      sections={sectionsList}
+                      onMoveToSection={handleMoveToSection}
+                      onRemoveFromParent={handleRemoveFromParent}
                     />
                   ))}
                 </div>
