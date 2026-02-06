@@ -1,14 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sparkles, Mic, X } from "lucide-react";
 import { AIAssistantPanel } from "./AIAssistantPanel";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AIAssistantBannerProps {
   storeId: string | null;
 }
 
 export function AIAssistantBanner({ storeId }: AIAssistantBannerProps) {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [isDismissed, setIsDismissed] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(() => {
+    if (!user?.id) return false;
+    return localStorage.getItem(`ai_banner_dismissed_${user.id}`) === 'true';
+  });
+
+  useEffect(() => {
+    if (user?.id) {
+      setIsDismissed(localStorage.getItem(`ai_banner_dismissed_${user.id}`) === 'true');
+    }
+  }, [user?.id]);
+
+  const handleDismiss = () => {
+    setIsDismissed(true);
+    if (user?.id) {
+      localStorage.setItem(`ai_banner_dismissed_${user.id}`, 'true');
+    }
+  };
 
   if (isDismissed) return null;
 
@@ -20,7 +38,7 @@ export function AIAssistantBanner({ storeId }: AIAssistantBannerProps) {
         
         {/* Close button */}
         <button
-          onClick={() => setIsDismissed(true)}
+         onClick={handleDismiss}
           className="absolute top-2 right-2 p-1 rounded-full hover:bg-white/20 transition-colors z-10"
         >
           <X className="w-4 h-4" />
