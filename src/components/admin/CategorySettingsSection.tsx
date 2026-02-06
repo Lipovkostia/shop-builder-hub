@@ -532,6 +532,20 @@ export function CategorySettingsSection({
   // Delete
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
+    try {
+      // Delete from DB
+      await onDeleteCategory(deleteTarget.id);
+      // Delete catalog_category_settings entries
+      if (selectedCatalogId) {
+        const idsToRemove = [deleteTarget.id, ...items.filter(i => i.parentCategoryId === deleteTarget.id).map(i => i.id)];
+        await supabase.from('catalog_category_settings').delete()
+          .eq('catalog_id', selectedCatalogId)
+          .in('category_id', idsToRemove);
+      }
+    } catch (e) {
+      console.error('Failed to delete category:', e);
+    }
+    // Remove from local state
     setItems((prev) =>
       prev.filter(
         (i) => i.id !== deleteTarget.id && i.parentCategoryId !== deleteTarget.id

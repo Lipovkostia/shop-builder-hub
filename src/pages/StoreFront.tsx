@@ -1525,22 +1525,30 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
   const catalogCategories = useMemo(() => {
     if (!selectedCatalog) return [];
     
-    // Collect all unique category IDs from products in the current catalog
-    const categoryIds = new Set<string>();
+    // Count products per category
+    const categoryCounts = new Map<string, number>();
     
     displayProducts.forEach((p) => {
-      // Check if product is in this catalog
       if (!productVisibility[p.id]?.has(selectedCatalog)) return;
-      
-      // Get catalog-specific categories for this product
       const catalogSettings = getProductSettings(selectedCatalog, p.id);
       const productCategories = catalogSettings?.categories || [];
-      
-      productCategories.forEach((catId) => categoryIds.add(catId));
+      productCategories.forEach((catId) => {
+        categoryCounts.set(catId, (categoryCounts.get(catId) || 0) + 1);
+      });
     });
     
-    // Filter catalog-specific categories (already sorted by RPC!) to only include those with products
-    return catalogSpecificCategories.filter((cat) => categoryIds.has(cat.id));
+    // Include parent sections that have children with products
+    const parentIdsToInclude = new Set<string>();
+    catalogSpecificCategories.forEach(cat => {
+      if (cat.catalog_parent_id && categoryCounts.has(cat.id)) {
+        parentIdsToInclude.add(cat.catalog_parent_id);
+      }
+    });
+    
+    // Filter and add product_count
+    return catalogSpecificCategories
+      .filter((cat) => categoryCounts.has(cat.id) || parentIdsToInclude.has(cat.id))
+      .map(cat => ({ ...cat, product_count: categoryCounts.get(cat.id) || 0 }));
   }, [selectedCatalog, displayProducts, productVisibility, getProductSettings, catalogSpecificCategories]);
 
   // Handle add to cart
@@ -1865,7 +1873,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                         );
                         const sectionIds = new Set(sections.map(s => s.id));
                         const topLevel = catalogCategories.filter(cat => 
-                          !cat.catalog_parent_id || !sectionIds.has(cat.catalog_parent_id)
+                          !cat.catalog_parent_id
                         );
                         
                         return topLevel.map((cat) => {
@@ -1898,6 +1906,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                                   )}
                                   <Folder className="w-3.5 h-3.5 text-primary/70 flex-shrink-0" />
                                   <span className="font-semibold text-foreground">{cat.name}</span>
+                                  {cat.product_count > 0 && (
+                                    <span className="text-xs text-muted-foreground ml-auto">{cat.product_count}</span>
+                                  )}
                                 </div>
                                 {isExpanded && (
                                   <div>
@@ -1919,6 +1930,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                                         }`}
                                       >
                                         {child.name}
+                                        {child.product_count > 0 && (
+                                          <span className="text-xs text-muted-foreground ml-auto">{child.product_count}</span>
+                                        )}
                                       </DropdownMenuItem>
                                     ))}
                                   </div>
@@ -1935,6 +1949,9 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
                               className={`cursor-pointer ${categoryFilter === cat.id ? 'font-semibold bg-primary/10' : ''}`}
                             >
                               {cat.name}
+                              {cat.product_count > 0 && (
+                                <span className="text-xs text-muted-foreground ml-auto">{cat.product_count}</span>
+                              )}
                             </DropdownMenuItem>
                           );
                         });
