@@ -1,32 +1,38 @@
 
-# Компактный дизайн раздела "Настройки категорий"
+# Массовое снятие категорий у выбранных товаров в прайс-листе
 
 ## Что будет сделано
 
-Уменьшение отступов и размеров элементов в разделе настроек категорий для более плотного отображения списка.
+В выпадающее меню "Категории" в панели массового редактирования (BulkEditPanel) будет добавлена кнопка "Снять все категории". При нажатии она очищает все категории у выбранных товаров в текущем прайс-листе.
 
 ## Техническая часть
 
 | Файл | Изменения |
 |------|-----------|
-| `src/components/admin/CategorySettingsSection.tsx` | Уменьшить отступы и размеры во всех элементах |
+| `src/components/admin/BulkEditPanel.tsx` | Добавить новый проп `onBulkClearCategories`, кнопку "Снять все" в Popover категорий |
+| `src/pages/AdminPanel.tsx` | Передать `onBulkClearCategories` — вызывает `updateCatalogProductPricing` с `categories: []` для каждого выбранного товара |
 
-### Конкретные изменения
+### Изменения в BulkEditPanel
 
-**SortableCategoryItem (строка 106):**
-- Уменьшить padding строки: `p-3` -> `p-1.5 px-2`
-- Уменьшить отступ дочерних: `ml-8` -> `ml-6`
+- Новый проп: `onBulkClearCategories?: () => void`
+- В PopoverContent после списка категорий и перед кнопками "Применить/Отмена" добавить разделитель и кнопку "Снять все категории" с иконкой `X`
+- Кнопка закрывает Popover после действия
 
-**Список категорий (строка 707):**
-- Уменьшить gap между строками: `space-y-1.5` -> `space-y-0.5`
+### Изменения в AdminPanel
 
-**Основной контейнер (строка 616):**
-- Уменьшить общий gap: `space-y-6` -> `space-y-3`
-
-**Заголовок (строки 618-624):**
-- Уменьшить размер заголовка: `text-xl` -> `text-lg`
-- Уменьшить нижний отступ: `mb-4` -> `mb-2`
-
-**Пустое состояние (строка 694):**
-- Уменьшить вертикальный padding: `py-12` -> `py-6`
-- Уменьшить иконку: `h-10 w-10` -> `h-8 w-8`
+- Передать `onBulkClearCategories` в BulkEditPanel (строка ~4646):
+```typescript
+onBulkClearCategories={() => {
+  if (currentCatalog) {
+    const count = selectedCatalogBulkProducts.size;
+    selectedCatalogBulkProducts.forEach(productId => {
+      updateCatalogProductPricing(currentCatalog.id, productId, { categories: [] });
+    });
+    setSelectedCatalogBulkProducts(new Set());
+    toast({
+      title: "Категории сняты",
+      description: `Категории очищены у ${count} товаров`,
+    });
+  }
+}}
+```
