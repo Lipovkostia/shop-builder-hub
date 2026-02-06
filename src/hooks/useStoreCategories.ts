@@ -119,64 +119,122 @@ export function useStoreCategories(storeId: string | null) {
     }
   }, [storeId]);
 
-  // Update sort order for categories (global)
-  const updateCategoryOrder = useCallback(async (orderedIds: string[]) => {
+  // Update sort order for categories (global) - supports both old format (string[]) and new hierarchy format
+  const updateCategoryOrder = useCallback(async (orderedItems: string[] | { id: string; parent_id: string | null; sort_order: number }[]) => {
     try {
-      // Update each category with its new sort_order
-      const updates = orderedIds.map((id, index) => 
-        supabase
-          .from('categories')
-          .update({ sort_order: index })
-          .eq('id', id)
-      );
-      
-      await Promise.all(updates);
-      
-      // Update local state to reflect new order
-      setCategories(prev => {
-        const categoryMap = new Map(prev.map(c => [c.id, c]));
-        return orderedIds
-          .map((id, index) => {
-            const cat = categoryMap.get(id);
-            return cat ? { ...cat, sort_order: index } : null;
-          })
-          .filter((c): c is StoreCategory => c !== null);
-      });
+      // Check if it's the new hierarchy format
+      if (orderedItems.length > 0 && typeof orderedItems[0] === 'object') {
+        const items = orderedItems as { id: string; parent_id: string | null; sort_order: number }[];
+        // Update each category with its new sort_order and parent_id
+        const updates = items.map((item) => 
+          supabase
+            .from('categories')
+            .update({ sort_order: item.sort_order, parent_id: item.parent_id })
+            .eq('id', item.id)
+        );
+        
+        await Promise.all(updates);
+        
+        // Update local state
+        setCategories(prev => {
+          const categoryMap = new Map(prev.map(c => [c.id, c]));
+          return items
+            .map((item) => {
+              const cat = categoryMap.get(item.id);
+              return cat ? { ...cat, sort_order: item.sort_order, parent_id: item.parent_id } : null;
+            })
+            .filter((c): c is StoreCategory => c !== null);
+        });
+      } else {
+        // Old format - just string array of IDs
+        const orderedIds = orderedItems as string[];
+        const updates = orderedIds.map((id, index) => 
+          supabase
+            .from('categories')
+            .update({ sort_order: index })
+            .eq('id', id)
+        );
+        
+        await Promise.all(updates);
+        
+        setCategories(prev => {
+          const categoryMap = new Map(prev.map(c => [c.id, c]));
+          return orderedIds
+            .map((id, index) => {
+              const cat = categoryMap.get(id);
+              return cat ? { ...cat, sort_order: index } : null;
+            })
+            .filter((c): c is StoreCategory => c !== null);
+        });
+      }
     } catch (error) {
       console.error('Error updating category order:', error);
       throw error;
     }
   }, []);
 
-  // Update sort order for categories within a specific catalog
-  const updateCatalogCategoryOrder = useCallback(async (catalogId: string, orderedIds: string[]) => {
+  // Update sort order and hierarchy for categories within a specific catalog
+  // Supports both old format (string[]) and new hierarchy format with parent_category_id
+  const updateCatalogCategoryOrder = useCallback(async (catalogId: string, orderedItems: string[] | { id: string; parent_id: string | null; sort_order: number }[]) => {
     try {
-      // Upsert each category setting with its new sort_order for this catalog
-      const upserts = orderedIds.map((categoryId, index) => 
-        supabase
-          .from('catalog_category_settings')
-          .upsert({
-            catalog_id: catalogId,
-            category_id: categoryId,
-            sort_order: index,
-            updated_at: new Date().toISOString()
-          }, { 
-            onConflict: 'catalog_id,category_id'
-          })
-      );
-      
-      await Promise.all(upserts);
-      
-      // Update local state to reflect new order
-      setCategories(prev => {
-        const categoryMap = new Map(prev.map(c => [c.id, c]));
-        return orderedIds
-          .map((id, index) => {
-            const cat = categoryMap.get(id);
-            return cat ? { ...cat, sort_order: index } : null;
-          })
-          .filter((c): c is StoreCategory => c !== null);
-      });
+      // Check if it's the new hierarchy format
+      if (orderedItems.length > 0 && typeof orderedItems[0] === 'object') {
+        const items = orderedItems as { id: string; parent_id: string | null; sort_order: number }[];
+        // Upsert each category setting with its new sort_order and parent_category_id for this catalog
+        const upserts = items.map((item) => 
+          supabase
+            .from('catalog_category_settings')
+            .upsert({
+              catalog_id: catalogId,
+              category_id: item.id,
+              parent_category_id: item.parent_id,
+              sort_order: item.sort_order,
+              updated_at: new Date().toISOString()
+            }, { 
+              onConflict: 'catalog_id,category_id'
+            })
+        );
+        
+        await Promise.all(upserts);
+        
+        // Update local state to reflect new order and hierarchy
+        setCategories(prev => {
+          const categoryMap = new Map(prev.map(c => [c.id, c]));
+          return items
+            .map((item) => {
+              const cat = categoryMap.get(item.id);
+              return cat ? { ...cat, sort_order: item.sort_order, parent_id: item.parent_id } : null;
+            })
+            .filter((c): c is StoreCategory => c !== null);
+        });
+      } else {
+        // Old format - just string array of IDs
+        const orderedIds = orderedItems as string[];
+        const upserts = orderedIds.map((categoryId, index) => 
+          supabase
+            .from('catalog_category_settings')
+            .upsert({
+              catalog_id: catalogId,
+              category_id: categoryId,
+              sort_order: index,
+              updated_at: new Date().toISOString()
+            }, { 
+              onConflict: 'catalog_id,category_id'
+            })
+        );
+        
+        await Promise.all(upserts);
+        
+        setCategories(prev => {
+          const categoryMap = new Map(prev.map(c => [c.id, c]));
+          return orderedIds
+            .map((id, index) => {
+              const cat = categoryMap.get(id);
+              return cat ? { ...cat, sort_order: index } : null;
+            })
+            .filter((c): c is StoreCategory => c !== null);
+        });
+      }
     } catch (error) {
       console.error('Error updating catalog category order:', error);
       throw error;

@@ -50,6 +50,7 @@ import AdminPanel from "@/pages/AdminPanel";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { OnboardingBanner } from "@/components/onboarding/OnboardingBanner";
 import { AIAssistantBanner } from "@/components/admin/AIAssistantBanner";
+import { buildCategoryTree, flattenCategoryTree, getAllDescendantIds } from "@/lib/categoryUtils";
 
 interface CartItem {
   productId: string;
@@ -1174,6 +1175,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin }
             slug: c.slug,
             description: null,
             parent_id: c.parent_id,
+            catalog_parent_id: c.catalog_parent_id,
             sort_order: c.sort_order,
             image_url: c.image_url,
           })));
