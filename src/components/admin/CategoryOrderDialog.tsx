@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { GripVertical } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { GripVertical, Pencil, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -7,6 +7,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   DndContext,
   closestCenter,
@@ -36,11 +48,26 @@ interface CategoryOrderDialogProps {
   onOpenChange: (open: boolean) => void;
   categories: Category[];
   onSave: (orderedIds: string[]) => Promise<void>;
+  onRename?: (id: string, newName: string) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
   catalogId?: string | null;
   catalogName?: string;
 }
 
-function SortableCategoryItem({ category }: { category: Category }) {
+function SortableCategoryItem({
+  category,
+  onRename,
+  onDelete,
+}: {
+  category: Category;
+  onRename?: (id: string, newName: string) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(category.name);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const {
     attributes,
     listeners,
@@ -53,6 +80,39 @@ function SortableCategoryItem({ category }: { category: Category }) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+  };
+
+  const handleStartEdit = () => {
+    setEditName(category.name);
+    setIsEditing(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const handleSaveRename = async () => {
+    const trimmed = editName.trim();
+    if (trimmed && trimmed !== category.name && onRename) {
+      await onRename(category.id, trimmed);
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSaveRename();
+    } else if (e.key === "Escape") {
+      setIsEditing(false);
+      setEditName(category.name);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    setIsDeleting(true);
+    try {
+      await onDelete(category.id);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -70,7 +130,58 @@ function SortableCategoryItem({ category }: { category: Category }) {
       >
         <GripVertical className="h-4 w-4 text-muted-foreground" />
       </button>
-      <span className="flex-1 text-sm font-medium">{category.name}</span>
+
+      {isEditing ? (
+        <Input
+          ref={inputRef}
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          onBlur={handleSaveRename}
+          onKeyDown={handleKeyDown}
+          className="flex-1 h-8 text-sm"
+        />
+      ) : (
+        <span className="flex-1 text-sm font-medium">{category.name}</span>
+      )}
+
+      {!isEditing && onRename && (
+        <button
+          onClick={handleStartEdit}
+          className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      )}
+
+      {onDelete && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              className="p-1 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive"
+              disabled={isDeleting}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Категория «{category.name}» будет удалена. Товары останутся без категории.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Удалить
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }
@@ -80,6 +191,8 @@ export function CategoryOrderDialog({
   onOpenChange,
   categories,
   onSave,
+  onRename,
+  onDelete,
   catalogId,
   catalogName,
 }: CategoryOrderDialogProps) {
@@ -88,7 +201,6 @@ export function CategoryOrderDialog({
 
   useEffect(() => {
     if (open) {
-      // Sort by sort_order, then by name
       const sorted = [...categories].sort((a, b) => {
         const orderA = a.sort_order ?? 999999;
         const orderB = b.sort_order ?? 999999;
@@ -101,9 +213,7 @@ export function CategoryOrderDialog({
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
+      activationConstraint: { distance: 8 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
@@ -112,7 +222,6 @@ export function CategoryOrderDialog({
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
     if (over && active.id !== over.id) {
       setOrderedCategories((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
@@ -121,6 +230,22 @@ export function CategoryOrderDialog({
       });
     }
   };
+
+  const handleRename = onRename
+    ? async (id: string, newName: string) => {
+        await onRename(id, newName);
+        setOrderedCategories((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, name: newName } : c))
+        );
+      }
+    : undefined;
+
+  const handleDelete = onDelete
+    ? async (id: string) => {
+        await onDelete(id);
+        setOrderedCategories((prev) => prev.filter((c) => c.id !== id));
+      }
+    : undefined;
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -137,10 +262,9 @@ export function CategoryOrderDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {catalogId && catalogName 
+            {catalogId && catalogName
               ? `Порядок категорий: ${catalogName}`
-              : "Порядок отображения категорий"
-            }
+              : "Порядок отображения категорий"}
           </DialogTitle>
           {catalogId && (
             <p className="text-sm text-muted-foreground">
@@ -168,6 +292,8 @@ export function CategoryOrderDialog({
                     <SortableCategoryItem
                       key={category.id}
                       category={category}
+                      onRename={handleRename}
+                      onDelete={handleDelete}
                     />
                   ))}
                 </div>
