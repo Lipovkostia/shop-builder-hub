@@ -1,56 +1,92 @@
 
-# Исправление экспорта/импорта категорий в прайс-листе
 
-## Проблема
+# Добавление импорта фото из Excel через AI помощник
 
-При экспорте прайс-листа в Excel в колонке "Категории" отображаются UUID (например `a0483c51-b9a5-4754-b9d4-a1f1a2141bf2`) вместо русских названий категорий.
+## Что будет сделано
 
-## Корневая причина
+Новая функция в AI помощнике: загрузка Excel-файла со ссылками на фото для товаров без изображений. Система скачает фото по ссылкам и привяжет к товарам.
 
-В `AdminPanel.tsx` (строка 1789) категории берутся как массив UUID из `catalogPricing?.categories`, а в `excelImport.ts` (строка 1401) они просто соединяются через запятую без преобразования в имена.
+## Изменения
 
-## Решение
+### 1. PriceListProduct -- добавить поле photos (`src/lib/priceListImport.ts`)
 
-### 1. AdminPanel.tsx -- преобразовать UUID в названия при экспорте
+Добавить в интерфейс `PriceListProduct` поле `photos?: string[]` для хранения ссылок на изображения из Excel.
 
-В блоке формирования `catalogProducts` (около строки 1785-1802) нужно заменить UUID категорий на их названия, используя уже загруженный список категорий (`categories` из `useStoreCategories`).
+### 2. parseProductsWithExtendedMapping -- парсить колонку фото (`src/lib/priceListImport.ts`)
 
-```typescript
-// Было:
-categories: catalogPricing?.categories || null,
+В функции парсинга добавить обработку `fieldsToUpdate.photos`:
+- Прочитать значение ячейки
+- Разделить по `;` или `,` (несколько ссылок)
+- Отфильтровать пустые и невалидные
+- Сохранить массив URL в `product.photos`
 
-// Станет:
-categories: (catalogPricing?.categories || [])
-  .map(catId => categories.find(c => c.id === catId)?.name)
-  .filter(Boolean) as string[] | null,
-```
+Также убрать ограничение, что товар без цены пропускается, если указаны фото.
 
-Если массив пуст -- вернуть `null`.
+### 3. importProductsToCatalogExtended -- скачивать фото через edge function (`src/lib/priceListImport.ts`)
 
-### 2. excelImport.ts -- обновить разделитель при парсинге категорий
-
-Функция `parseCategories` (строка 1028) сейчас разделяет по точке с запятой (`;`), а экспорт соединяет через запятую (`, `). Нужно поддержать оба разделителя:
+После обновления/создания товара, если в Excel есть ссылки на фото:
+1. Проверить, есть ли у товара уже фото (поле `image_url` в products)
+2. Если фото нет или передано новое -- вызвать edge function `fetch-external-image` для каждой ссылки
+3. Обновить поля `image_url` (главное фото) и `images` (все фото) в таблице products
 
 ```typescript
-function parseCategories(categoriesStr: string | undefined): string[] {
-  if (!categoriesStr) return [];
-  // Поддержка разделителей: запятая и точка с запятой
-  return categoriesStr
-    .split(/[;,]/)
-    .map(c => c.trim())
-    .filter(Boolean);
+if (excelProduct.photos && excelProduct.photos.length > 0) {
+  const uploadedUrls: string[] = [];
+  for (let imgIdx = 0; imgIdx < excelProduct.photos.length; imgIdx++) {
+    const { data } = await supabase.functions.invoke('fetch-external-image', {
+      body: { imageUrl: excelProduct.photos[imgIdx], productId: existingProduct.id, imageIndex: imgIdx }
+    });
+    if (data?.url) uploadedUrls.push(data.url);
+  }
+  if (uploadedUrls.length > 0) {
+    await supabase.from('products').update({
+      image_url: uploadedUrls[0],
+      images: uploadedUrls
+    }).eq('id', existingProduct.id);
+  }
 }
 ```
 
-### Файлы для изменения
+### 4. AI помощник -- показывать поле "Фото" в маппинге (`src/components/admin/AIAssistantPanel.tsx`)
 
-| Файл | Что меняется |
-|------|-------------|
-| `src/pages/AdminPanel.tsx` | Строка ~1789: маппинг UUID категорий в названия |
-| `src/lib/excelImport.ts` | Строка ~1030: поддержка запятой как разделителя категорий |
+Сейчас AI помощник использует `mode='price-list'` для ExcelColumnMapping, где поле "Фото" скрыто. Нужно:
+- Добавить поле `photos` в список `baseUpdateFields` (или передать `mode='assortment'`)
+- Обновить валидацию `handleConfirmMapping`: разрешить импорт если выбрано только поле `photos`
+- Добавить `'photos'` в `fieldsToUpdateArray` при вызове `importProductsToCatalogExtended`
 
-### Результат
+### 5. Обновить fieldsToUpdate тип в importProductsToCatalogExtended
 
-- Экспорт: колонка "Категории" будет содержать `Порционный сыр, Вкусовые сыры с добавками` вместо UUID
-- Импорт: при загрузке файла обратно категории распознаются по названиям (уже работает), создаются новые если не найдены
-- Разделитель запятая поддерживается в обе стороны
+Расширить тип параметра `fieldsToUpdate` чтобы включить `'photos'`:
+
+```typescript
+fieldsToUpdate: ('buyPrice' | 'price' | 'unit' | 'name' | 'photos')[]
+```
+
+### 6. Прогресс загрузки фото
+
+Обновить `PriceListImportProgress` чтобы показывать прогресс загрузки фото:
+
+```typescript
+interface PriceListImportProgress {
+  // ... existing fields
+  photosUploaded: number;  // Счётчик загруженных фото
+}
+```
+
+В процессе импорта обновлять статус: `"Загрузка фото: 3 из 15"`
+
+## Порядок реализации
+
+1. `src/lib/priceListImport.ts` -- добавить поле photos в PriceListProduct, парсинг фото, логику скачивания
+2. `src/components/admin/AIAssistantPanel.tsx` -- добавить поле "Фото" в маппинг, обновить валидацию
+3. `src/components/admin/ExcelColumnMapping.tsx` -- добавить "Фото" в baseUpdateFields
+
+## Результат
+
+Продавец:
+1. Открывает AI помощник
+2. Загружает Excel с колонками: Название | Ссылка на фото
+3. Сопоставляет колонку "Фото" с нужной колонкой Excel
+4. Нажимает "Импортировать"
+5. Система находит товары по названию, скачивает фото по ссылкам и привязывает к товарам
+
