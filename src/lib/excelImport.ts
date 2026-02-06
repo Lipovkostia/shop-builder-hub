@@ -1028,7 +1028,7 @@ export async function downloadCatalogImportTemplate(storeId: string, catalogId: 
 function parseCategories(categoriesStr: string | undefined): string[] {
   if (!categoriesStr) return [];
   return categoriesStr
-    .split(';')
+    .split(/[;,]/)
     .map(c => c.trim())
     .filter(Boolean);
 }

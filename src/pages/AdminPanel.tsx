@@ -1786,7 +1786,12 @@ export default function AdminPanel({
             sku: product.sku || null,
             name: product.name,
             description: product.description,
-            categories: catalogPricing?.categories || null,
+            categories: (() => {
+              const names = (catalogPricing?.categories || [])
+                .map(catId => categories.find(c => c.id === catId)?.name)
+                .filter(Boolean) as string[];
+              return names.length > 0 ? names : null;
+            })(),
             unit: product.unit,
             unitWeight: product.unitWeight,
             packagingType: product.packagingType,
