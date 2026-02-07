@@ -300,7 +300,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "wholesale" | "category-settings";
+type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings";
 type ImportView = "accounts" | "catalog";
 type ImportSource = "select" | "moysklad" | "excel" | "google-sheets";
 type CatalogView = "list" | "detail";
@@ -6266,6 +6266,17 @@ export default function AdminPanel({
 
           {activeSection === "retail" && effectiveStoreId && (
             <RetailSettingsSection storeId={effectiveStoreId} />
+          )}
+
+          {activeSection === "showcase" && effectiveStoreId && (
+            <div className="space-y-6">
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold text-foreground">Витрина</h2>
+                <p className="text-sm text-muted-foreground">
+                  Настройки витрины появятся здесь
+                </p>
+              </div>
+            </div>
           )}
 
           {activeSection === "wholesale" && effectiveStoreId && (
