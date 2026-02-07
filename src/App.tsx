@@ -17,6 +17,8 @@ import RetailCheckout from "./pages/RetailCheckout";
 import WholesaleStore from "./pages/WholesaleStore";
 import WholesaleProduct from "./pages/WholesaleProduct";
 import WholesaleCheckout from "./pages/WholesaleCheckout";
+import ShowcaseStore from "./pages/ShowcaseStore";
+import ShowcaseCheckout from "./pages/ShowcaseCheckout";
 import CatalogAccess from "./pages/CatalogAccess";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import GuestCatalogView from "./pages/GuestCatalogView";
@@ -121,6 +123,9 @@ const App = () => {
               <Route path="/retail/:subdomain" element={<RetailStore />} />
               <Route path="/retail/:subdomain/product/:productId" element={<RetailStore />} />
               <Route path="/retail/:subdomain/checkout" element={<RetailCheckout />} />
+              {/* Showcase storefront routes */}
+              <Route path="/showcase/:subdomain" element={<ShowcaseStore />} />
+              <Route path="/showcase/:subdomain/checkout" element={<ShowcaseCheckout />} />
               {/* Wholesale B2B routes */}
               <Route path="/wholesale/:subdomain" element={<WholesaleStore />} />
               <Route path="/wholesale/:subdomain/checkout" element={<WholesaleCheckout />} />
