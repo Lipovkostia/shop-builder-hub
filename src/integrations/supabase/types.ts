@@ -1349,24 +1349,6 @@ export type Database = {
           secondary_color: string | null
           seo_description: string | null
           seo_title: string | null
-          showcase_catalog_id: string | null
-          showcase_custom_domain: string | null
-          showcase_delivery_free_from: number | null
-          showcase_delivery_info: string | null
-          showcase_delivery_region: string | null
-          showcase_delivery_time: string | null
-          showcase_enabled: boolean | null
-          showcase_favicon_url: string | null
-          showcase_footer_delivery_payment: string | null
-          showcase_footer_returns: string | null
-          showcase_logo_url: string | null
-          showcase_name: string | null
-          showcase_phone: string | null
-          showcase_seo_description: string | null
-          showcase_seo_title: string | null
-          showcase_telegram_username: string | null
-          showcase_theme: Json | null
-          showcase_whatsapp_phone: string | null
           status: Database["public"]["Enums"]["store_status"]
           subdomain: string
           telegram_username: string | null
@@ -1416,24 +1398,6 @@ export type Database = {
           secondary_color?: string | null
           seo_description?: string | null
           seo_title?: string | null
-          showcase_catalog_id?: string | null
-          showcase_custom_domain?: string | null
-          showcase_delivery_free_from?: number | null
-          showcase_delivery_info?: string | null
-          showcase_delivery_region?: string | null
-          showcase_delivery_time?: string | null
-          showcase_enabled?: boolean | null
-          showcase_favicon_url?: string | null
-          showcase_footer_delivery_payment?: string | null
-          showcase_footer_returns?: string | null
-          showcase_logo_url?: string | null
-          showcase_name?: string | null
-          showcase_phone?: string | null
-          showcase_seo_description?: string | null
-          showcase_seo_title?: string | null
-          showcase_telegram_username?: string | null
-          showcase_theme?: Json | null
-          showcase_whatsapp_phone?: string | null
           status?: Database["public"]["Enums"]["store_status"]
           subdomain: string
           telegram_username?: string | null
@@ -1483,24 +1447,6 @@ export type Database = {
           secondary_color?: string | null
           seo_description?: string | null
           seo_title?: string | null
-          showcase_catalog_id?: string | null
-          showcase_custom_domain?: string | null
-          showcase_delivery_free_from?: number | null
-          showcase_delivery_info?: string | null
-          showcase_delivery_region?: string | null
-          showcase_delivery_time?: string | null
-          showcase_enabled?: boolean | null
-          showcase_favicon_url?: string | null
-          showcase_footer_delivery_payment?: string | null
-          showcase_footer_returns?: string | null
-          showcase_logo_url?: string | null
-          showcase_name?: string | null
-          showcase_phone?: string | null
-          showcase_seo_description?: string | null
-          showcase_seo_title?: string | null
-          showcase_telegram_username?: string | null
-          showcase_theme?: Json | null
-          showcase_whatsapp_phone?: string | null
           status?: Database["public"]["Enums"]["store_status"]
           subdomain?: string
           telegram_username?: string | null
@@ -1530,13 +1476,6 @@ export type Database = {
           {
             foreignKeyName: "stores_retail_catalog_id_fkey"
             columns: ["retail_catalog_id"]
-            isOneToOne: false
-            referencedRelation: "catalogs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stores_showcase_catalog_id_fkey"
-            columns: ["showcase_catalog_id"]
             isOneToOne: false
             referencedRelation: "catalogs"
             referencedColumns: ["id"]
@@ -1617,26 +1556,6 @@ export type Database = {
       }
       get_catalog_store_id: { Args: { _catalog_id: string }; Returns: string }
       get_retail_products_public: {
-        Args: { _subdomain: string }
-        Returns: {
-          catalog_status: string
-          category_id: string
-          category_ids: string[]
-          category_name: string
-          compare_price: number
-          description: string
-          id: string
-          images: string[]
-          name: string
-          packaging_type: string
-          price: number
-          quantity: number
-          sku: string
-          slug: string
-          unit: string
-        }[]
-      }
-      get_showcase_products_public: {
         Args: { _subdomain: string }
         Returns: {
           catalog_status: string

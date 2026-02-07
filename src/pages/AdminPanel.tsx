@@ -113,7 +113,6 @@ import { AIAssistantPanel } from "@/components/admin/AIAssistantPanel";
 import { ActivityHistorySection } from "@/components/admin/ActivityHistorySection";
 import { TrashSection } from "@/components/admin/TrashSection";
 import { RetailSettingsSection } from "@/components/admin/RetailSettingsSection";
-import { ShowcaseSettingsSection } from "@/components/admin/ShowcaseSettingsSection";
 import { WholesaleSettingsSection } from "@/components/admin/WholesaleSettingsSection";
 import { FormingOrdersSection } from "@/components/admin/FormingOrdersSection";
 import { ProductsSection } from "@/components/admin/ProductsSection";
@@ -301,7 +300,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings";
+type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "wholesale" | "category-settings";
 type ImportView = "accounts" | "catalog";
 type ImportSource = "select" | "moysklad" | "excel" | "google-sheets";
 type CatalogView = "list" | "detail";
@@ -6267,10 +6266,6 @@ export default function AdminPanel({
 
           {activeSection === "retail" && effectiveStoreId && (
             <RetailSettingsSection storeId={effectiveStoreId} />
-          )}
-
-          {activeSection === "showcase" && effectiveStoreId && (
-            <ShowcaseSettingsSection storeId={effectiveStoreId} />
           )}
 
           {activeSection === "wholesale" && effectiveStoreId && (
