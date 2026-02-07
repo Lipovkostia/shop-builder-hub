@@ -80,6 +80,7 @@ export interface StoreCategory {
   id: string;
   name: string;
   sort_order: number | null;
+  catalog_parent_id?: string | null;
 }
 
 export function useGuestCatalog(accessCode: string | undefined) {
@@ -361,7 +362,8 @@ export function useGuestCatalog(accessCode: string | undefined) {
         setCategories(data.map((c: any) => ({
           id: c.id,
           name: c.name,
-          sort_order: c.sort_order
+          sort_order: c.sort_order,
+          catalog_parent_id: c.catalog_parent_id || null,
         })));
       }
     } catch (err) {

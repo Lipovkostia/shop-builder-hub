@@ -11,6 +11,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -61,7 +62,8 @@ import {
   Phone,
   MessageCircle,
   Sparkles,
-  PlayCircle
+  PlayCircle,
+  Folder
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -513,18 +515,29 @@ const GuestCatalogView = () => {
   // Get available categories from products' catalog_categories
   // Categories are already ordered by catalog-specific sort_order from useGuestCatalog
   const availableCategories = useMemo(() => {
-    // Collect unique category IDs from all products
     const categoryIds = new Set(
       products
         .flatMap(p => p.catalog_categories || [])
         .filter(Boolean)
     );
     
-    // Filter storeCategories to only those used in products
-    // Keep the order from storeCategories (already sorted by catalog-specific order)
+    // Include parent categories that have children with products
+    const parentIdsToInclude = new Set<string>();
+    storeCategories.forEach(cat => {
+      if (cat.catalog_parent_id && categoryIds.has(cat.id)) {
+        parentIdsToInclude.add(cat.catalog_parent_id);
+      }
+    });
+    
     return storeCategories
-      .filter(cat => categoryIds.has(cat.id))
-      .map(cat => ({ id: cat.id, name: cat.name, sort_order: cat.sort_order }));
+      .filter(cat => categoryIds.has(cat.id) || parentIdsToInclude.has(cat.id))
+      .map(cat => ({ 
+        id: cat.id, 
+        name: cat.name, 
+        sort_order: cat.sort_order,
+        catalog_parent_id: cat.catalog_parent_id || null,
+        product_count: categoryIds.has(cat.id) ? products.filter(p => p.catalog_categories?.includes(cat.id)).length : 0,
+      }));
   }, [products, storeCategories]);
 
   // Get unique statuses
@@ -545,10 +558,16 @@ const GuestCatalogView = () => {
   // Filter products
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      // Filter by category - use catalog_categories array
+      // Filter by category - use catalog_categories array, include children for sections
       if (selectedCategory) {
+        const childIds = availableCategories
+          .filter(c => c.catalog_parent_id === selectedCategory)
+          .map(c => c.id);
+        const filterIds = childIds.length > 0
+          ? [selectedCategory, ...childIds]
+          : [selectedCategory];
         const productCategories = p.catalog_categories || [];
-        if (!productCategories.includes(selectedCategory)) return false;
+        if (!filterIds.some(id => productCategories.includes(id))) return false;
       }
       if (selectedStatus && p.catalog_status !== selectedStatus) return false;
       if (searchQuery) {
@@ -559,7 +578,7 @@ const GuestCatalogView = () => {
       }
       return true;
     });
-  }, [products, selectedCategory, selectedStatus, searchQuery]);
+  }, [products, selectedCategory, selectedStatus, searchQuery, availableCategories]);
 
   // Handle checkout submission
   const handleCheckout = async () => {
@@ -922,20 +941,69 @@ const GuestCatalogView = () => {
                 <LayoutGrid className="w-4 h-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="min-w-[200px] max-h-[60vh] overflow-y-auto bg-popover z-50">
-                <DropdownMenuItem onClick={() => setSelectedCategory(null)} className="cursor-pointer">
+                <DropdownMenuItem onClick={() => setSelectedCategory(null)} className={`cursor-pointer ${!selectedCategory ? 'font-semibold bg-primary/10' : ''}`}>
                   <div className="flex items-center gap-2">
                     {!selectedCategory && <Check className="w-4 h-4 text-primary" />}
-                    <span className={!selectedCategory ? "font-semibold" : ""}>Все категории</span>
+                    <span>Все категории</span>
                   </div>
                 </DropdownMenuItem>
-                {availableCategories.map((cat) => (
-                  <DropdownMenuItem key={cat.id} onClick={() => setSelectedCategory(cat.id)} className="cursor-pointer">
-                    <div className="flex items-center gap-2">
-                      {selectedCategory === cat.id && <Check className="w-4 h-4 text-primary" />}
-                      <span className={selectedCategory === cat.id ? "font-semibold" : ""}>{cat.name}</span>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
+                {availableCategories.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {(() => {
+                      const topLevel = availableCategories.filter(cat => !cat.catalog_parent_id);
+                      
+                      return topLevel.map((cat) => {
+                        const children = availableCategories.filter(c => c.catalog_parent_id === cat.id);
+                        const isSection = children.length > 0;
+                        
+                        if (isSection) {
+                          return (
+                            <div key={cat.id}>
+                              <DropdownMenuItem
+                                onClick={() => setSelectedCategory(cat.id)}
+                                className={`cursor-pointer ${selectedCategory === cat.id ? 'font-semibold bg-primary/10' : ''}`}
+                              >
+                                <div className="flex items-center gap-1.5 w-full">
+                                  <Folder className="w-3.5 h-3.5 text-primary/70 flex-shrink-0" />
+                                  <span className="font-semibold">{cat.name}</span>
+                                  {cat.product_count > 0 && (
+                                    <span className="text-xs text-muted-foreground ml-auto">{cat.product_count}</span>
+                                  )}
+                                </div>
+                              </DropdownMenuItem>
+                              {children.map(child => (
+                                <DropdownMenuItem
+                                  key={child.id}
+                                  onClick={() => setSelectedCategory(child.id)}
+                                  className={`cursor-pointer pl-8 ${selectedCategory === child.id ? 'font-semibold bg-primary/10' : ''}`}
+                                >
+                                  {child.name}
+                                  {child.product_count > 0 && (
+                                    <span className="text-xs text-muted-foreground ml-auto">{child.product_count}</span>
+                                  )}
+                                </DropdownMenuItem>
+                              ))}
+                            </div>
+                          );
+                        }
+                        
+                        return (
+                          <DropdownMenuItem
+                            key={cat.id}
+                            onClick={() => setSelectedCategory(cat.id)}
+                            className={`cursor-pointer ${selectedCategory === cat.id ? 'font-semibold bg-primary/10' : ''}`}
+                          >
+                            {cat.name}
+                            {cat.product_count > 0 && (
+                              <span className="text-xs text-muted-foreground ml-auto">{cat.product_count}</span>
+                            )}
+                          </DropdownMenuItem>
+                        );
+                      });
+                    })()}
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1138,26 +1206,64 @@ const GuestCatalogView = () => {
                 );
               }
 
-              // Все категории - группировать продукты по категориям
+              // Все категории - группировать продукты по категориям с иерархией
               return (
                 <>
                   {/* Демо-товар в самом верху при первом посещении */}
                   {demoProductCard}
-                  {availableCategories.map((category) => {
-                    const categoryProducts = filteredProducts.filter(
-                      (p) => p.catalog_categories && p.catalog_categories.includes(category.id)
-                    );
-                    if (categoryProducts.length === 0) return null;
-
-                    return (
-                      <div key={category.id}>
-                        <div className="px-3 py-2 bg-muted/50 border-b border-border sticky top-0 z-10">
-                          <span className="text-sm font-medium text-foreground">{category.name}</span>
+                  {(() => {
+                    const topLevel = availableCategories.filter(cat => !cat.catalog_parent_id);
+                    
+                    return topLevel.map((cat) => {
+                      const children = availableCategories.filter(c => c.catalog_parent_id === cat.id);
+                      const isSection = children.length > 0;
+                      
+                      if (isSection) {
+                        return (
+                          <div key={cat.id}>
+                            <div className="px-3 py-1 bg-muted/70 border-b border-border sticky top-0 z-10">
+                              <span className="text-xs font-semibold text-foreground">{cat.name}</span>
+                            </div>
+                            {children.map(child => {
+                              const childProducts = filteredProducts.filter(
+                                (p) => p.catalog_categories && p.catalog_categories.includes(child.id)
+                              );
+                              if (childProducts.length === 0) return null;
+                              return (
+                                <div key={child.id}>
+                                  <div className="px-3 pl-5 py-0 bg-muted/30 border-b border-border">
+                                    <span className="text-xs font-medium text-foreground/80 leading-tight">{child.name}</span>
+                                  </div>
+                                  {childProducts.map(renderProductCard)}
+                                </div>
+                              );
+                            })}
+                            {/* Products directly in section */}
+                            {(() => {
+                              const directProducts = filteredProducts.filter(
+                                (p) => p.catalog_categories && p.catalog_categories.includes(cat.id)
+                              );
+                              if (directProducts.length === 0) return null;
+                              return directProducts.map(renderProductCard);
+                            })()}
+                          </div>
+                        );
+                      }
+                      
+                      const categoryProducts = filteredProducts.filter(
+                        (p) => p.catalog_categories && p.catalog_categories.includes(cat.id)
+                      );
+                      if (categoryProducts.length === 0) return null;
+                      return (
+                        <div key={cat.id}>
+                          <div className="px-3 py-2 bg-muted/50 border-b border-border sticky top-0 z-10">
+                            <span className="text-sm font-medium text-foreground">{cat.name}</span>
+                          </div>
+                          {categoryProducts.map(renderProductCard)}
                         </div>
-                        {categoryProducts.map(renderProductCard)}
-                      </div>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
 
                   {/* Товары без категории */}
                   {(() => {
