@@ -17,6 +17,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -78,7 +79,8 @@ import {
   Copy,
   MessageCircle,
   Sparkles,
-  Eye
+  Eye,
+  Folder
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerAIAssistantBanner } from "@/components/customer/CustomerAIAssistantBanner";
@@ -573,7 +575,7 @@ function CustomerHeader({
   onOpenCart: () => void;
   onOpenProfile: () => void;
   onOpenOrders: () => void;
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; catalog_parent_id?: string | null; product_count?: number }[];
   selectedCategory: string | null;
   onSelectCategory: (categoryId: string | null) => void;
   searchQuery: string;
@@ -614,34 +616,80 @@ function CustomerHeader({
             >
               <LayoutGrid className="w-4 h-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="min-w-[160px] bg-popover z-50">
+            <DropdownMenuContent align="center" className="min-w-[200px] max-h-[400px] overflow-y-auto bg-popover z-50">
               <DropdownMenuItem
                 onClick={() => onSelectCategory(null)}
-                className="cursor-pointer"
+                className={`cursor-pointer ${!selectedCategory ? 'font-semibold bg-primary/10' : ''}`}
               >
                 <div className="flex items-center gap-2">
                   {!selectedCategory && <Check className="w-4 h-4 text-primary" />}
-                  <span className={!selectedCategory ? "font-semibold" : ""}>Все категории</span>
+                  <span>Все категории</span>
                 </div>
               </DropdownMenuItem>
-              {categories.map((category) => (
-                <DropdownMenuItem
-                  key={category.id}
-                  onClick={() => onSelectCategory(category.id)}
-                  className="cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    {selectedCategory === category.id && <Check className="w-4 h-4 text-primary" />}
-                    <span className={selectedCategory === category.id ? "font-semibold" : ""}>
-                      {category.name}
-                    </span>
-                  </div>
-                </DropdownMenuItem>
-              ))}
-              {categories.length === 0 && (
-                <DropdownMenuItem disabled>
-                  <span className="text-muted-foreground">Нет категорий</span>
-                </DropdownMenuItem>
+              {categories.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  {(() => {
+                    // Build hierarchy: sections (categories with children) and top-level categories
+                    const topLevel = categories.filter(cat => !cat.catalog_parent_id);
+                    
+                    return topLevel.map((cat) => {
+                      const children = categories.filter(c => c.catalog_parent_id === cat.id);
+                      const isSection = children.length > 0;
+                      
+                      if (isSection) {
+                        // Check if this section or any child is selected
+                        const childIds = children.map(c => c.id);
+                        const isSectionActive = selectedCategory === cat.id;
+                        const isChildActive = childIds.includes(selectedCategory || '');
+                        const isExpanded = true; // Always expanded for simplicity
+                        
+                        return (
+                          <div key={cat.id}>
+                            <DropdownMenuItem
+                              onClick={() => onSelectCategory(cat.id)}
+                              className={`cursor-pointer ${isSectionActive ? 'font-semibold bg-primary/10' : ''}`}
+                            >
+                              <div className="flex items-center gap-1.5 w-full">
+                                <Folder className="w-3.5 h-3.5 text-primary/70 flex-shrink-0" />
+                                <span className="font-semibold">{cat.name}</span>
+                                {(cat.product_count ?? 0) > 0 && (
+                                  <span className="text-xs text-muted-foreground ml-auto">{cat.product_count}</span>
+                                )}
+                              </div>
+                            </DropdownMenuItem>
+                            {children.map(child => (
+                              <DropdownMenuItem
+                                key={child.id}
+                                onClick={() => onSelectCategory(child.id)}
+                                className={`cursor-pointer pl-8 ${selectedCategory === child.id ? 'font-semibold bg-primary/10' : ''}`}
+                              >
+                                {child.name}
+                                {(child.product_count ?? 0) > 0 && (
+                                  <span className="text-xs text-muted-foreground ml-auto">{child.product_count}</span>
+                                )}
+                              </DropdownMenuItem>
+                            ))}
+                          </div>
+                        );
+                      }
+                      
+                      // Regular category (no children)
+                      return (
+                        <DropdownMenuItem
+                          key={cat.id}
+                          onClick={() => onSelectCategory(cat.id)}
+                          className={`cursor-pointer ${selectedCategory === cat.id ? 'font-semibold bg-primary/10' : ''}`}
+                        >
+                          {cat.name}
+                          {(cat.product_count ?? 0) > 0 && (
+                            <span className="text-xs text-muted-foreground ml-auto">{cat.product_count}</span>
+                          )}
+                        </DropdownMenuItem>
+                      );
+                    });
+                  })()}
+                </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -861,7 +909,7 @@ const CustomerDashboard = () => {
   const { categories: storeCategories } = useStoreCategories(currentStoreId);
   
   // State for catalog-specific ordered categories (loaded via RPC)
-  const [catalogSpecificCategories, setCatalogSpecificCategories] = useState<typeof storeCategories>([]);
+  const [catalogSpecificCategories, setCatalogSpecificCategories] = useState<(typeof storeCategories[number] & { catalog_parent_id?: string | null })[]>([]);
   
   // Load catalog-specific categories with proper sort order when catalog changes
   useEffect(() => {
@@ -891,6 +939,7 @@ const CustomerDashboard = () => {
             parent_id: c.parent_id,
             sort_order: c.sort_order,
             image_url: c.image_url,
+            catalog_parent_id: c.catalog_parent_id || null,
           })));
         }
       });
@@ -918,6 +967,7 @@ const CustomerDashboard = () => {
   const [expandedDescriptionId, setExpandedDescriptionId] = useState<string | null>(null);
   const [fullscreenImages, setFullscreenImages] = useState<{ images: string[]; index: number } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [expandedDropdownSections, setExpandedDropdownSections] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
@@ -1003,18 +1053,32 @@ const CustomerDashboard = () => {
   }, [currentCatalog?.catalog_id]);
   
   // Extract unique category IDs from products and map to names
-  // Uses catalog-specific categories (already ordered by RPC) instead of global categories
+  // Uses catalog-specific categories (already ordered by RPC) with hierarchy support
   const availableCategories = useMemo(() => {
-    const categoryIds = [...new Set(
+    const categoryIds = new Set(
       products
         .flatMap(p => p.catalog_categories || [])
         .filter(Boolean)
-    )];
+    );
     
-    // Filter catalog-specific categories (already sorted by RPC!) to only include those with products
+    // Also include parent categories that have children with products
+    const parentIdsToInclude = new Set<string>();
+    catalogSpecificCategories.forEach(cat => {
+      if (cat.catalog_parent_id && categoryIds.has(cat.id)) {
+        parentIdsToInclude.add(cat.catalog_parent_id);
+      }
+    });
+    
+    // Filter catalog-specific categories (already sorted by RPC!) to only include those with products or parent sections
     return catalogSpecificCategories
-      .filter(cat => categoryIds.includes(cat.id))
-      .map(cat => ({ id: cat.id, name: cat.name, sort_order: cat.sort_order }));
+      .filter(cat => categoryIds.has(cat.id) || parentIdsToInclude.has(cat.id))
+      .map(cat => ({ 
+        id: cat.id, 
+        name: cat.name, 
+        sort_order: cat.sort_order, 
+        catalog_parent_id: (cat as any).catalog_parent_id || null,
+        product_count: categoryIds.has(cat.id) ? products.filter(p => p.catalog_categories?.includes(cat.id)).length : 0,
+      }));
   }, [products, catalogSpecificCategories]);
   
   // Extract unique statuses from products
@@ -2180,8 +2244,16 @@ const CustomerDashboard = () => {
             
             // Single category selected
             if (selectedCategory) {
+              // Check if selected category is a section (has children)
+              const childIds = availableCategories
+                .filter(c => c.catalog_parent_id === selectedCategory)
+                .map(c => c.id);
+              const filterIds = childIds.length > 0
+                ? [selectedCategory, ...childIds]
+                : [selectedCategory];
+              
               const categoryProducts = statusFilteredProducts.filter(
-                (product) => product.catalog_categories && product.catalog_categories.includes(selectedCategory)
+                (product) => product.catalog_categories && filterIds.some(id => product.catalog_categories!.includes(id))
               );
               
               return (
@@ -2209,36 +2281,82 @@ const CustomerDashboard = () => {
               );
             }
             
-            // All categories - group products by category
+            // All categories - group products by category with hierarchy
             return (
               <>
-                {availableCategories.map((category) => {
-                  const categoryProducts = statusFilteredProducts.filter(
-                    (p) => p.catalog_categories && p.catalog_categories.includes(category.id)
+                {(() => {
+                  const topLevel = availableCategories.filter(cat => !cat.catalog_parent_id);
+                  const rendered = new Set<string>();
+                  
+                  const renderProductCard = (product: any) => (
+                    <ProductCard 
+                      key={product.id} 
+                      product={product} 
+                      cart={cart}
+                      onAddToCart={handleAddToCart}
+                      showImages={showImages}
+                      isExpanded={expandedProductId === product.id}
+                      onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
+                      onOpenFullscreen={(imageIndex: number) => product.images && setFullscreenImages({ images: product.images, index: imageIndex })}
+                      isDescriptionExpanded={expandedDescriptionId === product.id}
+                      onNameClick={() => product.description && setExpandedDescriptionId(expandedDescriptionId === product.id ? null : product.id)}
+                    />
                   );
-                  if (categoryProducts.length === 0) return null;
-                  return (
-                    <div key={category.id}>
-                      <div className="px-3 py-0 bg-muted/50 border-b border-border">
-                        <span className="text-xs font-medium text-foreground leading-tight">{category.name}</span>
+                  
+                  return topLevel.map((cat) => {
+                    const children = availableCategories.filter(c => c.catalog_parent_id === cat.id);
+                    const isSection = children.length > 0;
+                    rendered.add(cat.id);
+                    children.forEach(c => rendered.add(c.id));
+                    
+                    if (isSection) {
+                      // Section with subcategories
+                      return (
+                        <div key={cat.id}>
+                          <div className="px-3 py-1 bg-muted/70 border-b border-border sticky top-0 z-10">
+                            <span className="text-xs font-semibold text-foreground">{cat.name}</span>
+                          </div>
+                          {children.map(child => {
+                            const childProducts = statusFilteredProducts.filter(
+                              (p) => p.catalog_categories && p.catalog_categories.includes(child.id)
+                            );
+                            if (childProducts.length === 0) return null;
+                            return (
+                              <div key={child.id}>
+                                <div className="px-3 pl-5 py-0 bg-muted/30 border-b border-border">
+                                  <span className="text-xs font-medium text-foreground/80 leading-tight">{child.name}</span>
+                                </div>
+                                {childProducts.map(renderProductCard)}
+                              </div>
+                            );
+                          })}
+                          {/* Products directly in section (not in subcategory) */}
+                          {(() => {
+                            const directProducts = statusFilteredProducts.filter(
+                              (p) => p.catalog_categories && p.catalog_categories.includes(cat.id)
+                            );
+                            if (directProducts.length === 0) return null;
+                            return directProducts.map(renderProductCard);
+                          })()}
+                        </div>
+                      );
+                    }
+                    
+                    // Regular category
+                    const categoryProducts = statusFilteredProducts.filter(
+                      (p) => p.catalog_categories && p.catalog_categories.includes(cat.id)
+                    );
+                    if (categoryProducts.length === 0) return null;
+                    return (
+                      <div key={cat.id}>
+                        <div className="px-3 py-0 bg-muted/50 border-b border-border">
+                          <span className="text-xs font-medium text-foreground leading-tight">{cat.name}</span>
+                        </div>
+                        {categoryProducts.map(renderProductCard)}
                       </div>
-                      {categoryProducts.map((product) => (
-                        <ProductCard 
-                          key={product.id} 
-                          product={product} 
-                          cart={cart}
-                          onAddToCart={handleAddToCart}
-                          showImages={showImages}
-                          isExpanded={expandedProductId === product.id}
-                          onImageClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
-                          onOpenFullscreen={(imageIndex) => product.images && setFullscreenImages({ images: product.images, index: imageIndex })}
-                          isDescriptionExpanded={expandedDescriptionId === product.id}
-                          onNameClick={() => product.description && setExpandedDescriptionId(expandedDescriptionId === product.id ? null : product.id)}
-                        />
-                      ))}
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
                 {/* Products without category */}
                 {(() => {
                   const uncategorizedProducts = statusFilteredProducts.filter(
