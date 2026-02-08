@@ -1254,7 +1254,7 @@ export default function AdminPanel({
   // Initialize profile and store data when profile section is active
   useEffect(() => {
     const loadProfileData = async () => {
-      if (activeSection === 'profile' && effectiveStoreId) {
+      if ((activeSection === 'profile' || activeSection === 'showcase') && effectiveStoreId) {
         // Load profile data
         if (profile) {
           setProfileName(profile.full_name || '');
