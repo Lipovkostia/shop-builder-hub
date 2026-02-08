@@ -940,7 +940,9 @@ export default function AdminPanel({
   const [storePhone, setStorePhone] = useState("");
   const [storeEmail, setStoreEmail] = useState("");
   const [storeAddress, setStoreAddress] = useState("");
-  const [storeDescription, setStoreDescription] = useState("");
+   const [storeDescription, setStoreDescription] = useState("");
+   const [showcasePhone, setShowcasePhone] = useState("");
+   const [savingShowcase, setSavingShowcase] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingStore, setSavingStore] = useState(false);
@@ -1273,7 +1275,7 @@ export default function AdminPanel({
         // Load store data
         const { data: storeData } = await supabase
           .from('stores')
-          .select('name, contact_phone, contact_email, address, description')
+          .select('name, contact_phone, contact_email, address, description, showcase_phone')
           .eq('id', effectiveStoreId)
           .single();
         
@@ -1283,6 +1285,7 @@ export default function AdminPanel({
           setStoreEmail(storeData.contact_email || '');
           setStoreAddress(storeData.address || '');
           setStoreDescription(storeData.description || '');
+          setShowcasePhone(storeData.showcase_phone || '');
         }
       }
     };
@@ -6273,8 +6276,47 @@ export default function AdminPanel({
               <div className="mb-4">
                 <h2 className="text-xl font-semibold text-foreground">Витрина</h2>
                 <p className="text-sm text-muted-foreground">
-                  Настройки витрины появятся здесь
+                  Настройки публичной витрины магазина
                 </p>
+              </div>
+
+              <div className="space-y-4 max-w-md">
+                <div className="space-y-2">
+                  <Label htmlFor="showcase-phone">Номер телефона</Label>
+                  <Input
+                    id="showcase-phone"
+                    type="tel"
+                    value={showcasePhone}
+                    onChange={(e) => setShowcasePhone(e.target.value)}
+                    placeholder="+7 (999) 123-45-67"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Будет отображаться на витрине как кликабельный контакт
+                  </p>
+                </div>
+
+                <Button
+                  onClick={async () => {
+                    setSavingShowcase(true);
+                    try {
+                      const { error } = await supabase
+                        .from('stores')
+                        .update({ showcase_phone: showcasePhone || null })
+                        .eq('id', effectiveStoreId);
+                      if (error) throw error;
+                      toast({ title: "Сохранено", description: "Настройки витрины обновлены" });
+                    } catch (err: any) {
+                      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+                    } finally {
+                      setSavingShowcase(false);
+                    }
+                  }}
+                  disabled={savingShowcase}
+                  size="sm"
+                >
+                  {savingShowcase ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Сохранить
+                </Button>
               </div>
             </div>
           )}
