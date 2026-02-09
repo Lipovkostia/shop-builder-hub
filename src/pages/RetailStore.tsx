@@ -160,8 +160,8 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
       });
     }
 
-    // Price filter
-    result = result.filter((p) => p.price >= currentPriceRange[0] && p.price <= currentPriceRange[1]);
+    // Price filter (always include products with price 0 or no price)
+    result = result.filter((p) => p.price === 0 || (p.price >= currentPriceRange[0] && p.price <= currentPriceRange[1]));
 
     // In stock filter
     if (inStockOnly) {
