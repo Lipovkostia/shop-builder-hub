@@ -2181,11 +2181,11 @@ const CustomerDashboard = () => {
         onOpenAI={() => setIsAIPanelOpen(true)}
         aiItemCount={assistant.itemCount}
       />
+
+      {/* Showcase Contact Bar - between header and main content */}
+      <ShowcaseContactBar phone={showcasePhone} whatsapp={showcaseWhatsapp} telegram={showcaseTelegram} maxLink={showcaseMaxLink} />
       
       <main className="flex-1 overflow-auto">
-        {/* Showcase Contact Bar */}
-        <ShowcaseContactBar phone={showcasePhone} whatsapp={showcaseWhatsapp} telegram={showcaseTelegram} maxLink={showcaseMaxLink} />
-        
         {/* AI Assistant Banner above products */}
         {currentCatalog && (
           <CustomerAIAssistantBanner
