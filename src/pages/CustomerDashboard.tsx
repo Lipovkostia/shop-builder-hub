@@ -83,6 +83,7 @@ import {
   Folder
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { ShowcaseContactBar } from "@/components/retail/ShowcaseContactBar";
 import { CustomerAIAssistantBanner } from "@/components/customer/CustomerAIAssistantBanner";
 import { CustomerAIAssistantPanel } from "@/components/customer/CustomerAIAssistantPanel";
 import { useCustomerAIAssistant, FoundItem } from "@/hooks/useCustomerAIAssistant";
@@ -907,7 +908,21 @@ const CustomerDashboard = () => {
   const currentStoreId = currentCatalog?.store_id || null;
   const currentStoreCustomerId = currentCatalog?.store_customer_id || null;
   const { categories: storeCategories } = useStoreCategories(currentStoreId);
-  
+  const [showcasePhone, setShowcasePhone] = useState<string | null>(null);
+
+  // Fetch showcase_phone from store
+  useEffect(() => {
+    if (!currentStoreId) { setShowcasePhone(null); return; }
+    supabase
+      .from('stores')
+      .select('showcase_phone')
+      .eq('id', currentStoreId)
+      .maybeSingle()
+      .then(({ data }) => {
+        setShowcasePhone(data?.showcase_phone || null);
+      });
+  }, [currentStoreId]);
+
   // State for catalog-specific ordered categories (loaded via RPC)
   const [catalogSpecificCategories, setCatalogSpecificCategories] = useState<(typeof storeCategories[number] & { catalog_parent_id?: string | null })[]>([]);
   
@@ -2159,6 +2174,9 @@ const CustomerDashboard = () => {
       />
       
       <main className="flex-1 overflow-auto">
+        {/* Showcase Contact Bar */}
+        <ShowcaseContactBar phone={showcasePhone} />
+        
         {/* AI Assistant Banner above products */}
         {currentCatalog && (
           <CustomerAIAssistantBanner

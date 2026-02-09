@@ -66,6 +66,7 @@ import {
   Folder
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { ShowcaseContactBar } from "@/components/retail/ShowcaseContactBar";
 
 // Utility functions
 function formatPriceSpaced(price: number): string {
@@ -461,6 +462,20 @@ const GuestCatalogView = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCartImages, setShowCartImages] = useState(true);
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
+  const [showcasePhone, setShowcasePhone] = useState<string | null>(null);
+
+  // Fetch showcase_phone from store
+  useEffect(() => {
+    if (!catalogInfo?.store_id) return;
+    supabase
+      .from('stores')
+      .select('showcase_phone')
+      .eq('id', catalogInfo.store_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setShowcasePhone(data?.showcase_phone || null);
+      });
+  }, [catalogInfo?.store_id]);
   
   // AI Assistant hook
   const assistant = useCustomerAIAssistant(catalogInfo?.id || null);
@@ -1123,6 +1138,9 @@ const GuestCatalogView = () => {
           </p>
         </div>
       </header>
+
+      {/* Showcase Contact Bar */}
+      <ShowcaseContactBar phone={showcasePhone} />
 
       {/* AI Assistant Banner */}
       {catalogInfo && (
