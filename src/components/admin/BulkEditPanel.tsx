@@ -56,6 +56,8 @@ interface BulkEditPanelProps {
   categories?: Category[];
   onBulkSetCategories?: (categoryIds: string[]) => void;
   onBulkClearCategories?: () => void;
+  // Bulk price editing
+  onBulkSetPrice?: (price: number) => void;
 }
 
 export function BulkEditPanel({
@@ -74,6 +76,7 @@ export function BulkEditPanel({
   categories = [],
   onBulkSetCategories,
   onBulkClearCategories,
+  onBulkSetPrice,
 }: BulkEditPanelProps) {
   const [editField, setEditField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
@@ -90,6 +93,16 @@ export function BulkEditPanel({
 
   const handleApply = () => {
     if (!editField) return;
+
+    if (editField === "price" && onBulkSetPrice) {
+      const numValue = parseFloat(editValue);
+      if (!isNaN(numValue) && numValue >= 0) {
+        onBulkSetPrice(numValue);
+      }
+      setEditField(null);
+      setEditValue("");
+      return;
+    }
 
     let updates: Partial<Product> = {};
     
@@ -323,6 +336,7 @@ export function BulkEditPanel({
               <SelectItem value="packagingType">Вид</SelectItem>
               <SelectItem value="status">Статус</SelectItem>
               <SelectItem value="markup">Наценка</SelectItem>
+              {onBulkSetPrice && <SelectItem value="price">Цена</SelectItem>}
               <SelectItem value="description">Описание</SelectItem>
             </SelectContent>
           </Select>
@@ -387,12 +401,27 @@ export function BulkEditPanel({
             />
           )}
 
+          {editField === "price" && (
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                placeholder="Цена ₽"
+                min="0"
+                step="0.01"
+                className="h-8 w-[120px] bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-primary-foreground/70 text-xs">₽</span>
+            </div>
+          )}
+
           {editField && (
             <Button
               size="sm"
               variant="secondary"
               onClick={handleApply}
-              disabled={editField === "markup" ? !markupValue : !editValue}
+              disabled={editField === "markup" ? !markupValue : editField === "price" ? !editValue || isNaN(parseFloat(editValue)) : !editValue}
               className="h-8"
             >
               <Check className="h-4 w-4 mr-1" />

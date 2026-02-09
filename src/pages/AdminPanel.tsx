@@ -4681,6 +4681,22 @@ export default function AdminPanel({
                         });
                       }
                     }}
+                    onBulkSetPrice={(price) => {
+                      if (currentCatalog) {
+                        const count = selectedCatalogBulkProducts.size;
+                        selectedCatalogBulkProducts.forEach(productId => {
+                          updateCatalogProductSettingsInDB(currentCatalog.id, productId, { 
+                            fixed_price: price, 
+                            is_fixed_price: true 
+                          });
+                        });
+                        setSelectedCatalogBulkProducts(new Set());
+                        toast({
+                          title: "Цены обновлены",
+                          description: `Фиксированная цена ${price.toLocaleString()} ₽ установлена для ${count} товаров`,
+                        });
+                      }
+                    }}
                   />
 
                   <p className="text-xs text-muted-foreground mb-2">
