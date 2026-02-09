@@ -1072,6 +1072,9 @@ const GuestCatalogView = () => {
           </div>
         </div>
 
+        {/* Showcase Contact Bar */}
+        <ShowcaseContactBar phone={showcasePhone} whatsapp={showcaseWhatsapp} telegram={showcaseTelegram} maxLink={showcaseMaxLink} />
+
         {/* Search and controls */}
         <div className="h-10 flex items-center px-3 border-t border-border bg-muted/30 overflow-hidden">
           <div className={`flex items-center gap-1 transition-all duration-300 ease-in-out ${isSearchFocused ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>
@@ -1148,8 +1151,8 @@ const GuestCatalogView = () => {
         </div>
       </header>
 
-      {/* Showcase Contact Bar */}
-      <ShowcaseContactBar phone={showcasePhone} whatsapp={showcaseWhatsapp} telegram={showcaseTelegram} maxLink={showcaseMaxLink} />
+
+
 
       {/* AI Assistant Banner */}
       {catalogInfo && (
