@@ -115,12 +115,11 @@ const FormingOrderCard: React.FC<{
         
         <CollapsibleContent>
           <div className="px-3 pb-3">
-            {order.items && order.items.length > 0 && (
+            {order.items && order.items.length > 0 ? (
               <div className="border-t border-border pt-3 mb-3">
                 <div className="space-y-2.5">
                   {order.items.map((item) => (
                     <div key={item.id} className="flex items-center gap-2">
-                      {/* Product info */}
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm">{item.productName}</div>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -129,8 +128,6 @@ const FormingOrderCard: React.FC<{
                           <span>{item.price.toLocaleString()} ₽/шт</span>
                         </div>
                       </div>
-                      
-                      {/* Total price */}
                       <div className="text-right flex-shrink-0">
                         <span className="font-semibold text-primary text-sm tabular-nums">
                           {(item.quantity * item.price).toLocaleString()} ₽
@@ -140,7 +137,6 @@ const FormingOrderCard: React.FC<{
                   ))}
                 </div>
                 
-                {/* Summary line */}
                 <div className="flex items-center justify-between pt-3 mt-3 border-t border-dashed border-border">
                   <span className="text-sm text-muted-foreground">
                     Итого ({order.items.length} {order.items.length === 1 ? 'товар' : order.items.length < 5 ? 'товара' : 'товаров'})
@@ -149,6 +145,10 @@ const FormingOrderCard: React.FC<{
                     {order.total.toLocaleString()} ₽
                   </span>
                 </div>
+              </div>
+            ) : (
+              <div className="border-t border-border pt-3 text-sm text-muted-foreground">
+                Корзина пуста — покупатель ещё не добавил товары
               </div>
             )}
           </div>
