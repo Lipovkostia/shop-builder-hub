@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Phone } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { TelegramIcon } from "@/components/icons/TelegramIcon";
@@ -14,21 +14,44 @@ interface ShowcaseContactBarProps {
 export function ShowcaseContactBar({ phone, whatsapp, telegram, maxLink }: ShowcaseContactBarProps) {
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
+  const barRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = useCallback(() => {
+    // Try multiple scroll sources: closest scrollable parent, document, or window
+    const scrollEl = barRef.current?.closest('[class*="overflow"]') as HTMLElement | null;
+    const currentY = scrollEl?.scrollTop ?? window.scrollY ?? document.documentElement.scrollTop;
+    
+    if (currentY > lastScrollY.current && currentY > 10) {
+      setIsVisible(false);
+    } else {
+      setIsVisible(true);
+    }
+    lastScrollY.current = currentY;
+  }, []);
 
   useEffect(() => {
-    const handleScroll = () => {
-      const currentY = window.scrollY;
-      if (currentY > lastScrollY.current && currentY > 50) {
-        setIsVisible(false);
-      } else {
-        setIsVisible(true);
+    // Find the actual scrollable parent
+    const findScrollParent = (el: HTMLElement | null): HTMLElement | Window => {
+      if (!el) return window;
+      let parent = el.parentElement;
+      while (parent) {
+        const style = getComputedStyle(parent);
+        if (/(auto|scroll)/.test(style.overflow + style.overflowY)) {
+          return parent;
+        }
+        parent = parent.parentElement;
       }
-      lastScrollY.current = currentY;
+      return window;
     };
 
+    const scrollTarget = findScrollParent(barRef.current);
+    scrollTarget.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+    return () => {
+      scrollTarget.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [handleScroll]);
 
   const hasAnyContact = phone || whatsapp || telegram || maxLink;
   if (!hasAnyContact) return null;
@@ -40,8 +63,9 @@ export function ShowcaseContactBar({ phone, whatsapp, telegram, maxLink }: Showc
 
   return (
     <div
-      className={`w-full bg-muted/60 border-b border-border py-1.5 transition-transform duration-300 md:translate-y-0 ${
-        isVisible ? "translate-y-0" : "-translate-y-full"
+      ref={barRef}
+      className={`w-full bg-muted/60 border-b border-border transition-all duration-200 ease-in-out overflow-hidden md:max-h-10 ${
+        isVisible ? "max-h-10 py-1.5 opacity-100" : "max-h-0 py-0 opacity-0 border-b-0"
       }`}
     >
       <div className="container mx-auto px-4 flex items-center justify-center gap-2.5">
