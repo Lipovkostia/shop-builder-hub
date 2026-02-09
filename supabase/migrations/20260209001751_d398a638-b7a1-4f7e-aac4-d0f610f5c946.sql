@@ -1,0 +1,1 @@
+ALTER TABLE public.stores ADD COLUMN showcase_max_link text;

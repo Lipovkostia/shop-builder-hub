@@ -909,17 +909,23 @@ const CustomerDashboard = () => {
   const currentStoreCustomerId = currentCatalog?.store_customer_id || null;
   const { categories: storeCategories } = useStoreCategories(currentStoreId);
   const [showcasePhone, setShowcasePhone] = useState<string | null>(null);
+  const [showcaseWhatsapp, setShowcaseWhatsapp] = useState<string | null>(null);
+  const [showcaseTelegram, setShowcaseTelegram] = useState<string | null>(null);
+  const [showcaseMaxLink, setShowcaseMaxLink] = useState<string | null>(null);
 
-  // Fetch showcase_phone from store
+  // Fetch showcase contact info from store
   useEffect(() => {
     if (!currentStoreId) { setShowcasePhone(null); return; }
     supabase
       .from('stores')
-      .select('showcase_phone')
+      .select('showcase_phone, showcase_whatsapp_phone, showcase_telegram_username, showcase_max_link')
       .eq('id', currentStoreId)
       .maybeSingle()
       .then(({ data }) => {
         setShowcasePhone(data?.showcase_phone || null);
+        setShowcaseWhatsapp((data as any)?.showcase_whatsapp_phone || null);
+        setShowcaseTelegram((data as any)?.showcase_telegram_username || null);
+        setShowcaseMaxLink((data as any)?.showcase_max_link || null);
       });
   }, [currentStoreId]);
 
@@ -2175,7 +2181,7 @@ const CustomerDashboard = () => {
       
       <main className="flex-1 overflow-auto">
         {/* Showcase Contact Bar */}
-        <ShowcaseContactBar phone={showcasePhone} />
+        <ShowcaseContactBar phone={showcasePhone} whatsapp={showcaseWhatsapp} telegram={showcaseTelegram} maxLink={showcaseMaxLink} />
         
         {/* AI Assistant Banner above products */}
         {currentCatalog && (

@@ -1360,6 +1360,7 @@ export type Database = {
           showcase_footer_delivery_payment: string | null
           showcase_footer_returns: string | null
           showcase_logo_url: string | null
+          showcase_max_link: string | null
           showcase_name: string | null
           showcase_phone: string | null
           showcase_seo_description: string | null
@@ -1427,6 +1428,7 @@ export type Database = {
           showcase_footer_delivery_payment?: string | null
           showcase_footer_returns?: string | null
           showcase_logo_url?: string | null
+          showcase_max_link?: string | null
           showcase_name?: string | null
           showcase_phone?: string | null
           showcase_seo_description?: string | null
@@ -1494,6 +1496,7 @@ export type Database = {
           showcase_footer_delivery_payment?: string | null
           showcase_footer_returns?: string | null
           showcase_logo_url?: string | null
+          showcase_max_link?: string | null
           showcase_name?: string | null
           showcase_phone?: string | null
           showcase_seo_description?: string | null

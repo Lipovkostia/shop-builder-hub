@@ -1,11 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import { Phone } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
+import { TelegramIcon } from "@/components/icons/TelegramIcon";
+import { MaxIcon } from "@/components/icons/MaxIcon";
 
 interface ShowcaseContactBarProps {
   phone: string | null;
+  whatsapp?: string | null;
+  telegram?: string | null;
+  maxLink?: string | null;
 }
 
-export function ShowcaseContactBar({ phone }: ShowcaseContactBarProps) {
+export function ShowcaseContactBar({ phone, whatsapp, telegram, maxLink }: ShowcaseContactBarProps) {
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
 
@@ -24,10 +30,13 @@ export function ShowcaseContactBar({ phone }: ShowcaseContactBarProps) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  if (!phone) return null;
+  const hasAnyContact = phone || whatsapp || telegram || maxLink;
+  if (!hasAnyContact) return null;
 
-  // Clean phone for tel: link
-  const telHref = `tel:${phone.replace(/[^\d+]/g, "")}`;
+  const telHref = phone ? `tel:${phone.replace(/[^\d+]/g, "")}` : "";
+  const waHref = whatsapp ? `https://wa.me/${whatsapp.replace(/[^\d]/g, "")}` : "";
+  const tgHref = telegram ? `https://t.me/${telegram.replace(/^@/, "")}` : "";
+  const maxHref = maxLink ? (maxLink.startsWith("http") ? maxLink : `https://${maxLink}`) : "";
 
   return (
     <div
@@ -35,14 +44,41 @@ export function ShowcaseContactBar({ phone }: ShowcaseContactBarProps) {
         isVisible ? "translate-y-0" : "-translate-y-full"
       }`}
     >
-      <div className="container mx-auto px-4 flex items-center justify-center gap-1.5">
-        <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
-        <a
-          href={telHref}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {phone}
-        </a>
+      <div className="container mx-auto px-4 flex items-center justify-center gap-2.5">
+        {/* Messenger icons */}
+        {whatsapp && (
+          <a href={waHref} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" title="WhatsApp">
+            <WhatsAppIcon className="h-3.5 w-3.5" />
+          </a>
+        )}
+        {telegram && (
+          <a href={tgHref} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" title="Telegram">
+            <TelegramIcon className="h-3.5 w-3.5" />
+          </a>
+        )}
+        {maxLink && (
+          <a href={maxHref} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" title="Max">
+            <MaxIcon className="h-3.5 w-3.5" />
+          </a>
+        )}
+
+        {/* Separator between messengers and phone */}
+        {(whatsapp || telegram || maxLink) && phone && (
+          <span className="w-px h-3 bg-border" />
+        )}
+
+        {/* Phone */}
+        {phone && (
+          <>
+            <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
+            <a
+              href={telHref}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {phone}
+            </a>
+          </>
+        )}
       </div>
     </div>
   );

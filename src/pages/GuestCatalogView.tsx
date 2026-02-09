@@ -463,17 +463,23 @@ const GuestCatalogView = () => {
   const [showCartImages, setShowCartImages] = useState(true);
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
   const [showcasePhone, setShowcasePhone] = useState<string | null>(null);
+  const [showcaseWhatsapp, setShowcaseWhatsapp] = useState<string | null>(null);
+  const [showcaseTelegram, setShowcaseTelegram] = useState<string | null>(null);
+  const [showcaseMaxLink, setShowcaseMaxLink] = useState<string | null>(null);
 
-  // Fetch showcase_phone from store
+  // Fetch showcase contact info from store
   useEffect(() => {
     if (!catalogInfo?.store_id) return;
     supabase
       .from('stores')
-      .select('showcase_phone')
+      .select('showcase_phone, showcase_whatsapp_phone, showcase_telegram_username, showcase_max_link')
       .eq('id', catalogInfo.store_id)
       .maybeSingle()
       .then(({ data }) => {
         setShowcasePhone(data?.showcase_phone || null);
+        setShowcaseWhatsapp((data as any)?.showcase_whatsapp_phone || null);
+        setShowcaseTelegram((data as any)?.showcase_telegram_username || null);
+        setShowcaseMaxLink((data as any)?.showcase_max_link || null);
       });
   }, [catalogInfo?.store_id]);
   
@@ -1140,7 +1146,7 @@ const GuestCatalogView = () => {
       </header>
 
       {/* Showcase Contact Bar */}
-      <ShowcaseContactBar phone={showcasePhone} />
+      <ShowcaseContactBar phone={showcasePhone} whatsapp={showcaseWhatsapp} telegram={showcaseTelegram} maxLink={showcaseMaxLink} />
 
       {/* AI Assistant Banner */}
       {catalogInfo && (

@@ -942,6 +942,9 @@ export default function AdminPanel({
   const [storeAddress, setStoreAddress] = useState("");
    const [storeDescription, setStoreDescription] = useState("");
    const [showcasePhone, setShowcasePhone] = useState("");
+   const [showcaseWhatsapp, setShowcaseWhatsapp] = useState("");
+   const [showcaseTelegram, setShowcaseTelegram] = useState("");
+   const [showcaseMaxLink, setShowcaseMaxLink] = useState("");
    const [savingShowcase, setSavingShowcase] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
@@ -1275,7 +1278,7 @@ export default function AdminPanel({
         // Load store data
         const { data: storeData } = await supabase
           .from('stores')
-          .select('name, contact_phone, contact_email, address, description, showcase_phone')
+          .select('name, contact_phone, contact_email, address, description, showcase_phone, showcase_whatsapp_phone, showcase_telegram_username, showcase_max_link')
           .eq('id', effectiveStoreId)
           .single();
         
@@ -1286,6 +1289,9 @@ export default function AdminPanel({
           setStoreAddress(storeData.address || '');
           setStoreDescription(storeData.description || '');
           setShowcasePhone(storeData.showcase_phone || '');
+          setShowcaseWhatsapp((storeData as any).showcase_whatsapp_phone || '');
+          setShowcaseTelegram((storeData as any).showcase_telegram_username || '');
+          setShowcaseMaxLink((storeData as any).showcase_max_link || '');
         }
       }
     };
@@ -6295,13 +6301,49 @@ export default function AdminPanel({
                   </p>
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="showcase-whatsapp">WhatsApp</Label>
+                  <Input
+                    id="showcase-whatsapp"
+                    type="tel"
+                    value={showcaseWhatsapp}
+                    onChange={(e) => setShowcaseWhatsapp(e.target.value)}
+                    placeholder="+7 999 123-45-67"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="showcase-telegram">Telegram</Label>
+                  <Input
+                    id="showcase-telegram"
+                    value={showcaseTelegram}
+                    onChange={(e) => setShowcaseTelegram(e.target.value)}
+                    placeholder="@username"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="showcase-max">Max</Label>
+                  <Input
+                    id="showcase-max"
+                    value={showcaseMaxLink}
+                    onChange={(e) => setShowcaseMaxLink(e.target.value)}
+                    placeholder="max.me/username"
+                  />
+                </div>
+
                 <Button
                   onClick={async () => {
                     setSavingShowcase(true);
                     try {
                       const { error } = await supabase
                         .from('stores')
-                        .update({ showcase_phone: showcasePhone || null })
+                        .update({
+                          showcase_phone: showcasePhone || null,
+                          showcase_whatsapp_phone: showcaseWhatsapp || null,
+                          showcase_telegram_username: showcaseTelegram || null,
+                          showcase_max_link: showcaseMaxLink || null,
+                        } as any)
                         .eq('id', effectiveStoreId);
                       if (error) throw error;
                       toast({ title: "Сохранено", description: "Настройки витрины обновлены" });
