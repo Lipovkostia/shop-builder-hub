@@ -1357,6 +1357,7 @@ export type Database = {
           showcase_delivery_time: string | null
           showcase_enabled: boolean | null
           showcase_favicon_url: string | null
+          showcase_floating_messenger_enabled: boolean | null
           showcase_footer_delivery_payment: string | null
           showcase_footer_returns: string | null
           showcase_logo_url: string | null
@@ -1425,6 +1426,7 @@ export type Database = {
           showcase_delivery_time?: string | null
           showcase_enabled?: boolean | null
           showcase_favicon_url?: string | null
+          showcase_floating_messenger_enabled?: boolean | null
           showcase_footer_delivery_payment?: string | null
           showcase_footer_returns?: string | null
           showcase_logo_url?: string | null
@@ -1493,6 +1495,7 @@ export type Database = {
           showcase_delivery_time?: string | null
           showcase_enabled?: boolean | null
           showcase_favicon_url?: string | null
+          showcase_floating_messenger_enabled?: boolean | null
           showcase_footer_delivery_payment?: string | null
           showcase_footer_returns?: string | null
           showcase_logo_url?: string | null

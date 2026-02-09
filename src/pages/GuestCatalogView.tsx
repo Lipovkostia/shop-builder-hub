@@ -67,6 +67,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ShowcaseContactBar } from "@/components/retail/ShowcaseContactBar";
+import { FloatingMessengerButton } from "@/components/retail/FloatingMessengerButton";
 
 // Utility functions
 function formatPriceSpaced(price: number): string {
@@ -466,13 +467,14 @@ const GuestCatalogView = () => {
   const [showcaseWhatsapp, setShowcaseWhatsapp] = useState<string | null>(null);
   const [showcaseTelegram, setShowcaseTelegram] = useState<string | null>(null);
   const [showcaseMaxLink, setShowcaseMaxLink] = useState<string | null>(null);
+  const [showcaseFloatingMessenger, setShowcaseFloatingMessenger] = useState(false);
 
   // Fetch showcase contact info from store
   useEffect(() => {
     if (!catalogInfo?.store_id) return;
     supabase
       .from('stores')
-      .select('showcase_phone, showcase_whatsapp_phone, showcase_telegram_username, showcase_max_link')
+      .select('showcase_phone, showcase_whatsapp_phone, showcase_telegram_username, showcase_max_link, showcase_floating_messenger_enabled')
       .eq('id', catalogInfo.store_id)
       .maybeSingle()
       .then(({ data }) => {
@@ -480,6 +482,7 @@ const GuestCatalogView = () => {
         setShowcaseWhatsapp((data as any)?.showcase_whatsapp_phone || null);
         setShowcaseTelegram((data as any)?.showcase_telegram_username || null);
         setShowcaseMaxLink((data as any)?.showcase_max_link || null);
+        setShowcaseFloatingMessenger(!!(data as any)?.showcase_floating_messenger_enabled);
       });
   }, [catalogInfo?.store_id]);
   
@@ -1481,6 +1484,15 @@ const GuestCatalogView = () => {
           onComplete={handleDemoComplete}
           onSkip={handleDemoComplete}
           autoPlay
+        />
+      )}
+
+      {showcaseFloatingMessenger && (
+        <FloatingMessengerButton
+          phone={showcasePhone}
+          whatsapp={showcaseWhatsapp}
+          telegram={showcaseTelegram}
+          maxLink={showcaseMaxLink}
         />
       )}
     </div>
