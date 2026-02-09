@@ -1,0 +1,1 @@
+ALTER TABLE public.stores ADD COLUMN showcase_floating_messenger_enabled boolean DEFAULT false;

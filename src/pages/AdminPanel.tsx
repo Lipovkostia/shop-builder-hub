@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { Switch } from "@/components/ui/switch";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, EyeOff, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut, FileSpreadsheet, Sheet, Upload, Sparkles, RotateCcw } from "lucide-react";
@@ -945,6 +946,7 @@ export default function AdminPanel({
    const [showcaseWhatsapp, setShowcaseWhatsapp] = useState("");
    const [showcaseTelegram, setShowcaseTelegram] = useState("");
    const [showcaseMaxLink, setShowcaseMaxLink] = useState("");
+   const [showcaseFloatingMessenger, setShowcaseFloatingMessenger] = useState(false);
    const [savingShowcase, setSavingShowcase] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
@@ -1278,7 +1280,7 @@ export default function AdminPanel({
         // Load store data
         const { data: storeData } = await supabase
           .from('stores')
-          .select('name, contact_phone, contact_email, address, description, showcase_phone, showcase_whatsapp_phone, showcase_telegram_username, showcase_max_link')
+          .select('name, contact_phone, contact_email, address, description, showcase_phone, showcase_whatsapp_phone, showcase_telegram_username, showcase_max_link, showcase_floating_messenger_enabled')
           .eq('id', effectiveStoreId)
           .single();
         
@@ -1291,7 +1293,8 @@ export default function AdminPanel({
           setShowcasePhone(storeData.showcase_phone || '');
           setShowcaseWhatsapp((storeData as any).showcase_whatsapp_phone || '');
           setShowcaseTelegram((storeData as any).showcase_telegram_username || '');
-          setShowcaseMaxLink((storeData as any).showcase_max_link || '');
+           setShowcaseMaxLink((storeData as any).showcase_max_link || '');
+           setShowcaseFloatingMessenger(!!(storeData as any).showcase_floating_messenger_enabled);
         }
       }
     };
@@ -6332,17 +6335,29 @@ export default function AdminPanel({
                   />
                 </div>
 
+                <div className="flex items-center gap-3 pt-2">
+                  <Switch
+                    id="showcase-floating-messenger"
+                    checked={showcaseFloatingMessenger}
+                    onCheckedChange={setShowcaseFloatingMessenger}
+                  />
+                  <Label htmlFor="showcase-floating-messenger" className="text-sm">
+                    Плавающая кнопка мессенджеров на витрине
+                  </Label>
+                </div>
+
                 <Button
                   onClick={async () => {
                     setSavingShowcase(true);
                     try {
-                      const { error } = await supabase
+                       const { error } = await supabase
                         .from('stores')
                         .update({
                           showcase_phone: showcasePhone || null,
                           showcase_whatsapp_phone: showcaseWhatsapp || null,
                           showcase_telegram_username: showcaseTelegram || null,
                           showcase_max_link: showcaseMaxLink || null,
+                          showcase_floating_messenger_enabled: showcaseFloatingMessenger,
                         } as any)
                         .eq('id', effectiveStoreId);
                       if (error) throw error;

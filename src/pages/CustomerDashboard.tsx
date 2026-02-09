@@ -84,6 +84,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ShowcaseContactBar } from "@/components/retail/ShowcaseContactBar";
+import { FloatingMessengerButton } from "@/components/retail/FloatingMessengerButton";
 import { CustomerAIAssistantBanner } from "@/components/customer/CustomerAIAssistantBanner";
 import { CustomerAIAssistantPanel } from "@/components/customer/CustomerAIAssistantPanel";
 import { useCustomerAIAssistant, FoundItem } from "@/hooks/useCustomerAIAssistant";
@@ -912,13 +913,14 @@ const CustomerDashboard = () => {
   const [showcaseWhatsapp, setShowcaseWhatsapp] = useState<string | null>(null);
   const [showcaseTelegram, setShowcaseTelegram] = useState<string | null>(null);
   const [showcaseMaxLink, setShowcaseMaxLink] = useState<string | null>(null);
+  const [showcaseFloatingMessenger, setShowcaseFloatingMessenger] = useState(false);
 
   // Fetch showcase contact info from store
   useEffect(() => {
     if (!currentStoreId) { setShowcasePhone(null); return; }
     supabase
       .from('stores')
-      .select('showcase_phone, showcase_whatsapp_phone, showcase_telegram_username, showcase_max_link')
+      .select('showcase_phone, showcase_whatsapp_phone, showcase_telegram_username, showcase_max_link, showcase_floating_messenger_enabled')
       .eq('id', currentStoreId)
       .maybeSingle()
       .then(({ data }) => {
@@ -926,6 +928,7 @@ const CustomerDashboard = () => {
         setShowcaseWhatsapp((data as any)?.showcase_whatsapp_phone || null);
         setShowcaseTelegram((data as any)?.showcase_telegram_username || null);
         setShowcaseMaxLink((data as any)?.showcase_max_link || null);
+        setShowcaseFloatingMessenger(!!(data as any)?.showcase_floating_messenger_enabled);
       });
   }, [currentStoreId]);
 
@@ -3006,6 +3009,15 @@ const CustomerDashboard = () => {
       />
       
       {/* AI Assistant is now shown as banner above products */}
+
+      {showcaseFloatingMessenger && (
+        <FloatingMessengerButton
+          phone={showcasePhone}
+          whatsapp={showcaseWhatsapp}
+          telegram={showcaseTelegram}
+          maxLink={showcaseMaxLink}
+        />
+      )}
     </div>
   );
 };
