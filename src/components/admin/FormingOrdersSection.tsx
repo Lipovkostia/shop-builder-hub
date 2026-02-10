@@ -116,39 +116,35 @@ const FormingOrderCard: React.FC<{
         <CollapsibleContent>
           <div className="px-3 pb-3">
             {order.items && order.items.length > 0 ? (
-              <div className="border-t border-border pt-3 mb-3">
-                <div className="space-y-2.5">
+              <div className="border-t border-border/50 pt-2">
+                <div className="space-y-1.5">
                   {order.items.map((item) => (
-                    <div key={item.id} className="flex items-center gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm">{item.productName}</div>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <span>{item.quantity} шт</span>
-                          <span>·</span>
-                          <span>{item.price.toLocaleString()} ₽/шт</span>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <span className="font-semibold text-primary text-sm tabular-nums">
-                          {(item.quantity * item.price).toLocaleString()} ₽
-                        </span>
-                      </div>
+                    <div key={item.id} className="flex items-baseline justify-between gap-2 text-xs">
+                      <span className="text-foreground truncate min-w-0 flex-1">
+                        {item.productName}
+                      </span>
+                      <span className="text-muted-foreground whitespace-nowrap flex-shrink-0">
+                        {item.quantity}×{item.price.toLocaleString()}
+                      </span>
+                      <span className="font-semibold text-primary tabular-nums whitespace-nowrap flex-shrink-0">
+                        {(item.quantity * item.price).toLocaleString()} ₽
+                      </span>
                     </div>
                   ))}
                 </div>
                 
-                <div className="flex items-center justify-between pt-3 mt-3 border-t border-dashed border-border">
-                  <span className="text-sm text-muted-foreground">
-                    Итого ({order.items.length} {order.items.length === 1 ? 'товар' : order.items.length < 5 ? 'товара' : 'товаров'})
+                <div className="flex items-center justify-between pt-2 mt-2 border-t border-dashed border-border/50">
+                  <span className="text-[11px] text-muted-foreground">
+                    Итого · {order.items.length} поз.
                   </span>
-                  <span className="font-bold text-base tabular-nums">
+                  <span className="font-bold text-sm tabular-nums">
                     {order.total.toLocaleString()} ₽
                   </span>
                 </div>
               </div>
             ) : (
-              <div className="border-t border-border pt-3 text-sm text-muted-foreground">
-                Корзина пуста — покупатель ещё не добавил товары
+              <div className="border-t border-border/50 pt-2 text-xs text-muted-foreground italic">
+                Корзина пуста
               </div>
             )}
           </div>
