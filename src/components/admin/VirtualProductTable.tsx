@@ -189,7 +189,7 @@ interface VirtualProductTableProps {
   optimisticImagePreviews?: Record<string, string[]>;
 }
 
-const ROW_HEIGHT = 48;
+const ROW_HEIGHT = 28;
 const EXPANDED_ROW_HEIGHT = 180; // Увеличенная высота для галереи изображений
 const OVERSCAN = 5;
 
