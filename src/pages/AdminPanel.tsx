@@ -5101,7 +5101,10 @@ export default function AdminPanel({
                       ]}
                     >
                       <ResizableTableHeader>
-                        <ResizableTableRow>
+                         <ResizableTableRow>
+                          <ResizableTableHead columnId="dragHandle" resizable={false}>
+                            <span className="sr-only">⠿</span>
+                          </ResizableTableHead>
                           {catalogVisibleColumns.bulkCheckbox && (
                             <ResizableTableHead columnId="bulkCheckbox">
                               <Checkbox
