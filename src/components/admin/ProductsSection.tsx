@@ -6,7 +6,7 @@ import { useOptimisticImagePreviews } from "@/hooks/useOptimisticImagePreviews";
 import { uploadFilesToStorage } from "@/hooks/useProductImages";
 import { Product, Catalog, ProductGroup, PackagingType } from "./types";
 import { Button } from "@/components/ui/button";
-import { Plus, Filter, Columns, Download, Sparkles, Globe } from "lucide-react";
+import { Plus, Filter, Columns, Download, Sparkles } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
