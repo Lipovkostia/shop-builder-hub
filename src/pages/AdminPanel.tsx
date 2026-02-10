@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, EyeOff, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut, FileSpreadsheet, Sheet, Upload, Sparkles, RotateCcw } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -5991,94 +5992,131 @@ export default function AdminPanel({
                     </div>
                   ) : (
                     orders.filter(o => hiddenOrders.has(o.id)).map((order) => (
-                      <div 
+                      <Collapsible 
                         key={order.id}
+                        open={expandedOrders.has(order.id)}
+                        onOpenChange={(open) => {
+                          setExpandedOrders(prev => {
+                            const next = new Set(prev);
+                            if (open) next.add(order.id); else next.delete(order.id);
+                            return next;
+                          });
+                        }}
                         className="bg-muted/30 rounded-lg border border-border/50 hover:border-border transition-colors"
                       >
-                        <div className="p-3 sm:p-4">
-                          <div className="flex items-center gap-3">
-                            {/* Main content */}
-                            <div className="flex-1 min-w-0">
-                              {/* Top row: status + price */}
-                              <div className="flex items-center justify-between gap-2 mb-1">
-                                <div className="flex items-center gap-1.5">
-                                  <Badge 
-                                    variant={
-                                      order.status === 'delivered' ? 'default' :
-                                      order.status === 'cancelled' ? 'destructive' :
-                                      order.status === 'shipped' ? 'secondary' :
-                                      'outline'
-                                    }
-                                    className={`text-[10px] px-1.5 py-0 h-5 ${
-                                      order.status === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 border-amber-200' : ''
-                                    }`}
-                                  >
-                                    {order.status === 'pending' && 'Новый'}
-                                    {order.status === 'processing' && 'В обработке'}
-                                    {order.status === 'shipped' && 'Отправлен'}
-                                    {order.status === 'delivered' && 'Доставлен'}
-                                    {order.status === 'cancelled' && 'Отменён'}
-                                  </Badge>
-                                  {order.shipping_address?.source === 'retail' && (
+                        <CollapsibleTrigger asChild>
+                          <button className="w-full p-3 text-left hover:bg-muted/30 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-muted/50 flex items-center justify-center">
+                                <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                {/* Top row: status + price */}
+                                <div className="flex items-center justify-between gap-2 mb-0.5">
+                                  <div className="flex items-center gap-1.5">
                                     <Badge 
-                                      variant="outline" 
-                                      className="text-[10px] px-1.5 py-0 h-5 bg-primary/10 text-primary border-primary/30"
+                                      variant={
+                                        order.status === 'delivered' ? 'default' :
+                                        order.status === 'cancelled' ? 'destructive' :
+                                        order.status === 'shipped' ? 'secondary' :
+                                        'outline'
+                                      }
+                                      className={`text-[10px] px-1.5 py-0 h-5 ${
+                                        order.status === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 border-amber-200' : ''
+                                      }`}
                                     >
-                                      Розница
+                                      {order.status === 'pending' && 'Новый'}
+                                      {order.status === 'processing' && 'В обработке'}
+                                      {order.status === 'shipped' && 'Отправлен'}
+                                      {order.status === 'delivered' && 'Доставлен'}
+                                      {order.status === 'cancelled' && 'Отменён'}
                                     </Badge>
+                                    {order.shipping_address?.source === 'retail' && (
+                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-primary/10 text-primary border-primary/30">
+                                        Розница
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <span className="font-bold text-sm tabular-nums whitespace-nowrap">
+                                    {order.total.toLocaleString()} ₽
+                                  </span>
+                                </div>
+                                {/* Middle row: order number + items count */}
+                                <div className="flex items-center gap-2 text-xs">
+                                  <span className="font-medium text-foreground truncate">
+                                    {order.order_number}
+                                  </span>
+                                  {order.items && order.items.length > 0 && !expandedOrders.has(order.id) && (
+                                    <span className="text-muted-foreground whitespace-nowrap">
+                                      · {order.items.length} поз.
+                                    </span>
                                   )}
                                 </div>
-                                <span className="font-bold text-base sm:text-lg tabular-nums whitespace-nowrap">
-                                  {order.total.toLocaleString()} ₽
-                                </span>
-                              </div>
-                              
-                              {/* Middle row: order number + items count */}
-                              <div className="flex items-center gap-2 text-xs sm:text-sm">
-                                <span className="font-medium text-foreground truncate">
-                                  {order.order_number}
-                                </span>
-                                {order.items && order.items.length > 0 && (
-                                  <span className="text-muted-foreground whitespace-nowrap">
-                                    • {order.items.length} поз.
-                                  </span>
-                                )}
-                              </div>
-                              
-                              {/* Bottom row: date + customer */}
-                              <div className="flex items-center justify-between gap-2 mt-1 text-[11px] sm:text-xs text-muted-foreground">
-                                <div className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3 flex-shrink-0" />
-                                  <span>
-                                    {new Date(order.created_at).toLocaleString('ru-RU', { 
-                                      day: 'numeric', 
-                                      month: 'short', 
-                                      hour: '2-digit', 
-                                      minute: '2-digit' 
-                                    })}
-                                  </span>
+                                {/* Bottom row: date + customer */}
+                                <div className="flex items-center justify-between gap-2 mt-0.5 text-[11px] text-muted-foreground">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3 flex-shrink-0" />
+                                    <span>
+                                      {new Date(order.created_at).toLocaleString('ru-RU', { 
+                                        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
+                                      })}
+                                    </span>
+                                  </div>
+                                  {order.customer_name && (
+                                    <span className="truncate max-w-[140px]">
+                                      {order.customer_name}
+                                    </span>
+                                  )}
                                 </div>
-                                {order.customer_name && (
-                                  <span className="truncate max-w-[120px] sm:max-w-[180px]">
-                                    {order.customer_name}
-                                  </span>
-                                )}
+                              </div>
+                              {/* Restore button */}
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRestoreOrder(order.id);
+                                }}
+                                className="flex-shrink-0 w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center cursor-pointer transition-colors"
+                                title="Восстановить"
+                              >
+                                <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
                               </div>
                             </div>
-                            
-                            {/* Restore button */}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRestoreOrder(order.id)}
-                              className="gap-1.5 text-muted-foreground hover:text-foreground"
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" />
-                              <span className="hidden sm:inline">Восстановить</span>
-                            </Button>
+                          </button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="px-3 pb-3">
+                            {order.items && order.items.length > 0 && (
+                              <div className="border-t border-border/40 pt-1.5">
+                                <ScrollArea className="max-h-[200px]">
+                                  <div className="space-y-0.5 pr-2">
+                                    {order.items.map((item) => (
+                                      <div key={item.id} className="flex items-baseline justify-between gap-1.5 text-xs py-0.5">
+                                        <span className="text-foreground truncate min-w-0 flex-1 leading-tight">
+                                          {item.product_name}
+                                        </span>
+                                        <span className="text-muted-foreground whitespace-nowrap flex-shrink-0 tabular-nums">
+                                          {item.quantity}×{item.price.toLocaleString()}
+                                        </span>
+                                        <span className="font-semibold text-primary tabular-nums whitespace-nowrap flex-shrink-0">
+                                          {item.total.toLocaleString()} ₽
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </ScrollArea>
+                                <div className="flex items-center justify-between pt-1.5 mt-1.5 border-t border-dashed border-border/40">
+                                  <span className="text-[11px] text-muted-foreground">
+                                    Итого · {order.items.length} поз.
+                                  </span>
+                                  <span className="font-bold text-sm tabular-nums">
+                                    {order.total.toLocaleString()} ₽
+                                  </span>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      </div>
+                        </CollapsibleContent>
+                      </Collapsible>
                     ))
                   )}
                 </div>
