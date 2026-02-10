@@ -4488,6 +4488,16 @@ export default function AdminPanel({
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
+                        title="Скачать прайс-лист в PDF"
+                        onClick={() => setCatalogPdfExportDialogOpen(true)}
+                        disabled={selectedCatalogProducts.size === 0}
+                      >
+                        <FileText className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
                         title="Скопировать ссылку для покупателя"
                         data-onboarding-link-button
                         onClick={() => {
