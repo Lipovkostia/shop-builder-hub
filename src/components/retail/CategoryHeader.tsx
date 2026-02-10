@@ -13,7 +13,7 @@ export function CategoryHeader({ category, productCount }: CategoryHeaderProps) 
   return (
     <div className="mb-8">
       {/* Category title */}
-      <h1 className="text-3xl lg:text-4xl font-light tracking-tight text-foreground font-serif">
+      <h1 className="text-2xl lg:text-3xl font-semibold tracking-normal text-foreground font-sans">
         {category?.name || "Все товары"}
       </h1>
 
