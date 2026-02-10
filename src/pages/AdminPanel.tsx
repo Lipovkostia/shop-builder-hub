@@ -7157,6 +7157,17 @@ export default function AdminPanel({
         productCount={selectedCatalogProducts.size}
       />
 
+      {/* Catalog PDF Export Dialog */}
+      <CatalogPdfExportDialog
+        open={catalogPdfExportDialogOpen}
+        onOpenChange={setCatalogPdfExportDialogOpen}
+        catalogName={currentCatalog?.name || ""}
+        onExport={handleExportCatalogPdf}
+        isExporting={isExportingPdf}
+        productCount={selectedCatalogProducts.size}
+        exportProgress={pdfExportProgress}
+      />
+
       {/* Catalog Import Dialog */}
       <CatalogImportDialog
         open={catalogImportDialogOpen}
