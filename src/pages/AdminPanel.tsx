@@ -3525,6 +3525,13 @@ export default function AdminPanel({
             </>
           )}
 
+          {effectiveStoreId && activeSection === "megacatalog" && (
+            <MegacatalogSection
+              existingProductIds={new Set(allProducts.map(p => p.id))}
+              onAddProducts={handleAddProductsFromMegacatalog}
+            />
+          )}
+
           {effectiveStoreId && activeSection === "import" && (
             <>
               {/* Source selection screen */}
