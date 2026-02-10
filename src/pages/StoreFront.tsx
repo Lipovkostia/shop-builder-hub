@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store as StoreIcon, Package, LayoutGrid, Plus, LogIn, Sparkles, Users, Link2, Copy, Share2, ArrowDownAZ, ChevronRight, ChevronDown, Folder } from "lucide-react";
+import { ShoppingCart, Settings, FolderOpen, Filter, Image, ArrowLeft, Pencil, Search, X, Images, Tag, Store as StoreIcon, Package, Plus, LogIn, Sparkles, Users, Link2, Copy, Share2, ArrowDownAZ, ChevronRight, ChevronDown, Folder } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ForkliftIcon } from "@/components/icons/ForkliftIcon";
 import { Badge } from "@/components/ui/badge";
@@ -1871,125 +1871,6 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
               </div>
             </div>
 
-            {/* Правая часть - категории (сворачивается при поиске) */}
-            <div 
-              className={`flex items-center transition-all duration-300 ease-in-out ${
-                isSearchFocused ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'
-              }`}
-            >
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button 
-                    className={`p-2 rounded transition-colors ${categoryFilter ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
-                    title="Категории"
-                  >
-                    <LayoutGrid className="w-4 h-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-[200px] max-h-[400px] overflow-y-auto bg-popover z-50">
-                  <DropdownMenuItem
-                    onClick={() => handleCategoryFilter(null)}
-                    className={`cursor-pointer ${categoryFilter === null ? 'font-semibold bg-primary/10' : ''}`}
-                  >
-                    Все товары
-                  </DropdownMenuItem>
-                  {catalogCategories.length > 0 && (
-                    <>
-                      <DropdownMenuSeparator />
-                      {(() => {
-                        // Build hierarchy: sections (categories with children) and top-level categories
-                        const sections = catalogCategories.filter(cat => 
-                          catalogCategories.some(child => child.catalog_parent_id === cat.id)
-                        );
-                        const sectionIds = new Set(sections.map(s => s.id));
-                        const topLevel = catalogCategories.filter(cat => 
-                          !cat.catalog_parent_id
-                        );
-                        
-                        return topLevel.map((cat) => {
-                          const children = catalogCategories.filter(c => c.catalog_parent_id === cat.id);
-                          const isSection = children.length > 0;
-                          const isExpanded = expandedDropdownSections.has(cat.id);
-                          
-                          if (isSection) {
-                            return (
-                              <DropdownMenuGroup key={cat.id}>
-                                <div
-                                  className={`flex items-center gap-1 px-2 py-1.5 text-sm cursor-pointer rounded-sm hover:bg-accent transition-colors ${
-                                    categoryFilter === cat.id ? 'bg-primary/10 font-semibold' : ''
-                                  }`}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setExpandedDropdownSections(prev => {
-                                      const next = new Set(prev);
-                                      if (next.has(cat.id)) next.delete(cat.id);
-                                      else next.add(cat.id);
-                                      return next;
-                                    });
-                                  }}
-                                >
-                                  {isExpanded ? (
-                                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                                  ) : (
-                                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                                  )}
-                                  <Folder className="w-3.5 h-3.5 text-primary/70 flex-shrink-0" />
-                                  <span className="font-semibold text-foreground">{cat.name}</span>
-                                  {cat.product_count > 0 && (
-                                    <span className="text-xs text-muted-foreground ml-auto">{cat.product_count}</span>
-                                  )}
-                                </div>
-                                {isExpanded && (
-                                  <div>
-                                    <DropdownMenuItem
-                                      onSelect={() => handleCategoryFilter(cat.id)}
-                                      className={`cursor-pointer pl-8 text-xs text-muted-foreground ${
-                                        categoryFilter === cat.id ? 'font-semibold bg-primary/10' : ''
-                                      }`}
-                                    >
-                                      Все в «{cat.name}»
-                                    </DropdownMenuItem>
-                                    {children.map(child => (
-                                      <DropdownMenuItem
-                                        key={child.id}
-                                        onSelect={() => handleCategoryFilter(child.id)}
-                                        className={`cursor-pointer pl-8 ${
-                                          categoryFilter === child.id ? 'font-semibold bg-primary/10' : ''
-                                        }`}
-                                      >
-                                        {child.name}
-                                        {child.product_count > 0 && (
-                                          <span className="text-xs text-muted-foreground ml-auto">{child.product_count}</span>
-                                        )}
-                                      </DropdownMenuItem>
-                                    ))}
-                                  </div>
-                                )}
-                              </DropdownMenuGroup>
-                            );
-                          }
-                          
-                          // Regular category (no children, not inside a section)
-                          return (
-                            <DropdownMenuItem
-                              key={cat.id}
-                              onClick={() => handleCategoryFilter(cat.id)}
-                              className={`cursor-pointer ${categoryFilter === cat.id ? 'font-semibold bg-primary/10' : ''}`}
-                            >
-                              {cat.name}
-                              {cat.product_count > 0 && (
-                                <span className="text-xs text-muted-foreground ml-auto">{cat.product_count}</span>
-                              )}
-                            </DropdownMenuItem>
-                          );
-                        });
-                      })()}
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
           </div>
 
           {/* Баннер онбординга - под блоком с иконками */}
