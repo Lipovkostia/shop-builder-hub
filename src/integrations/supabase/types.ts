@@ -1642,6 +1642,7 @@ export type Database = {
           quantity: number
           sku: string
           slug: string
+          sort_order: number
           unit: string
         }[]
       }
@@ -1662,6 +1663,7 @@ export type Database = {
           quantity: number
           sku: string
           slug: string
+          sort_order: number
           unit: string
         }[]
       }
