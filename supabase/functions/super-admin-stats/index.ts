@@ -274,6 +274,9 @@ Deno.serve(async (req) => {
     }
 
     if (action === "products") {
+      const sort = url.searchParams.get("sort") || "created_at";
+      const order = url.searchParams.get("order") || "desc";
+
       let query = supabase
         .from("products")
         .select(`
@@ -281,9 +284,11 @@ Deno.serve(async (req) => {
           name,
           sku,
           price,
+          buy_price,
           quantity,
           created_at,
           is_active,
+          canonical_product_id,
           store_id,
           stores!products_store_id_fkey (
             id,
@@ -297,11 +302,18 @@ Deno.serve(async (req) => {
         query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
       }
 
+      const linked = url.searchParams.get("linked");
+      if (linked === "true") {
+        query = query.not("canonical_product_id", "is", null);
+      } else if (linked === "false") {
+        query = query.is("canonical_product_id", null);
+      }
+
       const from = (page - 1) * limit;
       const to = from + limit - 1;
 
       const { data, error, count } = await query
-        .order("created_at", { ascending: false })
+        .order(sort, { ascending: order === "asc" })
         .range(from, to);
 
       if (error) throw error;
@@ -311,9 +323,11 @@ Deno.serve(async (req) => {
         name: product.name,
         sku: product.sku,
         price: product.price,
+        buy_price: product.buy_price,
         quantity: product.quantity,
         created_at: product.created_at,
         is_active: product.is_active,
+        canonical_product_id: product.canonical_product_id,
         store_id: product.store_id,
         store_name: product.stores?.name || "Неизвестный магазин",
         store_subdomain: product.stores?.subdomain || "",
