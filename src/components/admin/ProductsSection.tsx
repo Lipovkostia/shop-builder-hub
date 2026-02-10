@@ -101,7 +101,7 @@ export function ProductsSection({
   const [expandedAssortmentImages, setExpandedAssortmentImages] = useState<string | null>(null);
   const [deletingImageProductId, setDeletingImageProductId] = useState<string | null>(null);
   const [uploadingImageProductId, setUploadingImageProductId] = useState<string | null>(null);
-  const [megacatalogOpen, setMegacatalogOpen] = useState(false);
+  // Megacatalog is now a separate section, no dialog needed
 
   // Set of existing product IDs for megacatalog
   const existingProductIds = useMemo(() => new Set(products.map(p => p.id)), [products]);
