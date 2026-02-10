@@ -269,7 +269,7 @@ export function VirtualProductTable({
     <div className="border rounded-lg overflow-hidden">
       {/* Sticky Header */}
       <div className="overflow-x-auto bg-muted/30 border-b">
-        <div className="flex items-center gap-2 px-2 py-2 min-h-[40px]">
+        <div className="flex items-center gap-1 px-1.5 py-1 min-h-[28px]">
           {/* Drag handle column */}
           <div className="w-8 flex-shrink-0 flex items-center justify-center">
             <GripVertical className="h-3 w-3 text-muted-foreground/50" />

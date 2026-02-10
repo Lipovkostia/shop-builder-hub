@@ -228,26 +228,26 @@ function ProductRowComponent({
 
         {/* Photo */}
         {visibleColumns.photo && (
-          <div className="w-12 flex-shrink-0 flex items-center justify-center">
+          <div className="w-8 flex-shrink-0 flex items-center justify-center">
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 relative"
+              className="h-6 w-6 p-0 relative"
               onClick={handleToggleExpansion}
             >
               {product.image ? (
                 <img
                   src={product.image}
                   alt={product.name}
-                  className="w-6 h-6 rounded object-cover"
+                  className="w-5 h-5 rounded object-cover"
                 />
               ) : (
-                <div className="w-6 h-6 rounded bg-muted flex items-center justify-center hover:bg-primary/10 transition-colors">
-                  <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+                <div className="w-5 h-5 rounded bg-muted flex items-center justify-center hover:bg-primary/10 transition-colors">
+                  <Plus className="h-3 w-3 text-muted-foreground" />
                 </div>
               )}
               {displayImages.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] rounded-full w-4 h-4 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[8px] rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
                   {displayImages.length}
                 </span>
               )}
