@@ -5343,11 +5343,16 @@ export default function AdminPanel({
                                 {/* Фото - из ассортимента (только чтение) */}
                                 {catalogVisibleColumns.photo && (
                                   <ResizableTableCell columnId="photo">
-                                    <img
-                                      src={product.image}
-                                      alt={baseName}
-                                      className="w-10 h-10 rounded object-cover"
-                                    />
+                                    <div className="flex items-center justify-center">
+                                      {(product.images?.length || 0) > 0 ? (
+                                        <span className="flex items-center gap-0.5 text-green-600">
+                                          <ImageIcon className="h-3.5 w-3.5" />
+                                          <span className="text-[10px]">{product.images?.length}</span>
+                                        </span>
+                                      ) : (
+                                        <ImageIcon className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                      )}
+                                    </div>
                                   </ResizableTableCell>
                                 )}
                                 {/* Название - редактируемое, сохраняется в ассортимент */}
