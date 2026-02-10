@@ -405,10 +405,10 @@ export function ResizableTableCell({
   return (
     <td 
       className={cn(
-        "px-3 py-2 align-middle",
+        "px-2 py-0.5 align-middle",
         "whitespace-nowrap overflow-hidden",
         className
-      )} 
+      )}
       style={{ ...style, width: width ? `${width}px` : undefined, maxWidth: width ? `${width}px` : undefined }}
       {...props}
     >
