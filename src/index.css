@@ -77,49 +77,45 @@
   .retail-theme {
     /* Warm beige/cream background */
     --background: 40 30% 96%;
-    --foreground: 30 10% 20%;
+    --foreground: 30 15% 15%;
 
     /* Slightly warmer card */
     --card: 40 25% 98%;
-    --card-foreground: 30 10% 20%;
+    --card-foreground: 30 15% 15%;
 
     --popover: 40 25% 98%;
-    --popover-foreground: 30 10% 20%;
+    --popover-foreground: 30 15% 15%;
 
     /* Olive/brown primary */
-    --primary: 45 25% 35%;
+    --primary: 45 30% 30%;
     --primary-foreground: 40 25% 98%;
 
     /* Warm secondary */
     --secondary: 40 20% 93%;
-    --secondary-foreground: 30 10% 25%;
+    --secondary-foreground: 30 15% 18%;
 
-    /* Muted tones */
+    /* Muted tones — darker for readability */
     --muted: 40 15% 92%;
-    --muted-foreground: 30 8% 50%;
+    --muted-foreground: 30 12% 38%;
 
     /* Olive accent for category labels */
     --accent: 30 40% 55%;
     --accent-foreground: 40 25% 98%;
 
-    /* Destructive stays red for sale badges */
-    --destructive: 0 60% 50%;
-    --destructive-foreground: 0 0% 100%;
-
     /* Warm borders */
-    --border: 40 15% 88%;
-    --input: 40 15% 88%;
-    --ring: 45 25% 35%;
+    --border: 40 15% 86%;
+    --input: 40 15% 86%;
+    --ring: 45 30% 30%;
 
-    /* Sidebar */
+    /* Sidebar — darker text */
     --sidebar-background: 40 20% 95%;
-    --sidebar-foreground: 30 10% 25%;
-    --sidebar-primary: 45 25% 35%;
+    --sidebar-foreground: 30 15% 18%;
+    --sidebar-primary: 45 30% 30%;
     --sidebar-primary-foreground: 40 25% 98%;
     --sidebar-accent: 40 30% 90%;
-    --sidebar-accent-foreground: 30 10% 25%;
-    --sidebar-border: 40 15% 88%;
-    --sidebar-ring: 45 25% 35%;
+    --sidebar-accent-foreground: 30 15% 18%;
+    --sidebar-border: 40 15% 86%;
+    --sidebar-ring: 45 30% 30%;
 
     /* Delivery - keep green */
     --delivery: 142 69% 45%;

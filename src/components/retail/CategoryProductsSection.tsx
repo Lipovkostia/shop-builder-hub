@@ -33,7 +33,7 @@ export function CategoryProductsSection({
     <section className="mb-8">
       {/* Category header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl lg:text-2xl font-light tracking-tight text-foreground font-serif">
+        <h2 className="text-lg lg:text-xl font-semibold tracking-normal text-foreground font-sans">
           {category.name}
         </h2>
         

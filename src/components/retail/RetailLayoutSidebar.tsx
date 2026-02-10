@@ -130,7 +130,7 @@ export function RetailLayoutSidebar({
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <span className="truncate font-serif font-medium tracking-tight text-[0.95rem]">
+                  <span className="truncate font-sans font-medium tracking-normal text-sm">
                     {parent.name}
                   </span>
                   {isExpanded 
@@ -154,7 +154,7 @@ export function RetailLayoutSidebar({
                               : "text-muted-foreground hover:text-foreground"
                           )}
                         >
-                          <span className="truncate font-serif font-light tracking-tight text-sm">
+                          <span className="truncate font-sans font-normal tracking-normal text-sm">
                             {child.name}
                           </span>
                         </button>
@@ -180,7 +180,7 @@ export function RetailLayoutSidebar({
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <span className="truncate font-serif font-light tracking-tight">{category.name}</span>
+                <span className="truncate font-sans font-normal tracking-normal text-sm">{category.name}</span>
               </button>
             );
           })}
