@@ -257,7 +257,7 @@ export function SortableTableRow({
       style={style}
       className={cn(
         "border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50",
-        "h-11",
+        "h-7",
         isDragging && "bg-muted/80 shadow-lg z-50",
         className
       )}
@@ -405,10 +405,10 @@ export function ResizableTableCell({
   return (
     <td 
       className={cn(
-        "px-3 py-2 align-middle",
+        "px-2 py-0.5 align-middle",
         "whitespace-nowrap overflow-hidden",
         className
-      )} 
+      )}
       style={{ ...style, width: width ? `${width}px` : undefined, maxWidth: width ? `${width}px` : undefined }}
       {...props}
     >

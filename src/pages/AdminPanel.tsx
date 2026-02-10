@@ -5080,11 +5080,13 @@ export default function AdminPanel({
                     <ResizableTable
                       storageKey="catalog-products-table"
                       columns={[
+                        { id: "dragHandle", minWidth: 32, defaultWidth: 32 },
                         ...(catalogVisibleColumns.bulkCheckbox ? [{ id: "bulkCheckbox", minWidth: 40, defaultWidth: 40 }] : []),
                         ...(catalogVisibleColumns.photo ? [{ id: "photo", minWidth: 50, defaultWidth: 60 }] : []),
                         ...(catalogVisibleColumns.name ? [{ id: "name", minWidth: 120, defaultWidth: 180 }] : []),
                         ...(catalogVisibleColumns.description ? [{ id: "description", minWidth: 100, defaultWidth: 200 }] : []),
                         ...(catalogVisibleColumns.categories ? [{ id: "categories", minWidth: 100, defaultWidth: 140 }] : []),
+                        ...(catalogVisibleColumns.subcategory ? [{ id: "subcategory", minWidth: 100, defaultWidth: 140 }] : []),
                         ...(catalogVisibleColumns.unit ? [{ id: "unit", minWidth: 60, defaultWidth: 80 }] : []),
                         ...(catalogVisibleColumns.volume ? [{ id: "volume", minWidth: 60, defaultWidth: 80 }] : []),
                         ...(catalogVisibleColumns.type ? [{ id: "type", minWidth: 80, defaultWidth: 100 }] : []),
@@ -5099,7 +5101,10 @@ export default function AdminPanel({
                       ]}
                     >
                       <ResizableTableHeader>
-                        <ResizableTableRow>
+                         <ResizableTableRow>
+                          <ResizableTableHead columnId="dragHandle" resizable={false}>
+                            <span className="sr-only">⠿</span>
+                          </ResizableTableHead>
                           {catalogVisibleColumns.bulkCheckbox && (
                             <ResizableTableHead columnId="bulkCheckbox">
                               <Checkbox
