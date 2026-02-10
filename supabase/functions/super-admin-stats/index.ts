@@ -15,7 +15,6 @@ interface StatsResponse {
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -25,10 +24,8 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // Verify user authentication via JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      console.log("Missing or invalid Authorization header");
       return new Response(
         JSON.stringify({ error: "Unauthorized - No token provided" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -36,8 +33,6 @@ Deno.serve(async (req) => {
     }
 
     const token = authHeader.replace("Bearer ", "");
-    
-    // Create client with anon key to verify user token
     const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: `Bearer ${token}` } }
     });
@@ -45,19 +40,14 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
     
     if (authError || !user) {
-      console.log("Auth error:", authError?.message);
       return new Response(
         JSON.stringify({ error: "Unauthorized - Invalid token" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Authenticated user:", user.id, user.email);
-
-    // Create service role client to check platform_roles (bypass RLS)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check if user has super_admin role
     const { data: roleData, error: roleError } = await supabase
       .from("platform_roles")
       .select("role")
@@ -66,7 +56,6 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (roleError) {
-      console.log("Role check error:", roleError.message);
       return new Response(
         JSON.stringify({ error: "Error checking role" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -74,31 +63,114 @@ Deno.serve(async (req) => {
     }
 
     if (!roleData) {
-      console.log("User does not have super_admin role:", user.id);
       return new Response(
         JSON.stringify({ error: "Forbidden - Super admin access required" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("User has super_admin role, proceeding...");
-
-    // Parse URL to get action
     const url = new URL(req.url);
     const action = url.searchParams.get("action") || "stats";
     const page = parseInt(url.searchParams.get("page") || "1");
     const limit = parseInt(url.searchParams.get("limit") || "10");
     const search = url.searchParams.get("search") || "";
 
-    console.log(`Action: ${action}, page: ${page}, limit: ${limit}, search: ${search}`);
-
-    // Get today's date at midnight for filtering
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayISO = today.toISOString();
 
+    // ========== HISTORY ACTION ==========
+    if (action === "history") {
+      const days = parseInt(url.searchParams.get("days") || "30");
+      
+      // Build date range for the last N days
+      const dates: string[] = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - i);
+        dates.push(d.toISOString().split("T")[0]);
+      }
+      
+      const startDate = dates[0] + "T00:00:00.000Z";
+      
+      // Fetch all records created since startDate with just created_at
+      const [sellers, customers, stores, catalogs, products, orders] = await Promise.all([
+        supabase.from("profiles").select("created_at").eq("role", "seller").gte("created_at", startDate),
+        supabase.from("profiles").select("created_at").eq("role", "customer").gte("created_at", startDate),
+        supabase.from("stores").select("created_at").gte("created_at", startDate),
+        supabase.from("catalogs").select("created_at").gte("created_at", startDate),
+        supabase.from("products").select("created_at").is("deleted_at", null).gte("created_at", startDate),
+        supabase.from("orders").select("created_at").gte("created_at", startDate),
+      ]);
+
+      // Also get totals before startDate for cumulative counts
+      const [sellersTotal, customersTotal, storesTotal, catalogsTotal, productsTotal, ordersTotal] = await Promise.all([
+        supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "seller").lt("created_at", startDate),
+        supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "customer").lt("created_at", startDate),
+        supabase.from("stores").select("id", { count: "exact", head: true }).lt("created_at", startDate),
+        supabase.from("catalogs").select("id", { count: "exact", head: true }).lt("created_at", startDate),
+        supabase.from("products").select("id", { count: "exact", head: true }).is("deleted_at", null).lt("created_at", startDate),
+        supabase.from("orders").select("id", { count: "exact", head: true }).lt("created_at", startDate),
+      ]);
+
+      function countByDay(rows: any[] | null): Record<string, number> {
+        const counts: Record<string, number> = {};
+        (rows || []).forEach((r: any) => {
+          const day = r.created_at?.split("T")[0];
+          if (day) counts[day] = (counts[day] || 0) + 1;
+        });
+        return counts;
+      }
+
+      const sellersByDay = countByDay(sellers.data);
+      const customersByDay = countByDay(customers.data);
+      const storesByDay = countByDay(stores.data);
+      const catalogsByDay = countByDay(catalogs.data);
+      const productsByDay = countByDay(products.data);
+      const ordersByDay = countByDay(orders.data);
+
+      // Build cumulative history
+      let cumSellers = sellersTotal.count || 0;
+      let cumCustomers = customersTotal.count || 0;
+      let cumStores = storesTotal.count || 0;
+      let cumCatalogs = catalogsTotal.count || 0;
+      let cumProducts = productsTotal.count || 0;
+      let cumOrders = ordersTotal.count || 0;
+
+      const history = dates.map(date => {
+        cumSellers += sellersByDay[date] || 0;
+        cumCustomers += customersByDay[date] || 0;
+        cumStores += storesByDay[date] || 0;
+        cumCatalogs += catalogsByDay[date] || 0;
+        cumProducts += productsByDay[date] || 0;
+        cumOrders += ordersByDay[date] || 0;
+
+        return {
+          date,
+          sellers: cumSellers,
+          customers: cumCustomers,
+          stores: cumStores,
+          catalogs: cumCatalogs,
+          products: cumProducts,
+          orders: cumOrders,
+          // daily deltas
+          d_sellers: sellersByDay[date] || 0,
+          d_customers: customersByDay[date] || 0,
+          d_stores: storesByDay[date] || 0,
+          d_catalogs: catalogsByDay[date] || 0,
+          d_products: productsByDay[date] || 0,
+          d_orders: ordersByDay[date] || 0,
+        };
+      });
+
+      return new Response(
+        JSON.stringify({ history }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (action === "stores") {
-      // Fetch stores list with pagination
       let query = supabase
         .from("stores")
         .select(`
@@ -147,7 +219,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === "customers") {
-      // Fetch customers list with pagination
       let query = supabase
         .from("profiles")
         .select("id, user_id, full_name, phone, email, created_at", { count: "exact" })
@@ -166,7 +237,6 @@ Deno.serve(async (req) => {
 
       if (profilesError) throw profilesError;
 
-      // Get store_customers for each profile
       const profileIds = (profilesData || []).map((p: any) => p.id);
       
       let storeCustomersData: any[] = [];
@@ -204,7 +274,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === "products") {
-      // Fetch products list with pagination and store info
       let query = supabase
         .from("products")
         .select(`
@@ -258,8 +327,6 @@ Deno.serve(async (req) => {
     }
 
     // Default: fetch stats
-    console.log("Fetching stats with service role key...");
-
     const [
       sellersResult,
       sellersToday,
@@ -322,8 +389,6 @@ Deno.serve(async (req) => {
         today: ordersToday.count || 0,
       },
     };
-
-    console.log("Stats fetched successfully:", stats);
 
     return new Response(
       JSON.stringify(stats),

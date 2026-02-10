@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { ProductMatchingDialog } from './ProductMatchingDialog';
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 interface StatsData {
   sellers: { total: number; today: number };
@@ -23,6 +24,22 @@ interface StatsData {
   catalogs: { total: number; today: number };
   products: { total: number; totalSum: number; today: number };
   orders: { total: number; today: number };
+}
+
+interface HistoryPoint {
+  date: string;
+  sellers: number;
+  customers: number;
+  stores: number;
+  catalogs: number;
+  products: number;
+  orders: number;
+  d_sellers: number;
+  d_customers: number;
+  d_stores: number;
+  d_catalogs: number;
+  d_products: number;
+  d_orders: number;
 }
 
 interface StatCardProps {
@@ -34,13 +51,20 @@ interface StatCardProps {
   color?: 'default' | 'primary' | 'success' | 'warning';
   fullWidth?: boolean;
   onClick?: () => void;
+  chartData?: { date: string; value: number }[];
+  chartColor?: string;
 }
 
 interface SuperAdminDashboardProps {
   onNavigate?: (tab: string) => void;
 }
 
-function StatCard({ title, value, todayChange, subtitle, icon, color = 'default', fullWidth = false, onClick }: StatCardProps) {
+function formatShortDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function StatCard({ title, value, todayChange, subtitle, icon, color = 'default', fullWidth = false, onClick, chartData, chartColor = 'hsl(var(--primary))' }: StatCardProps) {
   const colorClasses = {
     default: 'bg-card border-border',
     primary: 'bg-primary/5 border-primary/20',
@@ -84,6 +108,41 @@ function StatCard({ title, value, todayChange, subtitle, icon, color = 'default'
             {icon}
           </div>
         </div>
+        {chartData && chartData.length > 0 && (
+          <div className="mt-3 -mx-1">
+            <ResponsiveContainer width="100%" height={60}>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id={`grad-${title}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chartColor} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={chartColor} stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="date" hide />
+                <YAxis hide domain={['dataMin', 'dataMax']} />
+                <Tooltip 
+                  contentStyle={{ 
+                    fontSize: 12, 
+                    borderRadius: 8,
+                    border: '1px solid hsl(var(--border))',
+                    background: 'hsl(var(--card))',
+                    color: 'hsl(var(--foreground))',
+                  }}
+                  labelFormatter={(v) => formatShortDate(v)}
+                  formatter={(v: number) => [v.toLocaleString('ru-RU'), title]}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="value" 
+                  stroke={chartColor} 
+                  strokeWidth={2}
+                  fill={`url(#grad-${title})`}
+                  dot={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -102,6 +161,7 @@ function formatCurrency(value: number): string {
 export default function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps) {
   const { session } = useAuth();
   const [stats, setStats] = useState<StatsData | null>(null);
+  const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showMatchingDialog, setShowMatchingDialog] = useState(false);
@@ -114,24 +174,29 @@ export default function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardP
     else setIsLoading(true);
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/super-admin-stats`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }
-      );
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      };
+      const base = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/super-admin-stats`;
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      const [statsRes, historyRes] = await Promise.all([
+        fetch(base, { method: 'GET', headers }),
+        fetch(`${base}?action=history&days=30`, { method: 'GET', headers }),
+      ]);
+
+      if (!statsRes.ok) {
+        const errorData = await statsRes.json();
         throw new Error(errorData.error || 'Failed to fetch stats');
       }
 
-      const data = await response.json();
-      setStats(data);
+      const statsData = await statsRes.json();
+      setStats(statsData);
+
+      if (historyRes.ok) {
+        const historyData = await historyRes.json();
+        setHistory(historyData.history || []);
+      }
     } catch (error: any) {
       console.error('Error fetching stats:', error);
       toast({
@@ -151,6 +216,10 @@ export default function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardP
     }
   }, [session?.access_token]);
 
+  const makeChartData = (key: keyof HistoryPoint) => {
+    return history.map(h => ({ date: h.date, value: h[key] as number }));
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -159,7 +228,7 @@ export default function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardP
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className={`h-[120px] ${i >= 4 ? 'col-span-2 lg:col-span-2' : ''}`} />
+            <Skeleton key={i} className={`h-[160px] ${i >= 4 ? 'col-span-2 lg:col-span-2' : ''}`} />
           ))}
         </div>
       </div>
@@ -197,7 +266,6 @@ export default function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardP
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Row 1: Sellers & Customers */}
         <StatCard
           title="Продавцы"
           value={stats?.sellers.total ?? 0}
@@ -205,6 +273,8 @@ export default function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardP
           icon={<Users className="h-5 w-5" />}
           color="primary"
           onClick={() => onNavigate?.('stores')}
+          chartData={makeChartData('sellers')}
+          chartColor="hsl(var(--primary))"
         />
         <StatCard
           title="Покупатели"
@@ -213,24 +283,26 @@ export default function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardP
           icon={<Users className="h-5 w-5" />}
           color="success"
           onClick={() => onNavigate?.('customers')}
+          chartData={makeChartData('customers')}
+          chartColor="#22c55e"
         />
-
-        {/* Row 2: Stores & Catalogs */}
         <StatCard
           title="Магазины"
           value={stats?.stores.total ?? 0}
           todayChange={stats?.stores.today ?? 0}
           icon={<Store className="h-5 w-5" />}
           onClick={() => onNavigate?.('stores')}
+          chartData={makeChartData('stores')}
+          chartColor="hsl(var(--muted-foreground))"
         />
         <StatCard
           title="Прайс-листы"
           value={stats?.catalogs.total ?? 0}
           todayChange={stats?.catalogs.today ?? 0}
           icon={<FileText className="h-5 w-5" />}
+          chartData={makeChartData('catalogs')}
+          chartColor="hsl(var(--muted-foreground))"
         />
-
-        {/* Row 3: Products (full width on mobile, half on desktop) */}
         <StatCard
           title="Товаров"
           value={stats?.products.total ?? 0}
@@ -240,19 +312,20 @@ export default function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardP
           color="warning"
           fullWidth
           onClick={() => onNavigate?.('products')}
+          chartData={makeChartData('products')}
+          chartColor="#f97316"
         />
-
-        {/* Row 4: Orders */}
         <StatCard
           title="Заказов"
           value={stats?.orders.total ?? 0}
           todayChange={stats?.orders.today ?? 0}
           icon={<ShoppingCart className="h-5 w-5" />}
           fullWidth
+          chartData={makeChartData('orders')}
+          chartColor="hsl(var(--muted-foreground))"
         />
       </div>
 
-      {/* Summary card */}
       <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
