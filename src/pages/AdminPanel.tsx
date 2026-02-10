@@ -1770,10 +1770,10 @@ export default function AdminPanel({
         .map(product => {
           const catalogPricing = getCatalogProductPricing(currentCatalog.id, product.id);
           
-          // Calculate effective price
+          // Calculate effective price using same logic as table display
+          const price = getCatalogSalePrice(product, catalogPricing);
           const buyPrice = product.buyPrice || 0;
           const markup = catalogPricing?.markup !== undefined ? catalogPricing.markup : product.markup;
-          const price = calculateSalePrice(buyPrice, markup);
           
           // Calculate packaging prices
           const packagingPrices = calculatePackagingPrices(
