@@ -454,13 +454,7 @@ export function ProductsSection({
         </span>
       </div>
 
-      {/* Megacatalog Dialog */}
-      <MegacatalogDialog
-        open={megacatalogOpen}
-        onOpenChange={setMegacatalogOpen}
-        existingProductIds={existingProductIds}
-        onAddProducts={onAddProductsFromMegacatalog}
-      />
+      {/* Bulk Edit Panel */}
 
       {/* Bulk Edit Panel */}
       {selectedBulkProducts.size > 0 && (
