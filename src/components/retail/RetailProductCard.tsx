@@ -744,7 +744,7 @@ export function RetailProductCard({
           >
             <h3 
               className={cn(
-                "font-medium text-sm leading-snug text-foreground line-clamp-2 flex-1",
+                "font-medium text-[13px] leading-snug text-foreground line-clamp-2 flex-1 font-sans",
                 hasDescription && "group-hover:text-primary transition-colors"
               )}
               style={getFontStyle(fontSettings?.productName)}
