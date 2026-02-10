@@ -105,7 +105,15 @@ export function useGuestCatalog(accessCode: string | undefined) {
         .rpc('get_catalog_by_access_code', { _access_code: accessCode })
         .single();
 
-      if (rpcError || !data) {
+      if (rpcError) {
+        console.error('RPC error fetching catalog:', rpcError.message, rpcError.code, rpcError.details);
+        setError('Прайс-лист не найден');
+        setLoading(false);
+        return;
+      }
+      
+      if (!data) {
+        console.error('Catalog not found for access_code:', accessCode);
         setError('Прайс-лист не найден');
         setLoading(false);
         return;
