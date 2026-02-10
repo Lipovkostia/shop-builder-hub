@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { Switch } from "@/components/ui/switch";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, EyeOff, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut, FileSpreadsheet, Sheet, Upload, Sparkles, RotateCcw } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, EyeOff, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut, FileSpreadsheet, Sheet, Upload, Sparkles, RotateCcw, FileText } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -108,7 +108,9 @@ import { ImportSourceCard } from "@/components/admin/ImportSourceCard";
 import { downloadExcelTemplate, importProductsFromExcel, ImportProgress, exportProductsToExcel, exportCatalogToExcel, CatalogExportProduct } from "@/lib/excelImport";
 import { ExcelImportSection } from "@/components/admin/ExcelImportSection";
 import { CatalogExportDialog } from "@/components/admin/CatalogExportDialog";
+import { CatalogPdfExportDialog } from "@/components/admin/CatalogPdfExportDialog";
 import { CatalogImportDialog } from "@/components/admin/CatalogImportDialog";
+import { exportCatalogToPdf } from "@/lib/pdfExport";
 import { QuickStartList } from "@/components/onboarding/QuickStartList";
 import { AdminOnboardingBanner } from "@/components/onboarding/AdminOnboardingBanner";
 import { AIAssistantPanel } from "@/components/admin/AIAssistantPanel";
@@ -967,8 +969,11 @@ export default function AdminPanel({
   const [profileSubSection, setProfileSubSection] = useState<'personal' | 'store' | 'settings'>('personal');
   const [isExportingProducts, setIsExportingProducts] = useState(false);
   const [catalogExportDialogOpen, setCatalogExportDialogOpen] = useState(false);
+  const [catalogPdfExportDialogOpen, setCatalogPdfExportDialogOpen] = useState(false);
   const [catalogImportDialogOpen, setCatalogImportDialogOpen] = useState(false);
   const [isExportingCatalog, setIsExportingCatalog] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [pdfExportProgress, setPdfExportProgress] = useState<{ current: number; total: number } | null>(null);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
 
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
@@ -1848,6 +1853,85 @@ export default function AdminPanel({
     } finally {
       setIsExportingCatalog(false);
       setCatalogExportDialogOpen(false);
+    }
+  };
+
+  // Export catalog to PDF with selected columns
+  const handleExportCatalogPdf = async (enabledColumns: string[], includePhotos: boolean) => {
+    if (!currentCatalog || !effectiveStoreId) return;
+    
+    setIsExportingPdf(true);
+    setPdfExportProgress(null);
+    try {
+      const catalogProducts = allProducts
+        .filter(p => selectedCatalogProducts.has(p.id))
+        .map(product => {
+          const catalogPricing = getCatalogProductPricing(currentCatalog.id, product.id);
+          const price = getCatalogSalePrice(product, catalogPricing);
+          const buyPrice = product.buyPrice || 0;
+          const markup = catalogPricing?.markup !== undefined ? catalogPricing.markup : product.markup;
+          const packagingPrices = calculatePackagingPrices(
+            price,
+            product.unitWeight,
+            product.packagingType as PackagingType | undefined
+          );
+          let markupStr = '';
+          if (markup) {
+            markupStr = markup.type === 'percent' 
+              ? `${markup.value}%` 
+              : `${markup.value} ₽`;
+          }
+          const status = catalogPricing?.status || product.status || (product.inStock ? 'in_stock' : 'out_of_stock');
+          const portionPrices = catalogPricing?.portionPrices;
+          
+          return {
+            sku: product.sku || null,
+            name: product.name,
+            description: product.description,
+            categories: (() => {
+              const names = (catalogPricing?.categories || [])
+                .map(catId => categories.find(c => c.id === catId)?.name)
+                .filter(Boolean) as string[];
+              return names.length > 0 ? names : null;
+            })(),
+            unit: product.unit,
+            unitWeight: product.unitWeight,
+            packagingType: product.packagingType,
+            buyPrice: product.buyPrice,
+            markup: markupStr,
+            price,
+            priceFull: packagingPrices?.full ?? null,
+            priceHalf: packagingPrices?.half ?? null,
+            priceQuarter: packagingPrices?.quarter ?? null,
+            pricePortion: portionPrices?.portionPrice ?? null,
+            status,
+            images: product.images,
+          } as CatalogExportProduct;
+        });
+
+      await exportCatalogToPdf(
+        currentCatalog.name,
+        catalogProducts,
+        enabledColumns,
+        includePhotos,
+        (current, total) => setPdfExportProgress({ current, total }),
+      );
+      
+      toast({
+        title: "PDF готов",
+        description: `Экспортировано ${catalogProducts.length} товаров`
+      });
+    } catch (error: any) {
+      console.error('PDF export error:', error);
+      toast({
+        title: "Ошибка экспорта PDF",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsExportingPdf(false);
+      setPdfExportProgress(null);
+      setCatalogPdfExportDialogOpen(false);
     }
   };
 
@@ -4399,6 +4483,16 @@ export default function AdminPanel({
                         disabled={selectedCatalogProducts.size === 0}
                       >
                         <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        title="Скачать прайс-лист в PDF"
+                        onClick={() => setCatalogPdfExportDialogOpen(true)}
+                        disabled={selectedCatalogProducts.size === 0}
+                      >
+                        <FileText className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -7061,6 +7155,17 @@ export default function AdminPanel({
         onExport={handleExportCatalog}
         isExporting={isExportingCatalog}
         productCount={selectedCatalogProducts.size}
+      />
+
+      {/* Catalog PDF Export Dialog */}
+      <CatalogPdfExportDialog
+        open={catalogPdfExportDialogOpen}
+        onOpenChange={setCatalogPdfExportDialogOpen}
+        catalogName={currentCatalog?.name || ""}
+        onExport={handleExportCatalogPdf}
+        isExporting={isExportingPdf}
+        productCount={selectedCatalogProducts.size}
+        exportProgress={pdfExportProgress}
       />
 
       {/* Catalog Import Dialog */}
