@@ -82,6 +82,7 @@ export interface RetailCategory {
   name: string;
   slug: string;
   image_url: string | null;
+  parent_id: string | null;
   product_count?: number;
 }
 
@@ -173,7 +174,7 @@ export function useRetailStore(subdomain: string | undefined) {
     if (!store?.id) return;
 
     try {
-      let categoriesData: { id: string; name: string; slug: string; image_url: string | null }[] = [];
+      let categoriesData: { id: string; name: string; slug: string; image_url: string | null; parent_id: string | null }[] = [];
       
       // Use catalog-specific ordering if retail catalog is set
       if (store.retail_catalog_id) {
@@ -184,12 +185,18 @@ export function useRetailStore(subdomain: string | undefined) {
           });
         
         if (rpcError) throw rpcError;
-        categoriesData = data || [];
+        categoriesData = (data || []).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+          image_url: c.image_url,
+          parent_id: c.catalog_parent_id || c.parent_id || null,
+        }));
       } else {
         // Fallback to global sort order
         const { data, error: catError } = await supabase
           .from("categories")
-          .select("id, name, slug, image_url")
+          .select("id, name, slug, image_url, parent_id")
           .eq("store_id", store.id)
           .order("sort_order");
 
