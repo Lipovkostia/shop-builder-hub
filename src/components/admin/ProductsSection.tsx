@@ -6,7 +6,7 @@ import { useOptimisticImagePreviews } from "@/hooks/useOptimisticImagePreviews";
 import { uploadFilesToStorage } from "@/hooks/useProductImages";
 import { Product, Catalog, ProductGroup, PackagingType } from "./types";
 import { Button } from "@/components/ui/button";
-import { Plus, Filter, Columns, Download, Sparkles, Globe } from "lucide-react";
+import { Plus, Filter, Columns, Download, Sparkles } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { MegacatalogDialog } from "./MegacatalogDialog";
+
 interface ProductsSectionProps {
   products: Product[];
   catalogs: Catalog[];
@@ -101,7 +101,7 @@ export function ProductsSection({
   const [expandedAssortmentImages, setExpandedAssortmentImages] = useState<string | null>(null);
   const [deletingImageProductId, setDeletingImageProductId] = useState<string | null>(null);
   const [uploadingImageProductId, setUploadingImageProductId] = useState<string | null>(null);
-  const [megacatalogOpen, setMegacatalogOpen] = useState(false);
+  // Megacatalog is now a separate section, no dialog needed
 
   // Set of existing product IDs for megacatalog
   const existingProductIds = useMemo(() => new Set(products.map(p => p.id)), [products]);
@@ -388,10 +388,7 @@ export function ProductsSection({
           Добавить товар
         </Button>
 
-        <Button variant="outline" size="sm" onClick={() => setMegacatalogOpen(true)}>
-          <Globe className="h-4 w-4 mr-2" />
-          Мегакаталог
-        </Button>
+        {/* Megacatalog is now a separate admin section */}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -457,13 +454,7 @@ export function ProductsSection({
         </span>
       </div>
 
-      {/* Megacatalog Dialog */}
-      <MegacatalogDialog
-        open={megacatalogOpen}
-        onOpenChange={setMegacatalogOpen}
-        existingProductIds={existingProductIds}
-        onAddProducts={onAddProductsFromMegacatalog}
-      />
+      {/* Bulk Edit Panel */}
 
       {/* Bulk Edit Panel */}
       {selectedBulkProducts.size > 0 && (

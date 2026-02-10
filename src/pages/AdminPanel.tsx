@@ -121,6 +121,7 @@ import { WholesaleSettingsSection } from "@/components/admin/WholesaleSettingsSe
 import { FormingOrdersSection } from "@/components/admin/FormingOrdersSection";
 import { ProductsSection } from "@/components/admin/ProductsSection";
 import { CategorySettingsSection } from "@/components/admin/CategorySettingsSection";
+import { MegacatalogSection } from "@/components/admin/MegacatalogSection";
 
 // Removed localStorage keys - now using Supabase
 
@@ -304,7 +305,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings";
+type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings";
 type ImportView = "accounts" | "catalog";
 type ImportSource = "select" | "moysklad" | "excel" | "google-sheets";
 type CatalogView = "list" | "detail";
@@ -3522,6 +3523,13 @@ export default function AdminPanel({
                 catalogName={currentCatalog?.name}
               />
             </>
+          )}
+
+          {effectiveStoreId && activeSection === "megacatalog" && (
+            <MegacatalogSection
+              existingProductIds={new Set(allProducts.map(p => p.id))}
+              onAddProducts={handleAddProductsFromMegacatalog}
+            />
           )}
 
           {effectiveStoreId && activeSection === "import" && (
