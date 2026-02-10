@@ -287,19 +287,40 @@ Deno.serve(async (req) => {
           buy_price,
           quantity,
           created_at,
+          updated_at,
           is_active,
           canonical_product_id,
           store_id,
+          unit,
+          unit_weight,
+          packaging_type,
+          portion_weight,
+          images,
+          description,
+          source,
+          moysklad_id,
+          category_id,
+          compare_price,
+          markup_type,
+          markup_value,
+          is_fixed_price,
           stores!products_store_id_fkey (
             id,
             name,
-            subdomain
+            subdomain,
+            profiles!stores_owner_id_fkey (
+              email,
+              full_name
+            )
+          ),
+          categories!products_category_id_fkey (
+            name
           )
         `, { count: "exact" })
         .is("deleted_at", null);
 
       if (search) {
-        query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
+        query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%,description.ilike.%${search}%`);
       }
 
       const linked = url.searchParams.get("linked");
@@ -307,6 +328,62 @@ Deno.serve(async (req) => {
         query = query.not("canonical_product_id", "is", null);
       } else if (linked === "false") {
         query = query.is("canonical_product_id", null);
+      }
+
+      // Store filter
+      const storeId = url.searchParams.get("store_id");
+      if (storeId) {
+        query = query.eq("store_id", storeId);
+      }
+
+      // Active filter
+      const activeFilter = url.searchParams.get("is_active");
+      if (activeFilter === "true") {
+        query = query.eq("is_active", true);
+      } else if (activeFilter === "false") {
+        query = query.eq("is_active", false);
+      }
+
+      // Has images filter
+      const hasImages = url.searchParams.get("has_images");
+      if (hasImages === "true") {
+        query = query.not("images", "is", null).neq("images", "{}");
+      } else if (hasImages === "false") {
+        query = query.or("images.is.null,images.eq.{}");
+      }
+
+      // Unit filter
+      const unitFilter = url.searchParams.get("unit");
+      if (unitFilter) {
+        query = query.eq("unit", unitFilter);
+      }
+
+      // Packaging type filter
+      const packagingFilter = url.searchParams.get("packaging_type");
+      if (packagingFilter) {
+        query = query.eq("packaging_type", packagingFilter);
+      }
+
+      // Source filter
+      const sourceFilter = url.searchParams.get("source");
+      if (sourceFilter) {
+        query = query.eq("source", sourceFilter);
+      }
+
+      // Has price filter
+      const hasPrice = url.searchParams.get("has_price");
+      if (hasPrice === "true") {
+        query = query.gt("price", 0);
+      } else if (hasPrice === "false") {
+        query = query.eq("price", 0);
+      }
+
+      // Has buy_price filter
+      const hasBuyPrice = url.searchParams.get("has_buy_price");
+      if (hasBuyPrice === "true") {
+        query = query.not("buy_price", "is", null).gt("buy_price", 0);
+      } else if (hasBuyPrice === "false") {
+        query = query.or("buy_price.is.null,buy_price.eq.0");
       }
 
       const from = (page - 1) * limit;
@@ -318,24 +395,46 @@ Deno.serve(async (req) => {
 
       if (error) throw error;
 
+      // Also fetch unique stores for filter dropdown
+      const { data: storesData } = await supabase
+        .from("stores")
+        .select("id, name")
+        .order("name");
+
       const formattedProducts = (data || []).map((product: any) => ({
         id: product.id,
         name: product.name,
         sku: product.sku,
         price: product.price,
         buy_price: product.buy_price,
+        compare_price: product.compare_price,
         quantity: product.quantity,
         created_at: product.created_at,
+        updated_at: product.updated_at,
         is_active: product.is_active,
         canonical_product_id: product.canonical_product_id,
         store_id: product.store_id,
         store_name: product.stores?.name || "Неизвестный магазин",
         store_subdomain: product.stores?.subdomain || "",
+        owner_email: product.stores?.profiles?.email || "",
+        owner_name: product.stores?.profiles?.full_name || "",
+        unit: product.unit,
+        unit_weight: product.unit_weight,
+        packaging_type: product.packaging_type,
+        portion_weight: product.portion_weight,
+        images_count: product.images?.length || 0,
+        description: product.description,
+        source: product.source,
+        moysklad_id: product.moysklad_id,
+        category_name: product.categories?.name || null,
+        markup_type: product.markup_type,
+        markup_value: product.markup_value,
+        is_fixed_price: product.is_fixed_price,
         is_new_today: new Date(product.created_at) >= today
       }));
 
       return new Response(
-        JSON.stringify({ data: formattedProducts, total: count || 0 }),
+        JSON.stringify({ data: formattedProducts, total: count || 0, stores: storesData || [] }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

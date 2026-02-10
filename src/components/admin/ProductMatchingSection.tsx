@@ -25,6 +25,9 @@ import {
   ArrowUp,
   ArrowDown,
   Wand2,
+  Filter,
+  Image as ImageIcon,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -54,13 +57,29 @@ interface CatalogProduct {
   sku: string | null;
   price: number;
   buy_price: number | null;
+  compare_price: number | null;
   quantity: number;
   is_active: boolean;
   canonical_product_id: string | null;
   store_id: string;
   store_name: string;
   store_subdomain: string;
+  owner_email: string;
+  owner_name: string;
+  unit: string | null;
+  unit_weight: number | null;
+  packaging_type: string | null;
+  portion_weight: number | null;
+  images_count: number;
+  description: string | null;
+  source: string | null;
+  moysklad_id: string | null;
+  category_name: string | null;
+  markup_type: string | null;
+  markup_value: number | null;
+  is_fixed_price: boolean | null;
   created_at: string;
+  updated_at: string;
   is_new_today: boolean;
 }
 
@@ -113,6 +132,17 @@ export default function ProductMatchingSection() {
   const [isAIGrouping, setIsAIGrouping] = useState(false);
   const [catalogAIGroups, setCatalogAIGroups] = useState<AIMatchGroup[]>([]);
   const [showCatalogAIResults, setShowCatalogAIResults] = useState(false);
+  const [availableStores, setAvailableStores] = useState<{ id: string; name: string }[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  // Filters
+  const [filterStoreId, setFilterStoreId] = useState("");
+  const [filterIsActive, setFilterIsActive] = useState("");
+  const [filterHasImages, setFilterHasImages] = useState("");
+  const [filterUnit, setFilterUnit] = useState("");
+  const [filterPackaging, setFilterPackaging] = useState("");
+  const [filterSource, setFilterSource] = useState("");
+  const [filterHasPrice, setFilterHasPrice] = useState("");
+  const [filterHasBuyPrice, setFilterHasBuyPrice] = useState("");
   const CATALOG_PAGE_SIZE = 100;
 
   // New alias form
@@ -139,6 +169,14 @@ export default function ProductMatchingSection() {
       if (catalogSearch) params.set("search", catalogSearch);
       if (catalogLinkedFilter === "linked") params.set("linked", "true");
       if (catalogLinkedFilter === "unlinked") params.set("linked", "false");
+      if (filterStoreId) params.set("store_id", filterStoreId);
+      if (filterIsActive) params.set("is_active", filterIsActive);
+      if (filterHasImages) params.set("has_images", filterHasImages);
+      if (filterUnit) params.set("unit", filterUnit);
+      if (filterPackaging) params.set("packaging_type", filterPackaging);
+      if (filterSource) params.set("source", filterSource);
+      if (filterHasPrice) params.set("has_price", filterHasPrice);
+      if (filterHasBuyPrice) params.set("has_buy_price", filterHasBuyPrice);
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/super-admin-stats?${params}`,
@@ -150,12 +188,13 @@ export default function ProductMatchingSection() {
       const result = await response.json();
       setCatalogProducts(result.data || []);
       setCatalogTotal(result.total || 0);
+      if (result.stores) setAvailableStores(result.stores);
     } catch (e) {
       console.error("Error fetching catalog products:", e);
     } finally {
       setIsLoadingCatalog(false);
     }
-  }, [session?.access_token, catalogPage, catalogSearch, catalogLinkedFilter, catalogSort]);
+  }, [session?.access_token, catalogPage, catalogSearch, catalogLinkedFilter, catalogSort, filterStoreId, filterIsActive, filterHasImages, filterUnit, filterPackaging, filterSource, filterHasPrice, filterHasBuyPrice]);
 
   useEffect(() => {
     if (activeTab === "catalog") {
@@ -395,14 +434,13 @@ export default function ProductMatchingSection() {
               </TabsTrigger>
             </TabsList>
 
-            {/* ============ CATALOG TAB ============ */}
             <TabsContent value="catalog" className="flex-1 overflow-hidden m-0 flex flex-col min-h-0">
               {/* Toolbar */}
               <div className="px-3 py-2 flex flex-wrap gap-2 items-center border-b shrink-0">
                 <div className="relative flex-1 min-w-[200px] max-w-sm">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
-                    placeholder="Поиск по названию или артикулу..."
+                    placeholder="Поиск по названию, артикулу, описанию..."
                     value={catalogSearch}
                     onChange={(e) => handleCatalogSearch(e.target.value)}
                     className="pl-8 h-8 text-xs"
@@ -414,9 +452,33 @@ export default function ProductMatchingSection() {
                   className="h-8 rounded-md border bg-background px-2 text-xs"
                 >
                   <option value="all">Все товары</option>
-                  <option value="linked">Сопоставленные</option>
-                  <option value="unlinked">Несопоставленные</option>
+                  <option value="linked">Связанные</option>
+                  <option value="unlinked">Свободные</option>
                 </select>
+                <select
+                  value={filterStoreId}
+                  onChange={(e) => { setFilterStoreId(e.target.value); setCatalogPage(1); }}
+                  className="h-8 rounded-md border bg-background px-2 text-xs max-w-[160px]"
+                >
+                  <option value="">Все магазины</option>
+                  {availableStores.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                <Button
+                  size="sm"
+                  variant={showFilters ? "default" : "outline"}
+                  className="h-8 text-xs"
+                  onClick={() => setShowFilters(!showFilters)}
+                >
+                  <Filter className="h-3.5 w-3.5 mr-1" />
+                  Фильтры
+                  {(filterIsActive || filterHasImages || filterUnit || filterPackaging || filterSource || filterHasPrice || filterHasBuyPrice) && (
+                    <Badge variant="secondary" className="ml-1 h-4 w-4 p-0 text-[9px] rounded-full justify-center">
+                      {[filterIsActive, filterHasImages, filterUnit, filterPackaging, filterSource, filterHasPrice, filterHasBuyPrice].filter(Boolean).length}
+                    </Badge>
+                  )}
+                </Button>
                 <div className="h-5 w-px bg-border" />
                 <Button
                   size="sm"
@@ -432,6 +494,66 @@ export default function ProductMatchingSection() {
                   {catalogTotal} товаров
                 </div>
               </div>
+
+              {/* Extended Filters Row */}
+              {showFilters && (
+                <div className="px-3 py-2 flex flex-wrap gap-2 items-center border-b bg-muted/30 shrink-0">
+                  <select value={filterIsActive} onChange={(e) => { setFilterIsActive(e.target.value); setCatalogPage(1); }} className="h-7 rounded-md border bg-background px-2 text-xs">
+                    <option value="">Активность</option>
+                    <option value="true">Активные</option>
+                    <option value="false">Неактивные</option>
+                  </select>
+                  <select value={filterHasImages} onChange={(e) => { setFilterHasImages(e.target.value); setCatalogPage(1); }} className="h-7 rounded-md border bg-background px-2 text-xs">
+                    <option value="">Фото</option>
+                    <option value="true">С фото</option>
+                    <option value="false">Без фото</option>
+                  </select>
+                  <select value={filterUnit} onChange={(e) => { setFilterUnit(e.target.value); setCatalogPage(1); }} className="h-7 rounded-md border bg-background px-2 text-xs">
+                    <option value="">Ед. изм.</option>
+                    <option value="кг">кг</option>
+                    <option value="шт">шт</option>
+                    <option value="л">л</option>
+                    <option value="г">г</option>
+                    <option value="мл">мл</option>
+                    <option value="уп">уп</option>
+                  </select>
+                  <select value={filterPackaging} onChange={(e) => { setFilterPackaging(e.target.value); setCatalogPage(1); }} className="h-7 rounded-md border bg-background px-2 text-xs">
+                    <option value="">Фасовка</option>
+                    <option value="весовой">Весовой</option>
+                    <option value="штучный">Штучный</option>
+                    <option value="порционный">Порционный</option>
+                  </select>
+                  <select value={filterSource} onChange={(e) => { setFilterSource(e.target.value); setCatalogPage(1); }} className="h-7 rounded-md border bg-background px-2 text-xs">
+                    <option value="">Источник</option>
+                    <option value="manual">Вручную</option>
+                    <option value="moysklad">МойСклад</option>
+                    <option value="excel">Excel</option>
+                    <option value="megacatalog">Мегакаталог</option>
+                  </select>
+                  <select value={filterHasPrice} onChange={(e) => { setFilterHasPrice(e.target.value); setCatalogPage(1); }} className="h-7 rounded-md border bg-background px-2 text-xs">
+                    <option value="">Цена</option>
+                    <option value="true">С ценой</option>
+                    <option value="false">Без цены</option>
+                  </select>
+                  <select value={filterHasBuyPrice} onChange={(e) => { setFilterHasBuyPrice(e.target.value); setCatalogPage(1); }} className="h-7 rounded-md border bg-background px-2 text-xs">
+                    <option value="">Себестоимость</option>
+                    <option value="true">Есть</option>
+                    <option value="false">Нет</option>
+                  </select>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs text-muted-foreground"
+                    onClick={() => {
+                      setFilterIsActive(""); setFilterHasImages(""); setFilterUnit(""); setFilterPackaging(""); setFilterSource(""); setFilterHasPrice(""); setFilterHasBuyPrice(""); setFilterStoreId("");
+                      setCatalogPage(1);
+                    }}
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Сбросить
+                  </Button>
+                </div>
+              )}
 
               {/* AI Grouping Results */}
               {showCatalogAIResults && catalogAIGroups.length > 0 && (
@@ -477,7 +599,7 @@ export default function ProductMatchingSection() {
 
               {/* Dense table */}
               <div className="flex-1 overflow-auto">
-                <table className="w-full text-xs border-collapse">
+                <table className="w-full text-xs border-collapse min-w-[1200px]">
                   <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                     <tr className="border-b">
                       <th className="w-8 px-1 py-1.5 text-center">
@@ -487,28 +609,42 @@ export default function ProductMatchingSection() {
                           className="h-3.5 w-3.5"
                         />
                       </th>
-                      <th className="px-2 py-1.5 text-left font-medium cursor-pointer hover:text-foreground" onClick={() => handleSort("name")}>
+                      <th className="px-2 py-1.5 text-left font-medium min-w-[180px] cursor-pointer hover:text-foreground" onClick={() => handleSort("name")}>
                         <span className="inline-flex items-center gap-1">Название <SortIcon field="name" /></span>
                       </th>
                       <th className="px-2 py-1.5 text-left font-medium w-[100px] cursor-pointer hover:text-foreground" onClick={() => handleSort("sku")}>
                         <span className="inline-flex items-center gap-1">Артикул <SortIcon field="sku" /></span>
                       </th>
                       <th className="px-2 py-1.5 text-left font-medium w-[120px]">Магазин</th>
-                      <th className="px-2 py-1.5 text-right font-medium w-[80px] cursor-pointer hover:text-foreground" onClick={() => handleSort("price")}>
+                      <th className="px-2 py-1.5 text-left font-medium w-[120px]">Продавец</th>
+                      <th className="px-2 py-1.5 text-left font-medium w-[90px]">Категория</th>
+                      <th className="px-2 py-1.5 text-right font-medium w-[70px] cursor-pointer hover:text-foreground" onClick={() => handleSort("price")}>
                         <span className="inline-flex items-center gap-1 justify-end">Цена <SortIcon field="price" /></span>
                       </th>
-                      <th className="px-2 py-1.5 text-right font-medium w-[80px] cursor-pointer hover:text-foreground" onClick={() => handleSort("buy_price")}>
+                      <th className="px-2 py-1.5 text-right font-medium w-[70px] cursor-pointer hover:text-foreground" onClick={() => handleSort("buy_price")}>
                         <span className="inline-flex items-center gap-1 justify-end">Себест. <SortIcon field="buy_price" /></span>
                       </th>
-                      <th className="px-2 py-1.5 text-center font-medium w-[50px]">Кол</th>
-                      <th className="px-2 py-1.5 text-center font-medium w-[90px]">Статус</th>
+                      <th className="px-2 py-1.5 text-center font-medium w-[40px] cursor-pointer hover:text-foreground" onClick={() => handleSort("quantity")}>
+                        <span className="inline-flex items-center gap-1">Кол <SortIcon field="quantity" /></span>
+                      </th>
+                      <th className="px-2 py-1.5 text-center font-medium w-[40px]">Ед.</th>
+                      <th className="px-2 py-1.5 text-center font-medium w-[35px]">
+                        <ImageIcon className="h-3 w-3 mx-auto" />
+                      </th>
+                      <th className="px-2 py-1.5 text-center font-medium w-[55px]">Фасовка</th>
+                      <th className="px-2 py-1.5 text-center font-medium w-[60px]">Источник</th>
+                      <th className="px-2 py-1.5 text-center font-medium w-[50px]">Акт.</th>
+                      <th className="px-2 py-1.5 text-center font-medium w-[75px]">Связь</th>
+                      <th className="px-2 py-1.5 text-left font-medium w-[75px] cursor-pointer hover:text-foreground" onClick={() => handleSort("created_at")}>
+                        <span className="inline-flex items-center gap-1">Дата <SortIcon field="created_at" /></span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoadingCatalog ? (
-                      <tr><td colSpan={8} className="text-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></td></tr>
+                      <tr><td colSpan={16} className="text-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></td></tr>
                     ) : catalogProducts.length === 0 ? (
-                      <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Нет товаров</td></tr>
+                      <tr><td colSpan={16} className="text-center py-8 text-muted-foreground">Нет товаров</td></tr>
                     ) : (
                       catalogProducts.map((product) => (
                         <tr
@@ -537,15 +673,51 @@ export default function ProductMatchingSection() {
                           <td className="px-2 py-0.5">
                             <span className="truncate block text-muted-foreground" title={product.store_name}>{product.store_name}</span>
                           </td>
+                          <td className="px-2 py-0.5">
+                            <span className="truncate block text-muted-foreground" title={product.owner_name || product.owner_email}>
+                              {product.owner_name || product.owner_email || "—"}
+                            </span>
+                          </td>
+                          <td className="px-2 py-0.5">
+                            <span className="truncate block text-muted-foreground" title={product.category_name || ""}>{product.category_name || "—"}</span>
+                          </td>
                           <td className="px-2 py-0.5 text-right tabular-nums">{product.price > 0 ? `${product.price}₽` : "—"}</td>
                           <td className="px-2 py-0.5 text-right tabular-nums text-muted-foreground">{product.buy_price ? `${product.buy_price}₽` : "—"}</td>
                           <td className="px-2 py-0.5 text-center tabular-nums">{product.quantity}</td>
+                          <td className="px-2 py-0.5 text-center text-muted-foreground">{product.unit || "—"}</td>
+                          <td className="px-2 py-0.5 text-center tabular-nums">
+                            {product.images_count > 0 ? (
+                              <span className="text-green-600">{product.images_count}</span>
+                            ) : (
+                              <span className="text-muted-foreground/50">0</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-0.5 text-center text-muted-foreground text-[10px]">{product.packaging_type || "—"}</td>
+                          <td className="px-2 py-0.5 text-center">
+                            {product.source ? (
+                              <Badge variant="outline" className="text-[9px] h-4 px-1">
+                                {product.source === "moysklad" ? "МС" : product.source === "excel" ? "XLS" : product.source === "megacatalog" ? "Мега" : product.source}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground/50">—</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-0.5 text-center">
+                            {product.is_active ? (
+                              <span className="inline-block w-2 h-2 rounded-full bg-green-500" title="Активен" />
+                            ) : (
+                              <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground/30" title="Неактивен" />
+                            )}
+                          </td>
                           <td className="px-2 py-0.5 text-center">
                             {product.canonical_product_id ? (
                               <Badge variant="secondary" className="text-[9px] h-4 px-1 text-green-600 bg-green-100 border-green-200">Связан</Badge>
                             ) : (
                               <Badge variant="outline" className="text-[9px] h-4 px-1 text-muted-foreground">Свободен</Badge>
                             )}
+                          </td>
+                          <td className="px-2 py-0.5 text-muted-foreground text-[10px] whitespace-nowrap">
+                            {new Date(product.created_at).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit" })}
                           </td>
                         </tr>
                       ))
