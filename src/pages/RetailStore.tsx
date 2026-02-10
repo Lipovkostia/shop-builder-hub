@@ -126,13 +126,17 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
   }, [store?.retail_theme?.fonts]);
 
   // Sync selected categories with single category selector
+  // When a parent section is selected, include all its child categories too
   useEffect(() => {
     if (selectedCategory) {
-      setSelectedCategories([selectedCategory]);
+      const childIds = categories
+        .filter(c => c.parent_id === selectedCategory)
+        .map(c => c.id);
+      setSelectedCategories([selectedCategory, ...childIds]);
     } else {
       setSelectedCategories([]);
     }
-  }, [selectedCategory]);
+  }, [selectedCategory, categories]);
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
