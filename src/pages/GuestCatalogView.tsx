@@ -212,7 +212,7 @@ function GuestProductCard({
               )}
               <button 
                 onClick={onNameClick}
-                className={`relative overflow-hidden text-left flex-1 min-w-0 ${product.description ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+                className="relative overflow-hidden text-left flex-1 min-w-0 cursor-pointer hover:text-primary transition-colors"
                 {...(isDemo ? { 'data-demo': 'product-name' } : {})}
               >
                 <h3 className={`font-medium text-foreground leading-tight ${showImages ? 'text-lg pr-6' : 'text-[11px] pr-4'} ${isDescriptionExpanded ? 'text-primary whitespace-normal break-words' : 'whitespace-nowrap'}`}>
@@ -358,10 +358,16 @@ function GuestProductCard({
       {!showImages && (
         <Collapsible open={isDescriptionExpanded}>
           <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
-            {product.description && (
+            {product.description ? (
               <div className="px-3 py-2 bg-muted/30 border-b border-border">
                 <p className="text-[10px] text-muted-foreground leading-relaxed whitespace-normal break-words">
                   {product.description}
+                </p>
+              </div>
+            ) : (
+              <div className="px-3 py-1.5 bg-muted/30 border-b border-border">
+                <p className="text-[11px] font-medium text-foreground leading-relaxed whitespace-normal break-words">
+                  {product.name}
                 </p>
               </div>
             )}
@@ -1201,9 +1207,7 @@ const GuestCatalogView = () => {
                   }}
                   isDescriptionExpanded={descriptionExpandedId === product.id}
                   onNameClick={() => {
-                    if (product.description) {
-                      setDescriptionExpandedId(descriptionExpandedId === product.id ? null : product.id);
-                    }
+                    setDescriptionExpandedId(descriptionExpandedId === product.id ? null : product.id);
                   }}
                   isDemo={showDemoTour && demoProduct?.id === product.id}
                 />
