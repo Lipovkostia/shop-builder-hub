@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Trash2, Package, Tag, Check, FolderPlus, FolderMinus } from "lucide-react";
+import { X, Trash2, Package, Tag, Check, FolderPlus, FolderMinus, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,6 +56,8 @@ interface BulkEditPanelProps {
   categories?: Category[];
   onBulkSetCategories?: (categoryIds: string[]) => void;
   onBulkClearCategories?: () => void;
+  // Bulk auto-fill categories from other price lists
+  onBulkAutoFillCategories?: (mode: "fill_empty" | "replace_all") => void;
   // Bulk price editing
   onBulkSetPrice?: (price: number) => void;
 }
@@ -76,6 +78,7 @@ export function BulkEditPanel({
   categories = [],
   onBulkSetCategories,
   onBulkClearCategories,
+  onBulkAutoFillCategories,
   onBulkSetPrice,
 }: BulkEditPanelProps) {
   const [editField, setEditField] = useState<string | null>(null);
@@ -90,6 +93,7 @@ export function BulkEditPanel({
   // Category bulk editing state
   const [selectedBulkCategories, setSelectedBulkCategories] = useState<string[]>([]);
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
+  const [isAutoFillPopoverOpen, setIsAutoFillPopoverOpen] = useState(false);
 
   const handleApply = () => {
     if (!editField) return;
@@ -314,6 +318,56 @@ export function BulkEditPanel({
                       }}
                     >
                       Отмена
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+               <div className="w-px h-6 bg-primary-foreground/20 mx-1" />
+            </>
+          )}
+
+          {/* Auto-fill categories from other price lists */}
+          {onBulkAutoFillCategories && (
+            <>
+              <Popover open={isAutoFillPopoverOpen} onOpenChange={setIsAutoFillPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-8"
+                  >
+                    <Wand2 className="h-4 w-4 mr-1" />
+                    Подставить категории
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-3" align="start">
+                  <div className="text-sm font-medium mb-2">Подставить категории из других прайс-листов</div>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Для выбранных товаров будут скопированы категории из других прайс-листов, где они уже назначены.
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        onBulkAutoFillCategories("fill_empty");
+                        setIsAutoFillPopoverOpen(false);
+                      }}
+                      className="justify-start"
+                    >
+                      Только пустые
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        onBulkAutoFillCategories("replace_all");
+                        setIsAutoFillPopoverOpen(false);
+                      }}
+                      className="justify-start"
+                    >
+                      Заменить все
                     </Button>
                   </div>
                 </PopoverContent>
