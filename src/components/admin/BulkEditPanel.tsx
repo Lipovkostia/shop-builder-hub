@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Trash2, Package, Tag, Check, FolderPlus, FolderMinus, Wand2 } from "lucide-react";
+import { X, Trash2, Package, Tag, Check, FolderPlus, FolderMinus, Wand2, ImagePlus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,6 +60,8 @@ interface BulkEditPanelProps {
   onBulkAutoFillCategories?: (mode: "fill_empty" | "replace_all") => void;
   // Bulk price editing
   onBulkSetPrice?: (price: number) => void;
+  // Bulk best photo
+  onBulkBestPhoto?: () => Promise<void>;
 }
 
 export function BulkEditPanel({
@@ -80,6 +82,7 @@ export function BulkEditPanel({
   onBulkClearCategories,
   onBulkAutoFillCategories,
   onBulkSetPrice,
+  onBulkBestPhoto,
 }: BulkEditPanelProps) {
   const [editField, setEditField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
@@ -94,6 +97,7 @@ export function BulkEditPanel({
   const [selectedBulkCategories, setSelectedBulkCategories] = useState<string[]>([]);
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
   const [isAutoFillPopoverOpen, setIsAutoFillPopoverOpen] = useState(false);
+  const [isBestPhotoProcessing, setIsBestPhotoProcessing] = useState(false);
 
   const handleApply = () => {
     if (!editField) return;
@@ -323,6 +327,34 @@ export function BulkEditPanel({
                 </PopoverContent>
               </Popover>
                <div className="w-px h-6 bg-primary-foreground/20 mx-1" />
+            </>
+          )}
+
+          {/* Bulk best photo */}
+          {onBulkBestPhoto && (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-8"
+                disabled={isBestPhotoProcessing}
+                onClick={async () => {
+                  setIsBestPhotoProcessing(true);
+                  try {
+                    await onBulkBestPhoto();
+                  } finally {
+                    setIsBestPhotoProcessing(false);
+                  }
+                }}
+              >
+                {isBestPhotoProcessing ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <ImagePlus className="h-4 w-4 mr-1" />
+                )}
+                Лучшее фото
+              </Button>
+              <div className="w-px h-6 bg-primary-foreground/20 mx-1" />
             </>
           )}
 

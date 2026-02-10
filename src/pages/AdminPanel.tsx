@@ -4867,6 +4867,59 @@ export default function AdminPanel({
                         });
                       }
                     }}
+                    onBulkBestPhoto={async () => {
+                      const selectedIds = Array.from(selectedCatalogBulkProducts);
+                      const productsWithMultipleImages = selectedIds
+                        .map(id => allProducts.find(p => p.id === id))
+                        .filter((p): p is Product => !!p && !!p.images && p.images.length >= 2);
+
+                      if (productsWithMultipleImages.length === 0) {
+                        toast({ title: "Нет товаров с несколькими фото", description: "Выбранные товары имеют только одно фото или без фото" });
+                        return;
+                      }
+
+                      const getImageDimensions = (url: string): Promise<{ width: number; height: number }> => {
+                        return new Promise((resolve) => {
+                          const img = new window.Image();
+                          img.crossOrigin = "anonymous";
+                          const timeout = setTimeout(() => resolve({ width: 0, height: 0 }), 10000);
+                          img.onload = () => { clearTimeout(timeout); resolve({ width: img.naturalWidth, height: img.naturalHeight }); };
+                          img.onerror = () => { clearTimeout(timeout); resolve({ width: 0, height: 0 }); };
+                          img.src = url;
+                        });
+                      };
+
+                      let updated = 0;
+                      for (const product of productsWithMultipleImages) {
+                        try {
+                          const dims = await Promise.all(product.images!.map(url => getImageDimensions(url)));
+                          const areas = dims.map(d => d.width * d.height);
+                          const bestIndex = areas.indexOf(Math.max(...areas));
+                          if (bestIndex > 0 && areas[bestIndex] > 0) {
+                            const newImages = [...product.images!];
+                            const [bestPhoto] = newImages.splice(bestIndex, 1);
+                            newImages.unshift(bestPhoto);
+
+                            let newSyncedImages = product.syncedMoyskladImages;
+                            if (product.syncedMoyskladImages && product.syncedMoyskladImages.length === product.images!.length) {
+                              newSyncedImages = [...product.syncedMoyskladImages];
+                              const [s] = newSyncedImages.splice(bestIndex, 1);
+                              newSyncedImages.unshift(s);
+                            }
+
+                            await updateSupabaseProduct(product.id, { images: newImages, synced_moysklad_images: newSyncedImages });
+                            updated++;
+                          }
+                        } catch (err) {
+                          console.error(`Error processing product ${product.id}:`, err);
+                        }
+                      }
+
+                      toast({
+                        title: "Лучшее фото установлено",
+                        description: `Обновлено: ${updated} из ${productsWithMultipleImages.length} товаров`,
+                      });
+                    }}
                   />
 
                   <p className="text-xs text-muted-foreground mb-2">
