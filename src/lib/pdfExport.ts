@@ -27,19 +27,37 @@ const COLUMN_MAPPINGS: { id: string; header: string; getValue: (p: CatalogExport
   { id: 'status', header: 'Статус', getValue: p => STATUS_LABELS[p.status] || p.status || '' },
 ];
 
-async function loadImageAsBase64(url: string): Promise<string | null> {
+const THUMB_SIZE = 64;
+const JPEG_QUALITY = 0.6;
+
+async function loadAndCompressImage(url: string): Promise<string | null> {
   try {
     const response = await fetch(url);
     const blob = await response.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
+    const bitmap = await createImageBitmap(blob);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = THUMB_SIZE;
+    canvas.height = THUMB_SIZE;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(bitmap, 0, 0, THUMB_SIZE, THUMB_SIZE);
+    bitmap.close();
+
+    return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
   } catch {
     return null;
   }
+}
+
+async function loadFontAsBase64(): Promise<string> {
+  const resp = await fetch('/fonts/Roboto-Regular.ttf');
+  const buf = await resp.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 export async function exportCatalogToPdf(
@@ -50,6 +68,12 @@ export async function exportCatalogToPdf(
   onProgress?: (current: number, total: number) => void,
 ): Promise<void> {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  // Register Cyrillic font
+  const fontBase64 = await loadFontAsBase64();
+  doc.addFileToVFS('Roboto-Regular.ttf', fontBase64);
+  doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+  doc.setFont('Roboto');
 
   // Title
   doc.setFontSize(14);
@@ -64,7 +88,7 @@ export async function exportCatalogToPdf(
   if (includePhotos) headers.push('Фото');
   headers.push(...activeColumns.map(c => c.header));
 
-  // Pre-load images if needed
+  // Pre-load and compress images if needed
   let imageMap: Map<number, string> = new Map();
   if (includePhotos) {
     const total = products.length;
@@ -72,15 +96,15 @@ export async function exportCatalogToPdf(
       const p = products[i];
       const imgUrl = p.images?.[0];
       if (imgUrl) {
-        const base64 = await loadImageAsBase64(imgUrl);
-        if (base64) imageMap.set(i, base64);
+        const compressed = await loadAndCompressImage(imgUrl);
+        if (compressed) imageMap.set(i, compressed);
       }
       onProgress?.(i + 1, total);
     }
   }
 
   // Build body
-  const body = products.map((p, idx) => {
+  const body = products.map((p) => {
     const row: (string | number)[] = [];
     if (includePhotos) row.push(''); // placeholder for image
     row.push(...activeColumns.map(c => c.getValue(p)));
@@ -98,12 +122,14 @@ export async function exportCatalogToPdf(
       fontSize: 7,
       cellPadding: 1.5,
       overflow: 'linebreak',
+      font: 'Roboto',
     },
     headStyles: {
       fillColor: [240, 240, 240],
       textColor: [30, 30, 30],
       fontStyle: 'bold',
       fontSize: 7,
+      font: 'Roboto',
     },
     columnStyles: includePhotos
       ? { 0: { cellWidth: cellSize + 4, minCellHeight: cellSize + 4 } }
