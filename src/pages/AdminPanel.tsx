@@ -632,6 +632,7 @@ export default function AdminPanel({
     settings: catalogProductSettings,
     getProductSettings: getCatalogProductSettingsFromDB,
     updateProductSettings: updateCatalogProductSettingsInDB,
+    bulkUpdateStatus: bulkUpdateCatalogStatus,
     refetch: refetchCatalogProductSettings
   } = useCatalogProductSettings(effectiveStoreId);
   
@@ -4701,10 +4702,8 @@ export default function AdminPanel({
                     onBulkUpdate={(updates) => {
                       const count = selectedCatalogBulkProducts.size;
                       if (currentCatalog && updates.status) {
-                        // Status changes go to catalog-specific settings
-                        selectedCatalogBulkProducts.forEach(productId => {
-                          updateCatalogProductPricing(currentCatalog.id, productId, { status: updates.status });
-                        });
+                        // Batch status update to avoid race conditions
+                        bulkUpdateCatalogStatus(currentCatalog.id, Array.from(selectedCatalogBulkProducts), updates.status);
                       }
                       // Other updates (unit, packaging, description, markup) go to base product
                       const baseUpdates = { ...updates };

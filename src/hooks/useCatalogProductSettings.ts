@@ -351,11 +351,55 @@ export function useCatalogProductSettings(storeId: string | null) {
     }
   }, [settings, fetchSettings]);
 
+  // Bulk update status for multiple products in a single catalog (avoids race conditions)
+  const bulkUpdateStatus = useCallback(async (
+    catalogId: string,
+    productIds: string[],
+    status: string
+  ) => {
+    if (!productIds.length) return;
+
+    // Optimistic update
+    setSettings(prev => prev.map(s => {
+      if (s.catalog_id === catalogId && productIds.includes(s.product_id)) {
+        return { ...s, status };
+      }
+      return s;
+    }));
+
+    try {
+      // Batch upsert all products at once
+      const upsertRows = productIds.map(productId => ({
+        catalog_id: catalogId,
+        product_id: productId,
+        status,
+      }));
+
+      // Split into chunks of 500 to avoid payload limits
+      const chunkSize = 500;
+      for (let i = 0; i < upsertRows.length; i += chunkSize) {
+        const chunk = upsertRows.slice(i, i + chunkSize);
+        const { error } = await supabase
+          .from('catalog_product_settings')
+          .upsert(chunk, { onConflict: 'catalog_id,product_id' });
+
+        if (error) throw error;
+      }
+
+      // Single refetch at the end
+      await fetchSettings();
+    } catch (error) {
+      console.error('Error bulk updating status:', error);
+      await fetchSettings();
+    }
+  }, [fetchSettings]);
+
   return {
     settings,
     loading,
     getProductSettings,
     updateProductSettings,
+    bulkUpdateStatus,
     refetch: fetchSettings,
   };
 }
