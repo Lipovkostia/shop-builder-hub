@@ -284,7 +284,7 @@ export function VirtualProductTable({
           </div>
           
           {visibleColumns.photo && (
-            <div className="w-12 flex-shrink-0 text-xs font-medium text-muted-foreground">
+            <div className="w-8 flex-shrink-0 text-[10px] font-medium text-muted-foreground">
               Фото
             </div>
           )}
