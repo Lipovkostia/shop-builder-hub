@@ -1,25 +1,47 @@
 
 
-## Раскрытие карточки товара по клику на название (даже без описания)
+## Auto-assign categories from other price lists (bulk action)
 
-### Проблема
-Сейчас в каталоге покупателя (GuestCatalogView) клик по названию товара работает только если у товара есть описание. Если описания нет, длинное название обрезается и не раскрывается — пользователь не может прочитать его полностью.
+### Problem
+When adding products to a new price list, the seller must manually assign categories to each product, even though those same products may already have categories set in other price lists. This is tedious for large assortments (750+ items).
 
-### Решение
-Сделать название всегда кликабельным. По клику — переключать режим отображения: длинное название переносится по строкам вместо обрезки.
+### Solution
+Add a new button "Подставить категории" (auto-fill categories) to the bulk actions panel in price lists. When clicked, it will:
+1. Take all selected products
+2. Look up their category assignments in other price lists (via `catalog_product_settings`)
+3. Copy those categories into the current price list
+4. Skip products that already have categories assigned (or overwrite -- configurable via a confirmation dialog)
 
-### Изменения в файле `src/pages/GuestCatalogView.tsx`
+### User flow
 
-1. **Кнопка названия (строка ~215)** — убрать условие `product.description` для стилей курсора и hover-эффекта. Кнопка всегда будет интерактивной.
+1. Seller opens a price list, selects products (checkbox or Shift+Click)
+2. In the bulk panel, clicks the new "Подставить категории" button
+3. A confirmation dialog appears showing:
+   - How many products will be affected
+   - Option: "Replace existing categories" or "Only fill empty"
+4. On confirm, categories are copied from the first found price list that has them
 
-2. **Обработчик onNameClick (строка ~1203-1205)** — убрать проверку `if (product.description)`. Клик по названию всегда будет переключать `descriptionExpandedId`, независимо от наличия описания.
+### Technical changes
 
-3. **Режим без картинок (строка ~358-370)** — в блоке `Collapsible` для компактного режима (без изображений) показывать раскрытое название с переносом, даже если описания нет. Сейчас этот блок рендерит только описание и пустует при его отсутствии.
+**1. `src/components/admin/BulkEditPanel.tsx`**
+- Add a new prop: `onBulkAutoFillCategories?: (mode: "fill_empty" | "replace_all") => void`
+- Add a new button with a `Wand2` (or `Copy`) icon next to the existing "Категории" button
+- On click, show a small dialog/popover asking the mode (fill empty vs replace all), then call the callback
 
-### Технические детали
+**2. `src/pages/AdminPanel.tsx`**
+- Implement the `onBulkAutoFillCategories` handler:
+  - For each selected product, find `catalog_product_settings` records from OTHER catalogs (already available in the `settings` array from `useCatalogProductSettings`)
+  - For each product, pick the first non-empty `categories` array found in another catalog
+  - Call `updateCatalogProductPricing` for each product with the found categories
+  - Show a toast with results: "Categories filled for N of M products"
+- Pass the handler to `BulkEditPanel`
 
-- Строка 215: удалить условие из className — `cursor-pointer hover:text-primary transition-colors` применяются всегда
-- Строка 1204: убрать `if (product.description)` — toggle работает безусловно  
-- Строка 218: логика `isDescriptionExpanded ? 'whitespace-normal break-words' : 'whitespace-nowrap'` уже корректна и будет работать для всех товаров после снятия ограничений выше
-- В компактном режиме (без картинок, строки 358-369): добавить отображение полного названия с переносом внутри `CollapsibleContent`, если описания нет, но карточка раскрыта
+### Data flow (no DB changes needed)
+- All `catalog_product_settings` for the store are already loaded in memory via `useCatalogProductSettings`
+- The logic simply reads categories from other catalog entries and writes them to the current catalog
+- No new tables, no new edge functions, no migrations required
 
+### Edge cases
+- Products with no categories in any other price list will be skipped (count shown in toast)
+- If "fill empty" mode is selected, products that already have categories in current price list are skipped
+- Categories that exist in another price list but not in the current price list's category settings will still be assigned (they reference global category IDs)
