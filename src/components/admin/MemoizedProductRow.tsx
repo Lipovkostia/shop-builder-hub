@@ -209,7 +209,7 @@ function ProductRowComponent({
   return (
     <div className="border-b border-border">
       {/* Main row */}
-      <div className="flex items-center gap-2 px-2 py-2 hover:bg-muted/30 transition-colors min-h-[48px]">
+      <div className="flex items-center gap-1 px-1.5 py-0.5 hover:bg-muted/30 transition-colors min-h-[28px] text-xs">
         {/* Drag handle */}
         <div className="w-8 flex-shrink-0 flex items-center justify-center cursor-grab">
           <GripVertical className="h-3 w-3 text-muted-foreground/50" />
