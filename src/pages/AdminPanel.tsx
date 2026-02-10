@@ -969,8 +969,11 @@ export default function AdminPanel({
   const [profileSubSection, setProfileSubSection] = useState<'personal' | 'store' | 'settings'>('personal');
   const [isExportingProducts, setIsExportingProducts] = useState(false);
   const [catalogExportDialogOpen, setCatalogExportDialogOpen] = useState(false);
+  const [catalogPdfExportDialogOpen, setCatalogPdfExportDialogOpen] = useState(false);
   const [catalogImportDialogOpen, setCatalogImportDialogOpen] = useState(false);
   const [isExportingCatalog, setIsExportingCatalog] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [pdfExportProgress, setPdfExportProgress] = useState<{ current: number; total: number } | null>(null);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
 
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
