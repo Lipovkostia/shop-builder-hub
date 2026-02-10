@@ -1856,6 +1856,85 @@ export default function AdminPanel({
     }
   };
 
+  // Export catalog to PDF with selected columns
+  const handleExportCatalogPdf = async (enabledColumns: string[], includePhotos: boolean) => {
+    if (!currentCatalog || !effectiveStoreId) return;
+    
+    setIsExportingPdf(true);
+    setPdfExportProgress(null);
+    try {
+      const catalogProducts = allProducts
+        .filter(p => selectedCatalogProducts.has(p.id))
+        .map(product => {
+          const catalogPricing = getCatalogProductPricing(currentCatalog.id, product.id);
+          const price = getCatalogSalePrice(product, catalogPricing);
+          const buyPrice = product.buyPrice || 0;
+          const markup = catalogPricing?.markup !== undefined ? catalogPricing.markup : product.markup;
+          const packagingPrices = calculatePackagingPrices(
+            price,
+            product.unitWeight,
+            product.packagingType as PackagingType | undefined
+          );
+          let markupStr = '';
+          if (markup) {
+            markupStr = markup.type === 'percent' 
+              ? `${markup.value}%` 
+              : `${markup.value} ₽`;
+          }
+          const status = catalogPricing?.status || product.status || (product.inStock ? 'in_stock' : 'out_of_stock');
+          const portionPrices = catalogPricing?.portionPrices;
+          
+          return {
+            sku: product.sku || null,
+            name: product.name,
+            description: product.description,
+            categories: (() => {
+              const names = (catalogPricing?.categories || [])
+                .map(catId => categories.find(c => c.id === catId)?.name)
+                .filter(Boolean) as string[];
+              return names.length > 0 ? names : null;
+            })(),
+            unit: product.unit,
+            unitWeight: product.unitWeight,
+            packagingType: product.packagingType,
+            buyPrice: product.buyPrice,
+            markup: markupStr,
+            price,
+            priceFull: packagingPrices?.full ?? null,
+            priceHalf: packagingPrices?.half ?? null,
+            priceQuarter: packagingPrices?.quarter ?? null,
+            pricePortion: portionPrices?.portionPrice ?? null,
+            status,
+            images: product.images,
+          } as CatalogExportProduct;
+        });
+
+      await exportCatalogToPdf(
+        currentCatalog.name,
+        catalogProducts,
+        enabledColumns,
+        includePhotos,
+        (current, total) => setPdfExportProgress({ current, total }),
+      );
+      
+      toast({
+        title: "PDF готов",
+        description: `Экспортировано ${catalogProducts.length} товаров`
+      });
+    } catch (error: any) {
+      console.error('PDF export error:', error);
+      toast({
+        title: "Ошибка экспорта PDF",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsExportingPdf(false);
+      setPdfExportProgress(null);
+      setCatalogPdfExportDialogOpen(false);
+    }
+  };
+
   // Toggle auto-sync for a product
   const toggleAutoSync = async (productId: string) => {
     const product = supabaseProducts.find(p => p.id === productId);
