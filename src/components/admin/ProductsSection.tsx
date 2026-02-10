@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { MegacatalogDialog } from "./MegacatalogDialog";
+
 interface ProductsSectionProps {
   products: Product[];
   catalogs: Catalog[];
