@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ShoppingCart, Clock, ChevronsUpDown } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -59,71 +58,62 @@ const FormingOrderCard: React.FC<{
 
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
-      <div className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden">
-        <CollapsibleTrigger asChild>
-          <div className="p-3 cursor-pointer hover:bg-primary/10 transition-colors">
-            {/* Top row: Badge + Activity + Price */}
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <div className="flex items-center gap-2">
-                <Badge 
-                  variant="outline"
-                  className="text-[10px] px-1.5 py-0 h-5 bg-primary/10 text-primary border-primary/30"
-                >
-                  Формируют
-                </Badge>
-                <ActivityBadge status={status} timeAgo={timeAgo} />
-              </div>
-              <span className="font-bold text-base tabular-nums whitespace-nowrap">
-                {order.total.toLocaleString()} ₽
-              </span>
+      <CollapsibleTrigger asChild>
+        <div className="py-2 cursor-pointer hover:bg-muted/50 transition-colors">
+          <div className="flex items-center justify-between gap-2 mb-0.5">
+            <div className="flex items-center gap-1.5">
+              <ActivityBadge status={status} timeAgo={timeAgo} />
             </div>
-            
-            {/* Middle row: customer name + items count */}
-            <div className="flex items-center gap-2 text-xs sm:text-sm">
-              <ChevronsUpDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              <span className="font-medium text-foreground truncate">
-                {order.customerName}
-              </span>
-              {order.items && order.items.length > 0 && !isExpanded && (
-                <span className="text-muted-foreground whitespace-nowrap">
-                  • {order.items.length} поз.
-                </span>
-              )}
-            </div>
-            
-            {/* Bottom row: time + phone */}
-            <div className="flex items-center justify-between gap-2 mt-1 text-[11px] sm:text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Clock className="h-3 w-3 flex-shrink-0" />
-                <span>
-                  {new Date(order.createdAt).toLocaleString('ru-RU', { 
-                    day: 'numeric', 
-                    month: 'short', 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                </span>
-              </div>
-              {order.customerPhone && (
-                <span className="truncate max-w-[120px] sm:max-w-[180px]">
-                  {order.customerPhone}
-                </span>
-              )}
-            </div>
+            <span className="font-bold text-sm tabular-nums whitespace-nowrap">
+              {order.total.toLocaleString()} ₽
+            </span>
           </div>
-        </CollapsibleTrigger>
-        
-        <CollapsibleContent>
-          <div className="px-3 pb-3">
-            {order.items && order.items.length > 0 ? (
-              <div className="border-t border-border/50 pt-2">
-                <div className="space-y-1.5">
+          
+          <div className="flex items-center gap-1.5 text-sm">
+            <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <span className="font-medium text-foreground truncate">
+              {order.customerName}
+            </span>
+            {order.items && order.items.length > 0 && !isExpanded && (
+              <span className="text-muted-foreground text-xs whitespace-nowrap">
+                · {order.items.length} поз.
+              </span>
+            )}
+          </div>
+          
+          <div className="flex items-center justify-between gap-2 mt-0.5 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3 flex-shrink-0" />
+              <span>
+                {new Date(order.createdAt).toLocaleString('ru-RU', { 
+                  day: 'numeric', 
+                  month: 'short', 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
+              </span>
+            </div>
+            {order.customerPhone && (
+              <span className="truncate max-w-[140px]">
+                {order.customerPhone}
+              </span>
+            )}
+          </div>
+        </div>
+      </CollapsibleTrigger>
+      
+      <CollapsibleContent>
+        <div className="pb-2">
+          {order.items && order.items.length > 0 ? (
+            <div className="border-t border-border/40 pt-1.5">
+              <ScrollArea className="max-h-[200px]">
+                <div className="space-y-0.5 pr-2">
                   {order.items.map((item) => (
-                    <div key={item.id} className="flex items-baseline justify-between gap-2 text-xs">
-                      <span className="text-foreground truncate min-w-0 flex-1">
+                    <div key={item.id} className="flex items-baseline justify-between gap-1.5 text-xs py-0.5">
+                      <span className="text-foreground truncate min-w-0 flex-1 leading-tight">
                         {item.productName}
                       </span>
-                      <span className="text-muted-foreground whitespace-nowrap flex-shrink-0">
+                      <span className="text-muted-foreground whitespace-nowrap flex-shrink-0 tabular-nums">
                         {item.quantity}×{item.price.toLocaleString()}
                       </span>
                       <span className="font-semibold text-primary tabular-nums whitespace-nowrap flex-shrink-0">
@@ -132,24 +122,24 @@ const FormingOrderCard: React.FC<{
                     </div>
                   ))}
                 </div>
-                
-                <div className="flex items-center justify-between pt-2 mt-2 border-t border-dashed border-border/50">
-                  <span className="text-[11px] text-muted-foreground">
-                    Итого · {order.items.length} поз.
-                  </span>
-                  <span className="font-bold text-sm tabular-nums">
-                    {order.total.toLocaleString()} ₽
-                  </span>
-                </div>
+              </ScrollArea>
+              
+              <div className="flex items-center justify-between pt-1.5 mt-1.5 border-t border-dashed border-border/40">
+                <span className="text-[11px] text-muted-foreground">
+                  Итого · {order.items.length} поз.
+                </span>
+                <span className="font-bold text-sm tabular-nums">
+                  {order.total.toLocaleString()} ₽
+                </span>
               </div>
-            ) : (
-              <div className="border-t border-border/50 pt-2 text-xs text-muted-foreground italic">
-                Корзина пуста
-              </div>
-            )}
-          </div>
-        </CollapsibleContent>
-      </div>
+            </div>
+          ) : (
+            <div className="border-t border-border/40 pt-1.5 text-xs text-muted-foreground italic">
+              Корзина пуста
+            </div>
+          )}
+        </div>
+      </CollapsibleContent>
     </Collapsible>
   );
 };
@@ -172,17 +162,13 @@ export const FormingOrdersSection: React.FC<FormingOrdersSectionProps> = ({ stor
 
   if (isLoading && formingOrders.length === 0) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <ShoppingCart className="h-4 w-4" />
-            Сейчас формируют
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-sm text-muted-foreground">Загрузка...</div>
-        </CardContent>
-      </Card>
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <ShoppingCart className="h-4 w-4" />
+          <span className="font-semibold text-sm">Сейчас формируют</span>
+        </div>
+        <div className="text-sm text-muted-foreground">Загрузка...</div>
+      </div>
     );
   }
 
@@ -191,32 +177,26 @@ export const FormingOrdersSection: React.FC<FormingOrdersSectionProps> = ({ stor
   }
 
   return (
-    <Card className="border-primary/20 bg-primary/5">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <ShoppingCart className="h-4 w-4 text-primary" />
-          <span>Сейчас формируют</span>
-          <Badge variant="secondary" className="ml-auto">
-            {formingOrders.length}
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <ScrollArea className="max-h-[400px]">
-          <div className="space-y-3">
-            {formingOrders.map((order) => (
-              <FormingOrderCard
-                key={order.id}
-                order={order}
-                getActivityStatus={getActivityStatus}
-                formatTimeAgo={formatTimeAgo}
-                isExpanded={expandedOrders.has(order.id)}
-                onToggle={() => toggleOrder(order.id)}
-              />
-            ))}
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <ShoppingCart className="h-4 w-4 text-primary" />
+        <span className="font-semibold text-sm">Сейчас формируют</span>
+        <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5">
+          {formingOrders.length}
+        </Badge>
+      </div>
+      <div className="divide-y divide-border/30">
+        {formingOrders.map((order) => (
+          <FormingOrderCard
+            key={order.id}
+            order={order}
+            getActivityStatus={getActivityStatus}
+            formatTimeAgo={formatTimeAgo}
+            isExpanded={expandedOrders.has(order.id)}
+            onToggle={() => toggleOrder(order.id)}
+          />
+        ))}
+      </div>
+    </div>
   );
 };
