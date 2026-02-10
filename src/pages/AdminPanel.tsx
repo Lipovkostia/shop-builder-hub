@@ -4771,14 +4771,15 @@ export default function AdminPanel({
                         });
                       }
                     }}
-                    onBulkAutoFillCategories={(mode) => {
+                    onBulkAutoFillCategories={async (mode) => {
                       if (!currentCatalog) return;
                       const selectedIds = Array.from(selectedCatalogBulkProducts);
                       let filled = 0;
                       let skipped = 0;
+                      const allCopiedCategoryIds = new Set<string>();
+                      let sourceCatalogId: string | null = null;
 
                       selectedIds.forEach(productId => {
-                        // Check if product already has categories in current catalog
                         const currentSetting = catalogProductSettings.find(
                           s => s.catalog_id === currentCatalog.id && s.product_id === productId
                         );
@@ -4789,7 +4790,6 @@ export default function AdminPanel({
                           return;
                         }
 
-                        // Find categories from OTHER catalogs
                         const otherSetting = catalogProductSettings.find(
                           s => s.product_id === productId && s.catalog_id !== currentCatalog.id && s.categories && s.categories.length > 0
                         );
@@ -4797,10 +4797,53 @@ export default function AdminPanel({
                         if (otherSetting) {
                           updateCatalogProductPricing(currentCatalog.id, productId, { categories: otherSetting.categories });
                           filled++;
+                          otherSetting.categories.forEach(cid => allCopiedCategoryIds.add(cid));
+                          if (!sourceCatalogId) sourceCatalogId = otherSetting.catalog_id;
                         } else {
                           skipped++;
                         }
                       });
+
+                      // Copy category hierarchy (sections) from source catalog
+                      if (sourceCatalogId && allCopiedCategoryIds.size > 0) {
+                        try {
+                          // Fetch all category settings from source catalog
+                          const { data: sourceSettings } = await supabase
+                            .from('catalog_category_settings')
+                            .select('*')
+                            .eq('catalog_id', sourceCatalogId);
+
+                          if (sourceSettings && sourceSettings.length > 0) {
+                            // Collect parent category IDs too
+                            const parentIds = new Set<string>();
+                            sourceSettings.forEach(s => {
+                              if (allCopiedCategoryIds.has(s.category_id) && s.parent_category_id) {
+                                parentIds.add(s.parent_category_id);
+                              }
+                            });
+
+                            // Settings to copy: copied categories + their parent sections
+                            const relevantIds = new Set([...allCopiedCategoryIds, ...parentIds]);
+                            const settingsToCopy = sourceSettings.filter(s => relevantIds.has(s.category_id));
+
+                            if (settingsToCopy.length > 0) {
+                              const upsertData = settingsToCopy.map(s => ({
+                                catalog_id: currentCatalog.id,
+                                category_id: s.category_id,
+                                parent_category_id: s.parent_category_id,
+                                sort_order: s.sort_order,
+                                custom_name: s.custom_name,
+                              }));
+
+                              await supabase
+                                .from('catalog_category_settings')
+                                .upsert(upsertData, { onConflict: 'catalog_id,category_id' });
+                            }
+                          }
+                        } catch (err) {
+                          console.error('Error copying category hierarchy:', err);
+                        }
+                      }
 
                       setSelectedCatalogBulkProducts(new Set());
                       toast({
