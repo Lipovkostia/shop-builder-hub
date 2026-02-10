@@ -257,7 +257,7 @@ export function SortableTableRow({
       style={style}
       className={cn(
         "border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50",
-        "h-11",
+        "h-7",
         isDragging && "bg-muted/80 shadow-lg z-50",
         className
       )}
