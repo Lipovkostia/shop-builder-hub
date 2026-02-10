@@ -537,7 +537,7 @@ export function RetailProductCard({
                 {product.name}
               </h4>
               <p 
-                className="text-xs leading-relaxed text-foreground/80"
+                className="text-xs leading-relaxed text-foreground/90 font-sans"
                 style={getFontStyle(fontSettings?.productDescription)}
               >
                 {product.description}
