@@ -1,43 +1,57 @@
 
-## Массовая замена главной фото на фото большего размера
 
-### Проблема
-Сейчас главная фотография товара (первая в массиве `images`) может быть маленького размера, и на витрине она выглядит размытой. При этом среди других фото товара могут быть изображения в высоком разрешении.
+## Fix: Category Dropdown Not Responding to Clicks
 
-### Решение
-Добавить в панель массового редактирования (BulkEditPanel) новую кнопку **"Лучшее фото главным"**, которая для каждого выбранного товара:
-1. Загружает все изображения товара в фоне
-2. Определяет разрешение каждого изображения (ширина x высота)
-3. Находит фото с наибольшим разрешением
-4. Если оно не является главным -- переставляет его на первую позицию
+### Problem
+In the category dropdown menus (Guest Catalog, Customer Dashboard, Storefront), categories that have subcategories are wrapped in plain `<div>` elements. Radix UI's DropdownMenu component expects all items to be direct children of the content or inside `DropdownMenuGroup` -- wrapping them in plain `<div>` breaks the internal focus/click system. This causes some items (like "сыр") to be visually selectable but not actually triggering the click handler.
 
-### Что увидит пользователь
-- В панели массового редактирования (синяя полоса сверху при выборе товаров) появится новая кнопка с иконкой изображения -- **"Лучшее фото"**
-- При нажатии запустится процесс проверки всех фото выбранных товаров
-- Появится индикатор загрузки (спиннер) на время обработки
-- По завершении -- уведомление с количеством обновлённых товаров
-- Товары, у которых уже стоит самое большое фото, останутся без изменений
+### Solution
+Replace all plain `<div key={...}>` wrappers around grouped DropdownMenuItems with `<DropdownMenuGroup key={...}>` in three files:
 
-### Техническая реализация
+### Files to Modify
 
-**Файл: `src/components/admin/BulkEditPanel.tsx`**
-- Добавить новый prop `onBulkBestPhoto?: () => void`
-- Добавить состояние `isBestPhotoProcessing`
-- Добавить кнопку с иконкой `ImagePlus` между кнопками "Подставить категории" и селектором полей
+**1. `src/pages/GuestCatalogView.tsx` (lines ~992-1017)**
+- Replace `<div key={cat.id}>` with `<DropdownMenuGroup key={cat.id}>`
+- Add `onSelect` handlers to all `DropdownMenuItem` components for extra reliability
+- Import `DropdownMenuGroup` (already exported from dropdown-menu.tsx)
 
-**Файл: `src/pages/AdminPanel.tsx`**
-- Создать функцию `handleBulkBestPhoto`:
-  - Для каждого выбранного товара с 2+ фото загрузить все изображения через `new Image()`
-  - Дождаться загрузки, сравнить `naturalWidth * naturalHeight`
-  - Если лучшее фото не на первой позиции -- переставить его и вызвать `updateSupabaseProduct`
-  - Учесть `syncedMoyskladImages` при перестановке (как в `handleSetMainImage`)
-- Передать функцию в `BulkEditPanel` через prop `onBulkBestPhoto`
+**2. `src/pages/CustomerDashboard.tsx` (lines ~650-675)**
+- Same fix: replace `<div key={cat.id}>` with `<DropdownMenuGroup key={cat.id}>`
+- Add `onSelect` handlers
 
-Вспомогательная функция для определения размера изображения по URL:
-```text
-getImageDimensions(url: string): Promise<{width, height}>
-  - Создаёт new Image()
-  - Устанавливает crossOrigin = "anonymous"
-  - Возвращает naturalWidth и naturalHeight через onload
-  - Таймаут 10 секунд на случай зависания
+**3. `src/pages/StoreFront.tsx` (lines ~914-969)**  
+- Replace `<div key={cat.id}>` with `<DropdownMenuGroup key={cat.id}>`
+- The StoreFront already uses a custom `<div>` for the section header (expand/collapse toggle) -- this will be kept but the outer wrapper will use `DropdownMenuGroup`
+- Add `onSelect` handlers to child items
+
+### Technical Details
+
+The key change in each file:
+```tsx
+// BEFORE (broken):
+<div key={cat.id}>
+  <DropdownMenuItem onClick={() => onSelectCategory(cat.id)}>
+    ...
+  </DropdownMenuItem>
+  {children.map(child => (
+    <DropdownMenuItem key={child.id} onClick={() => onSelectCategory(child.id)}>
+      ...
+    </DropdownMenuItem>
+  ))}
+</div>
+
+// AFTER (fixed):
+<DropdownMenuGroup key={cat.id}>
+  <DropdownMenuItem onSelect={() => onSelectCategory(cat.id)}>
+    ...
+  </DropdownMenuItem>
+  {children.map(child => (
+    <DropdownMenuItem key={child.id} onSelect={() => onSelectCategory(child.id)}>
+      ...
+    </DropdownMenuItem>
+  ))}
+</DropdownMenuGroup>
 ```
+
+Using `onSelect` instead of `onClick` is the Radix-recommended approach -- it handles both mouse clicks and keyboard selection, and automatically closes the menu after selection.
+
