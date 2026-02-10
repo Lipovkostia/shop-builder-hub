@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image, LayoutDashboard, LogOut, Mail, Lock, Loader2, Package, Sparkles } from 'lucide-react';
+import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image, LayoutDashboard, LogOut, Mail, Lock, Loader2, Package, Sparkles, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import SlidesManager from '@/components/admin/SlidesManager';
 import SuperAdminDashboard from '@/components/admin/SuperAdminDashboard';
+import ProductMatchingSection from '@/components/admin/ProductMatchingSection';
 
 interface StoreWithCounts {
   id: string;
@@ -438,6 +439,10 @@ export default function SuperAdmin() {
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Покупатели</span>
             </TabsTrigger>
+            <TabsTrigger value="matching" className="gap-2">
+              <Link2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Сопоставление</span>
+            </TabsTrigger>
             <TabsTrigger value="slides" className="gap-2">
               <Image className="h-4 w-4" />
               <span className="hidden sm:inline">Слайды</span>
@@ -447,6 +452,11 @@ export default function SuperAdmin() {
           {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="space-y-6">
             <SuperAdminDashboard onNavigate={setActiveTab} />
+          </TabsContent>
+
+          {/* Matching Tab */}
+          <TabsContent value="matching" className="space-y-6">
+            <ProductMatchingSection />
           </TabsContent>
 
           {/* Stores Tab */}
