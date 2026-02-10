@@ -419,7 +419,7 @@ export function VirtualProductTable({
       {/* Virtualized Body */}
       <div 
         ref={parentRef}
-        className="overflow-y-auto overflow-x-hidden"
+        className="overflow-y-auto overflow-x-auto"
         style={{ height: 'calc(100vh - 300px)', minHeight: '400px' }}
       >
         <div
