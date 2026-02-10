@@ -4699,16 +4699,33 @@ export default function AdminPanel({
                     selectedCount={selectedCatalogBulkProducts.size}
                     onClearSelection={() => setSelectedCatalogBulkProducts(new Set())}
                     onBulkUpdate={(updates) => {
-                      selectedCatalogBulkProducts.forEach(productId => {
-                        const product = allProducts.find(p => p.id === productId);
-                        if (product) {
-                          updateProduct({ ...product, ...updates });
-                        }
-                      });
+                      const count = selectedCatalogBulkProducts.size;
+                      if (currentCatalog && updates.status) {
+                        // Status changes go to catalog-specific settings
+                        selectedCatalogBulkProducts.forEach(productId => {
+                          updateCatalogProductPricing(currentCatalog.id, productId, { status: updates.status });
+                        });
+                      }
+                      // Other updates (unit, packaging, description, markup) go to base product
+                      const baseUpdates = { ...updates };
+                      delete baseUpdates.status;
+                      if (Object.keys(baseUpdates).length > 0) {
+                        selectedCatalogBulkProducts.forEach(productId => {
+                          const product = allProducts.find(p => p.id === productId);
+                          if (product) {
+                            updateProduct({ ...product, ...baseUpdates });
+                          }
+                        });
+                      }
+                      if (currentCatalog && updates.markup) {
+                        selectedCatalogBulkProducts.forEach(productId => {
+                          updateCatalogProductPricing(currentCatalog.id, productId, { markup: updates.markup });
+                        });
+                      }
                       setSelectedCatalogBulkProducts(new Set());
                       toast({
                         title: "Товары обновлены",
-                        description: `Обновлено ${selectedCatalogBulkProducts.size} товаров`,
+                        description: `Обновлено ${count} товаров`,
                       });
                     }}
                     onRemoveFromCatalog={() => {
