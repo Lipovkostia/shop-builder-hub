@@ -566,7 +566,8 @@ export async function importProductsToCatalogExtended(
   catalogId: string,
   identifierType: 'sku' | 'name',
   fieldsToUpdate: ('buyPrice' | 'price' | 'unit' | 'name' | 'photos')[],
-  onProgress: (progress: PriceListImportProgress) => void
+  onProgress: (progress: PriceListImportProgress) => void,
+  hideNotInFile: boolean = true
 ): Promise<PriceListImportResult> {
   // Count total photos to upload
   const totalPhotos = fieldsToUpdate.includes('photos')
@@ -844,26 +845,28 @@ export async function importProductsToCatalogExtended(
     }
     
     // Get all products currently visible in this catalog
-    const { data: visibleInCatalog } = await supabase
-      .from('product_catalog_visibility')
-      .select('product_id')
-      .eq('catalog_id', catalogId);
-    
-    // Hide products that are not in the Excel file
-    if (visibleInCatalog) {
-      for (const vis of visibleInCatalog) {
-        if (!productsInExcel.has(vis.product_id)) {
-          // This product was in catalog but not in Excel - hide it
-          const { error: hideError } = await supabase
-            .from('catalog_product_settings')
-            .upsert({
-              product_id: vis.product_id,
-              catalog_id: catalogId,
-              status: 'hidden'
-            }, { onConflict: 'product_id,catalog_id' });
-          
-          if (!hideError) {
-            progress.hidden++;
+    if (hideNotInFile) {
+      const { data: visibleInCatalog } = await supabase
+        .from('product_catalog_visibility')
+        .select('product_id')
+        .eq('catalog_id', catalogId);
+      
+      // Hide products that are not in the Excel file
+      if (visibleInCatalog) {
+        for (const vis of visibleInCatalog) {
+          if (!productsInExcel.has(vis.product_id)) {
+            // This product was in catalog but not in Excel - hide it
+            const { error: hideError } = await supabase
+              .from('catalog_product_settings')
+              .upsert({
+                product_id: vis.product_id,
+                catalog_id: catalogId,
+                status: 'hidden'
+              }, { onConflict: 'product_id,catalog_id' });
+            
+            if (!hideError) {
+              progress.hidden++;
+            }
           }
         }
       }

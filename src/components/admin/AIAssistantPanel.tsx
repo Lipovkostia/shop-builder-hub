@@ -124,6 +124,9 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
+  // Hide not in file option
+  const [hideNotInFile, setHideNotInFile] = useState(true);
+  
   // New products confirmation state
   const [showNewProductsDialog, setShowNewProductsDialog] = useState(false);
   const [productAnalysis, setProductAnalysis] = useState<ProductAnalysis | null>(null);
@@ -558,7 +561,8 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
           } else if (progress.status === 'complete') {
             setImportStatus('Импорт завершён!');
           }
-        }
+        },
+        hideNotInFile
       );
       
       if (result.success) {
@@ -732,15 +736,28 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
           
         {/* Column Mapping Step */}
           {excelPreview && selectedFile && (
-            <ExcelColumnMapping
-              columns={excelPreview.columns}
-              mapping={columnMapping}
-              onMappingChange={setColumnMapping}
-              onConfirm={handleConfirmMapping}
-              onCancel={handleCancelMapping}
-              fileName={selectedFile.name}
-              rowCount={excelPreview.rowCount}
-            />
+            <div>
+              <ExcelColumnMapping
+                columns={excelPreview.columns}
+                mapping={columnMapping}
+                onMappingChange={setColumnMapping}
+                onConfirm={handleConfirmMapping}
+                onCancel={handleCancelMapping}
+                fileName={selectedFile.name}
+                rowCount={excelPreview.rowCount}
+              />
+              <div className="px-4 pb-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={hideNotInFile}
+                    onCheckedChange={(checked) => setHideNotInFile(checked === true)}
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    Скрыть товары, которых нет в файле
+                  </span>
+                </label>
+              </div>
+            </div>
           )}
 
           {/* Excel Import Section - compact design */}
