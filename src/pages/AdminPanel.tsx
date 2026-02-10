@@ -812,6 +812,9 @@ export default function AdminPanel({
   const [newCatalogCategories, setNewCatalogCategories] = useState<Set<string>>(new Set());
   const [showAddCatalog, setShowAddCatalog] = useState(false);
   const [catalogProductSearch, setCatalogProductSearch] = useState("");
+  const [catalogFilterCategory, setCatalogFilterCategory] = useState("");
+  const [catalogFilterStatus, setCatalogFilterStatus] = useState("");
+  const [catalogFilterPrice, setCatalogFilterPrice] = useState("all");
   const [selectedCatalogProducts, setSelectedCatalogProducts] = useState<Set<string>>(new Set());
   const [editingCatalogName, setEditingCatalogName] = useState(false);
   const [selectedCatalogBulkProducts, setSelectedCatalogBulkProducts] = useState<Set<string>>(new Set());
@@ -1081,7 +1084,7 @@ export default function AdminPanel({
   }, [supabaseProducts]);
   
   // Categories from Supabase - use storeCategories directly
-  const categories = storeCategories.map(c => ({ id: c.id, name: c.name, sort_order: c.sort_order }));
+  const categories = storeCategories.map(c => ({ id: c.id, name: c.name, sort_order: c.sort_order, parent_id: c.parent_id }));
   const [newCategoryName, setNewCategoryName] = useState("");
   
   // Add new category handler - creates in backend
@@ -4352,6 +4355,9 @@ export default function AdminPanel({
                           setCurrentCatalog(null);
                           setSelectedCatalogProducts(new Set());
                           setCatalogProductSearch("");
+                          setCatalogFilterCategory("");
+                          setCatalogFilterStatus("");
+                          setCatalogFilterPrice("all");
                         }}
                       >
                         <ArrowLeft className="h-4 w-4 mr-2" />
@@ -4618,14 +4624,74 @@ export default function AdminPanel({
                   })()}
 
 
-                  <div className="mb-4">
+                  <div className="mb-4 flex flex-wrap items-center gap-2">
                     <Input
                       type="text"
                       placeholder="Поиск товаров..."
                       value={catalogProductSearch}
                       onChange={(e) => setCatalogProductSearch(e.target.value)}
-                      className="max-w-sm"
+                      className="max-w-[200px] h-9"
                     />
+                    <Select value={catalogFilterCategory} onValueChange={setCatalogFilterCategory}>
+                      <SelectTrigger className="w-[160px] h-9">
+                        <SelectValue placeholder="Категория" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Все категории</SelectItem>
+                        {categories
+                          .filter(c => !c.parent_id)
+                          .map(parent => (
+                            <React.Fragment key={parent.id}>
+                              <SelectItem value={parent.id} className="font-semibold">{parent.name}</SelectItem>
+                              {categories
+                                .filter(c => c.parent_id === parent.id)
+                                .map(sub => (
+                                  <SelectItem key={sub.id} value={sub.id} className="pl-6">{sub.name}</SelectItem>
+                                ))}
+                            </React.Fragment>
+                          ))}
+                        {categories.filter(c => c.parent_id && !categories.some(p => p.id === c.parent_id)).map(orphan => (
+                          <SelectItem key={orphan.id} value={orphan.id}>{orphan.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={catalogFilterStatus} onValueChange={setCatalogFilterStatus}>
+                      <SelectTrigger className="w-[150px] h-9">
+                        <SelectValue placeholder="Статус" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Все статусы</SelectItem>
+                        <SelectItem value="in_stock">В наличии</SelectItem>
+                        <SelectItem value="pre_order">Предзаказ</SelectItem>
+                        <SelectItem value="out_of_stock">Нет в наличии</SelectItem>
+                        <SelectItem value="hidden">Скрыт</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={catalogFilterPrice} onValueChange={setCatalogFilterPrice}>
+                      <SelectTrigger className="w-[130px] h-9">
+                        <SelectValue placeholder="Цена" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Все цены</SelectItem>
+                        <SelectItem value="with_price">С ценой</SelectItem>
+                        <SelectItem value="no_price">Без цены</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {(catalogFilterCategory && catalogFilterCategory !== "all" || catalogFilterStatus && catalogFilterStatus !== "all" || catalogFilterPrice !== "all") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 px-2 text-muted-foreground"
+                        onClick={() => {
+                          setCatalogFilterCategory("");
+                          setCatalogFilterStatus("");
+                          setCatalogFilterPrice("all");
+                        }}
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Сбросить
+                      </Button>
+                    )}
                   </div>
 
                   {/* Bulk Edit Panel for catalog products */}
@@ -4812,6 +4878,25 @@ export default function AdminPanel({
                         {allProducts
                           .filter(p => selectedCatalogProducts.has(p.id))
                           .filter(p => !catalogProductSearch || p.name.toLowerCase().includes(catalogProductSearch.toLowerCase()))
+                          .filter(p => {
+                            if (catalogFilterCategory && catalogFilterCategory !== "all") {
+                              const cp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, p.id) : undefined;
+                              const cats = cp?.categories ?? p.categories;
+                              if (!cats || !cats.includes(catalogFilterCategory)) return false;
+                            }
+                            if (catalogFilterStatus && catalogFilterStatus !== "all") {
+                              const cp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, p.id) : undefined;
+                              const st = getCatalogProductStatus(p, cp);
+                              if (st !== catalogFilterStatus) return false;
+                            }
+                            if (catalogFilterPrice !== "all") {
+                              const cp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, p.id) : undefined;
+                              const price = getCatalogSalePrice(p, cp);
+                              if (catalogFilterPrice === "with_price" && (!price || price <= 0)) return false;
+                              if (catalogFilterPrice === "no_price" && price > 0) return false;
+                            }
+                            return true;
+                          })
                           .map((product) => {
                             // Get catalog-specific pricing/data
                             const catalogPricing = currentCatalog ? getCatalogProductPricing(currentCatalog.id, product.id) : undefined;
@@ -4852,7 +4937,26 @@ export default function AdminPanel({
                                         const shiftKey = e.shiftKey;
                                         const filteredCatalogProducts = allProducts
                                           .filter(p => selectedCatalogProducts.has(p.id))
-                                          .filter(p => !catalogProductSearch || p.name.toLowerCase().includes(catalogProductSearch.toLowerCase()));
+                                          .filter(p => !catalogProductSearch || p.name.toLowerCase().includes(catalogProductSearch.toLowerCase()))
+                                          .filter(p => {
+                                            if (catalogFilterCategory && catalogFilterCategory !== "all") {
+                                              const cp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, p.id) : undefined;
+                                              const cats = cp?.categories ?? p.categories;
+                                              if (!cats || !cats.includes(catalogFilterCategory)) return false;
+                                            }
+                                            if (catalogFilterStatus && catalogFilterStatus !== "all") {
+                                              const cp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, p.id) : undefined;
+                                              const st = getCatalogProductStatus(p, cp);
+                                              if (st !== catalogFilterStatus) return false;
+                                            }
+                                            if (catalogFilterPrice !== "all") {
+                                              const cp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, p.id) : undefined;
+                                              const price = getCatalogSalePrice(p, cp);
+                                              if (catalogFilterPrice === "with_price" && (!price || price <= 0)) return false;
+                                              if (catalogFilterPrice === "no_price" && price > 0) return false;
+                                            }
+                                            return true;
+                                          });
                                         
                                         setSelectedCatalogBulkProducts(prev => {
                                           const newSet = new Set(prev);
