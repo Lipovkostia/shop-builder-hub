@@ -119,6 +119,8 @@ export interface CatalogProductPricing {
   portionPrices?: PortionPrices;        // Цены порций для этого каталога
   status?: ProductStatus;               // Статус в этом каталоге
   categories?: string[];                // Категории в этом каталоге
+  fixedPrice?: number | null;           // Фиксированная цена в этом каталоге
+  isFixedPrice?: boolean;               // Включён ли режим фиксированной цены
 }
 
 export interface Catalog {
