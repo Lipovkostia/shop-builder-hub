@@ -4681,6 +4681,43 @@ export default function AdminPanel({
                         });
                       }
                     }}
+                    onBulkAutoFillCategories={(mode) => {
+                      if (!currentCatalog) return;
+                      const selectedIds = Array.from(selectedCatalogBulkProducts);
+                      let filled = 0;
+                      let skipped = 0;
+
+                      selectedIds.forEach(productId => {
+                        // Check if product already has categories in current catalog
+                        const currentSetting = catalogProductSettings.find(
+                          s => s.catalog_id === currentCatalog.id && s.product_id === productId
+                        );
+                        const hasExisting = currentSetting?.categories && currentSetting.categories.length > 0;
+
+                        if (mode === "fill_empty" && hasExisting) {
+                          skipped++;
+                          return;
+                        }
+
+                        // Find categories from OTHER catalogs
+                        const otherSetting = catalogProductSettings.find(
+                          s => s.product_id === productId && s.catalog_id !== currentCatalog.id && s.categories && s.categories.length > 0
+                        );
+
+                        if (otherSetting) {
+                          updateCatalogProductPricing(currentCatalog.id, productId, { categories: otherSetting.categories });
+                          filled++;
+                        } else {
+                          skipped++;
+                        }
+                      });
+
+                      setSelectedCatalogBulkProducts(new Set());
+                      toast({
+                        title: "Категории подставлены",
+                        description: `Заполнено: ${filled}, пропущено: ${skipped}`,
+                      });
+                    }}
                     onBulkSetPrice={(price) => {
                       if (currentCatalog) {
                         const count = selectedCatalogBulkProducts.size;
