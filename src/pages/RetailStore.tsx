@@ -186,10 +186,25 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
       case "name-desc":
         result.sort((a, b) => b.name.localeCompare(a.name, "ru"));
         break;
+      default:
+        // When viewing a parent section, sort products by subcategory order
+        // so products from the first subcategory appear first, then second, etc.
+        if (selectedCategory && selectedCategories.length > 1) {
+          const catOrderMap = new Map<string, number>();
+          selectedCategories.forEach((catId, idx) => catOrderMap.set(catId, idx));
+          result.sort((a, b) => {
+            const aCatIds = a.category_ids || [];
+            const bCatIds = b.category_ids || [];
+            const aOrder = Math.min(...aCatIds.map(id => catOrderMap.get(id) ?? 999999));
+            const bOrder = Math.min(...bCatIds.map(id => catOrderMap.get(id) ?? 999999));
+            return aOrder - bOrder;
+          });
+        }
+        break;
     }
 
     return result;
-  }, [products, searchQuery, selectedCategories, currentPriceRange, inStockOnly, sortBy]);
+  }, [products, searchQuery, selectedCategories, selectedCategory, currentPriceRange, inStockOnly, sortBy]);
 
   // Get current category data
   const currentCategory = useMemo(() => {
