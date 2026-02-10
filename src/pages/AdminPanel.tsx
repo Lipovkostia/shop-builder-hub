@@ -121,6 +121,7 @@ import { WholesaleSettingsSection } from "@/components/admin/WholesaleSettingsSe
 import { FormingOrdersSection } from "@/components/admin/FormingOrdersSection";
 import { ProductsSection } from "@/components/admin/ProductsSection";
 import { CategorySettingsSection } from "@/components/admin/CategorySettingsSection";
+import { MegacatalogSection } from "@/components/admin/MegacatalogSection";
 
 // Removed localStorage keys - now using Supabase
 
