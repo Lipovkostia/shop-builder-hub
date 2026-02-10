@@ -388,10 +388,7 @@ export function ProductsSection({
           Добавить товар
         </Button>
 
-        <Button variant="outline" size="sm" onClick={() => setMegacatalogOpen(true)}>
-          <Globe className="h-4 w-4 mr-2" />
-          Мегакаталог
-        </Button>
+        {/* Megacatalog is now a separate admin section */}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
