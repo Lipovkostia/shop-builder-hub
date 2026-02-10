@@ -633,6 +633,7 @@ export default function AdminPanel({
     getProductSettings: getCatalogProductSettingsFromDB,
     updateProductSettings: updateCatalogProductSettingsInDB,
     bulkUpdateStatus: bulkUpdateCatalogStatus,
+    updateProductSortOrders: updateCatalogProductSortOrders,
     refetch: refetchCatalogProductSettings
   } = useCatalogProductSettings(effectiveStoreId);
   
@@ -824,6 +825,12 @@ export default function AdminPanel({
   const [catalogSettingsOpen, setCatalogSettingsOpen] = useState<string | null>(null);
   const [editingCatalogListName, setEditingCatalogListName] = useState<string | null>(null);
   const [catalogListNameValue, setCatalogListNameValue] = useState("");
+  
+  // Column sorting for price list
+  type CatalogSortColumn = "name" | "categories" | "buyPrice" | "price" | "status" | "unit" | "type" | null;
+  type SortDir = "asc" | "desc";
+  const [catalogSortColumn, setCatalogSortColumn] = useState<CatalogSortColumn>(null);
+  const [catalogSortDirection, setCatalogSortDirection] = useState<SortDir>("asc");
   
   // Expanded orders state - by default everything is collapsed
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
@@ -4925,6 +4932,56 @@ export default function AdminPanel({
                   <p className="text-xs text-muted-foreground mb-2">
                     * Фото, название, описание, ед. изм., объём и вид синхронизируются из ассортимента. Категории, наценка и цены порций — индивидуальны для каждого прайс-листа. Статус синхронизируется с витриной.
                   </p>
+                  {catalogSortColumn && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="secondary" className="text-xs">
+                        Сортировка: {catalogSortColumn === "name" ? "Название" : catalogSortColumn === "categories" ? "Категория" : catalogSortColumn === "buyPrice" ? "Себестоимость" : catalogSortColumn === "price" ? "Цена" : catalogSortColumn === "status" ? "Статус" : catalogSortColumn === "unit" ? "Ед. изм." : "Вид"} {catalogSortDirection === "asc" ? "А→Я" : "Я→А"}
+                      </Badge>
+                      <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { setCatalogSortColumn(null); setCatalogSortDirection("asc"); }}>
+                        <X className="h-3 w-3 mr-1" />Сбросить сортировку
+                      </Button>
+                    </div>
+                  )}
+                  <DraggableTableWrapper
+                    items={(() => {
+                      return allProducts
+                        .filter(p => selectedCatalogProducts.has(p.id))
+                        .filter(p => !catalogProductSearch || p.name.toLowerCase().includes(catalogProductSearch.toLowerCase()))
+                        .filter(p => {
+                          if (catalogFilterCategory && catalogFilterCategory !== "all") {
+                            const cp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, p.id) : undefined;
+                            const cats = cp?.categories ?? p.categories;
+                            if (!cats || !cats.includes(catalogFilterCategory)) return false;
+                          }
+                          if (catalogFilterStatus && catalogFilterStatus !== "all") {
+                            const cp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, p.id) : undefined;
+                            const st = getCatalogProductStatus(p, cp);
+                            if (st !== catalogFilterStatus) return false;
+                          }
+                          if (catalogFilterPrice !== "all") {
+                            const cp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, p.id) : undefined;
+                            const price = getCatalogSalePrice(p, cp);
+                            if (catalogFilterPrice === "with_price" && (!price || price <= 0)) return false;
+                            if (catalogFilterPrice === "no_price" && price > 0) return false;
+                          }
+                          return true;
+                        })
+                        .sort((a, b) => {
+                          if (!catalogSortColumn) {
+                            const aSettings = currentCatalog ? getCatalogProductSettingsFromDB(currentCatalog.id, a.id) : undefined;
+                            const bSettings = currentCatalog ? getCatalogProductSettingsFromDB(currentCatalog.id, b.id) : undefined;
+                            return (aSettings?.sort_order ?? 999999) - (bSettings?.sort_order ?? 999999);
+                          }
+                          return 0;
+                        })
+                        .map(p => p.id);
+                    })()}
+                    onReorder={(newOrder) => {
+                      if (currentCatalog && !catalogSortColumn) {
+                        updateCatalogProductSortOrders(currentCatalog.id, newOrder);
+                      }
+                    }}
+                  >
                   <div className="bg-card rounded-lg border border-border overflow-x-auto">
                     <ResizableTable
                       storageKey="catalog-products-table"
@@ -4969,21 +5026,63 @@ export default function AdminPanel({
                             </ResizableTableHead>
                           )}
                           {catalogVisibleColumns.photo && <ResizableTableHead columnId="photo">Фото</ResizableTableHead>}
-                          {catalogVisibleColumns.name && <ResizableTableHead columnId="name">Название</ResizableTableHead>}
+                          {catalogVisibleColumns.name && (
+                            <ResizableTableHead columnId="name">
+                              <button className="flex items-center gap-1 hover:text-foreground" onClick={() => { setCatalogSortColumn(catalogSortColumn === "name" ? "name" : "name"); setCatalogSortDirection(catalogSortColumn === "name" && catalogSortDirection === "asc" ? "desc" : "asc"); }}>
+                                Название {catalogSortColumn === "name" && (catalogSortDirection === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                              </button>
+                            </ResizableTableHead>
+                          )}
                           {catalogVisibleColumns.description && <ResizableTableHead columnId="description">Описание</ResizableTableHead>}
-                          {catalogVisibleColumns.categories && <ResizableTableHead columnId="categories">Главная категория</ResizableTableHead>}
+                          {catalogVisibleColumns.categories && (
+                            <ResizableTableHead columnId="categories">
+                              <button className="flex items-center gap-1 hover:text-foreground" onClick={() => { setCatalogSortColumn("categories"); setCatalogSortDirection(catalogSortColumn === "categories" && catalogSortDirection === "asc" ? "desc" : "asc"); }}>
+                                Главная категория {catalogSortColumn === "categories" && (catalogSortDirection === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                              </button>
+                            </ResizableTableHead>
+                          )}
                           {catalogVisibleColumns.subcategory && <ResizableTableHead columnId="subcategory">Подкатегория</ResizableTableHead>}
-                          {catalogVisibleColumns.unit && <ResizableTableHead columnId="unit">Ед. изм.</ResizableTableHead>}
+                          {catalogVisibleColumns.unit && (
+                            <ResizableTableHead columnId="unit">
+                              <button className="flex items-center gap-1 hover:text-foreground" onClick={() => { setCatalogSortColumn("unit"); setCatalogSortDirection(catalogSortColumn === "unit" && catalogSortDirection === "asc" ? "desc" : "asc"); }}>
+                                Ед. изм. {catalogSortColumn === "unit" && (catalogSortDirection === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                              </button>
+                            </ResizableTableHead>
+                          )}
                           {catalogVisibleColumns.volume && <ResizableTableHead columnId="volume">Объем</ResizableTableHead>}
-                          {catalogVisibleColumns.type && <ResizableTableHead columnId="type">Вид</ResizableTableHead>}
-                          {catalogVisibleColumns.buyPrice && <ResizableTableHead columnId="buyPrice">Себест-ть</ResizableTableHead>}
+                          {catalogVisibleColumns.type && (
+                            <ResizableTableHead columnId="type">
+                              <button className="flex items-center gap-1 hover:text-foreground" onClick={() => { setCatalogSortColumn("type"); setCatalogSortDirection(catalogSortColumn === "type" && catalogSortDirection === "asc" ? "desc" : "asc"); }}>
+                                Вид {catalogSortColumn === "type" && (catalogSortDirection === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                              </button>
+                            </ResizableTableHead>
+                          )}
+                          {catalogVisibleColumns.buyPrice && (
+                            <ResizableTableHead columnId="buyPrice">
+                              <button className="flex items-center gap-1 hover:text-foreground" onClick={() => { setCatalogSortColumn("buyPrice"); setCatalogSortDirection(catalogSortColumn === "buyPrice" && catalogSortDirection === "asc" ? "desc" : "asc"); }}>
+                                Себест-ть {catalogSortColumn === "buyPrice" && (catalogSortDirection === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                              </button>
+                            </ResizableTableHead>
+                          )}
                           {catalogVisibleColumns.markup && <ResizableTableHead columnId="markup">Наценка</ResizableTableHead>}
-                          {catalogVisibleColumns.price && <ResizableTableHead columnId="price">Цена</ResizableTableHead>}
+                          {catalogVisibleColumns.price && (
+                            <ResizableTableHead columnId="price">
+                              <button className="flex items-center gap-1 hover:text-foreground" onClick={() => { setCatalogSortColumn("price"); setCatalogSortDirection(catalogSortColumn === "price" && catalogSortDirection === "asc" ? "desc" : "asc"); }}>
+                                Цена {catalogSortColumn === "price" && (catalogSortDirection === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                              </button>
+                            </ResizableTableHead>
+                          )}
                           {catalogVisibleColumns.priceFull && <ResizableTableHead columnId="priceFull">Целая</ResizableTableHead>}
                           {catalogVisibleColumns.priceHalf && <ResizableTableHead columnId="priceHalf">½</ResizableTableHead>}
                           {catalogVisibleColumns.priceQuarter && <ResizableTableHead columnId="priceQuarter">¼</ResizableTableHead>}
                           {catalogVisibleColumns.pricePortion && <ResizableTableHead columnId="pricePortion">Порция</ResizableTableHead>}
-                          {catalogVisibleColumns.status && <ResizableTableHead columnId="status">Статус</ResizableTableHead>}
+                          {catalogVisibleColumns.status && (
+                            <ResizableTableHead columnId="status">
+                              <button className="flex items-center gap-1 hover:text-foreground" onClick={() => { setCatalogSortColumn("status"); setCatalogSortDirection(catalogSortColumn === "status" && catalogSortDirection === "asc" ? "desc" : "asc"); }}>
+                                Статус {catalogSortColumn === "status" && (catalogSortDirection === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                              </button>
+                            </ResizableTableHead>
+                          )}
                         </ResizableTableRow>
                       </ResizableTableHeader>
                       <ResizableTableBody>
@@ -5008,6 +5107,41 @@ export default function AdminPanel({
                               if (catalogFilterPrice === "no_price" && price > 0) return false;
                             }
                             return true;
+                          })
+                          .sort((a, b) => {
+                            // If no column sort is active, sort by catalog sort_order
+                            if (!catalogSortColumn) {
+                              const aSettings = currentCatalog ? getCatalogProductSettingsFromDB(currentCatalog.id, a.id) : undefined;
+                              const bSettings = currentCatalog ? getCatalogProductSettingsFromDB(currentCatalog.id, b.id) : undefined;
+                              const aOrder = aSettings?.sort_order ?? 999999;
+                              const bOrder = bSettings?.sort_order ?? 999999;
+                              return aOrder - bOrder;
+                            }
+                            const dir = catalogSortDirection === "asc" ? 1 : -1;
+                            if (catalogSortColumn === "name") return a.name.localeCompare(b.name, 'ru') * dir;
+                            if (catalogSortColumn === "categories") {
+                              const aCp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, a.id) : undefined;
+                              const bCp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, b.id) : undefined;
+                              const aCats = aCp?.categories ?? a.categories ?? [];
+                              const bCats = bCp?.categories ?? b.categories ?? [];
+                              const aCatName = aCats.length > 0 ? (storeCategories.find(c => c.id === aCats[0])?.name || "") : "";
+                              const bCatName = bCats.length > 0 ? (storeCategories.find(c => c.id === bCats[0])?.name || "") : "";
+                              return aCatName.localeCompare(bCatName, 'ru') * dir;
+                            }
+                            if (catalogSortColumn === "buyPrice") return ((a.buyPrice || 0) - (b.buyPrice || 0)) * dir;
+                            if (catalogSortColumn === "price") {
+                              const aCp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, a.id) : undefined;
+                              const bCp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, b.id) : undefined;
+                              return (getCatalogSalePrice(a, aCp) - getCatalogSalePrice(b, bCp)) * dir;
+                            }
+                            if (catalogSortColumn === "unit") return (a.unit || "").localeCompare(b.unit || "", 'ru') * dir;
+                            if (catalogSortColumn === "type") return (a.packagingType || "").localeCompare(b.packagingType || "", 'ru') * dir;
+                            if (catalogSortColumn === "status") {
+                              const aCp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, a.id) : undefined;
+                              const bCp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, b.id) : undefined;
+                              return getCatalogProductStatus(a, aCp).localeCompare(getCatalogProductStatus(b, bCp), 'ru') * dir;
+                            }
+                            return 0;
                           })
                           .map((product) => {
                             // Get catalog-specific pricing/data
@@ -5038,8 +5172,9 @@ export default function AdminPanel({
                             );
                             
                             return (
-                              <ResizableTableRow
-                                key={product.id}
+                              <SortableTableRow
+                                id={product.id}
+                                disabled={!!catalogSortColumn}
                                 className={`${selectedCatalogProducts.has(product.id) ? "bg-primary/5" : ""} ${selectedCatalogBulkProducts.has(product.id) ? "bg-primary/10" : ""}`}
                               >
                                 {catalogVisibleColumns.bulkCheckbox && (
@@ -5413,12 +5548,13 @@ export default function AdminPanel({
                                     </button>
                                   </ResizableTableCell>
                                 )}
-                              </ResizableTableRow>
+                              </SortableTableRow>
                             );
                           })}
                       </ResizableTableBody>
                     </ResizableTable>
                   </div>
+                  </DraggableTableWrapper>
                 </>
               )}
             </>

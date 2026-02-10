@@ -12,6 +12,7 @@ export interface CatalogProductSetting {
   status: string;
   fixed_price: number | null;
   is_fixed_price: boolean;
+  sort_order: number | null;
   portion_prices: {
     halfPricePerKg?: number;
     quarterPricePerKg?: number;
@@ -30,6 +31,7 @@ const formatSetting = (raw: any): CatalogProductSetting => ({
   status: raw.status || 'in_stock',
   fixed_price: raw.fixed_price ?? null,
   is_fixed_price: raw.is_fixed_price ?? false,
+  sort_order: raw.sort_order ?? null,
   portion_prices: raw.portion_prices as CatalogProductSetting['portion_prices'],
 });
 
@@ -163,12 +165,13 @@ export function useCatalogProductSettings(storeId: string | null) {
         id: `fallback_${catalogId}_${productId}`,
         catalog_id: catalogId,
         product_id: productId,
-        categories: [], // Default - catalog-specific fields are not inherited
+        categories: [],
         markup_type: 'percent',
         markup_value: 0,
-        status: anySettingWithStatus.status, // Use synced status
-        fixed_price: null, // Catalog-specific - not inherited
+        status: anySettingWithStatus.status,
+        fixed_price: null,
         is_fixed_price: false,
+        sort_order: null,
         portion_prices: null,
       };
     }
@@ -216,6 +219,7 @@ export function useCatalogProductSettings(storeId: string | null) {
         status: updates.status || 'in_stock',
         fixed_price: updates.fixed_price ?? null,
         is_fixed_price: updates.is_fixed_price ?? false,
+        sort_order: null,
         portion_prices: updates.portion_prices || null,
       };
       setSettings(prev => {
@@ -284,6 +288,7 @@ export function useCatalogProductSettings(storeId: string | null) {
                   status: data.status || 'in_stock',
                   fixed_price: data.fixed_price ?? null,
                   is_fixed_price: data.is_fixed_price ?? false,
+                  sort_order: data.sort_order ?? null,
                   portion_prices: data.portion_prices as CatalogProductSetting['portion_prices'],
                 }
               : s
@@ -394,12 +399,50 @@ export function useCatalogProductSettings(storeId: string | null) {
     }
   }, [fetchSettings]);
 
+  // Batch update sort_order for products within a catalog
+  const updateProductSortOrders = useCallback(async (
+    catalogId: string,
+    orderedProductIds: string[]
+  ) => {
+    // Optimistic update
+    setSettings(prev => prev.map(s => {
+      if (s.catalog_id === catalogId) {
+        const idx = orderedProductIds.indexOf(s.product_id);
+        if (idx !== -1) {
+          return { ...s, sort_order: idx };
+        }
+      }
+      return s;
+    }));
+
+    try {
+      const upsertRows = orderedProductIds.map((productId, index) => ({
+        catalog_id: catalogId,
+        product_id: productId,
+        sort_order: index,
+      }));
+
+      const chunkSize = 500;
+      for (let i = 0; i < upsertRows.length; i += chunkSize) {
+        const chunk = upsertRows.slice(i, i + chunkSize);
+        const { error } = await supabase
+          .from('catalog_product_settings')
+          .upsert(chunk, { onConflict: 'catalog_id,product_id' });
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error('Error updating product sort orders:', error);
+      await fetchSettings();
+    }
+  }, [fetchSettings]);
+
   return {
     settings,
     loading,
     getProductSettings,
     updateProductSettings,
     bulkUpdateStatus,
+    updateProductSortOrders,
     refetch: fetchSettings,
   };
 }

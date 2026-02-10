@@ -121,6 +121,7 @@ export type Database = {
           portion_prices: Json | null
           primary_category_id: string | null
           product_id: string
+          sort_order: number | null
           status: string | null
           updated_at: string
         }
@@ -136,6 +137,7 @@ export type Database = {
           portion_prices?: Json | null
           primary_category_id?: string | null
           product_id: string
+          sort_order?: number | null
           status?: string | null
           updated_at?: string
         }
@@ -151,6 +153,7 @@ export type Database = {
           portion_prices?: Json | null
           primary_category_id?: string | null
           product_id?: string
+          sort_order?: number | null
           status?: string | null
           updated_at?: string
         }
