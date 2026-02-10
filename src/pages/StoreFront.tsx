@@ -17,6 +17,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuGroup,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
@@ -1912,7 +1913,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                           
                           if (isSection) {
                             return (
-                              <div key={cat.id}>
+                              <DropdownMenuGroup key={cat.id}>
                                 <div
                                   className={`flex items-center gap-1 px-2 py-1.5 text-sm cursor-pointer rounded-sm hover:bg-accent transition-colors ${
                                     categoryFilter === cat.id ? 'bg-primary/10 font-semibold' : ''
@@ -1941,9 +1942,8 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                                 </div>
                                 {isExpanded && (
                                   <div>
-                                    {/* Show all in section */}
                                     <DropdownMenuItem
-                                      onClick={() => handleCategoryFilter(cat.id)}
+                                      onSelect={() => handleCategoryFilter(cat.id)}
                                       className={`cursor-pointer pl-8 text-xs text-muted-foreground ${
                                         categoryFilter === cat.id ? 'font-semibold bg-primary/10' : ''
                                       }`}
@@ -1953,7 +1953,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                                     {children.map(child => (
                                       <DropdownMenuItem
                                         key={child.id}
-                                        onClick={() => handleCategoryFilter(child.id)}
+                                        onSelect={() => handleCategoryFilter(child.id)}
                                         className={`cursor-pointer pl-8 ${
                                           categoryFilter === child.id ? 'font-semibold bg-primary/10' : ''
                                         }`}
@@ -1966,7 +1966,7 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                                     ))}
                                   </div>
                                 )}
-                              </div>
+                              </DropdownMenuGroup>
                             );
                           }
                           

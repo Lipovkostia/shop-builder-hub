@@ -11,6 +11,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuGroup,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -989,9 +990,9 @@ const GuestCatalogView = () => {
                         
                         if (isSection) {
                           return (
-                            <div key={cat.id}>
+                            <DropdownMenuGroup key={cat.id}>
                               <DropdownMenuItem
-                                onClick={() => setSelectedCategory(cat.id)}
+                                onSelect={() => setSelectedCategory(cat.id)}
                                 className={`cursor-pointer ${selectedCategory === cat.id ? 'font-semibold bg-primary/10' : ''}`}
                               >
                                 <div className="flex items-center gap-1.5 w-full">
@@ -1005,7 +1006,7 @@ const GuestCatalogView = () => {
                               {children.map(child => (
                                 <DropdownMenuItem
                                   key={child.id}
-                                  onClick={() => setSelectedCategory(child.id)}
+                                  onSelect={() => setSelectedCategory(child.id)}
                                   className={`cursor-pointer pl-8 ${selectedCategory === child.id ? 'font-semibold bg-primary/10' : ''}`}
                                 >
                                   {child.name}
@@ -1014,7 +1015,7 @@ const GuestCatalogView = () => {
                                   )}
                                 </DropdownMenuItem>
                               ))}
-                            </div>
+                            </DropdownMenuGroup>
                           );
                         }
                         

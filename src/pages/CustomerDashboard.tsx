@@ -17,6 +17,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuGroup,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -647,9 +648,9 @@ function CustomerHeader({
                         const isExpanded = true; // Always expanded for simplicity
                         
                         return (
-                          <div key={cat.id}>
+                          <DropdownMenuGroup key={cat.id}>
                             <DropdownMenuItem
-                              onClick={() => onSelectCategory(cat.id)}
+                              onSelect={() => onSelectCategory(cat.id)}
                               className={`cursor-pointer ${isSectionActive ? 'font-semibold bg-primary/10' : ''}`}
                             >
                               <div className="flex items-center gap-1.5 w-full">
@@ -663,7 +664,7 @@ function CustomerHeader({
                             {children.map(child => (
                               <DropdownMenuItem
                                 key={child.id}
-                                onClick={() => onSelectCategory(child.id)}
+                                onSelect={() => onSelectCategory(child.id)}
                                 className={`cursor-pointer pl-8 ${selectedCategory === child.id ? 'font-semibold bg-primary/10' : ''}`}
                               >
                                 {child.name}
@@ -672,7 +673,7 @@ function CustomerHeader({
                                 )}
                               </DropdownMenuItem>
                             ))}
-                          </div>
+                          </DropdownMenuGroup>
                         );
                       }
                       
