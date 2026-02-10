@@ -59,14 +59,30 @@ export function useCatalogProductSettings(storeId: string | null) {
       const catalogIds = catalogs.map(c => c.id);
       catalogIdsRef.current = catalogIds;
 
-      const { data, error } = await supabase
-        .from('catalog_product_settings')
-        .select('*')
-        .in('catalog_id', catalogIds);
-
-      if (error) throw error;
+      // Fetch in batches to avoid Supabase 1000-row default limit
+      let allData: any[] = [];
+      for (const catalogId of catalogIds) {
+        let offset = 0;
+        const batchSize = 1000;
+        let hasMore = true;
+        while (hasMore) {
+          const { data: batch, error } = await supabase
+            .from('catalog_product_settings')
+            .select('*')
+            .eq('catalog_id', catalogId)
+            .range(offset, offset + batchSize - 1);
+          if (error) throw error;
+          if (batch && batch.length > 0) {
+            allData.push(...batch);
+            offset += batchSize;
+            hasMore = batch.length === batchSize;
+          } else {
+            hasMore = false;
+          }
+        }
+      }
       
-      setSettings((data || []).map(formatSetting));
+      setSettings(allData.map(formatSetting));
     } catch (error) {
       console.error('Error fetching catalog product settings:', error);
     } finally {

@@ -2206,6 +2206,8 @@ export default function AdminPanel({
       status: dbSettings.status as ProductStatus,
       categories: dbSettings.categories,
       portionPrices: dbSettings.portion_prices || undefined,
+      fixedPrice: dbSettings.fixed_price,
+      isFixedPrice: dbSettings.is_fixed_price,
     };
   }, [getCatalogProductSettingsFromDB, catalogProductSettings]);
 
@@ -2246,10 +2248,15 @@ export default function AdminPanel({
 
   // Get effective sale price for catalog (using catalog markup or falling back to base product)
   const getCatalogSalePrice = (product: Product, catalogPricing?: CatalogProductPricing): number => {
-    // If fixed price is enabled, use pricePerUnit directly
+    // Приоритет 1: Фиксированная цена каталога
+    if (catalogPricing?.isFixedPrice && catalogPricing?.fixedPrice != null) {
+      return catalogPricing.fixedPrice;
+    }
+    // Приоритет 2: Глобальная фиксированная цена товара
     if (product.isFixedPrice) {
       return product.pricePerUnit || 0;
     }
+    // Приоритет 3: Расчёт по наценке
     const buyPrice = product.buyPrice || 0;
     const markup = catalogPricing?.markup !== undefined ? catalogPricing.markup : product.markup;
     return calculateSalePrice(buyPrice, markup);
@@ -5042,22 +5049,36 @@ export default function AdminPanel({
                                         size="icon"
                                         className="h-5 w-5 flex-shrink-0"
                                         onClick={() => {
-                                          updateProduct({ ...product, isFixedPrice: !product.isFixedPrice });
+                                          if (catalogPricing?.isFixedPrice || product.isFixedPrice) {
+                                            // Turn off fixed price — for catalog-level if it was set there
+                                            if (catalogPricing?.isFixedPrice && currentCatalog) {
+                                              updateCatalogProductSettingsInDB(currentCatalog.id, product.id, { 
+                                                is_fixed_price: false, fixed_price: null 
+                                              });
+                                            } else {
+                                              updateProduct({ ...product, isFixedPrice: false });
+                                            }
+                                          } else {
+                                            updateProduct({ ...product, isFixedPrice: !product.isFixedPrice });
+                                          }
                                         }}
-                                        title={product.isFixedPrice 
+                                        title={catalogPricing?.isFixedPrice || product.isFixedPrice
                                           ? "Фиксированная цена (кликните для расчёта по наценке)" 
                                           : "Цена по наценке (кликните для фиксации)"}
                                       >
-                                        {product.isFixedPrice 
+                                        {catalogPricing?.isFixedPrice || product.isFixedPrice
                                           ? <Lock className="h-3 w-3 text-amber-500" /> 
                                           : <Unlock className="h-3 w-3 text-muted-foreground/40" />}
                                       </Button>
                                       <InlinePriceCell
-                                        value={product.pricePerUnit}
+                                        value={salePrice || product.pricePerUnit}
                                         onSave={(newPrice) => {
-                                          if (newPrice !== product.pricePerUnit) {
-                                            // When editing price manually, automatically enable fixed price
-                                            updateProduct({ ...product, pricePerUnit: newPrice ?? 0, isFixedPrice: true });
+                                          if (currentCatalog && newPrice !== undefined) {
+                                            // Save as catalog-specific fixed price
+                                            updateCatalogProductSettingsInDB(currentCatalog.id, product.id, { 
+                                              fixed_price: newPrice ?? 0, 
+                                              is_fixed_price: true 
+                                            });
                                           }
                                         }}
                                         placeholder="0"
