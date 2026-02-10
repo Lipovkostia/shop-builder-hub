@@ -130,7 +130,7 @@ export function RetailLayoutSidebar({
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <span className="truncate font-serif font-medium tracking-tight text-[0.95rem]">
+                  <span className="truncate font-sans font-medium tracking-normal text-sm">
                     {parent.name}
                   </span>
                   {isExpanded 
