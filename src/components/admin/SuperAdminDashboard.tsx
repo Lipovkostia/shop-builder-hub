@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { ProductMatchingDialog } from './ProductMatchingDialog';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 interface StatsData {
@@ -164,7 +163,7 @@ export default function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardP
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showMatchingDialog, setShowMatchingDialog] = useState(false);
+  
   const { toast } = useToast();
 
   const fetchStats = async (showRefresh = false) => {
@@ -243,7 +242,7 @@ export default function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardP
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => setShowMatchingDialog(true)}
+            onClick={() => onNavigate?.('matching')}
           >
             <Link2 className="h-4 w-4 mr-2" />
             Сопоставление
@@ -259,11 +258,6 @@ export default function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardP
           </Button>
         </div>
       </div>
-
-      <ProductMatchingDialog
-        open={showMatchingDialog}
-        onOpenChange={setShowMatchingDialog}
-      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
