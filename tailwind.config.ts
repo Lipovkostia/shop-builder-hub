@@ -142,6 +142,10 @@ export default {
           "42%": { transform: "scale(1.15)" },
           "70%": { transform: "scale(1)" },
         },
+        "pulse-arrow": {
+          "0%, 100%": { transform: "translateX(0)", opacity: "0.4" },
+          "50%": { transform: "translateX(3px)", opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -156,6 +160,7 @@ export default {
         "bounce-arrow": "bounce-arrow 0.6s ease-in-out infinite",
         "attention-pulse": "attention-pulse 1.2s ease-in-out infinite",
         "heartbeat": "heartbeat 1.2s ease-in-out infinite",
+        "pulse-arrow": "pulse-arrow 1.5s ease-in-out infinite",
       },
     },
   },
