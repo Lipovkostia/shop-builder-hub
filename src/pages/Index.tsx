@@ -794,20 +794,23 @@ const Index = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
           {/* Left column: CTA banner + product list */}
           <div className="flex flex-col gap-3">
-            {/* Green CTA banner */}
-            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-emerald-500/15 transition-colors group"
+            {/* Step 1: Green CTA banner */}
+            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3 cursor-pointer hover:bg-emerald-500/15 transition-colors group"
               onClick={() => productListRef.current?.scrollIntoView({ behavior: 'smooth' })}
             >
-              <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
                 <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 leading-tight">
                   Выберите товары — соберите свой каталог
                 </p>
-                <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/70 mt-0.5">
+              </div>
+              <div className="flex items-center justify-between ml-7">
+                <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/70">
                   Кликайте на позиции, они сразу появятся в витрине →
                 </p>
-              </div>
-              <div className="shrink-0 w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center group-hover:bg-emerald-500/30 transition-colors">
-                <ChevronRight className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                <div className="shrink-0 w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center group-hover:bg-emerald-500/30 transition-colors">
+                  <ChevronRight className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                </div>
               </div>
             </div>
             <div ref={productListRef} className="rounded-lg border bg-card overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 260px)' }}>
@@ -817,24 +820,30 @@ const Index = () => {
 
           {/* Middle column: demo cart */}
           <div className="lg:max-h-[calc(100vh-80px)] flex flex-col gap-3">
-            {/* Promo banner with catalog link */}
+            {/* Step 2 CTA banner */}
             {catalogAccessCode && (
-              <div className="rounded-xl border bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-foreground leading-tight">
-                    Посмотрите полный каталог
-                  </p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    Все товары с ценами и категориями
+              <div
+                className="rounded-xl border border-primary/30 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-3 cursor-pointer hover:from-primary/10 hover:via-primary/15 hover:to-primary/10 transition-all group"
+                onClick={() => navigate(`/catalog/${catalogAccessCode}`)}
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">2</span>
+                  <p className="text-xs font-bold text-foreground leading-tight">
+                    Ваш каталог уже готов — откройте и начните продавать!
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  className="shrink-0 h-7 text-[11px] px-3"
-                  onClick={() => navigate(`/catalog/${catalogAccessCode}`)}
-                >
-                  Открыть каталог
-                </Button>
+                <p className="text-[10px] text-muted-foreground leading-snug ml-7">
+                  Посмотрите, как выглядит витрина для покупателей. Поставьте свои цены и принимайте заказы уже сегодня.
+                </p>
+                <div className="flex justify-end mt-2">
+                  <Button
+                    size="sm"
+                    className="h-7 text-[11px] px-4 gap-1.5 group-hover:gap-2 transition-all"
+                  >
+                    Открыть каталог
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             )}
             <div className="flex-1 min-h-0">
