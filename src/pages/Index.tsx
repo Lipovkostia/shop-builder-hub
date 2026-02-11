@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Store, User, Mail, Lock, Phone, ArrowLeft, Loader2 } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
+import LandingProductTable from "@/components/landing/LandingProductTable";
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'forgot-phone';
 type LoginMethod = 'email' | 'phone';
@@ -717,7 +718,15 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* Left column - product showcase (hidden on mobile) */}
+        <div className="hidden lg:block lg:col-span-1 rounded-lg border bg-card overflow-hidden h-[600px]">
+          <LandingProductTable />
+        </div>
+
+        {/* Right column - auth forms */}
+        <div className="lg:col-span-2 flex items-center justify-center">
+        <div className="w-full max-w-sm">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'seller' | 'customer')} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="seller" className="gap-2">
@@ -844,6 +853,8 @@ const Index = () => {
             </Card>
           </TabsContent>
         </Tabs>
+      </div>
+      </div>
       </div>
     </div>
   );
