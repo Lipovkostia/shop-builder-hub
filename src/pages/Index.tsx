@@ -48,11 +48,21 @@ const Index = () => {
     } catch { return []; }
   });
 
-  // Fetch catalog access code
+  // Fetch catalog access code + seed demo cart with products that have images
   useEffect(() => {
     fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/landing-products`)
       .then(r => r.json())
-      .then(json => { if (json.access_code) setCatalogAccessCode(json.access_code); })
+      .then(json => {
+        if (json.access_code) setCatalogAccessCode(json.access_code);
+        // Auto-seed demo cart if empty — pick first products with images
+        if (json.data && json.data.length > 0) {
+          setDemoItems(prev => {
+            if (prev.length > 0) return prev;
+            const withImages = (json.data as DemoProduct[]).filter(p => p.image && p.image.length > 0);
+            return withImages.slice(0, 6);
+          });
+        }
+      })
       .catch(() => {});
   }, []);
 
