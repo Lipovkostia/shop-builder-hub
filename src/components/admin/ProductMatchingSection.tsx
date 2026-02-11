@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import {
   useCanonicalProducts,
   type CanonicalProduct,
@@ -132,6 +133,7 @@ export default function ProductMatchingSection() {
   const [isAIGrouping, setIsAIGrouping] = useState(false);
   const [catalogAIGroups, setCatalogAIGroups] = useState<AIMatchGroup[]>([]);
   const [showCatalogAIResults, setShowCatalogAIResults] = useState(false);
+  const [isAddingToFeatured, setIsAddingToFeatured] = useState(false);
   const [availableStores, setAvailableStores] = useState<{ id: string; name: string }[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   // Filters
@@ -294,6 +296,36 @@ export default function ProductMatchingSection() {
   const approveAllCatalogGroups = async () => {
     for (let i = 0; i < catalogAIGroups.length; i++) {
       if (!catalogAIGroups[i].approved) await approveCatalogGroup(i);
+    }
+  };
+
+  const addSelectedToFeatured = async () => {
+    if (selectedCatalogProducts.size === 0) return;
+    setIsAddingToFeatured(true);
+    try {
+      // Get current max sort_order
+      const { data: existing } = await supabase
+        .from("featured_products")
+        .select("sort_order")
+        .order("sort_order", { ascending: false })
+        .limit(1);
+      let nextOrder = (existing?.[0]?.sort_order ?? -1) + 1;
+
+      const ids = Array.from(selectedCatalogProducts);
+      // Insert in batches, skip duplicates
+      for (let i = 0; i < ids.length; i += 50) {
+        const batch = ids.slice(i, i + 50).map((id, j) => ({
+          product_id: id,
+          sort_order: nextOrder + i + j,
+        }));
+        await supabase.from("featured_products").upsert(batch, { onConflict: "product_id", ignoreDuplicates: true });
+      }
+      toast.success(`${ids.length} товаров добавлено на витрину`);
+      setSelectedCatalogProducts(new Set());
+    } catch (e: any) {
+      toast.error(e.message || "Ошибка добавления на витрину");
+    } finally {
+      setIsAddingToFeatured(false);
     }
   };
 
@@ -490,8 +522,22 @@ export default function ProductMatchingSection() {
                   {isAIGrouping ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Wand2 className="h-3.5 w-3.5 mr-1" />}
                   AI-группировка
                 </Button>
-                <div className="ml-auto text-xs text-muted-foreground">
-                  {catalogTotal} товаров
+                <div className="ml-auto flex items-center gap-2">
+                  {selectedCatalogProducts.size > 0 && (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="h-8 text-xs"
+                      onClick={addSelectedToFeatured}
+                      disabled={isAddingToFeatured}
+                    >
+                      {isAddingToFeatured ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
+                      На витрину ({selectedCatalogProducts.size})
+                    </Button>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {catalogTotal} товаров
+                  </span>
                 </div>
               </div>
 
