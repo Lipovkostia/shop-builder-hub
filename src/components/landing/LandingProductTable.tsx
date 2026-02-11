@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Loader2, Plus, ChevronRight, ChevronDown, FolderOpen, X } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, ChevronRight, ChevronDown, FolderOpen, X, ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export interface LandingProduct {
@@ -26,11 +25,12 @@ export interface LandingCategory {
 interface LandingProductTableProps {
   onAddToCatalog?: (products: LandingProduct[]) => void;
   onInstantAdd?: (product: LandingProduct) => void;
+  addedIds?: Set<string>;
 }
 
 const BATCH_SIZE = 50;
 
-export default function LandingProductTable({ onAddToCatalog, onInstantAdd }: LandingProductTableProps) {
+export default function LandingProductTable({ onAddToCatalog, onInstantAdd, addedIds = new Set() }: LandingProductTableProps) {
   const [allProducts, setAllProducts] = useState<LandingProduct[]>([]);
   const [categories, setCategories] = useState<LandingCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -173,7 +173,6 @@ export default function LandingProductTable({ onAddToCatalog, onInstantAdd }: La
 
   if (allProducts.length === 0) return null;
 
-  const allFilteredSelected = filteredProducts.length > 0 && filteredProducts.every(p => selected.has(p.id));
   const hasMore = visibleCount < filteredProducts.length;
 
   return (
@@ -200,12 +199,6 @@ export default function LandingProductTable({ onAddToCatalog, onInstantAdd }: La
             </button>
           )}
         </div>
-        {onAddToCatalog && selected.size > 0 && (
-          <Button size="sm" className="h-5 px-2 text-[9px]" onClick={handleAdd}>
-            <Plus className="h-2.5 w-2.5 mr-0.5" />
-            Добавить ({selected.size})
-          </Button>
-        )}
       </div>
 
       {/* Hierarchical category panel */}
@@ -282,47 +275,47 @@ export default function LandingProductTable({ onAddToCatalog, onInstantAdd }: La
         <table className="w-full text-xs border-collapse">
           <thead className="sticky top-0 z-10">
             <tr className="border-b bg-background">
-              {onAddToCatalog && (
-                <th className="px-1 py-1 w-5">
-                  <Checkbox
-                    checked={allFilteredSelected}
-                    onCheckedChange={toggleAll}
-                    className="h-3.5 w-3.5"
-                  />
-                </th>
-              )}
               <th className="text-left text-[10px] font-medium text-muted-foreground px-2 py-1">Название</th>
+              <th className="w-8"></th>
             </tr>
           </thead>
           <tbody>
-            {visibleProducts.map(p => (
-              <tr
-                key={p.id}
-                className={`border-b border-border/50 h-7 cursor-pointer transition-colors ${
-                  selected.has(p.id) ? "bg-primary/5" : "hover:bg-muted/30"
-                }`}
-                onClick={() => {
-                  if (onInstantAdd) {
-                    onInstantAdd(p);
-                  } else if (onAddToCatalog) {
-                    toggleSelect(p.id);
-                  }
-                }}
-              >
-                {onAddToCatalog && (
-                  <td className="px-1 py-0.5" onClick={e => e.stopPropagation()}>
-                    <Checkbox
-                      checked={selected.has(p.id)}
-                      onCheckedChange={() => toggleSelect(p.id)}
-                      className="h-3.5 w-3.5"
-                    />
+            {visibleProducts.map((p) => {
+              const isAdded = addedIds.has(p.id);
+              return (
+                <tr
+                  key={p.id}
+                  className={`border-b border-border/50 h-8 cursor-pointer transition-all group ${
+                    isAdded
+                      ? "bg-primary/5 opacity-60"
+                      : "hover:bg-primary/5"
+                  }`}
+                  onClick={() => {
+                    if (isAdded) return;
+                    if (onInstantAdd) {
+                      onInstantAdd(p);
+                    } else if (onAddToCatalog) {
+                      toggleSelect(p.id);
+                    }
+                  }}
+                >
+                  <td className="px-2 py-0.5">
+                    <span className="text-[11px] font-medium truncate block">{p.name}</span>
                   </td>
-                )}
-                <td className="px-2 py-0.5">
-                  <span className="text-[11px] font-medium truncate block">{p.name}</span>
-                </td>
-              </tr>
-            ))}
+                  <td className="pr-2 py-0.5">
+                    {isAdded ? (
+                      <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center">
+                        <Check className="h-3 w-3 text-primary" />
+                      </div>
+                    ) : (
+                      <div className="w-5 h-5 rounded-full border border-primary/30 bg-primary/5 flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-colors">
+                        <ArrowRight className="h-3 w-3 text-primary/50 group-hover:text-primary-foreground transition-colors animate-[pulse-arrow_1.5s_ease-in-out_infinite]" />
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {hasMore && (

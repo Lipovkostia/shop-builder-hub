@@ -814,7 +814,7 @@ const Index = () => {
               </div>
             </div>
             <div ref={productListRef} className="rounded-lg border bg-card overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 260px)' }}>
-              <LandingProductTable onAddToCatalog={handleAddToCatalog} onInstantAdd={handleInstantAdd} />
+              <LandingProductTable onAddToCatalog={handleAddToCatalog} onInstantAdd={handleInstantAdd} addedIds={new Set(demoItems.map(i => i.id))} />
             </div>
           </div>
 
