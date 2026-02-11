@@ -55,6 +55,7 @@ Deno.serve(async (req) => {
         sku: f.products.sku,
         price: f.products.price,
         unit: f.products.unit,
+        image: f.products.images?.[0] || null,
         images_count: f.products.images?.length || 0,
         quantity: f.products.quantity,
         category: f.products.categories?.name || null,

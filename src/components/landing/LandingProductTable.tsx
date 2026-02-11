@@ -3,13 +3,15 @@ import { Loader2, Plus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 
-interface LandingProduct {
+export interface LandingProduct {
   id: string;
   name: string;
   images_count: number;
   price?: number;
   unit?: string;
   sku?: string;
+  image?: string;
+  category?: string;
 }
 
 interface LandingProductTableProps {
@@ -74,8 +76,8 @@ export default function LandingProductTable({ onAddToCatalog }: LandingProductTa
   if (products.length === 0) return null;
 
   return (
-    <div className="flex flex-col">
-      <div className="px-2 py-1.5 border-b bg-muted/30 flex items-center justify-between">
+    <div className="flex flex-col h-full">
+      <div className="px-2 py-1.5 border-b bg-muted/30 flex items-center justify-between shrink-0">
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
           Каталог товаров · {products.length}
         </span>
@@ -86,10 +88,10 @@ export default function LandingProductTable({ onAddToCatalog }: LandingProductTa
           </Button>
         )}
       </div>
-      <div className="flex-1 overflow-auto">
+      <div className="overflow-y-auto flex-1 min-h-0">
         <table className="w-full text-xs border-collapse">
-          <thead>
-            <tr className="border-b bg-muted/20">
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b bg-muted/40">
               {onAddToCatalog && (
                 <th className="px-1 py-1 w-5">
                   <Checkbox
