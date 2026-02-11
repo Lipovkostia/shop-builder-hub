@@ -40,12 +40,21 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<'seller' | 'customer'>(tabFromUrl === "customer" ? "customer" : "seller");
 
   // Demo cart state
+  const [catalogAccessCode, setCatalogAccessCode] = useState<string | null>(null);
   const [demoItems, setDemoItems] = useState<DemoProduct[]>(() => {
     try {
       const saved = localStorage.getItem('landing_demo_cart');
       return saved ? JSON.parse(saved) : [];
     } catch { return []; }
   });
+
+  // Fetch catalog access code
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/landing-products`)
+      .then(r => r.json())
+      .then(json => { if (json.access_code) setCatalogAccessCode(json.access_code); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('landing_demo_cart', JSON.stringify(demoItems));
@@ -773,12 +782,34 @@ const Index = () => {
           </div>
 
           {/* Middle column: demo cart */}
-          <div className="lg:max-h-[calc(100vh-80px)]">
-            <LandingDemoCart
-              items={demoItems}
-              onRemove={handleRemoveFromCart}
-              onClear={handleClearCart}
-            />
+          <div className="lg:max-h-[calc(100vh-80px)] flex flex-col gap-3">
+            {/* Promo banner with catalog link */}
+            {catalogAccessCode && (
+              <div className="rounded-xl border bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-foreground leading-tight">
+                    Посмотрите полный каталог
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Все товары с ценами и категориями
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="shrink-0 h-7 text-[11px] px-3"
+                  onClick={() => navigate(`/catalog/${catalogAccessCode}`)}
+                >
+                  Открыть каталог
+                </Button>
+              </div>
+            )}
+            <div className="flex-1 min-h-0">
+              <LandingDemoCart
+                items={demoItems}
+                onRemove={handleRemoveFromCart}
+                onClear={handleClearCart}
+              />
+            </div>
           </div>
 
           {/* Right column: auth form */}

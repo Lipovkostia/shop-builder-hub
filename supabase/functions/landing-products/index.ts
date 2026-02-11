@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ data: products, categories }),
+        JSON.stringify({ data: products, categories, access_code: accessCode }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
