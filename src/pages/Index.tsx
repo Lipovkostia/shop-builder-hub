@@ -19,6 +19,9 @@ interface DemoProduct {
   price?: number;
   unit?: string;
   sku?: string;
+  image?: string;
+  category?: string;
+  images_count?: number;
 }
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'forgot-phone';
