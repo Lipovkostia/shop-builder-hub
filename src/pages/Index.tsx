@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,6 +94,24 @@ const Index = () => {
   };
 
   const productListRef = useRef<HTMLDivElement>(null);
+  const authSectionRef = useRef<HTMLDivElement>(null);
+  const [authVisible, setAuthVisible] = useState(false);
+
+  // Track when auth section is in view to hide sticky header
+  useEffect(() => {
+    if (!authSectionRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setAuthVisible(entry.isIntersecting),
+      { threshold: 0.3 }
+    );
+    observer.observe(authSectionRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const scrollToAuth = useCallback((tab: 'seller' | 'customer') => {
+    setActiveTab(tab);
+    authSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
   
   // Seller state
   const [sellerMode, setSellerMode] = useState<AuthMode>('login');
@@ -788,7 +806,30 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 p-4 pt-6">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 p-4 pt-6 lg:pt-6">
+      {/* Sticky mobile header with Seller/Customer buttons */}
+      <div className={`fixed top-0 left-0 right-0 z-50 lg:hidden transition-all duration-300 ${authVisible ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}>
+        <div className="bg-background/95 backdrop-blur-md border-b border-border px-4 py-2.5 flex gap-2">
+          <Button
+            variant={activeTab === 'seller' ? 'default' : 'outline'}
+            className="flex-1 gap-2 h-10 text-sm font-semibold"
+            onClick={() => scrollToAuth('seller')}
+          >
+            <Store className="h-4 w-4" />
+            Продавец
+          </Button>
+          <Button
+            variant={activeTab === 'customer' ? 'default' : 'outline'}
+            className="flex-1 gap-2 h-10 text-sm font-semibold"
+            onClick={() => scrollToAuth('customer')}
+          >
+            <User className="h-4 w-4" />
+            Покупатель
+          </Button>
+        </div>
+      </div>
+      {/* Top padding on mobile to account for sticky header */}
+      <div className="pt-12 lg:pt-0"></div>
       <div className="w-full max-w-7xl mx-auto">
         {/* 3-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
@@ -860,7 +901,7 @@ const Index = () => {
           </div>
 
           {/* Right column: CTA + auth form */}
-          <div className="flex flex-col gap-3">
+          <div ref={authSectionRef} className="flex flex-col gap-3 scroll-mt-4">
             {/* Step 3: Registration CTA */}
             <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/8 to-primary/5 p-3 h-[120px] flex flex-col justify-between">
               <div>
