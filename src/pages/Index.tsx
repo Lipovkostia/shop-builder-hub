@@ -21,6 +21,8 @@ interface DemoProduct {
   sku?: string;
   image?: string;
   category?: string;
+  category_id?: string;
+  setting_categories?: string[];
   images_count?: number;
 }
 
