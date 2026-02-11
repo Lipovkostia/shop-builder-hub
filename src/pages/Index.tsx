@@ -765,7 +765,7 @@ const Index = () => {
           {/* Left column: info blocks + product list */}
           <div className="flex flex-col gap-3">
             <LandingInfoBlocks />
-            <div className="rounded-lg border bg-card overflow-hidden max-h-[calc(100vh-260px)]">
+            <div className="rounded-lg border bg-card overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 260px)' }}>
               <LandingProductTable onAddToCatalog={handleAddToCatalog} />
             </div>
           </div>

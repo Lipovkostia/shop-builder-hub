@@ -121,7 +121,7 @@ export default function LandingProductTable({ onAddToCatalog }: LandingProductTa
             onClick={() => { setShowCategories(!showCategories); setActiveCategory(null); }}
           >
             <Filter className="h-2.5 w-2.5 mr-0.5" />
-            Разделы
+            Каталог
           </Button>
         </div>
         {onAddToCatalog && selected.size > 0 && (
