@@ -795,7 +795,7 @@ const Index = () => {
           {/* Left column: CTA banner + product list */}
           <div className="flex flex-col gap-3">
             {/* Step 1: Green CTA banner */}
-            <div className="rounded-xl bg-emerald-600 p-3 cursor-pointer hover:bg-emerald-700 transition-colors group min-h-[100px] flex flex-col justify-between shadow-md"
+            <div className="rounded-xl bg-emerald-600 p-3 cursor-pointer hover:bg-emerald-700 transition-colors group h-[120px] flex flex-col justify-between shadow-md"
               onClick={() => productListRef.current?.scrollIntoView({ behavior: 'smooth' })}
             >
               <div>
@@ -825,7 +825,7 @@ const Index = () => {
             {/* Step 2 CTA banner */}
             {catalogAccessCode && (
               <div
-                className="rounded-xl border border-primary/25 bg-gradient-to-r from-primary/5 via-primary/8 to-primary/5 p-3 cursor-pointer hover:from-primary/10 hover:via-primary/12 hover:to-primary/10 transition-all group min-h-[100px] flex flex-col justify-between"
+                className="rounded-xl border border-primary/25 bg-gradient-to-r from-primary/5 via-primary/8 to-primary/5 p-3 cursor-pointer hover:from-primary/10 hover:via-primary/12 hover:to-primary/10 transition-all group h-[120px] flex flex-col justify-between"
                 onClick={() => navigate(`/catalog/${catalogAccessCode}`)}
               >
                 <div>
@@ -862,7 +862,7 @@ const Index = () => {
           {/* Right column: CTA + auth form */}
           <div className="flex flex-col gap-3">
             {/* Step 3: Registration CTA */}
-            <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/8 to-primary/5 p-3 min-h-[100px] flex flex-col justify-between">
+            <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/8 to-primary/5 p-3 h-[120px] flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="shrink-0 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">3</span>
@@ -871,7 +871,7 @@ const Index = () => {
                   </p>
                 </div>
                 <p className="text-[10px] text-primary/70 leading-snug ml-7">
-                  Поставщики сами предложат цены на товары. Выбери позиции для продажи и получи предложения от поставщиков и перевозчиков.
+                  Поставщики сами предложат цены на товары. Выбери позиции для продажи и получи предложения от поставщиков и перевозчиков. Бесплатно и без ограничений!
                 </p>
               </div>
             </div>
