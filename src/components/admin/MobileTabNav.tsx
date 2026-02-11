@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
-import { Package, Download, FolderOpen, Users, Eye, ShoppingCart, HelpCircle, User, History, Trash2, Store, Warehouse, Tag, Globe } from "lucide-react";
+import { Package, Download, FolderOpen, Users, Eye, ShoppingCart, HelpCircle, User, History, Trash2, Store, Warehouse, Tag, Globe, ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings";
+type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings" | "exchange";
 
 interface NavItem {
   id: ActiveSection;
@@ -26,6 +26,7 @@ const navItems: NavItem[] = [
   { id: "profile", label: "Профиль", icon: User },
   { id: "help", label: "Помощь", icon: HelpCircle },
   { id: "category-settings", label: "Категории", icon: Tag },
+  { id: "exchange", label: "Биржа", icon: ArrowLeftRight },
 ];
 
 interface MobileTabNavProps {

@@ -421,6 +421,162 @@ export type Database = {
           },
         ]
       }
+      exchange_request_items: {
+        Row: {
+          created_at: string
+          custom_name: string | null
+          id: string
+          product_id: string | null
+          request_id: string
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          custom_name?: string | null
+          id?: string
+          product_id?: string | null
+          request_id: string
+          unit?: string
+        }
+        Update: {
+          created_at?: string
+          custom_name?: string | null
+          id?: string
+          product_id?: string | null
+          request_id?: string
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exchange_request_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exchange_request_items_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "exchange_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exchange_requests: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exchange_requests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exchange_requests_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exchange_response_items: {
+        Row: {
+          id: string
+          price: number
+          request_item_id: string
+          response_id: string
+        }
+        Insert: {
+          id?: string
+          price?: number
+          request_item_id: string
+          response_id: string
+        }
+        Update: {
+          id?: string
+          price?: number
+          request_item_id?: string
+          response_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exchange_response_items_request_item_id_fkey"
+            columns: ["request_item_id"]
+            isOneToOne: false
+            referencedRelation: "exchange_request_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exchange_response_items_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "exchange_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exchange_responses: {
+        Row: {
+          created_at: string
+          id: string
+          request_id: string
+          responder_store_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          request_id: string
+          responder_store_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          request_id?: string
+          responder_store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exchange_responses_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "exchange_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exchange_responses_responder_store_id_fkey"
+            columns: ["responder_store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       featured_products: {
         Row: {
           created_at: string

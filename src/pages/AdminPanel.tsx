@@ -122,6 +122,7 @@ import { FormingOrdersSection } from "@/components/admin/FormingOrdersSection";
 import { ProductsSection } from "@/components/admin/ProductsSection";
 import { CategorySettingsSection } from "@/components/admin/CategorySettingsSection";
 import { MegacatalogSection } from "@/components/admin/MegacatalogSection";
+import { ExchangeSection } from "@/components/admin/ExchangeSection";
 
 // Removed localStorage keys - now using Supabase
 
@@ -305,7 +306,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings";
+type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings" | "exchange";
 type ImportView = "accounts" | "catalog";
 type ImportSource = "select" | "moysklad" | "excel" | "google-sheets";
 type CatalogView = "list" | "detail";
@@ -7089,6 +7090,10 @@ export default function AdminPanel({
               onRenameCategory={renameCategory}
               onDeleteCategory={deleteCategory}
             />
+          )}
+
+          {activeSection === "exchange" && (
+            <ExchangeSection storeId={effectiveStoreId} />
           )}
         </main>
 
