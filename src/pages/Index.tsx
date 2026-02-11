@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,10 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Store, User, Mail, Lock, Phone, ArrowLeft, Loader2 } from "lucide-react";
+import { Store, User, Mail, Lock, Phone, ArrowLeft, Loader2, ChevronRight } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
 import LandingProductTable from "@/components/landing/LandingProductTable";
-import LandingInfoBlocks from "@/components/landing/LandingInfoBlocks";
+
 import LandingDemoCart from "@/components/landing/LandingDemoCart";
 
 interface DemoProduct {
@@ -85,6 +85,15 @@ const Index = () => {
   const handleClearCart = () => {
     setDemoItems([]);
   };
+
+  const handleInstantAdd = (product: DemoProduct) => {
+    setDemoItems(prev => {
+      if (prev.some(i => i.id === product.id)) return prev;
+      return [...prev, product];
+    });
+  };
+
+  const productListRef = useRef<HTMLDivElement>(null);
   
   // Seller state
   const [sellerMode, setSellerMode] = useState<AuthMode>('login');
@@ -783,11 +792,26 @@ const Index = () => {
       <div className="w-full max-w-7xl mx-auto">
         {/* 3-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-          {/* Left column: info blocks + product list */}
+          {/* Left column: CTA banner + product list */}
           <div className="flex flex-col gap-3">
-            <LandingInfoBlocks />
-            <div className="rounded-lg border bg-card overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 260px)' }}>
-              <LandingProductTable onAddToCatalog={handleAddToCatalog} />
+            {/* Green CTA banner */}
+            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-emerald-500/15 transition-colors group"
+              onClick={() => productListRef.current?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 leading-tight">
+                  Выберите товары — соберите свой каталог
+                </p>
+                <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/70 mt-0.5">
+                  Кликайте на позиции, они сразу появятся в витрине →
+                </p>
+              </div>
+              <div className="shrink-0 w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center group-hover:bg-emerald-500/30 transition-colors">
+                <ChevronRight className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+            </div>
+            <div ref={productListRef} className="rounded-lg border bg-card overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 260px)' }}>
+              <LandingProductTable onAddToCatalog={handleAddToCatalog} onInstantAdd={handleInstantAdd} />
             </div>
           </div>
 

@@ -25,11 +25,12 @@ export interface LandingCategory {
 
 interface LandingProductTableProps {
   onAddToCatalog?: (products: LandingProduct[]) => void;
+  onInstantAdd?: (product: LandingProduct) => void;
 }
 
 const BATCH_SIZE = 50;
 
-export default function LandingProductTable({ onAddToCatalog }: LandingProductTableProps) {
+export default function LandingProductTable({ onAddToCatalog, onInstantAdd }: LandingProductTableProps) {
   const [allProducts, setAllProducts] = useState<LandingProduct[]>([]);
   const [categories, setCategories] = useState<LandingCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -300,7 +301,13 @@ export default function LandingProductTable({ onAddToCatalog }: LandingProductTa
                 className={`border-b border-border/50 h-7 cursor-pointer transition-colors ${
                   selected.has(p.id) ? "bg-primary/5" : "hover:bg-muted/30"
                 }`}
-                onClick={() => onAddToCatalog && toggleSelect(p.id)}
+                onClick={() => {
+                  if (onInstantAdd) {
+                    onInstantAdd(p);
+                  } else if (onAddToCatalog) {
+                    toggleSelect(p.id);
+                  }
+                }}
               >
                 {onAddToCatalog && (
                   <td className="px-1 py-0.5" onClick={e => e.stopPropagation()}>
