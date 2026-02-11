@@ -180,9 +180,6 @@ export default function LandingProductTable({ onAddToCatalog }: LandingProductTa
       {/* Header */}
       <div className="px-2 py-1.5 border-b bg-muted/30 flex items-center justify-between shrink-0 gap-1">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-            Каталог · {filteredProducts.length}
-          </span>
           <Button
             variant={showCatalog ? "secondary" : "ghost"}
             size="sm"
@@ -283,7 +280,7 @@ export default function LandingProductTable({ onAddToCatalog }: LandingProductTa
       >
         <table className="w-full text-xs border-collapse">
           <thead className="sticky top-0 z-10">
-            <tr className="border-b bg-muted/40">
+            <tr className="border-b bg-background">
               {onAddToCatalog && (
                 <th className="px-1 py-1 w-5">
                   <Checkbox
