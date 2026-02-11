@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import SlidesManager from '@/components/admin/SlidesManager';
 import SuperAdminDashboard from '@/components/admin/SuperAdminDashboard';
 import ProductMatchingSection from '@/components/admin/ProductMatchingSection';
+import FeaturedProductsManager from '@/components/admin/FeaturedProductsManager';
 
 interface StoreWithCounts {
   id: string;
@@ -443,6 +444,10 @@ export default function SuperAdmin() {
               <Link2 className="h-4 w-4" />
               <span className="hidden sm:inline">Сопоставление</span>
             </TabsTrigger>
+            <TabsTrigger value="featured" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline">Витрина</span>
+            </TabsTrigger>
             <TabsTrigger value="slides" className="gap-2">
               <Image className="h-4 w-4" />
               <span className="hidden sm:inline">Слайды</span>
@@ -855,6 +860,11 @@ export default function SuperAdmin() {
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          {/* Featured Tab */}
+          <TabsContent value="featured" className="space-y-6">
+            <FeaturedProductsManager />
           </TabsContent>
 
           {/* Slides Tab */}

@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.restore-product-images]
 verify_jwt = false
+
+[functions.landing-products]
+verify_jwt = false
