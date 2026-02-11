@@ -858,25 +858,25 @@ const Index = () => {
           {/* Right column: CTA + auth form */}
           <div className="flex flex-col gap-3">
             {/* Step 3: Registration CTA */}
-            <div className="rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-amber-500/5 p-3">
+            <div className="rounded-xl border border-sky-500/30 bg-gradient-to-r from-sky-500/5 via-sky-500/10 to-sky-500/5 p-3">
               <div className="flex items-center gap-2 mb-1">
-                <span className="shrink-0 w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] font-bold">3</span>
-                <p className="text-xs font-bold text-amber-700 dark:text-amber-400 leading-tight">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-sky-600 text-white flex items-center justify-center text-[10px] font-bold">3</span>
+                <p className="text-xs font-bold text-sky-700 dark:text-sky-400 leading-tight">
                   Зарегистрируйся и начни продавать
                 </p>
               </div>
-              <p className="text-[10px] text-amber-600/80 dark:text-amber-400/70 leading-snug ml-7">
+              <p className="text-[10px] text-sky-600/80 dark:text-sky-400/70 leading-snug ml-7">
                 Поставщики сами предложат цены на товары. Выбери позиции для продажи и получи предложения от поставщиков и перевозчиков.
               </p>
             </div>
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'seller' | 'customer')} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-3">
-                <TabsTrigger value="seller" className="gap-2 text-xs">
-                  <Store className="h-3.5 w-3.5" />
+              <TabsList className="grid w-full grid-cols-2 mb-3 h-12">
+                <TabsTrigger value="seller" className="gap-2 text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <Store className="h-4 w-4" />
                   Продавец
                 </TabsTrigger>
-                <TabsTrigger value="customer" className="gap-2 text-xs">
-                  <User className="h-3.5 w-3.5" />
+                <TabsTrigger value="customer" className="gap-2 text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <User className="h-4 w-4" />
                   Покупатель
                 </TabsTrigger>
               </TabsList>
