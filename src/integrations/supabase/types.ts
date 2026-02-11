@@ -483,6 +483,27 @@ export type Database = {
         }
         Relationships: []
       }
+      landing_settings: {
+        Row: {
+          catalog_access_code: string | null
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          catalog_access_code?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          catalog_access_code?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       landing_slides: {
         Row: {
           created_at: string

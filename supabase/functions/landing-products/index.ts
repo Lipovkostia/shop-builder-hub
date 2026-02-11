@@ -15,7 +15,43 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch featured products with product and store data
+    // Get landing settings to find catalog access code
+    const { data: settings } = await supabase
+      .from("landing_settings")
+      .select("catalog_access_code")
+      .eq("id", "default")
+      .single();
+
+    const accessCode = settings?.catalog_access_code;
+
+    if (accessCode) {
+      // Fetch products from linked catalog using the public function
+      const { data: catalogProducts, error } = await supabase
+        .rpc("get_catalog_products_public", { _access_code: accessCode });
+
+      if (error) throw error;
+
+      const products = (catalogProducts || []).map((p: any) => ({
+        id: p.product_id,
+        name: p.product_name,
+        sku: p.product_sku,
+        price: p.product_price,
+        unit: p.product_unit,
+        image: p.product_images?.[0] || null,
+        images_count: p.product_images?.length || 0,
+        quantity: p.product_quantity,
+        category: p.category_name || null,
+        category_id: p.category_id || null,
+        store_name: p.store_name || "",
+      }));
+
+      return new Response(
+        JSON.stringify({ data: products }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Fallback: use featured_products if no catalog linked
     const { data: featured, error } = await supabase
       .from("featured_products")
       .select(`
