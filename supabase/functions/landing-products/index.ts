@@ -25,13 +25,15 @@ Deno.serve(async (req) => {
     const accessCode = settings?.catalog_access_code;
 
     if (accessCode) {
-      // Fetch products from linked catalog using the public function
-      const { data: catalogProducts, error } = await supabase
-        .rpc("get_catalog_products_public", { _access_code: accessCode });
+      // Fetch products and category hierarchy in parallel
+      const [productsResult, catalogResult] = await Promise.all([
+        supabase.rpc("get_catalog_products_public", { _access_code: accessCode }),
+        supabase.from("catalogs").select("id, store_id").eq("access_code", accessCode).maybeSingle(),
+      ]);
 
-      if (error) throw error;
+      if (productsResult.error) throw productsResult.error;
 
-      const products = (catalogProducts || []).map((p: any) => ({
+      const products = (productsResult.data || []).map((p: any) => ({
         id: p.product_id,
         name: p.product_name,
         sku: p.product_sku,
@@ -42,11 +44,39 @@ Deno.serve(async (req) => {
         quantity: p.product_quantity,
         category: p.category_name || null,
         category_id: p.category_id || null,
+        setting_categories: p.setting_categories || [],
         store_name: p.store_name || "",
       }));
 
+      // Fetch category hierarchy from catalog_category_settings
+      let categories: any[] = [];
+      if (catalogResult.data) {
+        const { data: catSettings } = await supabase
+          .from("catalog_category_settings")
+          .select("category_id, sort_order, parent_category_id, custom_name")
+          .eq("catalog_id", catalogResult.data.id)
+          .order("sort_order", { ascending: true });
+
+        if (catSettings && catSettings.length > 0) {
+          const categoryIds = catSettings.map((c: any) => c.category_id);
+          const { data: catNames } = await supabase
+            .from("categories")
+            .select("id, name")
+            .in("id", categoryIds);
+
+          const nameMap = new Map((catNames || []).map((c: any) => [c.id, c.name]));
+
+          categories = catSettings.map((c: any) => ({
+            id: c.category_id,
+            name: c.custom_name || nameMap.get(c.category_id) || "Unknown",
+            parent_id: c.parent_category_id || null,
+            sort_order: c.sort_order,
+          }));
+        }
+      }
+
       return new Response(
-        JSON.stringify({ data: products }),
+        JSON.stringify({ data: products, categories }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -101,7 +131,7 @@ Deno.serve(async (req) => {
       }));
 
     return new Response(
-      JSON.stringify({ data: products }),
+      JSON.stringify({ data: products, categories: [] }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
