@@ -685,6 +685,86 @@ export default function ProductMatchingSection() {
                         <span className="inline-flex items-center gap-1">Дата <SortIcon field="created_at" /></span>
                       </th>
                     </tr>
+                    {/* Inline column filters row */}
+                    <tr className="border-b bg-muted/50">
+                      <th className="w-8 px-1 py-1" />
+                      <th className="px-1 py-1">
+                        <Input placeholder="Название..." value={catalogSearch} onChange={(e) => handleCatalogSearch(e.target.value)} className="h-6 text-[10px] px-1.5" />
+                      </th>
+                      <th className="px-1 py-1" />
+                      <th className="px-1 py-1">
+                        <select value={filterStoreId} onChange={(e) => { setFilterStoreId(e.target.value); setCatalogPage(1); }} className="h-6 w-full rounded border bg-background px-1 text-[10px]">
+                          <option value="">Все</option>
+                          {availableStores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                      </th>
+                      <th className="px-1 py-1" />
+                      <th className="px-1 py-1" />
+                      <th className="px-1 py-1">
+                        <select value={filterHasPrice} onChange={(e) => { setFilterHasPrice(e.target.value); setCatalogPage(1); }} className="h-6 w-full rounded border bg-background px-1 text-[10px]">
+                          <option value="">Все</option>
+                          <option value="true">Есть</option>
+                          <option value="false">Нет</option>
+                        </select>
+                      </th>
+                      <th className="px-1 py-1">
+                        <select value={filterHasBuyPrice} onChange={(e) => { setFilterHasBuyPrice(e.target.value); setCatalogPage(1); }} className="h-6 w-full rounded border bg-background px-1 text-[10px]">
+                          <option value="">Все</option>
+                          <option value="true">Есть</option>
+                          <option value="false">Нет</option>
+                        </select>
+                      </th>
+                      <th className="px-1 py-1" />
+                      <th className="px-1 py-1">
+                        <select value={filterUnit} onChange={(e) => { setFilterUnit(e.target.value); setCatalogPage(1); }} className="h-6 w-full rounded border bg-background px-1 text-[10px]">
+                          <option value="">Все</option>
+                          <option value="кг">кг</option>
+                          <option value="шт">шт</option>
+                          <option value="л">л</option>
+                          <option value="г">г</option>
+                          <option value="уп">уп</option>
+                        </select>
+                      </th>
+                      <th className="px-1 py-1">
+                        <select value={filterHasImages} onChange={(e) => { setFilterHasImages(e.target.value); setCatalogPage(1); }} className="h-6 w-full rounded border bg-background px-1 text-[10px]">
+                          <option value="">Все</option>
+                          <option value="true">Да</option>
+                          <option value="false">Нет</option>
+                        </select>
+                      </th>
+                      <th className="px-1 py-1">
+                        <select value={filterPackaging} onChange={(e) => { setFilterPackaging(e.target.value); setCatalogPage(1); }} className="h-6 w-full rounded border bg-background px-1 text-[10px]">
+                          <option value="">Все</option>
+                          <option value="весовой">Вес</option>
+                          <option value="штучный">Шт</option>
+                          <option value="порционный">Порц</option>
+                        </select>
+                      </th>
+                      <th className="px-1 py-1">
+                        <select value={filterSource} onChange={(e) => { setFilterSource(e.target.value); setCatalogPage(1); }} className="h-6 w-full rounded border bg-background px-1 text-[10px]">
+                          <option value="">Все</option>
+                          <option value="manual">Руч</option>
+                          <option value="moysklad">МС</option>
+                          <option value="excel">XLS</option>
+                          <option value="megacatalog">Мега</option>
+                        </select>
+                      </th>
+                      <th className="px-1 py-1">
+                        <select value={filterIsActive} onChange={(e) => { setFilterIsActive(e.target.value); setCatalogPage(1); }} className="h-6 w-full rounded border bg-background px-1 text-[10px]">
+                          <option value="">Все</option>
+                          <option value="true">Да</option>
+                          <option value="false">Нет</option>
+                        </select>
+                      </th>
+                      <th className="px-1 py-1">
+                        <select value={catalogLinkedFilter} onChange={(e) => { setCatalogLinkedFilter(e.target.value as any); setCatalogPage(1); }} className="h-6 w-full rounded border bg-background px-1 text-[10px]">
+                          <option value="all">Все</option>
+                          <option value="linked">Да</option>
+                          <option value="unlinked">Нет</option>
+                        </select>
+                      </th>
+                      <th className="px-1 py-1" />
+                    </tr>
                   </thead>
                   <tbody>
                     {isLoadingCatalog ? (
