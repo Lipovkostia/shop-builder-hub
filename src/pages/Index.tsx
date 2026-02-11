@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Store, User, Mail, Lock, Phone, ArrowLeft, Loader2 } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
 import LandingProductTable from "@/components/landing/LandingProductTable";
+import LandingInfoBlocks from "@/components/landing/LandingInfoBlocks";
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'forgot-phone';
 type LoginMethod = 'email' | 'phone';
@@ -717,144 +718,149 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Left column - product showcase (hidden on mobile) */}
-        <div className="hidden lg:block lg:col-span-1 rounded-lg border bg-card overflow-hidden h-[600px]">
-          <LandingProductTable />
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 p-4 pt-6">
+      <div className="w-full max-w-7xl mx-auto">
+        {/* Top row: info blocks + auth form */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start mb-4">
+          {/* Left: info blocks */}
+          <div className="lg:col-span-2">
+            <LandingInfoBlocks />
+          </div>
+          {/* Right: auth form */}
+          <div className="lg:col-span-1">
+            <div className="w-full max-w-sm ml-auto">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'seller' | 'customer')} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-3">
+                  <TabsTrigger value="seller" className="gap-2 text-xs">
+                    <Store className="h-3.5 w-3.5" />
+                    Продавец
+                  </TabsTrigger>
+                  <TabsTrigger value="customer" className="gap-2 text-xs">
+                    <User className="h-3.5 w-3.5" />
+                    Покупатель
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="seller">
+                  <Card>
+                    <CardHeader className="pb-3 pt-4 px-4">
+                      <CardTitle className="text-base">
+                        {sellerMode === 'forgot' || sellerMode === 'forgot-phone' ? 'Восстановление пароля' : 'Кабинет продавца'}
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        {sellerMode === 'forgot' 
+                          ? 'Введите email для получения ссылки'
+                          : sellerMode === 'forgot-phone'
+                            ? 'Свяжитесь с поддержкой'
+                            : sellerMode === 'login' 
+                              ? 'Войдите для управления магазином' 
+                              : 'Создайте свой магазин бесплатно'}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-4">
+                      {renderAuthForm(
+                        'seller',
+                        sellerMode,
+                        setSellerMode,
+                        sellerEmail,
+                        setSellerEmail,
+                        sellerPassword,
+                        setSellerPassword,
+                        sellerLoading,
+                        handleSellerLogin,
+                        handleSellerPhoneLogin,
+                        handleSellerRegister,
+                        sellerLoginMethod,
+                        setSellerLoginMethod,
+                        sellerLoginPhone,
+                        setSellerLoginPhone,
+                        <>
+                          <div className="space-y-1.5">
+                            <Label className="text-sm">Название магазина *</Label>
+                            <Input
+                              placeholder="Мой магазин"
+                              value={sellerStoreName}
+                              onChange={(e) => setSellerStoreName(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-sm">Телефон</Label>
+                            <PhoneInput
+                              value={sellerPhone}
+                              onChange={setSellerPhone}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="customer">
+                  <Card>
+                    <CardHeader className="pb-3 pt-4 px-4">
+                      <CardTitle className="text-base">
+                        {customerMode === 'forgot' || customerMode === 'forgot-phone' ? 'Восстановление пароля' : 'Личный кабинет'}
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        {customerMode === 'forgot'
+                          ? 'Введите email для получения ссылки'
+                          : customerMode === 'forgot-phone'
+                            ? 'Свяжитесь с поддержкой'
+                            : catalogFromUrl 
+                              ? 'Войдите для просмотра каталога' 
+                              : customerMode === 'login'
+                                ? 'Войдите в личный кабинет'
+                                : 'Создайте аккаунт покупателя'}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-4">
+                      {renderAuthForm(
+                        'customer',
+                        customerMode,
+                        setCustomerMode,
+                        customerEmail,
+                        setCustomerEmail,
+                        customerPassword,
+                        setCustomerPassword,
+                        customerLoading,
+                        handleCustomerLogin,
+                        handleCustomerPhoneLogin,
+                        handleCustomerRegister,
+                        customerLoginMethod,
+                        setCustomerLoginMethod,
+                        customerLoginPhone,
+                        setCustomerLoginPhone,
+                        <>
+                          <div className="space-y-1.5">
+                            <Label className="text-sm">Ваше имя *</Label>
+                            <Input
+                              placeholder="Иван Иванов"
+                              value={customerName}
+                              onChange={(e) => setCustomerName(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-sm">Телефон</Label>
+                            <PhoneInput
+                              value={customerPhone}
+                              onChange={setCustomerPhone}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
         </div>
 
-        {/* Right column - auth forms */}
-        <div className="lg:col-span-2 flex items-center justify-center">
-        <div className="w-full max-w-sm">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'seller' | 'customer')} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="seller" className="gap-2">
-              <Store className="h-4 w-4" />
-              Продавец
-            </TabsTrigger>
-            <TabsTrigger value="customer" className="gap-2">
-              <User className="h-4 w-4" />
-              Покупатель
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="seller">
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-xl">
-                  {sellerMode === 'forgot' || sellerMode === 'forgot-phone' ? 'Восстановление пароля' : 'Кабинет продавца'}
-                </CardTitle>
-                <CardDescription>
-                  {sellerMode === 'forgot' 
-                    ? 'Введите email для получения ссылки'
-                    : sellerMode === 'forgot-phone'
-                      ? 'Свяжитесь с поддержкой'
-                      : sellerMode === 'login' 
-                        ? 'Войдите для управления магазином' 
-                        : 'Создайте свой магазин бесплатно'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {renderAuthForm(
-                  'seller',
-                  sellerMode,
-                  setSellerMode,
-                  sellerEmail,
-                  setSellerEmail,
-                  sellerPassword,
-                  setSellerPassword,
-                  sellerLoading,
-                  handleSellerLogin,
-                  handleSellerPhoneLogin,
-                  handleSellerRegister,
-                  sellerLoginMethod,
-                  setSellerLoginMethod,
-                  sellerLoginPhone,
-                  setSellerLoginPhone,
-                  // Extra fields for registration
-                  <>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Название магазина *</Label>
-                      <Input
-                        placeholder="Мой магазин"
-                        value={sellerStoreName}
-                        onChange={(e) => setSellerStoreName(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Телефон</Label>
-                      <PhoneInput
-                        value={sellerPhone}
-                        onChange={setSellerPhone}
-                      />
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="customer">
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-xl">
-                  {customerMode === 'forgot' || customerMode === 'forgot-phone' ? 'Восстановление пароля' : 'Личный кабинет'}
-                </CardTitle>
-                <CardDescription>
-                  {customerMode === 'forgot'
-                    ? 'Введите email для получения ссылки'
-                    : customerMode === 'forgot-phone'
-                      ? 'Свяжитесь с поддержкой'
-                      : catalogFromUrl 
-                        ? 'Войдите для просмотра каталога' 
-                        : customerMode === 'login'
-                          ? 'Войдите в личный кабинет'
-                          : 'Создайте аккаунт покупателя'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {renderAuthForm(
-                  'customer',
-                  customerMode,
-                  setCustomerMode,
-                  customerEmail,
-                  setCustomerEmail,
-                  customerPassword,
-                  setCustomerPassword,
-                  customerLoading,
-                  handleCustomerLogin,
-                  handleCustomerPhoneLogin,
-                  handleCustomerRegister,
-                  customerLoginMethod,
-                  setCustomerLoginMethod,
-                  customerLoginPhone,
-                  setCustomerLoginPhone,
-                  // Extra fields for registration
-                  <>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Ваше имя *</Label>
-                      <Input
-                        placeholder="Иван Иванов"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Телефон</Label>
-                      <PhoneInput
-                        value={customerPhone}
-                        onChange={setCustomerPhone}
-                      />
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-      </div>
+        {/* Product table - full width */}
+        <div className="hidden lg:block rounded-lg border bg-card overflow-hidden max-h-[calc(100vh-220px)]">
+          <LandingProductTable />
+        </div>
       </div>
     </div>
   );
