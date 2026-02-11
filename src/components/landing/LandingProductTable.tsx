@@ -272,52 +272,44 @@ export default function LandingProductTable({ onAddToCatalog, onInstantAdd, adde
         className="overflow-y-auto flex-1 min-h-0"
         onScroll={handleScroll}
       >
-        <table className="w-full text-xs border-collapse">
-          <thead className="sticky top-0 z-10">
-            <tr className="border-b bg-background">
-              <th className="text-left text-[10px] font-medium text-muted-foreground px-2 py-1">Название</th>
-              <th className="w-8"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleProducts.map((p) => {
-              const isAdded = addedIds.has(p.id);
-              return (
-                <tr
-                  key={p.id}
-                  className={`border-b border-border/50 h-8 cursor-pointer transition-all group ${
-                    isAdded
-                      ? "bg-primary/5 opacity-60"
-                      : "hover:bg-primary/5"
-                  }`}
-                  onClick={() => {
-                    if (isAdded) return;
-                    if (onInstantAdd) {
-                      onInstantAdd(p);
-                    } else if (onAddToCatalog) {
-                      toggleSelect(p.id);
-                    }
-                  }}
-                >
-                  <td className="px-2 py-0.5">
-                    <span className="text-[11px] font-medium truncate block">{p.name}</span>
-                  </td>
-                  <td className="pr-2 py-0.5">
-                    {isAdded ? (
-                      <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center">
-                        <Check className="h-3 w-3 text-primary" />
-                      </div>
-                    ) : (
-                      <div className="w-5 h-5 rounded-full border border-primary/30 bg-primary/5 flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-colors">
-                        <ArrowRight className="h-3 w-3 text-primary/50 group-hover:text-primary-foreground transition-colors animate-[pulse-arrow_1.5s_ease-in-out_infinite]" />
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="divide-y divide-border/50">
+          {visibleProducts.map((p) => {
+            const isAdded = addedIds.has(p.id);
+            return (
+              <div
+                key={p.id}
+                className={`flex items-center h-8 cursor-pointer transition-all group ${
+                  isAdded
+                    ? "bg-primary/5 opacity-60"
+                    : "hover:bg-primary/5"
+                }`}
+                onClick={() => {
+                  if (isAdded) return;
+                  if (onInstantAdd) {
+                    onInstantAdd(p);
+                  } else if (onAddToCatalog) {
+                    toggleSelect(p.id);
+                  }
+                }}
+              >
+                <div className="flex-1 min-w-0 px-2">
+                  <span className="text-[11px] font-medium truncate block">{p.name}</span>
+                </div>
+                <div className="shrink-0 pr-2">
+                  {isAdded ? (
+                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center">
+                      <Check className="h-3 w-3 text-primary" />
+                    </div>
+                  ) : (
+                    <div className="w-5 h-5 rounded-full border border-primary/30 bg-primary/5 flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-colors">
+                      <ArrowRight className="h-3 w-3 text-primary/50 group-hover:text-primary-foreground transition-colors animate-pulse-arrow" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
         {hasMore && (
           <div className="flex justify-center py-2">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
