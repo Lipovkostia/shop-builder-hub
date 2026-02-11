@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { ImageIcon, Loader2, Plus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Loader2, Plus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 
@@ -92,7 +91,7 @@ export default function LandingProductTable({ onAddToCatalog }: LandingProductTa
           <thead>
             <tr className="border-b bg-muted/20">
               {onAddToCatalog && (
-                <th className="px-2 py-1 w-7">
+                <th className="px-1 py-1 w-5">
                   <Checkbox
                     checked={selected.size === products.length && products.length > 0}
                     onCheckedChange={toggleAll}
@@ -101,9 +100,6 @@ export default function LandingProductTable({ onAddToCatalog }: LandingProductTa
                 </th>
               )}
               <th className="text-left text-[10px] font-medium text-muted-foreground px-2 py-1">Название</th>
-              <th className="text-center text-[10px] font-medium text-muted-foreground px-1 py-1 w-10">
-                <ImageIcon className="h-3 w-3 mx-auto" />
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -116,7 +112,7 @@ export default function LandingProductTable({ onAddToCatalog }: LandingProductTa
                 onClick={() => onAddToCatalog && toggleSelect(p.id)}
               >
                 {onAddToCatalog && (
-                  <td className="px-2 py-0.5" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-1 py-0.5" onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={selected.has(p.id)}
                       onCheckedChange={() => toggleSelect(p.id)}
@@ -126,15 +122,6 @@ export default function LandingProductTable({ onAddToCatalog }: LandingProductTa
                 )}
                 <td className="px-2 py-0.5">
                   <span className="text-[11px] font-medium truncate block">{p.name}</span>
-                </td>
-                <td className="px-1 py-0.5 text-center">
-                  {p.images_count > 0 ? (
-                    <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
-                      {p.images_count}
-                    </Badge>
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground">—</span>
-                  )}
                 </td>
               </tr>
             ))}
