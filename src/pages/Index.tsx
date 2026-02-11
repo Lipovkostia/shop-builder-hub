@@ -795,23 +795,23 @@ const Index = () => {
           {/* Left column: CTA banner + product list */}
           <div className="flex flex-col gap-3">
             {/* Step 1: Green CTA banner */}
-            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3 cursor-pointer hover:bg-emerald-500/15 transition-colors group min-h-[100px] flex flex-col justify-between"
+            <div className="rounded-xl bg-emerald-600 p-3 cursor-pointer hover:bg-emerald-700 transition-colors group min-h-[100px] flex flex-col justify-between shadow-md"
               onClick={() => productListRef.current?.scrollIntoView({ behavior: 'smooth' })}
             >
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
-                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 leading-tight">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-white/25 text-white flex items-center justify-center text-[10px] font-bold">1</span>
+                  <p className="text-xs font-bold text-white leading-tight">
                     Выберите товары — соберите свой каталог
                   </p>
                 </div>
-                <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/70 ml-7 leading-snug">
+                <p className="text-[10px] text-white/85 ml-7 leading-snug">
                   Кликайте на любую позицию из списка ниже — она мгновенно появится в вашей витрине справа. Соберите идеальный ассортимент за минуту!
                 </p>
               </div>
               <div className="flex justify-end mt-1.5">
-                <div className="shrink-0 w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center group-hover:bg-emerald-500/30 transition-colors">
-                  <ChevronRight className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <div className="shrink-0 w-7 h-7 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                  <ChevronRight className="h-4 w-4 text-white" />
                 </div>
               </div>
             </div>
@@ -825,24 +825,24 @@ const Index = () => {
             {/* Step 2 CTA banner */}
             {catalogAccessCode && (
               <div
-                className="rounded-xl border border-emerald-500/25 bg-gradient-to-r from-emerald-500/5 via-emerald-400/8 to-teal-500/5 p-3 cursor-pointer hover:from-emerald-500/10 hover:via-emerald-400/12 hover:to-teal-500/10 transition-all group min-h-[100px] flex flex-col justify-between"
+                className="rounded-xl border border-primary/25 bg-gradient-to-r from-primary/5 via-primary/8 to-primary/5 p-3 cursor-pointer hover:from-primary/10 hover:via-primary/12 hover:to-primary/10 transition-all group min-h-[100px] flex flex-col justify-between"
                 onClick={() => navigate(`/catalog/${catalogAccessCode}`)}
               >
                 <div>
                   <div className="flex items-center gap-2 mb-1.5">
-                    <span className="shrink-0 w-5 h-5 rounded-full bg-teal-600 text-white flex items-center justify-center text-[10px] font-bold">2</span>
-                    <p className="text-xs font-bold text-teal-700 dark:text-teal-400 leading-tight">
+                    <span className="shrink-0 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">2</span>
+                    <p className="text-xs font-bold text-primary leading-tight">
                       Ваш каталог уже готов — откройте и продавайте!
                     </p>
                   </div>
-                  <p className="text-[10px] text-teal-600/80 dark:text-teal-400/70 leading-snug ml-7">
+                  <p className="text-[10px] text-primary/70 leading-snug ml-7">
                     Посмотрите, как выглядит витрина для покупателей. Поставьте свои цены и принимайте заказы уже сегодня.
                   </p>
                 </div>
                 <div className="flex justify-end mt-1.5">
                   <Button
                     size="sm"
-                    className="h-7 text-[11px] px-4 gap-1.5 group-hover:gap-2 transition-all bg-teal-600 hover:bg-teal-700 text-white"
+                    className="h-7 text-[11px] px-4 gap-1.5 group-hover:gap-2 transition-all"
                   >
                     Открыть каталог
                     <ChevronRight className="h-3.5 w-3.5" />
@@ -862,15 +862,15 @@ const Index = () => {
           {/* Right column: CTA + auth form */}
           <div className="flex flex-col gap-3">
             {/* Step 3: Registration CTA */}
-            <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-r from-teal-500/5 via-emerald-400/8 to-emerald-500/5 p-3 min-h-[100px] flex flex-col justify-between">
+            <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/8 to-primary/5 p-3 min-h-[100px] flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center text-[10px] font-bold">3</span>
-                  <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300 leading-tight">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">3</span>
+                  <p className="text-xs font-bold text-primary leading-tight">
                     Зарегистрируйся и начни продавать
                   </p>
                 </div>
-                <p className="text-[10px] text-emerald-700/70 dark:text-emerald-400/70 leading-snug ml-7">
+                <p className="text-[10px] text-primary/70 leading-snug ml-7">
                   Поставщики сами предложат цены на товары. Выбери позиции для продажи и получи предложения от поставщиков и перевозчиков.
                 </p>
               </div>
