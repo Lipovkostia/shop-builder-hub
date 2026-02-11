@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.landing-products]
 verify_jwt = false
+
+[functions.landing-info-blocks]
+verify_jwt = false
