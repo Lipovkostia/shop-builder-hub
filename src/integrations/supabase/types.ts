@@ -725,6 +725,27 @@ export type Database = {
           },
         ]
       }
+      megacatalog_settings: {
+        Row: {
+          created_at: string
+          id: string
+          password_hash: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          password_hash?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          password_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       moysklad_accounts: {
         Row: {
           created_at: string
@@ -1952,6 +1973,10 @@ export type Database = {
       }
       is_store_owner_of_customer: {
         Args: { customer_profile_id: string }
+        Returns: boolean
+      }
+      verify_megacatalog_password: {
+        Args: { _password: string }
         Returns: boolean
       }
     }

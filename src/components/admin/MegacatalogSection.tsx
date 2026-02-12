@@ -50,13 +50,20 @@ export function MegacatalogSection({
 
   // Filters
   const [storeFilter, setStoreFilter] = useState("all");
-  const [photoFilter, setPhotoFilter] = useState("all"); // all | with | without
+  const [photoFilter, setPhotoFilter] = useState("all");
   const [unitFilter, setUnitFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [existingFilter, setExistingFilter] = useState("all"); // all | new | existing
+  const [existingFilter, setExistingFilter] = useState("all");
 
-  // Fetch all products
+  // Password gate
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
+
+  // Fetch all products (only after unlocked)
   useEffect(() => {
+    if (!isUnlocked) return;
     const fetchProducts = async () => {
       setLoading(true);
       try {
@@ -92,7 +99,28 @@ export function MegacatalogSection({
     };
 
     fetchProducts();
-  }, [toast]);
+  }, [isUnlocked, toast]);
+
+  const handleVerifyPassword = async () => {
+    setVerifying(true);
+    setPasswordError(false);
+    try {
+      const { data, error } = await supabase.rpc('verify_megacatalog_password', {
+        _password: passwordInput,
+      });
+      if (error) throw error;
+      if (data === true) {
+        setIsUnlocked(true);
+      } else {
+        setPasswordError(true);
+      }
+    } catch (err) {
+      console.error('Error verifying password:', err);
+      setPasswordError(true);
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   // Unique stores for filter
   const storeOptions = useMemo(() => {
@@ -226,6 +254,39 @@ export function MegacatalogSection({
     setExistingFilter("all");
     setSearchQuery("");
   };
+
+  if (!isUnlocked) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-full max-w-sm space-y-4 text-center">
+          <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+            <Package className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">Доступ к Мегакаталогу</h3>
+            <p className="text-sm text-muted-foreground mt-1">Введите пароль для доступа</p>
+          </div>
+          <div className="space-y-2">
+            <Input
+              type="password"
+              placeholder="Пароль"
+              value={passwordInput}
+              onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(false); }}
+              onKeyDown={(e) => e.key === 'Enter' && handleVerifyPassword()}
+              className={passwordError ? 'border-destructive' : ''}
+            />
+            {passwordError && (
+              <p className="text-sm text-destructive">Неверный пароль</p>
+            )}
+            <Button onClick={handleVerifyPassword} disabled={verifying || !passwordInput} className="w-full">
+              {verifying ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Войти
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
