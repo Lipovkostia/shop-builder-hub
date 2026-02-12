@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image, LayoutDashboard, LogOut, Mail, Lock, Loader2, Package, Sparkles, Link2 } from 'lucide-react';
+import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image, LayoutDashboard, LogOut, Mail, Lock, Loader2, Package, Sparkles, Link2, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +22,7 @@ import SlidesManager from '@/components/admin/SlidesManager';
 import SuperAdminDashboard from '@/components/admin/SuperAdminDashboard';
 import ProductMatchingSection from '@/components/admin/ProductMatchingSection';
 import FeaturedProductsManager from '@/components/admin/FeaturedProductsManager';
+import MegacatalogManager from '@/components/admin/MegacatalogManager';
 
 interface StoreWithCounts {
   id: string;
@@ -452,6 +453,10 @@ export default function SuperAdmin() {
               <Image className="h-4 w-4" />
               <span className="hidden sm:inline">Слайды</span>
             </TabsTrigger>
+            <TabsTrigger value="megacatalog" className="gap-2">
+              <Globe className="h-4 w-4" />
+              <span className="hidden sm:inline">Мегакаталог</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
@@ -870,6 +875,11 @@ export default function SuperAdmin() {
           {/* Slides Tab */}
           <TabsContent value="slides" className="space-y-6">
             <SlidesManager />
+          </TabsContent>
+
+          {/* Megacatalog Tab */}
+          <TabsContent value="megacatalog" className="space-y-6">
+            <MegacatalogManager />
           </TabsContent>
         </Tabs>
       </main>

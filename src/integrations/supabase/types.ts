@@ -725,6 +725,35 @@ export type Database = {
           },
         ]
       }
+      megacatalog_products: {
+        Row: {
+          added_by: string
+          created_at: string
+          id: string
+          product_id: string
+        }
+        Insert: {
+          added_by: string
+          created_at?: string
+          id?: string
+          product_id: string
+        }
+        Update: {
+          added_by?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "megacatalog_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       megacatalog_settings: {
         Row: {
           created_at: string
