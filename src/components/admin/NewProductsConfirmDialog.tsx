@@ -37,13 +37,16 @@ export function NewProductsConfirmDialog({
     return new Intl.NumberFormat('ru-RU').format(price) + ' ₽';
   };
 
+  // Filter out products without valid price
+  const validProducts = newProducts.filter(p => p.buyPrice !== undefined && p.buyPrice > 0);
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-md max-h-[85vh] flex flex-col">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-blue-600" />
-            Найдено {newProducts.length} новых товаров
+            Найдено {validProducts.length} новых товаров
           </AlertDialogTitle>
           <AlertDialogDescription className="text-left">
             Этих товаров нет в вашем ассортименте. Добавить их в магазин{catalogName ? ` и в прайс-лист "${catalogName}"` : ''}?
@@ -67,7 +70,7 @@ export function NewProductsConfirmDialog({
           </p>
           <ScrollArea className="h-[200px] border rounded-lg">
             <div className="p-2 space-y-1">
-              {newProducts.map((product, idx) => (
+              {validProducts.map((product, idx) => (
                 <div 
                   key={idx} 
                   className="flex items-center justify-between px-3 py-2 rounded-md bg-muted/50 hover:bg-muted transition-colors"
