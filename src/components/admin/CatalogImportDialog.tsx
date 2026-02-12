@@ -18,7 +18,7 @@ import {
   CatalogImportCheck,
   NewProductToCreate
 } from "@/lib/excelImport";
-import { CatalogNewProductsDialog } from "./CatalogNewProductsDialog";
+import { CatalogImportPreviewDialog } from "./CatalogImportPreviewDialog";
 
 interface CatalogImportDialogProps {
   open: boolean;
@@ -44,7 +44,7 @@ export function CatalogImportDialog({
   const [progress, setProgress] = useState<CatalogImportProgress | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [importCheck, setImportCheck] = useState<CatalogImportCheck | null>(null);
-  const [showNewProductsDialog, setShowNewProductsDialog] = useState(false);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -74,7 +74,6 @@ export function CatalogImportDialog({
   }, []);
 
   const handleFile = async (file: File) => {
-    // Validate file type
     const validTypes = [
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.ms-excel',
@@ -88,44 +87,28 @@ export function CatalogImportDialog({
     
     if (!isValidType) {
       setProgress({
-        total: 0,
-        current: 0,
-        currentProduct: '',
+        total: 0, current: 0, currentProduct: '',
         status: 'error',
         errors: ['Пожалуйста, загрузите файл Excel (.xlsx или .xls)'],
-        successCount: 0,
-        addedToCatalogCount: 0,
-        updatedCount: 0,
+        successCount: 0, addedToCatalogCount: 0, updatedCount: 0,
       });
       return;
     }
 
-    // Step 1: Check for new products before importing
     setIsChecking(true);
     setPendingFile(file);
     setProgress({
-      total: 0,
-      current: 0,
-      currentProduct: '',
-      status: 'checking',
-      errors: [],
-      successCount: 0,
-      addedToCatalogCount: 0,
-      updatedCount: 0,
+      total: 0, current: 0, currentProduct: '',
+      status: 'checking', errors: [],
+      successCount: 0, addedToCatalogCount: 0, updatedCount: 0,
     });
 
     try {
-      const check = await checkCatalogImportProducts(file, storeId);
+      const check = await checkCatalogImportProducts(file, storeId, catalogId);
       setImportCheck(check);
       setIsChecking(false);
-
-      if (check.newProducts.length > 0) {
-        // Show dialog to let user choose which new products to add
-        setShowNewProductsDialog(true);
-      } else {
-        // No new products, proceed directly with import
-        await startImport(file, []);
-      }
+      setProgress(null);
+      setShowPreviewDialog(true);
     } catch (error) {
       console.error('Check error:', error);
       setIsChecking(false);
@@ -140,14 +123,9 @@ export function CatalogImportDialog({
   const startImport = async (file: File, newProductsToCreate: NewProductToCreate[]) => {
     setIsImporting(true);
     setProgress({
-      total: 0,
-      current: 0,
-      currentProduct: '',
-      status: 'parsing',
-      errors: [],
-      successCount: 0,
-      addedToCatalogCount: 0,
-      updatedCount: 0,
+      total: 0, current: 0, currentProduct: '',
+      status: 'parsing', errors: [],
+      successCount: 0, addedToCatalogCount: 0, updatedCount: 0,
     });
 
     try {
@@ -166,19 +144,15 @@ export function CatalogImportDialog({
     }
   };
 
-  const handleNewProductsConfirm = async (selectedProducts: { rowIndex: number; name: string }[]) => {
-    setShowNewProductsDialog(false);
+  const handlePreviewConfirm = async (selectedProducts: NewProductToCreate[]) => {
+    setShowPreviewDialog(false);
     if (pendingFile) {
-      const newProductsToCreate: NewProductToCreate[] = selectedProducts.map(p => ({
-        rowIndex: p.rowIndex,
-        name: p.name
-      }));
-      await startImport(pendingFile, newProductsToCreate);
+      await startImport(pendingFile, selectedProducts);
     }
   };
 
-  const handleNewProductsCancel = () => {
-    setShowNewProductsDialog(false);
+  const handlePreviewCancel = () => {
+    setShowPreviewDialog(false);
     resetImport();
   };
 
@@ -284,19 +258,14 @@ export function CatalogImportDialog({
                   className="hidden"
                 />
                 <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm font-medium">
-                  Перетащите файл Excel сюда
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  или нажмите для выбора файла
-                </p>
+                <p className="text-sm font-medium">Перетащите файл Excel сюда</p>
+                <p className="text-xs text-muted-foreground mt-1">или нажмите для выбора файла</p>
               </div>
             )}
 
             {/* Progress section */}
             {progress && (
               <div className="space-y-3">
-                {/* Checking state */}
                 {progress.status === 'checking' && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -304,22 +273,16 @@ export function CatalogImportDialog({
                   </div>
                 )}
 
-                {/* Progress bar */}
                 {(progress.status === 'importing' || progress.status === 'uploading_images') && (
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground truncate max-w-[200px]">
-                        {getStatusText()}
-                      </span>
-                      <span className="font-medium">
-                        {progress.current}/{progress.total}
-                      </span>
+                      <span className="text-muted-foreground truncate max-w-[200px]">{getStatusText()}</span>
+                      <span className="font-medium">{progress.current}/{progress.total}</span>
                     </div>
                     <Progress value={getProgressPercent()} className="h-2" />
                   </div>
                 )}
 
-                {/* Parsing state */}
                 {progress.status === 'parsing' && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -327,7 +290,6 @@ export function CatalogImportDialog({
                   </div>
                 )}
 
-                {/* Done state */}
                 {progress.status === 'done' && (
                   <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
                     <div className="flex items-center gap-2 text-green-600 mb-2">
@@ -335,20 +297,13 @@ export function CatalogImportDialog({
                       <span className="font-medium">Импорт завершён</span>
                     </div>
                     <div className="text-sm space-y-1">
-                      {progress.successCount > 0 && (
-                        <p>Создано товаров: {progress.successCount}</p>
-                      )}
-                      {(progress.updatedCount ?? 0) > 0 && (
-                        <p>Обновлено товаров: {progress.updatedCount}</p>
-                      )}
-                      {progress.addedToCatalogCount > 0 && (
-                        <p>Добавлено в прайс-лист: {progress.addedToCatalogCount}</p>
-                      )}
+                      {progress.successCount > 0 && <p>Создано товаров: {progress.successCount}</p>}
+                      {(progress.updatedCount ?? 0) > 0 && <p>Обновлено товаров: {progress.updatedCount}</p>}
+                      {progress.addedToCatalogCount > 0 && <p>Добавлено в прайс-лист: {progress.addedToCatalogCount}</p>}
                     </div>
                   </div>
                 )}
 
-                {/* Error state */}
                 {progress.status === 'error' && progress.errors.length > 0 && (
                   <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3">
                     <div className="flex items-center gap-2 text-destructive mb-2">
@@ -365,7 +320,6 @@ export function CatalogImportDialog({
                   </div>
                 )}
 
-                {/* Errors during import (warnings) */}
                 {progress.status === 'done' && progress.errors.length > 0 && (
                   <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
                     <div className="flex items-center gap-2 text-yellow-600 mb-2">
@@ -388,21 +342,13 @@ export function CatalogImportDialog({
           <DialogFooter className="gap-2 sm:gap-0">
             {progress?.status === 'done' ? (
               <>
-                <Button variant="outline" onClick={resetImport}>
-                  Загрузить ещё
-                </Button>
-                <Button onClick={handleClose}>
-                  Готово
-                </Button>
+                <Button variant="outline" onClick={resetImport}>Загрузить ещё</Button>
+                <Button onClick={handleClose}>Готово</Button>
               </>
             ) : progress?.status === 'error' ? (
               <>
-                <Button variant="outline" onClick={handleClose}>
-                  Закрыть
-                </Button>
-                <Button onClick={resetImport}>
-                  Попробовать снова
-                </Button>
+                <Button variant="outline" onClick={handleClose}>Закрыть</Button>
+                <Button onClick={resetImport}>Попробовать снова</Button>
               </>
             ) : (
               <Button variant="outline" onClick={handleClose} disabled={isImporting || isChecking}>
@@ -413,15 +359,14 @@ export function CatalogImportDialog({
         </DialogContent>
       </Dialog>
 
-      {/* New products selection dialog */}
+      {/* Preview dialog */}
       {importCheck && (
-        <CatalogNewProductsDialog
-          open={showNewProductsDialog}
-          onOpenChange={setShowNewProductsDialog}
-          newProducts={importCheck.newProducts}
-          existingProductsCount={importCheck.existingProducts.length}
-          onConfirm={handleNewProductsConfirm}
-          onCancel={handleNewProductsCancel}
+        <CatalogImportPreviewDialog
+          open={showPreviewDialog}
+          onOpenChange={setShowPreviewDialog}
+          importCheck={importCheck}
+          onConfirm={handlePreviewConfirm}
+          onCancel={handlePreviewCancel}
         />
       )}
     </>

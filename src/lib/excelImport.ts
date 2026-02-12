@@ -839,6 +839,12 @@ export interface CatalogImportCheck {
     rowIndex: number;
     productId: string;
     productName: string;
+    currentBuyPrice: number | null;
+    newBuyPrice: number | null;
+    currentStatus: string | null;
+    newStatus: string | null;
+    newMarkupPercent: number | null;
+    newMarkupRub: number | null;
   }[];
   newProducts: {
     row: CatalogExcelRow;
@@ -846,6 +852,7 @@ export interface CatalogImportCheck {
     name: string;
     category?: string;
     description?: string;
+    buyPrice?: number;
   }[];
   errors: string[];
   totalRows: number;
@@ -857,7 +864,8 @@ export interface CatalogImportCheck {
  */
 export async function checkCatalogImportProducts(
   file: File,
-  storeId: string
+  storeId: string,
+  catalogId?: string
 ): Promise<CatalogImportCheck> {
   // Read Excel file
   const arrayBuffer = await file.arrayBuffer();
@@ -885,19 +893,19 @@ export async function checkCatalogImportProducts(
     return { existingProducts: [], newProducts: [], errors: [], totalRows: 0 };
   }
 
-  // Get existing products from database (include sku)
+  // Get existing products from database (include sku, buy_price)
   const { data: existingProducts } = await supabase
     .from('products')
-    .select('id, name, sku')
+    .select('id, name, sku, buy_price')
     .eq('store_id', storeId)
     .is('deleted_at', null);
 
   // Create maps for quick lookup
-  const skuMap = new Map<string, { id: string; name: string }>();
-  const nameMap = new Map<string, { id: string; name: string }>();
+  const skuMap = new Map<string, { id: string; name: string; buy_price: number | null }>();
+  const nameMap = new Map<string, { id: string; name: string; buy_price: number | null }>();
   existingProducts?.forEach(p => {
-    if (p.sku) skuMap.set(p.sku.toLowerCase(), { id: p.id, name: p.name });
-    nameMap.set(p.name.toLowerCase(), { id: p.id, name: p.name });
+    if (p.sku) skuMap.set(p.sku.toLowerCase(), { id: p.id, name: p.name, buy_price: p.buy_price });
+    nameMap.set(p.name.toLowerCase(), { id: p.id, name: p.name, buy_price: p.buy_price });
   });
 
   // Categorize rows
@@ -906,6 +914,13 @@ export async function checkCatalogImportProducts(
     newProducts: [],
     errors: [],
     totalRows: validRows.length
+  };
+
+  // Helper to parse price
+  const parsePriceVal = (val: string | number | undefined): number | null => {
+    if (val === undefined || val === null || val === '') return null;
+    const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/[^\d.,\-]/g, '').replace(',', '.'));
+    return isNaN(num) || num <= 0 ? null : Math.floor(num);
   };
 
   validRows.forEach(({ row, rowIndex }) => {
@@ -918,7 +933,7 @@ export async function checkCatalogImportProducts(
     }
 
     // Priority: match by SKU first, then by name
-    let existing: { id: string; name: string } | undefined;
+    let existing: { id: string; name: string; buy_price: number | null } | undefined;
     
     if (sku) {
       existing = skuMap.get(sku.toLowerCase());
@@ -929,11 +944,23 @@ export async function checkCatalogImportProducts(
     }
     
     if (existing) {
+      const newBuyPrice = parsePriceVal(row['Себестоимость']);
+      const newStatusRaw = row['Статус']?.toString().trim();
+      const newStatus = newStatusRaw ? parseStatus(newStatusRaw) : null;
+      const markupPercent = parsePriceVal(row['Наценка %']);
+      const markupRub = parsePriceVal(row['Наценка руб']);
+
       result.existingProducts.push({
         row,
         rowIndex,
         productId: existing.id,
-        productName: existing.name
+        productName: existing.name,
+        currentBuyPrice: existing.buy_price,
+        newBuyPrice,
+        currentStatus: null, // will be populated below
+        newStatus,
+        newMarkupPercent: markupPercent,
+        newMarkupRub: markupRub,
       });
     } else {
       result.newProducts.push({
@@ -941,10 +968,31 @@ export async function checkCatalogImportProducts(
         rowIndex,
         name,
         category: row['Категории']?.toString().trim(),
-        description: row['Описание']?.toString().trim()
+        description: row['Описание']?.toString().trim(),
+        buyPrice: parsePriceVal(row['Себестоимость']) ?? undefined,
       });
     }
   });
+
+  // Fetch current catalog_product_settings statuses for existing products
+  if (result.existingProducts.length > 0 && catalogId) {
+    const productIds = result.existingProducts.map(p => p.productId);
+    const statusMap = new Map<string, string>();
+    for (let i = 0; i < productIds.length; i += 500) {
+      const chunk = productIds.slice(i, i + 500);
+      const { data: settings } = await supabase
+        .from('catalog_product_settings')
+        .select('product_id, status')
+        .eq('catalog_id', catalogId)
+        .in('product_id', chunk);
+      settings?.forEach(s => {
+        if (s.status) statusMap.set(s.product_id, s.status);
+      });
+    }
+    result.existingProducts.forEach(p => {
+      p.currentStatus = statusMap.get(p.productId) || 'in_stock';
+    });
+  }
 
   return result;
 }
