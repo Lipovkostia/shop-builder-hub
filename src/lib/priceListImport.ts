@@ -76,22 +76,44 @@ function parsePrice(priceStr: string | number | undefined): number {
   
   // If already a number, use it directly
   if (typeof priceStr === 'number') {
+    if (isNaN(priceStr)) return 0;
     return Math.floor(priceStr);
   }
   
   // Convert to string and clean up
   let str = String(priceStr).trim();
   
-  // Remove any currency symbols
-  str = str.replace(/[₽$€\s]/g, '');
+  // Remove any currency symbols, spaces, non-breaking spaces
+  str = str.replace(/[₽$€\s\u00A0]/g, '');
   
-  // Remove thousands separator (comma in this format)
-  str = str.replace(/,/g, '');
+  // Auto-detect format by position of last dot and last comma
+  const lastDot = str.lastIndexOf('.');
+  const lastComma = str.lastIndexOf(',');
   
-  // Parse the number (this will handle the decimal point correctly)
+  if (lastDot > -1 && lastComma > -1) {
+    if (lastComma > lastDot) {
+      // Format: 1.700,00 (European) — dot is thousands, comma is decimal
+      str = str.replace(/\./g, '').replace(',', '.');
+    } else {
+      // Format: 1,700.00 (US) — comma is thousands, dot is decimal
+      str = str.replace(/,/g, '');
+    }
+  } else if (lastComma > -1) {
+    // Only comma present: check if it looks like decimal separator
+    const afterComma = str.substring(lastComma + 1);
+    if (afterComma.length <= 2) {
+      // 1550,00 or 1550,5 — comma is decimal
+      str = str.replace(',', '.');
+    } else {
+      // 1,550 — comma is thousands separator
+      str = str.replace(/,/g, '');
+    }
+  }
+  // If only dot present, it's standard decimal notation — no changes needed
+  
   const num = parseFloat(str);
   
-  if (isNaN(num)) return 0;
+  if (isNaN(num) || num < 0) return 0;
   
   // Return integer part only (ignore kopeks)
   return Math.floor(num);

@@ -32,7 +32,8 @@ export function NewProductsConfirmDialog({
   onUpdateExistingOnly,
   catalogName,
 }: NewProductsConfirmDialogProps) {
-  const formatPrice = (price: number) => {
+  const formatPrice = (price: number | undefined) => {
+    if (price === undefined || price === null || isNaN(price) || price === 0) return '—';
     return new Intl.NumberFormat('ru-RU').format(price) + ' ₽';
   };
 
