@@ -61,12 +61,27 @@ export function MegacatalogSection({
   const [verifying, setVerifying] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
 
-  // Fetch all products (only after unlocked)
+  // Fetch only curated megacatalog products (managed by super admin)
   useEffect(() => {
     if (!isUnlocked) return;
     const fetchProducts = async () => {
       setLoading(true);
       try {
+        // First get product IDs from the curated megacatalog list
+        const { data: megaItems, error: megaError } = await supabase
+          .from("megacatalog_products")
+          .select("product_id");
+
+        if (megaError) throw megaError;
+
+        if (!megaItems || megaItems.length === 0) {
+          setProducts([]);
+          setLoading(false);
+          return;
+        }
+
+        const productIds = megaItems.map(m => m.product_id);
+
         const { data, error } = await supabase
           .from("products")
           .select(`
@@ -74,6 +89,7 @@ export function MegacatalogSection({
             packaging_type, unit_weight, store_id,
             stores!inner(name)
           `)
+          .in("id", productIds)
           .eq("is_active", true)
           .is("deleted_at", null)
           .order("name");
