@@ -29,6 +29,18 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // Get bot info (verify token)
+    if (body.action === "getme") {
+      const response = await fetch(
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe`
+      );
+      const result = await response.json();
+      console.log("getMe result:", JSON.stringify(result));
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Get webhook info
     if (body.action === "info") {
       const response = await fetch(
