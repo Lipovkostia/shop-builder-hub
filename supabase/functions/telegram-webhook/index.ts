@@ -29,6 +29,17 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // Get webhook info
+    if (body.action === "info") {
+      const response = await fetch(
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo`
+      );
+      const result = await response.json();
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Setup webhook via { action: "setup" }
     if (body.action === "setup") {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
