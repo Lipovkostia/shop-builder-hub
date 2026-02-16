@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image, LayoutDashboard, LogOut, Mail, Lock, Loader2, Package, Sparkles, Link2, Globe } from 'lucide-react';
+import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image, LayoutDashboard, LogOut, Mail, Lock, Loader2, Package, Sparkles, Link2, Globe, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +23,7 @@ import SuperAdminDashboard from '@/components/admin/SuperAdminDashboard';
 import ProductMatchingSection from '@/components/admin/ProductMatchingSection';
 import FeaturedProductsManager from '@/components/admin/FeaturedProductsManager';
 import MegacatalogManager from '@/components/admin/MegacatalogManager';
+import TelegramBotSection from '@/components/admin/TelegramBotSection';
 
 interface StoreWithCounts {
   id: string;
@@ -457,6 +458,10 @@ export default function SuperAdmin() {
               <Globe className="h-4 w-4" />
               <span className="hidden sm:inline">Мегакаталог</span>
             </TabsTrigger>
+            <TabsTrigger value="telegram" className="gap-2">
+              <Bot className="h-4 w-4" />
+              <span className="hidden sm:inline">Telegram</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
@@ -880,6 +885,11 @@ export default function SuperAdmin() {
           {/* Megacatalog Tab */}
           <TabsContent value="megacatalog" className="space-y-6">
             <MegacatalogManager />
+          </TabsContent>
+
+          {/* Telegram Tab */}
+          <TabsContent value="telegram" className="space-y-6">
+            <TelegramBotSection session={session} />
           </TabsContent>
         </Tabs>
       </main>
