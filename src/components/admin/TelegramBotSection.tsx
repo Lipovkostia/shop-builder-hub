@@ -18,10 +18,13 @@ export default function TelegramBotSection({ session }: TelegramBotSectionProps)
     setIsSettingUp(true);
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-webhook?setup=true`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-webhook`,
         {
-          method: 'GET',
-          headers: { 'Authorization': `Bearer ${session.access_token}` },
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action: 'setup' }),
         }
       );
       const data = await res.json();
