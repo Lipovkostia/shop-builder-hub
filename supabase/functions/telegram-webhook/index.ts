@@ -1,52 +1,54 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+
   try {
     if (!TELEGRAM_BOT_TOKEN) {
       console.error("TELEGRAM_BOT_TOKEN is not configured");
-      return new Response(JSON.stringify({ ok: false, error: "Bot token not configured" }), { 
+      return new Response(JSON.stringify({ ok: false, error: "Bot token not configured" }), {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Handle webhook setup request
-    const url = new URL(req.url);
-    if (req.method === "GET" && url.searchParams.get("setup") === "true") {
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      return new Response("OK", { status: 200 });
+    }
+
+    // Setup webhook via { action: "setup" }
+    if (body.action === "setup") {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const webhookUrl = `${supabaseUrl}/functions/v1/telegram-webhook`;
-      
       console.log("Setting up Telegram webhook:", webhookUrl);
-      
+
       const response = await fetch(
         `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook?url=${encodeURIComponent(webhookUrl)}`
       );
       const result = await response.json();
-      
       console.log("Telegram webhook setup result:", result);
-      
+
       return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const update = await req.json();
+    const update = body;
     console.log("Received Telegram update:", JSON.stringify(update));
 
-    // Process /start command with store_id parameter
     const message = update.message;
     if (!message?.text) {
       return new Response("OK", { status: 200 });
@@ -55,21 +57,17 @@ serve(async (req) => {
     const text = message.text;
     const chatId = message.chat.id.toString();
 
-    // Check for /start command with store_id parameter
     if (text.startsWith("/start ")) {
       const storeId = text.split(" ")[1];
-      
       if (!storeId) {
-        await sendTelegramMessage(chatId, "❌ Ошибка: не указан ID магазина.");
+        await sendTgMsg(TELEGRAM_BOT_TOKEN, chatId, "❌ Ошибка: не указан ID магазина.");
         return new Response("OK", { status: 200 });
       }
 
-      // Create Supabase client with service role
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-      // Verify store exists
       const { data: store, error: storeError } = await supabase
         .from("stores")
         .select("id, name")
@@ -77,79 +75,61 @@ serve(async (req) => {
         .single();
 
       if (storeError || !store) {
-        console.error("Store not found:", storeError);
-        await sendTelegramMessage(chatId, "❌ Магазин не найден. Проверьте ссылку.");
+        await sendTgMsg(TELEGRAM_BOT_TOKEN, chatId, "❌ Магазин не найден.");
         return new Response("OK", { status: 200 });
       }
 
-      // Save chat_id to notification settings
       const { error: upsertError } = await supabase
         .from("store_notification_settings")
         .upsert(
-          {
-            store_id: storeId,
-            notification_telegram: chatId,
-            telegram_enabled: true,
-          },
+          { store_id: storeId, notification_telegram: chatId, telegram_enabled: true },
           { onConflict: "store_id" }
         );
 
       if (upsertError) {
-        console.error("Error saving notification settings:", upsertError);
-        await sendTelegramMessage(chatId, "❌ Ошибка сохранения настроек. Попробуйте позже.");
+        await sendTgMsg(TELEGRAM_BOT_TOKEN, chatId, "❌ Ошибка сохранения настроек.");
         return new Response("OK", { status: 200 });
       }
 
-      // Send success confirmation
-      await sendTelegramMessage(
+      await sendTgMsg(
+        TELEGRAM_BOT_TOKEN,
         chatId,
-        `✅ Бот успешно подключен к магазину "${store.name}"!\n\nТеперь вы будете получать уведомления о новых заказах.`
+        `✅ Бот подключен к магазину "${store.name}"!\nВы будете получать уведомления о новых заказах.`
       );
-
-      console.log(`Successfully connected Telegram for store ${storeId}, chat ${chatId}`);
     } else if (text === "/start") {
-      // Just /start without parameter
-      await sendTelegramMessage(
+      await sendTgMsg(
+        TELEGRAM_BOT_TOKEN,
         chatId,
-        "👋 Добро пожаловать!\n\n" +
-        "Проходите на торговую площадку https://9999999999.ru/\n\n" +
-        "Продавайте и покупайте товары оптом и в розницу."
+        "👋 Добро пожаловать!\n\nПроходите на торговую площадку https://9999999999.ru/\n\nПродавайте и покупайте товары оптом и в розницу."
       );
     }
 
     return new Response("OK", { status: 200 });
-  } catch (error: any) {
-    console.error("Error processing webhook:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    console.error("Error processing webhook:", msg);
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
 
-async function sendTelegramMessage(chatId: string, text: string): Promise<boolean> {
+async function sendTgMsg(token: string, chatId: string, text: string): Promise<boolean> {
   try {
-    const response = await fetch(
-      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: text,
-          parse_mode: "HTML",
-        }),
-      }
-    );
-
-    const result = await response.json();
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text }),
+    });
+    const result = await res.json();
     if (!result.ok) {
       console.error("Telegram API error:", result);
       return false;
     }
     return true;
-  } catch (error) {
-    console.error("Error sending Telegram message:", error);
+  } catch (e) {
+    console.error("Error sending Telegram message:", e);
     return false;
   }
 }
