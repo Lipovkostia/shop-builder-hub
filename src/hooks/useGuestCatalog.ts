@@ -168,17 +168,10 @@ export function useGuestCatalog(accessCode: string | undefined) {
 
       // Transform data to GuestProduct format
       const transformedProducts: GuestProduct[] = data.map((row: any) => {
-        const basePrice = Number(row.product_price) || 0;
+        // product_price from the RPC already has markup applied — use it directly
+        const finalPrice = Number(row.product_price) || 0;
         const markupType = row.setting_markup_type;
         const markupValue = Number(row.setting_markup_value) || 0;
-
-        // Calculate final price with markup
-        let finalPrice = basePrice;
-        if (markupType === 'percentage' && markupValue > 0) {
-          finalPrice = basePrice * (1 + markupValue / 100);
-        } else if (markupType === 'fixed' && markupValue > 0) {
-          finalPrice = basePrice + markupValue;
-        }
 
         // Parse portion prices from JSON
         // DB stores as: halfPricePerKg, quarterPricePerKg, portionPrice, fullPrice
