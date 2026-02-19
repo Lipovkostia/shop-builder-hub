@@ -189,120 +189,90 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
     }
   }, [toast, currentCatalog]);
 
-  // Fetch products for current catalog
+  // Fetch products for current catalog using the same RPC as guest view
+  // This ensures prices are calculated server-side with correct priority:
+  // catalog fixed price > product fixed price > price field > buy_price + markup
   const fetchProducts = useCallback(async (catalogId: string) => {
     try {
       setProductsLoading(true);
 
-      // Get catalog to find store_id
+      // Get the catalog's access_code to use the public RPC function
+      // which already handles all pricing logic correctly server-side
       const { data: catalog } = await supabase
         .from("catalogs")
-        .select("store_id")
+        .select("access_code")
         .eq("id", catalogId)
         .single();
 
-      if (!catalog) return;
-
-      // Get product visibility for this catalog
-      const { data: visibility } = await supabase
-        .from("product_catalog_visibility")
-        .select("product_id")
-        .eq("catalog_id", catalogId);
-
-      if (!visibility || visibility.length === 0) {
+      if (!catalog?.access_code) {
         setProducts([]);
         return;
       }
 
-      const productIds = visibility.map(v => v.product_id);
-
-      // Get catalog product settings for this catalog
-      const { data: catalogSettings } = await supabase
-        .from("catalog_product_settings")
-        .select("product_id, status, markup_type, markup_value, portion_prices, categories")
-        .eq("catalog_id", catalogId);
-
-      // Create a map for quick lookup
-      const settingsMap = new Map(
-        (catalogSettings || []).map(s => [s.product_id, s])
-      );
-
-      // Get products
-      const { data: productsData, error } = await supabase
-        .from("products")
-        .select("*")
-        .in("id", productIds)
-        .eq("is_active", true);
+      // Use the same RPC as guest view - it correctly handles all price priorities
+      const { data, error } = await supabase
+        .rpc('get_catalog_products_public', { _access_code: catalog.access_code });
 
       if (error) throw error;
 
-      const mappedProducts: CatalogProduct[] = (productsData || []).map(p => {
-        const settings = settingsMap.get(p.id);
-        
-        // Calculate final price with catalog markup if set
-        let finalPrice = p.price;
-        const buyPrice = p.buy_price || 0;
-        
-        // Priority: catalog markup > product markup > direct price
-        if (settings?.markup_type && settings?.markup_value !== null && settings?.markup_value !== undefined && buyPrice > 0) {
-          // Use catalog-specific markup
-          if (settings.markup_type === 'percent') {
-            finalPrice = buyPrice * (1 + (settings.markup_value || 0) / 100);
-          } else if (settings.markup_type === 'fixed') {
-            finalPrice = buyPrice + (settings.markup_value || 0);
-          }
-        } else if (p.markup_type && p.markup_value !== null && p.markup_value !== undefined && buyPrice > 0) {
-          // Use product markup
-          if (p.markup_type === 'percent') {
-            finalPrice = buyPrice * (1 + (p.markup_value || 0) / 100);
-          } else if (p.markup_type === 'fixed') {
-            finalPrice = buyPrice + (p.markup_value || 0);
-          }
-        } else if (p.price === 0 && buyPrice > 0) {
-          // Fallback: if price is 0 but buy_price exists, use buy_price
-          finalPrice = buyPrice;
-        }
-        
-        return {
-          id: p.id,
-          name: p.name,
-          sku: (p as any).sku ?? null,
-          description: p.description,
-          price: finalPrice,
-          compare_price: p.compare_price,
-          unit: p.unit || "кг",
-          unit_weight: p.unit_weight,
-          packaging_type: p.packaging_type,
-          images: p.images || [],
-          is_active: p.is_active ?? true,
-          buy_price: p.buy_price,
-          markup_type: p.markup_type,
-          markup_value: p.markup_value,
-          price_full: p.price_full,
-          price_half: p.price_half,
-          price_quarter: p.price_quarter,
-          price_portion: p.price_portion,
-          portion_weight: p.portion_weight,
-          quantity: p.quantity ?? 0,
-          // Add catalog-specific settings
-          catalog_status: settings?.status || null,
-          catalog_markup_type: settings?.markup_type || null,
-          catalog_markup_value: settings?.markup_value || null,
-          // Map portion_prices from DB format (halfPricePerKg, quarterPricePerKg, portionPrice) 
-          // to expected format (half, quarter, portion)
-          catalog_portion_prices: settings?.portion_prices ? (() => {
-            const pp = settings.portion_prices as Record<string, number | null>;
-            return {
+      if (!data || data.length === 0) {
+        setProducts([]);
+        return;
+      }
+
+      const mappedProducts: CatalogProduct[] = data.map((row: any) => {
+        // product_price already has all markup/fixed price logic applied server-side
+        const finalPrice = Number(row.product_price) || 0;
+
+        // Parse portion prices from JSON
+        let portionPrices: CatalogProduct['catalog_portion_prices'] = null;
+        if (row.setting_portion_prices) {
+          try {
+            const pp = typeof row.setting_portion_prices === 'string'
+              ? JSON.parse(row.setting_portion_prices)
+              : row.setting_portion_prices;
+            portionPrices = {
               full: pp.fullPrice ?? pp.full ?? null,
               half: pp.halfPricePerKg ?? pp.half ?? null,
               quarter: pp.quarterPricePerKg ?? pp.quarter ?? null,
               portion: pp.portionPrice ?? pp.portion ?? null,
             };
-          })() : null,
-          // Categories assigned in catalog settings
-          catalog_categories: settings?.categories || null,
-          // MoySklad ID for order sync
-          moysklad_id: p.moysklad_id || null,
+            if (portionPrices.full != null) portionPrices.full = Number(portionPrices.full);
+            if (portionPrices.half != null) portionPrices.half = Number(portionPrices.half);
+            if (portionPrices.quarter != null) portionPrices.quarter = Number(portionPrices.quarter);
+            if (portionPrices.portion != null) portionPrices.portion = Number(portionPrices.portion);
+          } catch {
+            portionPrices = null;
+          }
+        }
+
+        return {
+          id: row.product_id,
+          name: row.product_name,
+          sku: row.product_sku ?? null,
+          description: row.product_description,
+          price: finalPrice,
+          compare_price: row.product_compare_price ? Number(row.product_compare_price) : null,
+          unit: row.product_unit || "кг",
+          unit_weight: row.product_unit_weight ? Number(row.product_unit_weight) : null,
+          packaging_type: row.product_packaging_type,
+          images: row.product_images || [],
+          is_active: true,
+          buy_price: null, // not exposed via public RPC for security
+          markup_type: row.setting_markup_type,
+          markup_value: row.setting_markup_value ? Number(row.setting_markup_value) : null,
+          price_full: row.product_price_full ? Number(row.product_price_full) : null,
+          price_half: row.product_price_half ? Number(row.product_price_half) : null,
+          price_quarter: row.product_price_quarter ? Number(row.product_price_quarter) : null,
+          price_portion: row.product_price_portion ? Number(row.product_price_portion) : null,
+          portion_weight: row.product_portion_weight ? Number(row.product_portion_weight) : null,
+          quantity: row.product_quantity || 0,
+          catalog_status: row.setting_status || null,
+          catalog_markup_type: row.setting_markup_type || null,
+          catalog_markup_value: row.setting_markup_value ? Number(row.setting_markup_value) : null,
+          catalog_portion_prices: portionPrices,
+          catalog_categories: row.setting_categories || null,
+          moysklad_id: null,
         };
       });
 
