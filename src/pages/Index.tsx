@@ -98,6 +98,16 @@ const Index = () => {
   const authSectionRef = useRef<HTMLDivElement>(null);
   const rightColRef = useRef<HTMLDivElement>(null);
   const [rightColHeight, setRightColHeight] = useState<number | null>(null);
+  const [isLg, setIsLg] = useState(false);
+
+  // Track lg breakpoint
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const onChange = () => setIsLg(mql.matches);
+    mql.addEventListener('change', onChange);
+    setIsLg(mql.matches);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
 
   // Measure the right column height to constrain left and middle columns
   useEffect(() => {
@@ -847,7 +857,7 @@ const Index = () => {
         {/* 3-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left column: CTA banner + product list */}
-          <div className="flex flex-col gap-3 lg:overflow-hidden" style={rightColHeight && window.innerWidth >= 1024 ? { maxHeight: rightColHeight } : undefined}>
+          <div className="flex flex-col gap-3 lg:overflow-hidden lg:max-h-[80vh]" style={isLg && rightColHeight ? { maxHeight: rightColHeight } : undefined}>
             {/* Step 1: Green CTA banner */}
             <div className="rounded-xl bg-emerald-600 p-3 cursor-pointer hover:bg-emerald-700 transition-colors group h-[120px] flex flex-col justify-between shadow-md"
               onClick={() => productListRef.current?.scrollIntoView({ behavior: 'smooth' })}
@@ -875,7 +885,7 @@ const Index = () => {
           </div>
 
           {/* Middle column: demo cart */}
-          <div className="flex flex-col gap-3 lg:overflow-hidden" style={rightColHeight && window.innerWidth >= 1024 ? { maxHeight: rightColHeight } : undefined}>
+          <div className="flex flex-col gap-3 lg:overflow-hidden lg:max-h-[80vh]" style={isLg && rightColHeight ? { maxHeight: rightColHeight } : undefined}>
             {/* Step 2 CTA banner */}
             {catalogAccessCode && (
               <div
