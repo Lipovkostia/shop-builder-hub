@@ -863,7 +863,7 @@ const Index = () => {
           </div>
 
           {/* Middle column: demo cart */}
-          <div className="lg:max-h-[calc(100vh-80px)] flex flex-col gap-3">
+          <div className="lg:max-h-[calc(100vh-80px)] flex flex-col gap-3 overflow-hidden">
             {/* Step 2 CTA banner */}
             {catalogAccessCode && (
               <div
