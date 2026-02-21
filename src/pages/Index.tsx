@@ -12,6 +12,7 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import LandingProductTable from "@/components/landing/LandingProductTable";
 
 import LandingDemoCart from "@/components/landing/LandingDemoCart";
+import LandingFeaturedCarousel from "@/components/landing/LandingFeaturedCarousel";
 
 interface DemoProduct {
   id: string;
@@ -1040,9 +1041,12 @@ const Index = () => {
                 </Card>
               </TabsContent>
             </Tabs>
-          </div>
         </div>
+
+        {/* Featured products carousel */}
+        <LandingFeaturedCarousel />
       </div>
+    </div>
     </div>
   );
 };
