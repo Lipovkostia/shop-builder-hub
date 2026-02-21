@@ -28,7 +28,7 @@ interface LandingProductTableProps {
   addedIds?: Set<string>;
 }
 
-const BATCH_SIZE = 50;
+const BATCH_SIZE = 30;
 
 export default function LandingProductTable({ onAddToCatalog, onInstantAdd, addedIds = new Set() }: LandingProductTableProps) {
   const [allProducts, setAllProducts] = useState<LandingProduct[]>([]);
