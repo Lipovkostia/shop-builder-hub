@@ -96,6 +96,18 @@ const Index = () => {
 
   const productListRef = useRef<HTMLDivElement>(null);
   const authSectionRef = useRef<HTMLDivElement>(null);
+  const rightColRef = useRef<HTMLDivElement>(null);
+  const [rightColHeight, setRightColHeight] = useState<number | null>(null);
+
+  // Measure the right column height to constrain left and middle columns
+  useEffect(() => {
+    if (!rightColRef.current) return;
+    const ro = new ResizeObserver(([entry]) => {
+      setRightColHeight(entry.contentRect.height);
+    });
+    ro.observe(rightColRef.current);
+    return () => ro.disconnect();
+  }, []);
   const [authVisible, setAuthVisible] = useState(false);
 
   // Track when auth section is in view to hide sticky header
@@ -833,9 +845,9 @@ const Index = () => {
       <div className="pt-12 lg:pt-0"></div>
       <div className="w-full max-w-7xl mx-auto">
         {/* 3-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left column: CTA banner + product list */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 lg:overflow-hidden" style={rightColHeight && window.innerWidth >= 1024 ? { maxHeight: rightColHeight } : undefined}>
             {/* Step 1: Green CTA banner */}
             <div className="rounded-xl bg-emerald-600 p-3 cursor-pointer hover:bg-emerald-700 transition-colors group h-[120px] flex flex-col justify-between shadow-md"
               onClick={() => productListRef.current?.scrollIntoView({ behavior: 'smooth' })}
@@ -863,7 +875,7 @@ const Index = () => {
           </div>
 
           {/* Middle column: demo cart */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 lg:overflow-hidden" style={rightColHeight && window.innerWidth >= 1024 ? { maxHeight: rightColHeight } : undefined}>
             {/* Step 2 CTA banner */}
             {catalogAccessCode && (
               <div
@@ -902,7 +914,7 @@ const Index = () => {
           </div>
 
           {/* Right column: CTA + auth form */}
-          <div ref={authSectionRef} className="flex flex-col gap-3 scroll-mt-4">
+          <div ref={(el) => { authSectionRef.current = el; rightColRef.current = el; }} className="flex flex-col gap-3 scroll-mt-4">
             {/* Step 3: Registration CTA */}
             <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/8 to-primary/5 p-3 h-[120px] flex flex-col justify-between">
               <div>
