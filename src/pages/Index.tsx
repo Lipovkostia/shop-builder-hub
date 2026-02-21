@@ -833,7 +833,7 @@ const Index = () => {
       <div className="pt-12 lg:pt-0"></div>
       <div className="w-full max-w-7xl mx-auto">
         {/* 3-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
           {/* Left column: CTA banner + product list */}
           <div className="flex flex-col gap-3">
             {/* Step 1: Green CTA banner */}
@@ -857,13 +857,13 @@ const Index = () => {
                 </div>
               </div>
             </div>
-            <div ref={productListRef} className="rounded-lg border bg-card overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 260px)' }}>
+            <div ref={productListRef} className="rounded-lg border bg-card overflow-hidden flex flex-col flex-1 min-h-0">
               <LandingProductTable onAddToCatalog={handleAddToCatalog} onInstantAdd={handleInstantAdd} addedIds={new Set(demoItems.map(i => i.id))} />
             </div>
           </div>
 
           {/* Middle column: demo cart */}
-          <div className="lg:max-h-[calc(100vh-80px)] flex flex-col gap-3 overflow-hidden">
+          <div className="flex flex-col gap-3">
             {/* Step 2 CTA banner */}
             {catalogAccessCode && (
               <div
@@ -892,7 +892,7 @@ const Index = () => {
                 </div>
               </div>
             )}
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 overflow-y-auto rounded-b-xl">
               <LandingDemoCart
                 items={demoItems}
                 onRemove={handleRemoveFromCart}
@@ -1043,7 +1043,10 @@ const Index = () => {
             </Tabs>
         </div>
 
-        {/* Featured products carousel */}
+      </div>
+
+      {/* Featured products carousel - full width */}
+      <div className="w-full max-w-[100vw] px-4 lg:px-8">
         <LandingFeaturedCarousel />
       </div>
     </div>
