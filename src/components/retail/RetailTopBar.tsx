@@ -230,11 +230,11 @@ export function RetailTopBar({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => navigate("/customer-dashboard")}>
+                <DropdownMenuItem onClick={() => navigate(`/retail/${subdomain}/account`)}>
                   <ShoppingBag className="h-4 w-4 mr-2" />
                   Мои заказы
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/customer-dashboard")}>
+                <DropdownMenuItem onClick={() => navigate(`/retail/${subdomain}/account`)}>
                   <Settings className="h-4 w-4 mr-2" />
                   Личный кабинет
                 </DropdownMenuItem>
@@ -285,7 +285,7 @@ export function RetailTopBar({
             variant="outline"
             size="icon"
             className="h-9 w-9 rounded-lg"
-            onClick={() => navigate("/customer-dashboard")}
+            onClick={() => navigate(`/retail/${subdomain}/account`)}
           >
             <User className="h-4 w-4" />
           </Button>
