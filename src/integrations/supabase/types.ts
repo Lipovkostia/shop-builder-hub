@@ -279,6 +279,7 @@ export type Database = {
       customer_addresses: {
         Row: {
           address: string
+          city: string | null
           created_at: string
           id: string
           is_default: boolean | null
@@ -288,6 +289,7 @@ export type Database = {
         }
         Insert: {
           address: string
+          city?: string | null
           created_at?: string
           id?: string
           is_default?: boolean | null
@@ -297,6 +299,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          city?: string | null
           created_at?: string
           id?: string
           is_default?: boolean | null

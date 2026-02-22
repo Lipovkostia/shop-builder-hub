@@ -1,0 +1,1 @@
+ALTER TABLE public.customer_addresses ADD COLUMN city text;

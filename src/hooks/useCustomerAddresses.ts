@@ -6,6 +6,7 @@ export interface CustomerAddress {
   id: string;
   profile_id: string;
   address: string;
+  city: string | null;
   label: string | null;
   is_default: boolean;
   last_used_at: string;
@@ -49,7 +50,7 @@ export const useCustomerAddresses = () => {
     fetchAddresses();
   }, [fetchAddresses]);
 
-  const addAddress = useCallback(async (address: string, label?: string) => {
+  const addAddress = useCallback(async (address: string, label?: string, city?: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Не авторизован");
@@ -68,24 +69,33 @@ export const useCustomerAddresses = () => {
       );
 
       if (existingAddress) {
-        // Update last_used_at
         await supabase
           .from("customer_addresses")
-          .update({ last_used_at: new Date().toISOString() })
+          .update({ last_used_at: new Date().toISOString(), city: city || existingAddress.city })
           .eq("id", existingAddress.id);
         
         await fetchAddresses();
         return existingAddress.id;
       }
 
-      // Add new address
+      // Limit to 5 addresses
+      if (addresses.length >= 5) {
+        toast({
+          title: "Лимит адресов",
+          description: "Максимум 5 адресов. Удалите один из существующих.",
+          variant: "destructive",
+        });
+        return null;
+      }
+
       const { data, error } = await supabase
         .from("customer_addresses")
         .insert({
           profile_id: profile.id,
           address: address.trim(),
           label: label?.trim() || null,
-          is_default: addresses.length === 0, // First address is default
+          city: city?.trim() || null,
+          is_default: addresses.length === 0,
         })
         .select()
         .single();
