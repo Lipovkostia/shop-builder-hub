@@ -20,6 +20,7 @@ import WholesaleCheckout from "./pages/WholesaleCheckout";
 import CatalogAccess from "./pages/CatalogAccess";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import GuestCatalogView from "./pages/GuestCatalogView";
+import RetailCustomerDashboard from "./pages/RetailCustomerDashboard";
 import { useStoreBySubdomain } from "@/hooks/useUserStore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CustomDomainHandler } from "@/components/CustomDomainHandler";
@@ -121,6 +122,7 @@ const App = () => {
               <Route path="/retail/:subdomain" element={<RetailStore />} />
               <Route path="/retail/:subdomain/product/:productId" element={<RetailStore />} />
               <Route path="/retail/:subdomain/checkout" element={<RetailCheckout />} />
+              <Route path="/retail/:subdomain/account" element={<RetailCustomerDashboard />} />
               {/* Wholesale B2B routes */}
               <Route path="/wholesale/:subdomain" element={<WholesaleStore />} />
               <Route path="/wholesale/:subdomain/checkout" element={<WholesaleCheckout />} />
