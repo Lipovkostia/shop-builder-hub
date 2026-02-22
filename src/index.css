@@ -75,56 +75,58 @@
 
   /* ========== Retail Store Theme ========== */
   .retail-theme {
-    /* Warm beige/cream background */
-    --background: 40 30% 96%;
-    --foreground: 30 15% 15%;
+    /* Light gray page background behind blocks */
+    --background: 0 0% 94%;
+    --foreground: 0 0% 10%;
 
-    /* Slightly warmer card */
-    --card: 40 25% 98%;
-    --card-foreground: 30 15% 15%;
+    /* White cards/blocks */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
 
-    --popover: 40 25% 98%;
-    --popover-foreground: 30 15% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
 
-    /* Olive/brown primary */
-    --primary: 45 30% 30%;
-    --primary-foreground: 40 25% 98%;
+    /* Green primary */
+    --primary: 145 63% 42%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Warm secondary */
-    --secondary: 40 20% 93%;
-    --secondary-foreground: 30 15% 18%;
+    /* Light gray secondary */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 15%;
 
-    /* Muted tones — darker for readability */
-    --muted: 40 15% 92%;
-    --muted-foreground: 30 12% 38%;
+    /* Muted tones */
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
 
-    /* Olive accent for category labels */
-    --accent: 30 40% 55%;
-    --accent-foreground: 40 25% 98%;
+    /* Orange accent */
+    --accent: 24 95% 53%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Warm borders */
-    --border: 40 15% 86%;
-    --input: 40 15% 86%;
-    --ring: 45 30% 30%;
+    /* Borders — very subtle */
+    --border: 0 0% 91%;
+    --input: 0 0% 91%;
+    --ring: 145 63% 42%;
 
-    /* Sidebar — darker text */
-    --sidebar-background: 40 20% 95%;
-    --sidebar-foreground: 30 15% 18%;
-    --sidebar-primary: 45 30% 30%;
-    --sidebar-primary-foreground: 40 25% 98%;
-    --sidebar-accent: 40 30% 90%;
-    --sidebar-accent-foreground: 30 15% 18%;
-    --sidebar-border: 40 15% 86%;
-    --sidebar-ring: 45 30% 30%;
+    /* Sidebar — white block */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 15%;
+    --sidebar-primary: 145 63% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 145 60% 95%;
+    --sidebar-accent-foreground: 145 63% 30%;
+    --sidebar-border: 0 0% 93%;
+    --sidebar-ring: 145 63% 42%;
 
-    /* Delivery - keep green */
-    --delivery: 142 69% 45%;
+    /* Delivery - green */
+    --delivery: 145 63% 42%;
     --delivery-foreground: 0 0% 100%;
 
     /* Retail-specific tokens */
-    --retail-category-accent: 30 40% 55%;
-    --retail-button-bg: 45 20% 30%;
-    --retail-button-fg: 40 25% 98%;
+    --retail-category-accent: 24 95% 53%;
+    --retail-button-bg: 145 63% 42%;
+    --retail-button-fg: 0 0% 100%;
+
+    --radius: 1rem;
   }
 
   .dark {

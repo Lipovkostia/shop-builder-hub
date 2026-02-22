@@ -371,7 +371,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
             cartIconRef={cartIconRef}
           />
 
-          <main className="flex-1 px-6 py-6 overflow-y-auto">
+          <main className="flex-1 px-1.5 py-1.5 overflow-y-auto">
             {/* Category header */}
             {selectedCategory && (
               <CategoryHeader 
@@ -383,14 +383,13 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
             {/* Search results */}
             {searchQuery && !selectedCategory && (
               <>
-                <div className="mb-8">
+                <div className="bg-card rounded-2xl p-5 mb-1.5">
                   <h1 className="text-2xl font-semibold text-foreground">
                     Результаты поиска: "{searchQuery}"
                   </h1>
                   <p className="text-muted-foreground mt-1 text-sm">
                     Найдено: {filteredProducts.length}
                   </p>
-                  <div className="mt-4 h-px bg-border" />
                 </div>
                 {filteredProducts.length === 0 ? (
                   <div className="text-center py-12">
@@ -400,7 +399,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                     </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                  <div className="bg-card rounded-2xl p-5 grid grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                     {filteredProducts.map((product, index) => (
                       <div key={product.id} className="relative">
                         <RetailProductCard
@@ -428,11 +427,10 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
             {/* All Products - category carousels */}
             {!selectedCategory && !searchQuery && productsByCategory && (
               <>
-                <div className="mb-6">
+                <div className="bg-card rounded-2xl p-5 mb-1.5">
                   <h1 className="text-2xl font-semibold text-foreground">
                     Все товары
                   </h1>
-                  <div className="mt-4 h-px bg-border" />
                 </div>
                 {productsByCategory.orderedCategories.map(({ category, products: catProducts }) => (
                   <CategoryProductsSection
@@ -460,9 +458,9 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                   />
                 ))}
                 {productsByCategory.uncategorized.length > 0 && (
-                  <section className="mb-8">
+                  <section className="bg-card rounded-2xl p-5 mb-1.5">
                     <h2 className="text-lg font-semibold text-foreground mb-4">Прочее</h2>
-                    <div className="grid grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                       {productsByCategory.uncategorized.map((product, index) => (
                         <div key={product.id} className="relative">
                           <RetailProductCard
@@ -501,7 +499,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                     )}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                  <div className="bg-card rounded-2xl p-5 grid grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                     {filteredProducts.map((product, index) => (
                       <div key={product.id} className="relative">
                         <RetailProductCard
@@ -537,7 +535,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
         </div>
 
         {/* Right cart panel - always visible, with product detail overlay */}
-        <div className="relative w-80 flex-shrink-0 h-screen sticky top-0">
+        <div className="relative w-80 flex-shrink-0 h-[calc(100vh-12px)] sticky top-1.5">
           <RetailCartPanel
             cart={cart}
             cartTotal={cartTotal}
