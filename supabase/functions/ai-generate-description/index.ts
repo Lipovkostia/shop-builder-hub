@@ -21,7 +21,6 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // Process in batches for bulk requests
     const results: Record<string, string> = {};
     const batchSize = 10;
 
@@ -39,39 +38,17 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
+          model: "google/gemini-2.5-flash",
           messages: [
             {
               role: "system",
-              content: `Ты — копирайтер для интернет-магазина. Генерируй краткие, привлекательные описания товаров на русском языке. Каждое описание должно быть не более ${maxChars} символов. Описание должно подчёркивать преимущества товара и быть полезным для покупателя. Не используй маркетинговый спам и восклицательные знаки. Пиши естественно и информативно.`,
+              content: `Ты — копирайтер для интернет-магазина. Генерируй краткие, привлекательные описания товаров на русском языке. Каждое описание должно быть не более ${maxChars} символов. Описание должно подчёркивать преимущества товара и быть полезным для покупателя. Не используй маркетинговый спам и восклицательные знаки. Пиши естественно и информативно. ВАЖНО: Ответь ТОЛЬКО валидным JSON объектом без markdown-форматирования, без тройных обратных кавычек. Формат: {"ID1": "описание1", "ID2": "описание2"}`,
             },
             {
               role: "user",
               content: `Сгенерируй описания для следующих товаров. Верни JSON объект, где ключ — ID товара, значение — описание.\n\n${productList}`,
             },
           ],
-          tools: [
-            {
-              type: "function",
-              function: {
-                name: "return_descriptions",
-                description: "Return generated descriptions for products",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    descriptions: {
-                      type: "object",
-                      description: "Object where keys are product IDs and values are generated descriptions",
-                      additionalProperties: { type: "string" },
-                    },
-                  },
-                  required: ["descriptions"],
-                  additionalProperties: false,
-                },
-              },
-            },
-          ],
-          tool_choice: { type: "function", function: { name: "return_descriptions" } },
         }),
       });
 
@@ -94,12 +71,16 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+      const content = data.choices?.[0]?.message?.content;
       
-      if (toolCall?.function?.arguments) {
-        const parsed = JSON.parse(toolCall.function.arguments);
-        if (parsed.descriptions) {
-          Object.assign(results, parsed.descriptions);
+      if (content) {
+        try {
+          // Strip markdown code fences if present
+          const cleaned = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+          const parsed = JSON.parse(cleaned);
+          Object.assign(results, parsed);
+        } catch (parseErr) {
+          console.error("Failed to parse AI response:", content, parseErr);
         }
       }
     }
