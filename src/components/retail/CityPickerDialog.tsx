@@ -79,7 +79,18 @@ export function CityPickerDialog({
       try {
         await window.ymaps3.ready;
 
+        // Wait for dialog to fully render and container to have dimensions
+        await new Promise(resolve => setTimeout(resolve, 300));
+
         if (cancelled || !mapContainerRef.current) return;
+
+        // Ensure container has dimensions
+        const rect = mapContainerRef.current.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) {
+          console.warn("Map container has no dimensions, retrying...");
+          await new Promise(resolve => setTimeout(resolve, 500));
+          if (cancelled || !mapContainerRef.current) return;
+        }
 
         const { YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer, YMapMarker, YMapListener } = window.ymaps3;
 
