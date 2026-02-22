@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, ShoppingBag, MapPin, User, Phone, MessageSquare, Loader2, CheckCircle2, Store } from "lucide-react";
+import { ArrowLeft, ShoppingBag, MapPin, User, Phone, MessageSquare, Loader2, CheckCircle2, Store, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useRetailStore } from "@/hooks/useRetailStore";
 import { useRetailCart, RetailCartItem } from "@/hooks/useRetailCart";
+import { useCustomerAddresses } from "@/hooks/useCustomerAddresses";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -29,9 +31,14 @@ export default function RetailCheckout({ subdomain: propSubdomain }: RetailCheck
   const subdomain = propSubdomain || params.subdomain;
   const navigate = useNavigate();
   const { store, loading: storeLoading } = useRetailStore(subdomain);
+  const { user } = useAuth();
   
   // Use subdomain for cart storage (available immediately from URL)
   const { cart, cartTotal, clearCart } = useRetailCart(subdomain || null);
+  
+  // Saved addresses
+  const { addresses, loading: addressesLoading, addAddress, updateLastUsed } = useCustomerAddresses();
+  const [showSavedAddresses, setShowSavedAddresses] = useState(false);
   
   // Form state
   const [name, setName] = useState("");
@@ -43,6 +50,16 @@ export default function RetailCheckout({ subdomain: propSubdomain }: RetailCheck
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
+
+  // Pre-fill address from saved addresses
+  useEffect(() => {
+    if (!addressesLoading && addresses.length > 0 && !address) {
+      const defaultAddr = addresses.find(a => a.is_default) || addresses[0];
+      if (defaultAddr) {
+        setAddress(defaultAddr.address);
+      }
+    }
+  }, [addressesLoading, addresses]);
 
   // Redirect to store if cart is empty (only after checking localStorage is loaded)
   useEffect(() => {
@@ -126,6 +143,10 @@ export default function RetailCheckout({ subdomain: propSubdomain }: RetailCheck
         setOrderNumber(data.orderNumber);
         setOrderSuccess(true);
         clearCart();
+        // Save address for future use
+        if (user && address.trim()) {
+          addAddress(address.trim());
+        }
         toast.success("Заказ успешно оформлен!");
       } else {
         throw new Error(data?.error || "Не удалось создать заказ");
@@ -333,6 +354,46 @@ export default function RetailCheckout({ subdomain: propSubdomain }: RetailCheck
                 <MapPin className="h-5 w-5 text-primary" />
                 Доставка
               </h2>
+
+              {/* Saved addresses */}
+              {user && addresses.length > 0 && (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSavedAddresses(!showSavedAddresses)}
+                    className="flex items-center gap-2 text-sm text-primary hover:underline"
+                  >
+                    <MapPin className="h-3.5 w-3.5" />
+                    Выбрать из сохранённых ({addresses.length})
+                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showSavedAddresses && "rotate-180")} />
+                  </button>
+                  {showSavedAddresses && (
+                    <div className="space-y-1.5 border rounded-lg p-2">
+                      {addresses.map((addr) => (
+                        <button
+                          key={addr.id}
+                          type="button"
+                          onClick={() => {
+                            setAddress(addr.address);
+                            setShowSavedAddresses(false);
+                            updateLastUsed(addr.id);
+                          }}
+                          className={cn(
+                            "w-full text-left px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors flex items-start gap-2",
+                            address === addr.address && "bg-primary/10 text-primary"
+                          )}
+                        >
+                          <MapPin className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                          <div>
+                            {addr.label && <span className="font-medium mr-1">{addr.label}:</span>}
+                            <span>{addr.address}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               
               <div className="space-y-2">
                 <Label htmlFor="address">Адрес доставки *</Label>

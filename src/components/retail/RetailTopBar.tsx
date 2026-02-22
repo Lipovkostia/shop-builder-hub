@@ -73,10 +73,43 @@ export function RetailTopBar({
     }
   }, [subdomain]);
 
-  const handleCitySelect = (city: string, address: string) => {
+  const handleCitySelect = async (city: string, address: string) => {
     setUserCity(city);
     const storageKey = `retail_city_${subdomain}`;
     localStorage.setItem(storageKey, JSON.stringify({ city, address }));
+    localStorage.setItem(`retail_address_${subdomain}`, address);
+
+    // Auto-save to DB for logged-in users
+    if (user) {
+      try {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+        if (prof) {
+          const { data: existing } = await supabase
+            .from("customer_addresses")
+            .select("id")
+            .eq("profile_id", prof.id);
+          
+          const alreadyExists = (existing || []).some(
+            (a: any) => false // We'll just add it, the hook deduplicates
+          );
+
+          if ((existing || []).length < 5) {
+            await supabase.from("customer_addresses").insert({
+              profile_id: prof.id,
+              address: address,
+              city: city,
+              is_default: (existing || []).length === 0,
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Auto-save address error:", e);
+      }
+    }
   };
 
   const logoUrl = store.retail_logo_url || store.logo_url;

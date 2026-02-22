@@ -24,10 +24,14 @@ import {
   Save,
   RefreshCw,
   Phone,
+  Plus,
+  Trash2,
+  Star,
 } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { TelegramIcon } from "@/components/icons/TelegramIcon";
 import { useRetailCart } from "@/hooks/useRetailCart";
+import { useCustomerAddresses } from "@/hooks/useCustomerAddresses";
 
 interface RetailOrder {
   id: string;
@@ -89,6 +93,25 @@ export default function RetailCustomerDashboard() {
 
   // Cart for repeat order
   const { addToCart } = useRetailCart(subdomain || "");
+
+  // Addresses
+  const { addresses, loading: addressesLoading, addAddress, deleteAddress } = useCustomerAddresses();
+  const [newCity, setNewCity] = useState("");
+  const [newAddress, setNewAddress] = useState("");
+  const [newLabel, setNewLabel] = useState("");
+  const [addingAddress, setAddingAddress] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  // Auto-save city from localStorage
+  useEffect(() => {
+    if (!user || !subdomain || addressesLoading) return;
+    const storageKey = `retail_city_${subdomain}`;
+    const savedCity = localStorage.getItem(storageKey);
+    const savedAddress = localStorage.getItem(`retail_address_${subdomain}`);
+    if (savedCity && addresses.length === 0 && savedAddress) {
+      addAddress(savedAddress, null, savedCity);
+    }
+  }, [user, subdomain, addressesLoading, addresses.length]);
 
   // Fetch store contacts
   useEffect(() => {
@@ -298,6 +321,10 @@ export default function RetailCustomerDashboard() {
               <ShoppingBag className="h-4 w-4" />
               Заказы
             </TabsTrigger>
+            <TabsTrigger value="addresses" className="flex-1 gap-2">
+              <MapPin className="h-4 w-4" />
+              Адреса
+            </TabsTrigger>
             <TabsTrigger value="profile" className="flex-1 gap-2">
               <User className="h-4 w-4" />
               Профиль
@@ -454,6 +481,140 @@ export default function RetailCustomerDashboard() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* Addresses Tab */}
+          <TabsContent value="addresses">
+            <div className="space-y-4">
+              {/* Add address button */}
+              {!showAddForm && addresses.length < 5 && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowAddForm(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Добавить адрес
+                </Button>
+              )}
+
+              {/* Add address form */}
+              {showAddForm && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Новый адрес</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <Label className="text-sm">Город</Label>
+                      <Input
+                        value={newCity}
+                        onChange={(e) => setNewCity(e.target.value)}
+                        placeholder="Например: Москва"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Адрес (улица, дом, квартира)</Label>
+                      <Input
+                        value={newAddress}
+                        onChange={(e) => setNewAddress(e.target.value)}
+                        placeholder="ул. Ленина, д. 1, кв. 1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Название (необязательно)</Label>
+                      <Input
+                        value={newLabel}
+                        onChange={(e) => setNewLabel(e.target.value)}
+                        placeholder="Дом, Работа..."
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        className="flex-1"
+                        disabled={!newAddress.trim() || addingAddress}
+                        onClick={async () => {
+                          setAddingAddress(true);
+                          const fullAddress = newCity ? `${newCity}, ${newAddress}` : newAddress;
+                          await addAddress(fullAddress, newLabel || undefined, newCity || undefined);
+                          setNewCity("");
+                          setNewAddress("");
+                          setNewLabel("");
+                          setShowAddForm(false);
+                          setAddingAddress(false);
+                        }}
+                      >
+                        {addingAddress ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                        Сохранить
+                      </Button>
+                      <Button variant="outline" onClick={() => { setShowAddForm(false); setNewCity(""); setNewAddress(""); setNewLabel(""); }}>
+                        Отмена
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Address list */}
+              {addressesLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : addresses.length === 0 && !showAddForm ? (
+                <Card>
+                  <CardContent className="py-10 text-center">
+                    <MapPin className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                    <h3 className="font-medium mb-1">Адресов пока нет</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Добавьте адрес доставки для быстрого оформления заказов
+                    </p>
+                    <Button variant="outline" onClick={() => setShowAddForm(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Добавить адрес
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                addresses.map((addr) => (
+                  <Card key={addr.id}>
+                    <CardContent className="py-4 flex items-start gap-3">
+                      <MapPin className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        {addr.label && (
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-sm font-medium">{addr.label}</span>
+                            {addr.is_default && (
+                              <Badge variant="secondary" className="text-xs py-0">
+                                <Star className="h-3 w-3 mr-1" />
+                                Основной
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                        <p className="text-sm text-foreground">{addr.address}</p>
+                        {addr.city && !addr.address.toLowerCase().includes(addr.city.toLowerCase()) && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{addr.city}</p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => deleteAddress(addr.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+
+              {addresses.length >= 5 && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Максимум 5 адресов. Удалите один, чтобы добавить новый.
+                </p>
+              )}
+            </div>
           </TabsContent>
 
           {/* Profile Tab */}
