@@ -14,6 +14,7 @@ import { RetailTopBar } from "@/components/retail/RetailTopBar";
 import { RetailProductCard } from "@/components/retail/RetailProductCard";
 import { RetailSidebar } from "@/components/retail/RetailSidebar";
 import { RetailCartDrawer } from "@/components/retail/RetailCartDrawer";
+import { RetailCartPanel } from "@/components/retail/RetailCartPanel";
 import { RetailCartSheet } from "@/components/retail/RetailCartSheet";
 import { RetailFooter } from "@/components/retail/RetailFooter";
 import { CategoryHeader } from "@/components/retail/CategoryHeader";
@@ -342,9 +343,10 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
   }
 
   return (
-    <div className="retail-theme min-h-screen bg-background flex">
-      {/* Desktop sidebar */}
-      <div className="hidden lg:block">
+    <div className="retail-theme min-h-screen bg-background">
+      {/* Desktop 3-column layout: sidebar | content | cart */}
+      <div className="hidden lg:flex">
+        {/* Left sidebar */}
         <RetailLayoutSidebar
           store={store}
           categories={categories}
@@ -352,28 +354,210 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
           selectedCategory={selectedCategory}
           onCategorySelect={setSelectedCategory}
         />
+
+        {/* Center: top bar + content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <RetailTopBar
+            store={store}
+            cartItemsCount={cartItemsCount}
+            onCartClick={() => setIsOpen(true)}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            favoritesCount={favoritesCount}
+            onFavoritesClick={() => setFavoritesOpen(true)}
+            cartIconRef={cartIconRef}
+          />
+
+          <main className="flex-1 px-6 py-6 overflow-y-auto">
+            {/* Category header */}
+            {selectedCategory && (
+              <CategoryHeader 
+                category={currentCategory} 
+                productCount={filteredProducts.length} 
+              />
+            )}
+
+            {/* Search results */}
+            {searchQuery && !selectedCategory && (
+              <>
+                <div className="mb-8">
+                  <h1 className="text-2xl font-semibold text-foreground">
+                    Результаты поиска: "{searchQuery}"
+                  </h1>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Найдено: {filteredProducts.length}
+                  </p>
+                  <div className="mt-4 h-px bg-border" />
+                </div>
+                {filteredProducts.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">Товары не найдены</p>
+                    <Button variant="link" onClick={() => setSearchQuery("")} className="mt-2">
+                      Очистить поиск
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                    {filteredProducts.map((product, index) => (
+                      <div key={product.id} className="relative">
+                        <RetailProductCard
+                          product={product}
+                          onAddToCart={handleAddToCart}
+                          onUpdateQuantity={updateQuantity}
+                          cartQuantity={getCartQuantity(product.id)}
+                          isFavorite={isFavorite(product.id)}
+                          onToggleFavorite={toggleFavorite}
+                          index={index}
+                          expandedCardId={expandedCardId}
+                          onExpandChange={setExpandedCardId}
+                          expandedDescriptionCardId={expandedDescriptionCardId}
+                          onDescriptionExpandChange={setExpandedDescriptionCardId}
+                          fontSettings={store?.retail_theme?.fonts}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* All Products - category carousels */}
+            {!selectedCategory && !searchQuery && productsByCategory && (
+              <>
+                <div className="mb-6">
+                  <h1 className="text-2xl font-semibold text-foreground">
+                    Все товары
+                  </h1>
+                  <div className="mt-4 h-px bg-border" />
+                </div>
+                {productsByCategory.orderedCategories.map(({ category, products: catProducts }) => (
+                  <CategoryProductsSection
+                    key={category.id}
+                    category={category}
+                    products={catProducts}
+                    renderProductCard={(product, index, isCarousel) => (
+                      <RetailProductCard
+                        product={product}
+                        onAddToCart={handleAddToCart}
+                        onUpdateQuantity={updateQuantity}
+                        cartQuantity={getCartQuantity(product.id)}
+                        isFavorite={isFavorite(product.id)}
+                        onToggleFavorite={toggleFavorite}
+                        index={index}
+                        isCarousel={isCarousel}
+                        expandedCardId={expandedCardId}
+                        onExpandChange={setExpandedCardId}
+                        expandedDescriptionCardId={expandedDescriptionCardId}
+                        onDescriptionExpandChange={setExpandedDescriptionCardId}
+                        fontSettings={store?.retail_theme?.fonts}
+                      />
+                    )}
+                  />
+                ))}
+                {productsByCategory.uncategorized.length > 0 && (
+                  <section className="mb-8">
+                    <h2 className="text-lg font-semibold text-foreground mb-4">Прочее</h2>
+                    <div className="grid grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                      {productsByCategory.uncategorized.map((product, index) => (
+                        <div key={product.id} className="relative">
+                          <RetailProductCard
+                            product={product}
+                            onAddToCart={handleAddToCart}
+                            onUpdateQuantity={updateQuantity}
+                            cartQuantity={getCartQuantity(product.id)}
+                            isFavorite={isFavorite(product.id)}
+                            onToggleFavorite={toggleFavorite}
+                            index={index}
+                            expandedCardId={expandedCardId}
+                            onExpandChange={setExpandedCardId}
+                            expandedDescriptionCardId={expandedDescriptionCardId}
+                            onDescriptionExpandChange={setExpandedDescriptionCardId}
+                            fontSettings={store?.retail_theme?.fonts}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </>
+            )}
+
+            {/* Single category grid */}
+            {selectedCategory && (
+              <>
+                {filteredProducts.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">Товары не найдены</p>
+                    {hasActiveFilters && (
+                      <Button variant="link" onClick={resetFilters} className="mt-2">
+                        Сбросить фильтры
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                    {filteredProducts.map((product, index) => (
+                      <div key={product.id} className="relative">
+                        <RetailProductCard
+                          product={product}
+                          onAddToCart={handleAddToCart}
+                          onUpdateQuantity={updateQuantity}
+                          cartQuantity={getCartQuantity(product.id)}
+                          isFavorite={isFavorite(product.id)}
+                          onToggleFavorite={toggleFavorite}
+                          index={index}
+                          expandedCardId={expandedCardId}
+                          onExpandChange={setExpandedCardId}
+                          expandedDescriptionCardId={expandedDescriptionCardId}
+                          onDescriptionExpandChange={setExpandedDescriptionCardId}
+                          fontSettings={store?.retail_theme?.fonts}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {!selectedCategory && products.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Товары не найдены</p>
+              </div>
+            )}
+          </main>
+
+          <RetailFooter store={store} />
+        </div>
+
+        {/* Right cart panel - always visible */}
+        <RetailCartPanel
+          cart={cart}
+          cartTotal={cartTotal}
+          onUpdateQuantity={updateQuantity}
+          onRemove={removeFromCart}
+        />
       </div>
 
-      {/* Mobile sidebar sheet */}
-      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <SheetContent side="left" className="w-80 p-0">
-          <div className="h-full">
-            <RetailLayoutSidebar
-              store={store}
-              categories={categories}
-              products={products}
-              selectedCategory={selectedCategory}
-              onCategorySelect={(cat) => {
-                setSelectedCategory(cat);
-                setMobileMenuOpen(false);
-              }}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* Mobile/Tablet layout (below lg) */}
+      <div className="lg:hidden flex flex-col min-h-screen">
+        {/* Mobile sidebar sheet */}
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <SheetContent side="left" className="w-80 p-0">
+            <div className="h-full">
+              <RetailLayoutSidebar
+                store={store}
+                categories={categories}
+                products={products}
+                selectedCategory={selectedCategory}
+                onCategorySelect={(cat) => {
+                  setSelectedCategory(cat);
+                  setMobileMenuOpen(false);
+                }}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
 
-      {/* Main content area */}
-      <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
         <RetailTopBar
           store={store}
@@ -387,8 +571,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
         />
 
         {/* Main content */}
-        <main className="flex-1 px-4 lg:px-6 py-6">
-          {/* Category header - only when specific category selected */}
+        <main className="flex-1 px-4 py-6">
           {selectedCategory && (
             <CategoryHeader 
               category={currentCategory} 
@@ -396,19 +579,18 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
             />
           )}
 
-          {/* Search results view - when search query is active */}
+          {/* Search results */}
           {searchQuery && !selectedCategory && (
             <>
-              <div className="mb-8">
-                <h1 className="text-3xl lg:text-4xl font-light tracking-tight text-foreground font-serif">
+              <div className="mb-6">
+                <h1 className="text-xl font-semibold text-foreground">
                   Результаты поиска: "{searchQuery}"
                 </h1>
-                <p className="text-muted-foreground mt-2">
-                  Найдено товаров: {filteredProducts.length}
+                <p className="text-muted-foreground mt-1 text-sm">
+                  Найдено: {filteredProducts.length}
                 </p>
-                <div className="mt-6 h-px bg-border" />
+                <div className="mt-4 h-px bg-border" />
               </div>
-
               {filteredProducts.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">Товары не найдены</p>
@@ -417,7 +599,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                   </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                   {filteredProducts.map((product, index) => (
                     <div key={product.id} className="relative">
                       <RetailProductCard
@@ -441,18 +623,13 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
             </>
           )}
 
-          {/* "All Products" view - horizontal carousels by category (only when no search) */}
+          {/* All Products - carousels */}
           {!selectedCategory && !searchQuery && productsByCategory && (
             <>
-              {/* Page title */}
-              <div className="mb-8">
-                <h1 className="text-3xl lg:text-4xl font-light tracking-tight text-foreground font-serif">
-                  Все товары
-                </h1>
-                <div className="mt-6 h-px bg-border" />
+              <div className="mb-6">
+                <h1 className="text-xl font-semibold text-foreground">Все товары</h1>
+                <div className="mt-4 h-px bg-border" />
               </div>
-
-              {/* Category sections with horizontal scrolling */}
               {productsByCategory.orderedCategories.map(({ category, products: catProducts }) => (
                 <CategoryProductsSection
                   key={category.id}
@@ -477,23 +654,16 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                   )}
                 />
               ))}
-
-              {/* Uncategorized products */}
               {productsByCategory.uncategorized.length > 0 && (
                 <section className="mb-8">
-                  <h2 className="text-xl lg:text-2xl font-light tracking-tight text-foreground font-serif mb-4">
-                    Прочее
-                  </h2>
-                  <div className="relative -mx-4 lg:-mx-6">
+                  <h2 className="text-lg font-semibold text-foreground mb-4">Прочее</h2>
+                  <div className="relative -mx-4">
                     <div
-                      className="flex gap-4 overflow-x-auto scrollbar-hide px-4 lg:px-6 pt-4 pb-2 -mt-4 snap-x snap-mandatory"
+                      className="flex gap-4 overflow-x-auto scrollbar-hide px-4 pt-4 pb-2 -mt-4 snap-x snap-mandatory"
                       style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                     >
                       {productsByCategory.uncategorized.map((product, index) => (
-                        <div
-                          key={product.id}
-                          className="flex-shrink-0 w-[45%] sm:w-[35%] md:w-[28%] lg:w-[22%] xl:w-[18%] snap-start"
-                        >
+                        <div key={product.id} className="flex-shrink-0 w-[45%] sm:w-[35%] md:w-[28%] snap-start">
                           <RetailProductCard
                             product={product}
                             onAddToCart={handleAddToCart}
@@ -518,7 +688,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
             </>
           )}
 
-          {/* Single category view - grid */}
+          {/* Single category grid */}
           {selectedCategory && (
             <>
               {filteredProducts.length === 0 ? (
@@ -531,14 +701,9 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                   )}
                 </div>
               ) : (
-                <div
-                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
-                >
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                   {filteredProducts.map((product, index) => (
-                    <div 
-                      key={product.id} 
-                      className="relative"
-                    >
+                    <div key={product.id} className="relative">
                       <RetailProductCard
                         product={product}
                         onAddToCart={handleAddToCart}
@@ -560,18 +725,15 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
             </>
           )}
 
-          {/* Empty state for "All Products" when no products at all */}
           {!selectedCategory && products.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">Товары не найдены</p>
             </div>
           )}
 
-          {/* Spacer for mobile bottom nav */}
-          <div className="h-6 lg:hidden" />
+          <div className="h-6" />
         </main>
 
-        {/* Footer */}
         <RetailFooter store={store} />
       </div>
 
@@ -610,7 +772,6 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
           setMobileCatalogOpen(false);
           setIsOpen(false);
           setFavoritesOpen(false);
-          /* TODO: navigate to promotions */
         }}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -640,7 +801,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
         />
       )}
 
-      {/* Favorites sheet - mobile (slides from bottom) */}
+      {/* Favorites sheet - mobile */}
       {isMobile && (
         <RetailFavoritesSheet
           open={favoritesOpen}
@@ -653,19 +814,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
         />
       )}
 
-      {/* Cart drawer - desktop only */}
-      {!isMobile && (
-        <RetailCartDrawer
-          open={isOpen}
-          onOpenChange={setIsOpen}
-          cart={cart}
-          cartTotal={cartTotal}
-          onUpdateQuantity={updateQuantity}
-          onRemove={removeFromCart}
-        />
-      )}
-
-      {/* Cart sheet - mobile only (slides from bottom) */}
+      {/* Cart sheet - mobile only */}
       {isMobile && (
         <RetailCartSheet
           open={isOpen}
