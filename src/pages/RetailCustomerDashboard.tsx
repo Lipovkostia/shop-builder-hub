@@ -22,7 +22,12 @@ import {
   Truck,
   XCircle,
   Save,
+  RefreshCw,
+  Phone,
 } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
+import { TelegramIcon } from "@/components/icons/TelegramIcon";
+import { useRetailCart } from "@/hooks/useRetailCart";
 
 interface RetailOrder {
   id: string;
@@ -39,6 +44,7 @@ interface RetailOrder {
   items: Array<{
     id: string;
     product_name: string;
+    product_id: string | null;
     quantity: number;
     price: number;
     total: number;
@@ -68,17 +74,45 @@ export default function RetailCustomerDashboard() {
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("orders");
 
+  // Store contacts
+  const [storeContacts, setStoreContacts] = useState<{
+    phone: string | null;
+    whatsapp: string | null;
+    telegram: string | null;
+  }>({ phone: null, whatsapp: null, telegram: null });
+
   // Profile editing
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Cart for repeat order
+  const { addToCart } = useRetailCart(subdomain || "");
+
+  // Fetch store contacts
+  useEffect(() => {
+    if (!subdomain) return;
+    supabase
+      .from("stores")
+      .select("retail_phone, whatsapp_phone, telegram_username")
+      .eq("subdomain", subdomain)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setStoreContacts({
+            phone: data.retail_phone,
+            whatsapp: data.whatsapp_phone,
+            telegram: data.telegram_username,
+          });
+        }
+      });
+  }, [subdomain]);
+
   // Fetch phone from profiles table directly
   useEffect(() => {
     if (profile) {
       setEditName(profile.full_name || "");
-      // Fetch phone separately since Profile type doesn't include it
       supabase
         .from("profiles")
         .select("phone")
@@ -98,7 +132,6 @@ export default function RetailCustomerDashboard() {
     if (!user || !subdomain) return;
     setOrdersLoading(true);
     try {
-      // Get profile
       const { data: prof } = await supabase
         .from("profiles")
         .select("id")
@@ -106,7 +139,6 @@ export default function RetailCustomerDashboard() {
         .single();
       if (!prof) return;
 
-      // Get store
       const { data: store } = await supabase
         .from("stores")
         .select("id")
@@ -114,7 +146,6 @@ export default function RetailCustomerDashboard() {
         .single();
       if (!store) return;
 
-      // Get store_customer
       const { data: sc } = await supabase
         .from("store_customers")
         .select("id")
@@ -123,7 +154,6 @@ export default function RetailCustomerDashboard() {
         .maybeSingle();
       if (!sc) { setOrders([]); return; }
 
-      // Get orders
       const { data: ordersData } = await supabase
         .from("orders")
         .select("*")
@@ -133,7 +163,6 @@ export default function RetailCustomerDashboard() {
 
       if (!ordersData || ordersData.length === 0) { setOrders([]); return; }
 
-      // Get order items
       const orderIds = ordersData.map(o => o.id);
       const { data: itemsData } = await supabase
         .from("order_items")
@@ -152,6 +181,7 @@ export default function RetailCustomerDashboard() {
           .map(i => ({
             id: i.id,
             product_name: i.product_name,
+            product_id: i.product_id,
             quantity: i.quantity,
             price: Number(i.price),
             total: Number(i.total),
@@ -169,6 +199,26 @@ export default function RetailCustomerDashboard() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  const handleRepeatOrder = useCallback((order: RetailOrder) => {
+    let addedCount = 0;
+    for (const item of order.items) {
+      if (item.product_id) {
+        addToCart({
+          productId: item.product_id,
+          name: item.product_name,
+          price: item.price,
+          unit: "шт",
+        }, item.quantity);
+        addedCount++;
+      }
+    }
+    if (addedCount > 0) {
+      toast({ title: "Товары добавлены в корзину", description: `${addedCount} товар(ов) из заказа #${order.order_number}` });
+    } else {
+      toast({ title: "Не удалось повторить заказ", description: "Товары из этого заказа больше не доступны", variant: "destructive" });
+    }
+  }, [addToCart, toast]);
 
   const handleSaveProfile = async () => {
     if (!profile) return;
@@ -191,6 +241,15 @@ export default function RetailCustomerDashboard() {
     await signOut();
     navigate(`/retail/${subdomain}`);
   };
+
+  const formatWhatsAppPhone = (phone: string) => {
+    let cleaned = phone.replace(/\D/g, '');
+    if (cleaned.startsWith('8') && cleaned.length === 11) cleaned = '7' + cleaned.slice(1);
+    if (cleaned.length === 10) cleaned = '7' + cleaned;
+    return cleaned;
+  };
+
+  const hasContacts = storeContacts.phone || storeContacts.whatsapp || storeContacts.telegram;
 
   if (!user) {
     return (
@@ -269,6 +328,7 @@ export default function RetailCustomerDashboard() {
                 {orders.map(order => {
                   const sc = statusConfig[order.status] || statusConfig.pending;
                   const StatusIcon = sc.icon;
+                  const canRepeat = order.status !== 'forming' && order.items.some(i => i.product_id);
                   return (
                     <Card key={order.id}>
                       <CardHeader className="pb-3">
@@ -333,11 +393,66 @@ export default function RetailCustomerDashboard() {
                             )}
                           </div>
                         )}
+
+                        {/* Repeat order button */}
+                        {canRepeat && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full mt-3"
+                            onClick={() => handleRepeatOrder(order)}
+                          >
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Повторить заказ
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   );
                 })}
               </div>
+            )}
+
+            {/* Contact us section */}
+            {hasContacts && (
+              <Card className="mt-6">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Связаться с нами</CardTitle>
+                </CardHeader>
+                <CardContent className="flex gap-3">
+                  {storeContacts.phone && (
+                    <a
+                      href={`tel:${storeContacts.phone}`}
+                      className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-muted-foreground/20 transition-colors"
+                      title="Позвонить"
+                    >
+                      <Phone className="h-5 w-5 text-foreground" />
+                    </a>
+                  )}
+                  {storeContacts.whatsapp && (
+                    <a
+                      href={`https://wa.me/${formatWhatsAppPhone(storeContacts.whatsapp)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-muted-foreground/20 transition-colors"
+                      title="WhatsApp"
+                    >
+                      <WhatsAppIcon className="h-5 w-5 text-foreground" />
+                    </a>
+                  )}
+                  {storeContacts.telegram && (
+                    <a
+                      href={`https://t.me/${storeContacts.telegram.replace('@', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-muted-foreground/20 transition-colors"
+                      title="Telegram"
+                    >
+                      <TelegramIcon className="h-5 w-5 text-foreground" />
+                    </a>
+                  )}
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
 
