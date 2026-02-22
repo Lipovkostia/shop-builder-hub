@@ -26,6 +26,7 @@ interface RetailProductCardProps {
   expandedDescriptionCardId?: string | null; // Global state for which card has expanded description
   onDescriptionExpandChange?: (productId: string | null) => void; // Callback to update description expanded state
   fontSettings?: FontSettings;
+  onProductClick?: (product: RetailProduct) => void; // Open product detail panel
 }
 
 function formatPrice(price: number): string {
@@ -77,6 +78,7 @@ export function RetailProductCard({
   expandedDescriptionCardId,
   onDescriptionExpandChange,
   fontSettings,
+  onProductClick,
 }: RetailProductCardProps) {
   const isMobile = useIsMobile();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -636,7 +638,8 @@ export function RetailProductCard({
       {/* Main card */}
       <div 
         ref={innerCardRef}
-        className="bg-card rounded-xl overflow-visible flex flex-col shadow-sm hover:shadow-md transition-shadow relative"
+        className={cn("bg-card rounded-xl overflow-visible flex flex-col shadow-sm hover:shadow-md transition-shadow relative", onProductClick && "cursor-pointer")}
+        onClick={() => onProductClick?.(product)}
       >
         {/* Image section - clickable to expand */}
         <div 

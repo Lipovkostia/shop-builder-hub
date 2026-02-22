@@ -27,7 +27,7 @@ export function RetailCartPanel({
   const { subdomain } = useParams();
 
   return (
-    <aside className="w-80 flex-shrink-0 bg-background border-l border-border flex flex-col h-screen sticky top-0">
+    <aside className="w-full bg-background border-l border-border flex flex-col h-screen sticky top-0">
       {/* Cart items */}
       {cart.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center px-4">
