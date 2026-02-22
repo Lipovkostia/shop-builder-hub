@@ -215,6 +215,11 @@ export function RetailProductCard({
   const handleImageClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // If onProductClick is provided, use it instead of expanding image
+    if (onProductClick) {
+      onProductClick(product);
+      return;
+    }
     if (images.length > 0 && !isOutOfStock) {
       // Check position before expanding in carousel mode
       if (isCarousel) {
@@ -229,7 +234,7 @@ export function RetailProductCard({
       // Notify parent that this card is now expanded
       onExpandChange?.(product.id);
     }
-  }, [images.length, isOutOfStock, isCarousel, checkCardPosition, onExpandChange, product.id]);
+  }, [images.length, isOutOfStock, isCarousel, checkCardPosition, onExpandChange, product, onProductClick]);
 
   // Handle tap on expanded image to close
   const handleExpandedImageTap = useCallback((e: React.MouseEvent) => {
@@ -639,7 +644,6 @@ export function RetailProductCard({
       <div 
         ref={innerCardRef}
         className={cn("bg-card rounded-xl overflow-visible flex flex-col shadow-sm hover:shadow-md transition-shadow relative", onProductClick && "cursor-pointer")}
-        onClick={() => onProductClick?.(product)}
       >
         {/* Image section - clickable to expand */}
         <div 
