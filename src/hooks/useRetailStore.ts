@@ -56,6 +56,8 @@ export interface RetailStore {
   // Footer content fields
   retail_footer_delivery_payment: string | null;
   retail_footer_returns: string | null;
+  // Yandex Maps
+  yandex_maps_api_key: string | null;
 }
 
 export interface RetailProduct {

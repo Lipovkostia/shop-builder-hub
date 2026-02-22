@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Search, User, LogOut, ShoppingBag, Settings } from "lucide-react";
+import { Search, User, LogOut, ShoppingBag, Settings, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { RetailStore } from "@/hooks/useRetailStore";
 import { DeliveryInfoBanner } from "./DeliveryInfoBanner";
+import { CityPickerDialog } from "./CityPickerDialog";
 import { TelegramIcon } from "@/components/icons/TelegramIcon";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 
@@ -57,6 +58,26 @@ export function RetailTopBar({
   const [authPassword, setAuthPassword] = useState("");
   const [authName, setAuthName] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [cityPickerOpen, setCityPickerOpen] = useState(false);
+  const [userCity, setUserCity] = useState<string>("");
+
+  // Load city from localStorage
+  useEffect(() => {
+    const storageKey = `retail_city_${subdomain}`;
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setUserCity(parsed.city || "");
+      } catch {}
+    }
+  }, [subdomain]);
+
+  const handleCitySelect = (city: string, address: string) => {
+    setUserCity(city);
+    const storageKey = `retail_city_${subdomain}`;
+    localStorage.setItem(storageKey, JSON.stringify({ city, address }));
+  };
 
   const logoUrl = store.retail_logo_url || store.logo_url;
   const storeName = store.retail_name || store.name;
@@ -132,8 +153,19 @@ export function RetailTopBar({
   return (
     <div className="sticky top-0 z-40">
       {/* Mobile contact bar */}
-      {(store.retail_phone || store.telegram_username || store.whatsapp_phone) && (
+      {(store.retail_phone || store.telegram_username || store.whatsapp_phone || store.yandex_maps_api_key) && (
         <div className="flex md:hidden items-center justify-center gap-4 px-4 py-2.5 border-b border-border bg-muted/30">
+          {store.yandex_maps_api_key && (
+            <button
+              onClick={() => setCityPickerOpen(true)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <MapPin className="h-3.5 w-3.5" />
+              <span className="max-w-[80px] truncate">
+                {userCity || "Город"}
+              </span>
+            </button>
+          )}
           {store.telegram_username && (
             <a
               href={`https://t.me/${store.telegram_username}`}
@@ -182,6 +214,19 @@ export function RetailTopBar({
             </div>
           )}
         </div>
+
+        {/* City picker */}
+        {store.yandex_maps_api_key && (
+          <button
+            onClick={() => setCityPickerOpen(true)}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+          >
+            <MapPin className="h-4 w-4" />
+            <span className="max-w-[120px] truncate">
+              {userCity || "Выбрать город"}
+            </span>
+          </button>
+        )}
 
         {/* Search */}
         <div className="flex-1 max-w-2xl">
@@ -385,6 +430,17 @@ export function RetailTopBar({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* City Picker Dialog */}
+      {store.yandex_maps_api_key && (
+        <CityPickerDialog
+          open={cityPickerOpen}
+          onOpenChange={setCityPickerOpen}
+          apiKey={store.yandex_maps_api_key}
+          onCitySelect={handleCitySelect}
+          currentCity={userCity}
+        />
+      )}
     </div>
   );
 }

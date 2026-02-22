@@ -1,0 +1,1 @@
+ALTER TABLE public.stores ADD COLUMN yandex_maps_api_key text;
