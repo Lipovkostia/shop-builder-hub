@@ -59,10 +59,10 @@ export function CategoryProductsSection({
       </div>
 
       {/* Horizontal scrollable product row */}
-      <div className="relative -mx-4 lg:-mx-6">
+      <div className="relative">
         <div
           ref={scrollRef}
-          className="flex gap-4 overflow-x-auto scrollbar-hide px-4 lg:px-6 pt-4 pb-2 -mt-4 snap-x snap-mandatory"
+          className="flex gap-4 overflow-x-auto scrollbar-hide pt-4 pb-2 -mt-4 snap-x snap-mandatory"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {products.map((product, index) => (
