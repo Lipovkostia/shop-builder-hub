@@ -347,29 +347,33 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
 
   return (
     <div className="retail-theme min-h-screen bg-background">
-      {/* Desktop 3-column layout: sidebar | content | cart */}
-      <div className="hidden lg:flex">
-        {/* Left sidebar */}
-        <RetailLayoutSidebar
+      {/* Desktop: full-width header + 3-column body */}
+      <div className="hidden lg:block">
+        {/* Full-width top bar */}
+        <RetailTopBar
           store={store}
-          categories={categories}
-          products={products}
-          selectedCategory={selectedCategory}
-          onCategorySelect={setSelectedCategory}
+          cartItemsCount={cartItemsCount}
+          onCartClick={() => setIsOpen(true)}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          favoritesCount={favoritesCount}
+          onFavoritesClick={() => setFavoritesOpen(true)}
+          cartIconRef={cartIconRef}
         />
 
-        {/* Center: top bar + content */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <RetailTopBar
+        {/* 3-column layout below header */}
+        <div className="flex">
+          {/* Left sidebar */}
+          <RetailLayoutSidebar
             store={store}
-            cartItemsCount={cartItemsCount}
-            onCartClick={() => setIsOpen(true)}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            favoritesCount={favoritesCount}
-            onFavoritesClick={() => setFavoritesOpen(true)}
-            cartIconRef={cartIconRef}
+            categories={categories}
+            products={products}
+            selectedCategory={selectedCategory}
+            onCategorySelect={setSelectedCategory}
           />
+
+          {/* Center content */}
+          <div className="flex-1 flex flex-col min-w-0">
 
           <main className="flex-1 px-1.5 py-1.5 overflow-y-auto">
             {/* Category header */}
@@ -534,23 +538,25 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
           <RetailFooter store={store} />
         </div>
 
-        {/* Right cart panel - always visible, with product detail overlay */}
-        <div className="relative w-80 flex-shrink-0 h-[calc(100vh-12px)] sticky top-1.5">
-          <RetailCartPanel
-            cart={cart}
-            cartTotal={cartTotal}
-            onUpdateQuantity={updateQuantity}
-            onRemove={removeFromCart}
-          />
-          {selectedProduct && (
-            <RetailProductDetailPanel
-              product={selectedProduct}
-              onClose={() => setSelectedProduct(null)}
-              onAddToCart={(p) => handleAddToCart(p)}
+          {/* Right cart panel - always visible, with product detail overlay */}
+          <div className="relative w-80 flex-shrink-0 h-[calc(100vh-80px)] sticky top-[68px]">
+            <RetailCartPanel
+              cart={cart}
+              cartTotal={cartTotal}
               onUpdateQuantity={updateQuantity}
-              cartQuantity={getCartQuantity(selectedProduct.id)}
+              onRemove={removeFromCart}
+              store={store}
             />
-          )}
+            {selectedProduct && (
+              <RetailProductDetailPanel
+                product={selectedProduct}
+                onClose={() => setSelectedProduct(null)}
+                onAddToCart={(p) => handleAddToCart(p)}
+                onUpdateQuantity={updateQuantity}
+                cartQuantity={getCartQuantity(selectedProduct.id)}
+              />
+            )}
+          </div>
         </div>
       </div>
 

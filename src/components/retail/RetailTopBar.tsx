@@ -231,7 +231,7 @@ export function RetailTopBar({
       )}
 
       {/* Desktop top bar */}
-      <div className="hidden lg:flex items-center gap-4 px-6 py-3 bg-card rounded-2xl mx-1.5 mt-1.5">
+      <div className="hidden lg:flex items-center gap-4 px-6 py-3 bg-card border-b border-border">
         {/* Logo */}
         <div className="flex-shrink-0 w-40">
           {logoUrl ? (
@@ -247,19 +247,6 @@ export function RetailTopBar({
             </div>
           )}
         </div>
-
-        {/* City picker */}
-        {store.yandex_maps_api_key && (
-          <button
-            onClick={() => setCityPickerOpen(true)}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-          >
-            <MapPin className="h-4 w-4" />
-            <span className="max-w-[120px] truncate">
-              {userCity || "Выбрать город"}
-            </span>
-          </button>
-        )}
 
         {/* Search */}
         <div className="flex-1 max-w-2xl">
