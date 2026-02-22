@@ -15,6 +15,7 @@ import { RetailProductCard } from "@/components/retail/RetailProductCard";
 import { RetailSidebar } from "@/components/retail/RetailSidebar";
 import { RetailCartDrawer } from "@/components/retail/RetailCartDrawer";
 import { RetailCartPanel } from "@/components/retail/RetailCartPanel";
+import { RetailProductDetailPanel } from "@/components/retail/RetailProductDetailPanel";
 import { RetailCartSheet } from "@/components/retail/RetailCartSheet";
 import { RetailFooter } from "@/components/retail/RetailFooter";
 import { CategoryHeader } from "@/components/retail/CategoryHeader";
@@ -62,6 +63,8 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   // Global state for expanded description (only one card can have expanded description at a time)
   const [expandedDescriptionCardId, setExpandedDescriptionCardId] = useState<string | null>(null);
+  // State for product detail panel (desktop right side)
+  const [selectedProduct, setSelectedProduct] = useState<typeof products[0] | null>(null);
 
   // Price range calculation
   const priceRange = useMemo(() => {
@@ -413,6 +416,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                           expandedDescriptionCardId={expandedDescriptionCardId}
                           onDescriptionExpandChange={setExpandedDescriptionCardId}
                           fontSettings={store?.retail_theme?.fonts}
+                          onProductClick={setSelectedProduct}
                         />
                       </div>
                     ))}
@@ -450,6 +454,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                         expandedDescriptionCardId={expandedDescriptionCardId}
                         onDescriptionExpandChange={setExpandedDescriptionCardId}
                         fontSettings={store?.retail_theme?.fonts}
+                        onProductClick={setSelectedProduct}
                       />
                     )}
                   />
@@ -473,6 +478,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                             expandedDescriptionCardId={expandedDescriptionCardId}
                             onDescriptionExpandChange={setExpandedDescriptionCardId}
                             fontSettings={store?.retail_theme?.fonts}
+                            onProductClick={setSelectedProduct}
                           />
                         </div>
                       ))}
@@ -511,6 +517,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                           expandedDescriptionCardId={expandedDescriptionCardId}
                           onDescriptionExpandChange={setExpandedDescriptionCardId}
                           fontSettings={store?.retail_theme?.fonts}
+                          onProductClick={setSelectedProduct}
                         />
                       </div>
                     ))}
@@ -529,13 +536,24 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
           <RetailFooter store={store} />
         </div>
 
-        {/* Right cart panel - always visible */}
-        <RetailCartPanel
-          cart={cart}
-          cartTotal={cartTotal}
-          onUpdateQuantity={updateQuantity}
-          onRemove={removeFromCart}
-        />
+        {/* Right cart panel - always visible, with product detail overlay */}
+        <div className="relative w-80 flex-shrink-0 h-screen sticky top-0">
+          <RetailCartPanel
+            cart={cart}
+            cartTotal={cartTotal}
+            onUpdateQuantity={updateQuantity}
+            onRemove={removeFromCart}
+          />
+          {selectedProduct && (
+            <RetailProductDetailPanel
+              product={selectedProduct}
+              onClose={() => setSelectedProduct(null)}
+              onAddToCart={(p) => handleAddToCart(p)}
+              onUpdateQuantity={updateQuantity}
+              cartQuantity={getCartQuantity(selectedProduct.id)}
+            />
+          )}
+        </div>
       </div>
 
       {/* Mobile/Tablet layout (below lg) */}
