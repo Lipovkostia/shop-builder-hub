@@ -11,14 +11,11 @@ export function CategoryHeader({ category, productCount }: CategoryHeaderProps) 
   const { subdomain } = useParams();
 
   return (
-    <div className="mb-8">
+    <div className="mb-1.5 bg-card rounded-2xl p-5">
       {/* Category title */}
       <h1 className="text-2xl lg:text-3xl font-semibold tracking-normal text-foreground font-sans">
         {category?.name || "Все товары"}
       </h1>
-
-      {/* Separator line */}
-      <div className="mt-6 h-px bg-border" />
     </div>
   );
 }

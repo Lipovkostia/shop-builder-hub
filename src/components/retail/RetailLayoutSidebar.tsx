@@ -86,7 +86,7 @@ export function RetailLayoutSidebar({
   }, [selectedCategory, sections]);
 
   return (
-    <aside className="w-64 lg:w-72 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0 flex-shrink-0">
+    <aside className="w-64 lg:w-72 bg-card rounded-2xl m-1.5 mr-0 flex flex-col h-[calc(100vh-12px)] sticky top-1.5 flex-shrink-0 overflow-hidden">
       {/* Logo / Store name */}
       <div className="p-6 border-b border-sidebar-border">
         <Link 

@@ -39,7 +39,7 @@ export function RetailTopBar({
   };
 
   return (
-    <div className="sticky top-0 z-40 bg-background">
+    <div className="sticky top-0 z-40">
       {/* Mobile contact bar */}
       {(store.retail_phone || store.telegram_username || store.whatsapp_phone) && (
         <div className="flex md:hidden items-center justify-center gap-4 px-4 py-2.5 border-b border-border bg-muted/30">
@@ -75,7 +75,7 @@ export function RetailTopBar({
       )}
 
       {/* Desktop top bar: Logo | Search | Login */}
-      <div className="hidden lg:flex items-center gap-4 px-6 py-3 border-b border-border">
+        <div className="hidden lg:flex items-center gap-4 px-6 py-3 bg-card rounded-2xl mx-1.5 mt-1.5">
         {/* Logo placeholder */}
         <div className="flex-shrink-0 w-40">
           {logoUrl ? (

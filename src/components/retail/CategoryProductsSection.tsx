@@ -30,7 +30,7 @@ export function CategoryProductsSection({
   if (products.length === 0) return null;
 
   return (
-    <section className="mb-8">
+    <section className="mb-1.5 bg-card rounded-2xl p-5">
       {/* Category header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg lg:text-xl font-semibold tracking-normal text-foreground font-sans">
@@ -76,8 +76,6 @@ export function CategoryProductsSection({
         </div>
       </div>
 
-      {/* Separator */}
-      <div className="mt-6 h-px bg-border" />
     </section>
   );
 }

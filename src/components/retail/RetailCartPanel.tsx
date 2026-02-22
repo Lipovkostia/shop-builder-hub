@@ -27,7 +27,7 @@ export function RetailCartPanel({
   const { subdomain } = useParams();
 
   return (
-    <aside className="w-full bg-background border-l border-border flex flex-col h-screen sticky top-0">
+    <aside className="w-full bg-card rounded-2xl m-1.5 ml-0 flex flex-col h-[calc(100vh-12px)] sticky top-1.5 overflow-hidden">
       {/* Cart items */}
       {cart.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center px-4">
@@ -116,7 +116,7 @@ export function RetailCartPanel({
 
             <Button
               asChild
-              className="w-full h-12 text-base font-semibold rounded-xl"
+              className="w-full h-12 text-base font-semibold rounded-full bg-accent hover:bg-accent/90 text-accent-foreground"
               size="lg"
             >
               <Link
