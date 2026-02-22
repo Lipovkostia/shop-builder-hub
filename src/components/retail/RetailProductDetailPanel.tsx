@@ -1,9 +1,10 @@
-import { X, Plus, Minus, ShoppingBag, ImageOff } from "lucide-react";
+import { X, Plus, Minus, ShoppingBag, ImageOff, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { RetailProduct } from "@/hooks/useRetailStore";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { FullscreenImageViewer } from "@/components/ui/fullscreen-image-viewer";
 
 interface RetailProductDetailPanelProps {
   product: RetailProduct | null;
@@ -29,14 +30,53 @@ export function RetailProductDetailPanel({
 }: RetailProductDetailPanelProps) {
   const [imageError, setImageError] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isHovering, setIsHovering] = useState(false);
+  const [fullscreenOpen, setFullscreenOpen] = useState(false);
 
-  // Reset state when product changes
+  // Reset index when product changes
+  useEffect(() => {
+    setCurrentImageIndex(0);
+    setImageError(false);
+  }, [product?.id]);
+
   const images = product?.images || [];
   const currentImage = images[currentImageIndex] || null;
   const hasDiscount = product?.compare_price && product.compare_price > (product?.price ?? 0);
   const isInCart = cartQuantity > 0;
+  const hasMultipleImages = images.length > 1;
 
   if (!product) return null;
+
+  const goPrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex(i => (i === 0 ? images.length - 1 : i - 1));
+    setImageError(false);
+  };
+
+  const goNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex(i => (i === images.length - 1 ? 0 : i + 1));
+    setImageError(false);
+  };
+
+  const handleImageClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const width = rect.width;
+    const edgeZone = width * 0.25;
+
+    if (hasMultipleImages && clickX < edgeZone) {
+      setCurrentImageIndex(i => (i === 0 ? images.length - 1 : i - 1));
+      setImageError(false);
+    } else if (hasMultipleImages && clickX > width - edgeZone) {
+      setCurrentImageIndex(i => (i === images.length - 1 ? 0 : i + 1));
+      setImageError(false);
+    } else {
+      // Center click — open fullscreen
+      setFullscreenOpen(true);
+    }
+  };
 
   return (
     <aside
@@ -58,24 +98,55 @@ export function RetailProductDetailPanel({
 
       <ScrollArea className="flex-1">
         <div className="px-4 py-4 space-y-4">
-          {/* Image */}
-          <div className="w-full aspect-square rounded-xl bg-muted overflow-hidden">
+          {/* Image with navigation */}
+          <div
+            className="w-full aspect-square rounded-xl bg-muted overflow-hidden relative cursor-pointer group"
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
+            onClick={handleImageClick}
+          >
             {currentImage && !imageError ? (
               <img
                 src={currentImage}
                 alt={product.name}
                 className="w-full h-full object-cover"
                 onError={() => setImageError(true)}
+                draggable={false}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <ImageOff className="h-12 w-12 text-muted-foreground/30" />
               </div>
             )}
+
+            {/* Navigation arrows on hover */}
+            {hasMultipleImages && isHovering && (
+              <>
+                <button
+                  onClick={goPrev}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors z-10"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={goNext}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors z-10"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </>
+            )}
+
+            {/* Image counter */}
+            {hasMultipleImages && (
+              <div className="absolute top-2 right-2 bg-black/40 text-white text-xs px-2 py-0.5 rounded-full">
+                {currentImageIndex + 1}/{images.length}
+              </div>
+            )}
           </div>
 
           {/* Image dots */}
-          {images.length > 1 && (
+          {hasMultipleImages && (
             <div className="flex justify-center gap-1.5">
               {images.map((_, i) => (
                 <button
@@ -157,6 +228,18 @@ export function RetailProductDetailPanel({
           </Button>
         )}
       </div>
+
+      {/* Fullscreen image viewer */}
+      <FullscreenImageViewer
+        images={images}
+        currentIndex={currentImageIndex}
+        isOpen={fullscreenOpen}
+        onClose={() => setFullscreenOpen(false)}
+        onIndexChange={(idx) => {
+          setCurrentImageIndex(idx);
+          setImageError(false);
+        }}
+      />
     </aside>
   );
 }
