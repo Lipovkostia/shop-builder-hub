@@ -48,6 +48,7 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
     updateContactSettings,
     updateDeliverySettings,
     updateFooterSettings,
+    updateYandexMapsKey,
     uploadRetailLogo,
     uploadFavicon,
     deleteRetailLogo,
@@ -79,6 +80,8 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
   const [footerDeliveryPayment, setFooterDeliveryPayment] = useState("");
   const [footerReturns, setFooterReturns] = useState("");
   
+  const [yandexMapsKey, setYandexMapsKey] = useState("");
+  
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
 
@@ -101,6 +104,8 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
       // Footer content settings
       setFooterDeliveryPayment(settings.retail_footer_delivery_payment || "");
       setFooterReturns(settings.retail_footer_returns || "");
+      // Yandex Maps
+      setYandexMapsKey(settings.yandex_maps_api_key || "");
     }
   }, [settings]);
 
@@ -491,6 +496,46 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
                 <Button onClick={handleSaveDelivery} disabled={saving}>
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Сохранить настройки доставки
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Yandex Maps Settings */}
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground">Яндекс.Карты</h3>
+                <p className="text-sm text-muted-foreground">
+                  Подключите Яндекс.Карты для выбора города и адреса покупателем
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">
+                  API-ключ JavaScript API
+                </Label>
+                <Input
+                  value={yandexMapsKey}
+                  onChange={(e) => setYandexMapsKey(e.target.value)}
+                  placeholder="Введите API-ключ Яндекс.Карт"
+                  type="password"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Получите ключ в{" "}
+                  <a href="https://developer.tech.yandex.ru/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    Кабинете разработчика Яндекс
+                  </a>
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <Button onClick={() => updateYandexMapsKey(yandexMapsKey || null)} disabled={saving}>
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Сохранить ключ
                 </Button>
               </div>
             </div>

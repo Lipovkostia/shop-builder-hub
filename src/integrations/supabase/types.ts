@@ -1678,6 +1678,7 @@ export type Database = {
           wholesale_seo_description: string | null
           wholesale_seo_title: string | null
           wholesale_theme: Json | null
+          yandex_maps_api_key: string | null
         }
         Insert: {
           address?: string | null
@@ -1747,6 +1748,7 @@ export type Database = {
           wholesale_seo_description?: string | null
           wholesale_seo_title?: string | null
           wholesale_theme?: Json | null
+          yandex_maps_api_key?: string | null
         }
         Update: {
           address?: string | null
@@ -1816,6 +1818,7 @@ export type Database = {
           wholesale_seo_description?: string | null
           wholesale_seo_title?: string | null
           wholesale_theme?: Json | null
+          yandex_maps_api_key?: string | null
         }
         Relationships: [
           {

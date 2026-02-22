@@ -51,6 +51,8 @@ export interface RetailSettings {
   // Footer content fields
   retail_footer_delivery_payment: string | null;
   retail_footer_returns: string | null;
+  // Yandex Maps
+  yandex_maps_api_key: string | null;
 }
 
 export function useRetailSettings(storeId: string | null) {
@@ -68,7 +70,7 @@ export function useRetailSettings(storeId: string | null) {
     try {
       const { data, error } = await supabase
         .from("stores")
-        .select("retail_enabled, retail_theme, retail_logo_url, retail_name, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id, retail_phone, telegram_username, whatsapp_phone, retail_delivery_time, retail_delivery_info, retail_delivery_free_from, retail_delivery_region, retail_footer_delivery_payment, retail_footer_returns")
+        .select("retail_enabled, retail_theme, retail_logo_url, retail_name, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id, retail_phone, telegram_username, whatsapp_phone, retail_delivery_time, retail_delivery_info, retail_delivery_free_from, retail_delivery_region, retail_footer_delivery_payment, retail_footer_returns, yandex_maps_api_key")
         .eq("id", storeId)
         .single();
 
@@ -94,6 +96,7 @@ export function useRetailSettings(storeId: string | null) {
         retail_delivery_region: (data as { retail_delivery_region?: string | null }).retail_delivery_region || null,
         retail_footer_delivery_payment: (data as { retail_footer_delivery_payment?: string | null }).retail_footer_delivery_payment || null,
         retail_footer_returns: (data as { retail_footer_returns?: string | null }).retail_footer_returns || null,
+        yandex_maps_api_key: (data as { yandex_maps_api_key?: string | null }).yandex_maps_api_key || null,
       });
     } catch (err) {
       console.error("Error fetching retail settings:", err);
@@ -595,6 +598,35 @@ export function useRetailSettings(storeId: string | null) {
     }
   }, [storeId, toast]);
 
+  const updateYandexMapsKey = useCallback(async (key: string | null) => {
+    if (!storeId) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("stores")
+        .update({ yandex_maps_api_key: key })
+        .eq("id", storeId);
+
+      if (error) throw error;
+
+      setSettings(prev => prev ? { ...prev, yandex_maps_api_key: key } : null);
+      toast({
+        title: "API-ключ сохранён",
+        description: "Яндекс.Карты подключены",
+      });
+    } catch (err) {
+      console.error("Error updating Yandex Maps key:", err);
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Не удалось сохранить API-ключ",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [storeId, toast]);
+
   return {
     settings,
     loading,
@@ -608,6 +640,7 @@ export function useRetailSettings(storeId: string | null) {
     updateContactSettings,
     updateDeliverySettings,
     updateFooterSettings,
+    updateYandexMapsKey,
     uploadRetailLogo,
     uploadFavicon,
     deleteRetailLogo,
