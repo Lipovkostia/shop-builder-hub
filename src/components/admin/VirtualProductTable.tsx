@@ -4,6 +4,7 @@ import { MemoizedProductRow, VisibleColumns } from "./MemoizedProductRow";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GripVertical, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useColumnWidths } from "@/hooks/useColumnWidths";
 import {
   Select,
   SelectContent,
@@ -233,6 +234,16 @@ export function VirtualProductTable({
   aiGeneratingProductId,
 }: VirtualProductTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
+  const { widths, onResizeStart } = useColumnWidths("assortment");
+
+  // Resize handle component
+  const ResizeHandle = ({ col }: { col: string }) => (
+    <div
+      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/40 transition-colors touch-none z-10"
+      onMouseDown={(e) => onResizeStart(col, e)}
+      onTouchStart={(e) => onResizeStart(col, e)}
+    />
+  );
 
   // Calculate row heights considering expanded images
   const getItemSize = useCallback((index: number) => {
@@ -291,40 +302,44 @@ export function VirtualProductTable({
           </div>
           
           {visibleColumns.photo && (
-            <div className="w-8 flex-shrink-0 text-[10px] font-medium text-muted-foreground">
+            <div className="flex-shrink-0 text-[10px] font-medium text-muted-foreground relative" style={{ width: widths.photo }}>
               Фото
+              <ResizeHandle col="photo" />
             </div>
           )}
           {visibleColumns.name && (
-            <div className="flex-1 min-w-[150px]">
+            <div className="relative" style={{ width: widths.name, minWidth: 100, flexShrink: 0 }}>
               <div className="text-xs font-medium text-muted-foreground mb-1">Название</div>
               <ColumnFilter 
                 value={filters.name} 
                 onChange={(v) => onFiltersChange({...filters, name: v})}
                 placeholder="Поиск..."
               />
+              <ResizeHandle col="name" />
             </div>
           )}
           {visibleColumns.sku && (
-            <div className="w-20 flex-shrink-0">
+            <div className="flex-shrink-0 relative" style={{ width: widths.sku }}>
               <ColumnFilter 
                 value={filters.sku || ""} 
                 onChange={(v) => onFiltersChange({...filters, sku: v})}
                 placeholder="SKU..."
               />
+              <ResizeHandle col="sku" />
             </div>
           )}
           {visibleColumns.desc && (
-            <div className="w-24 flex-shrink-0">
+            <div className="flex-shrink-0 relative" style={{ width: widths.desc }}>
               <ColumnFilter 
                 value={filters.desc} 
                 onChange={(v) => onFiltersChange({...filters, desc: v})}
                 placeholder="Описание..."
               />
+              <ResizeHandle col="desc" />
             </div>
           )}
           {visibleColumns.source && (
-            <div className="w-16 flex-shrink-0">
+            <div className="flex-shrink-0 relative" style={{ width: widths.source }}>
               <SelectFilter
                 value={filters.source}
                 onChange={(v) => onFiltersChange({...filters, source: v})}
@@ -334,10 +349,11 @@ export function VirtualProductTable({
                 ]}
                 placeholder="Все"
               />
+              <ResizeHandle col="source" />
             </div>
           )}
           {visibleColumns.unit && (
-            <div className="w-16 flex-shrink-0">
+            <div className="flex-shrink-0 relative" style={{ width: widths.unit }}>
               <SelectFilter
                 value={filters.unit}
                 onChange={(v) => onFiltersChange({...filters, unit: v})}
@@ -349,10 +365,11 @@ export function VirtualProductTable({
                 ]}
                 placeholder="Все"
               />
+              <ResizeHandle col="unit" />
             </div>
           )}
           {visibleColumns.type && (
-            <div className="w-20 flex-shrink-0">
+            <div className="flex-shrink-0 relative" style={{ width: widths.type }}>
               <SelectFilter
                 value={filters.type}
                 onChange={(v) => onFiltersChange({...filters, type: v})}
@@ -362,37 +379,41 @@ export function VirtualProductTable({
                 ]}
                 placeholder="Все"
               />
+              <ResizeHandle col="type" />
             </div>
           )}
           {visibleColumns.volume && (
-            <div className="w-16 flex-shrink-0">
+            <div className="flex-shrink-0 relative" style={{ width: widths.volume }}>
               <ColumnFilter 
                 value={filters.volume} 
                 onChange={(v) => onFiltersChange({...filters, volume: v})}
                 placeholder="Объём..."
               />
+              <ResizeHandle col="volume" />
             </div>
           )}
           {visibleColumns.cost && (
-            <div className="w-16 flex-shrink-0">
+            <div className="flex-shrink-0 relative" style={{ width: widths.cost }}>
               <ColumnFilter 
                 value={filters.cost} 
                 onChange={(v) => onFiltersChange({...filters, cost: v})}
                 placeholder="Себест..."
               />
+              <ResizeHandle col="cost" />
             </div>
           )}
           {visibleColumns.price && (
-            <div className="w-16 flex-shrink-0">
+            <div className="flex-shrink-0 relative" style={{ width: widths.price }}>
               <ColumnFilter 
                 value={filters.price} 
                 onChange={(v) => onFiltersChange({...filters, price: v})}
                 placeholder="Цена..."
               />
+              <ResizeHandle col="price" />
             </div>
           )}
           {visibleColumns.groups && (
-            <div className="w-24 flex-shrink-0">
+            <div className="flex-shrink-0 relative" style={{ width: widths.groups }}>
               <MultiSelectFilter
                 values={filters.groups}
                 onChange={(v) => onFiltersChange({...filters, groups: v})}
@@ -402,13 +423,17 @@ export function VirtualProductTable({
                 ]}
                 placeholder="Все"
               />
+              <ResizeHandle col="groups" />
             </div>
           )}
           {visibleColumns.catalogs && (
-            <div className="w-28 flex-shrink-0 text-xs font-medium text-muted-foreground">Каталоги</div>
+            <div className="flex-shrink-0 text-xs font-medium text-muted-foreground relative" style={{ width: widths.catalogs }}>
+              Каталоги
+              <ResizeHandle col="catalogs" />
+            </div>
           )}
           {visibleColumns.sync && (
-            <div className="w-12 flex-shrink-0">
+            <div className="flex-shrink-0 relative" style={{ width: widths.sync }}>
               <SelectFilter
                 value={filters.sync}
                 onChange={(v) => onFiltersChange({...filters, sync: v})}
@@ -418,6 +443,7 @@ export function VirtualProductTable({
                 ]}
                 placeholder="Все"
               />
+              <ResizeHandle col="sync" />
             </div>
           )}
         </div>
@@ -491,6 +517,7 @@ export function VirtualProductTable({
                   onAIGenerateDescription={onAIGenerateDescription}
                   isAIGeneratingDescription={isAIGeneratingDescription}
                   aiGeneratingProductId={aiGeneratingProductId}
+                  columnWidths={widths}
                 />
               </div>
             );

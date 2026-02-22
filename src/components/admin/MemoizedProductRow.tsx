@@ -76,6 +76,7 @@ interface MemoizedProductRowProps {
   onAIGenerateDescription?: (productId: string, productName: string) => void;
   isAIGeneratingDescription?: boolean;
   aiGeneratingProductId?: string | null;
+  columnWidths?: Record<string, number>;
 }
 
 function ProductRowComponent({
@@ -109,6 +110,7 @@ function ProductRowComponent({
   onAIGenerateDescription,
   isAIGeneratingDescription,
   aiGeneratingProductId,
+  columnWidths,
 }: MemoizedProductRowProps) {
   // If fixed price is enabled, use pricePerUnit directly
   // Otherwise calculate from buyPrice + markup, or fall back to pricePerUnit
@@ -234,7 +236,7 @@ function ProductRowComponent({
 
         {/* Photo */}
         {visibleColumns.photo && (
-          <div className="w-8 flex-shrink-0 flex items-center justify-center">
+          <div className="flex-shrink-0 flex items-center justify-center" style={{ width: columnWidths?.photo || 32 }}>
             <Button
               variant="ghost"
               size="sm"
@@ -263,7 +265,7 @@ function ProductRowComponent({
 
         {/* Name */}
         {visibleColumns.name && (
-          <div className="flex-1 min-w-[150px]">
+          <div className="flex-shrink-0 min-w-0" style={{ width: columnWidths?.name || 200 }}>
             <InlineEditableCell
               value={product.name}
               onSave={handleUpdateName}
@@ -274,7 +276,7 @@ function ProductRowComponent({
 
         {/* SKU */}
         {visibleColumns.sku && (
-          <div className="w-20 flex-shrink-0">
+          <div className="flex-shrink-0" style={{ width: columnWidths?.sku || 80 }}>
             <InlineEditableCell
               value={product.sku || ""}
               onSave={handleUpdateSku}
@@ -286,7 +288,7 @@ function ProductRowComponent({
 
         {/* Description */}
         {visibleColumns.desc && (
-          <div className="w-24 flex-shrink-0">
+          <div className="flex-shrink-0" style={{ width: columnWidths?.desc || 96 }}>
             <InlineEditableCell
               value={product.description || ""}
               onSave={handleUpdateDesc}
@@ -300,7 +302,7 @@ function ProductRowComponent({
 
         {/* Source */}
         {visibleColumns.source && (
-          <div className="w-16 flex-shrink-0">
+          <div className="flex-shrink-0" style={{ width: columnWidths?.source || 64 }}>
             {product.source === "moysklad" ? (
               <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 whitespace-nowrap">
                 МС
@@ -315,7 +317,7 @@ function ProductRowComponent({
 
         {/* Unit */}
         {visibleColumns.unit && (
-          <div className="w-16 flex-shrink-0">
+          <div className="flex-shrink-0" style={{ width: columnWidths?.unit || 64 }}>
             <InlineSelectCell
               value={product.unit}
               options={allUnitOptions}
@@ -328,7 +330,7 @@ function ProductRowComponent({
 
         {/* Type */}
         {visibleColumns.type && (
-          <div className="w-20 flex-shrink-0">
+          <div className="flex-shrink-0" style={{ width: columnWidths?.type || 80 }}>
             <InlineSelectCell
               value={product.packagingType || (product.productType === "weight" ? "head" : "piece")}
               options={allPackagingOptions}
@@ -341,7 +343,7 @@ function ProductRowComponent({
 
         {/* Volume */}
         {visibleColumns.volume && (
-          <div className="w-16 flex-shrink-0">
+          <div className="flex-shrink-0" style={{ width: columnWidths?.volume || 64 }}>
             <InlinePriceCell
               value={product.unitWeight}
               onSave={handleUpdateVolume}
@@ -353,7 +355,7 @@ function ProductRowComponent({
 
         {/* Cost (Себестоимость) */}
         {visibleColumns.cost && (
-          <div className="w-16 flex-shrink-0">
+          <div className="flex-shrink-0" style={{ width: columnWidths?.cost || 64 }}>
             <InlinePriceCell
               value={product.buyPrice}
               onSave={handleUpdateCost}
@@ -364,7 +366,7 @@ function ProductRowComponent({
 
         {/* Price (Отпускная цена) */}
         {visibleColumns.price && (
-          <div className="w-20 flex-shrink-0 flex items-center gap-1">
+          <div className="flex-shrink-0 flex items-center gap-1" style={{ width: columnWidths?.price || 80 }}>
             <Button
               variant="ghost"
               size="icon"
@@ -388,7 +390,7 @@ function ProductRowComponent({
 
         {/* Groups */}
         {visibleColumns.groups && (
-          <div className="w-24 flex-shrink-0">
+          <div className="flex-shrink-0" style={{ width: columnWidths?.groups || 96 }}>
             <InlineMultiSelectCell
               values={productGroupIds}
               options={productGroups.map(g => ({ value: g.id, label: g.name }))}
@@ -406,7 +408,7 @@ function ProductRowComponent({
 
         {/* Catalogs */}
         {visibleColumns.catalogs && (
-          <div className="w-28 flex-shrink-0">
+          <div className="flex-shrink-0" style={{ width: columnWidths?.catalogs || 112 }}>
             <InlineMultiSelectCell
               values={Array.from(catalogVisibility)}
               options={catalogs.map(c => ({ value: c.id, label: c.name }))}
@@ -425,7 +427,7 @@ function ProductRowComponent({
 
         {/* Sync */}
         {visibleColumns.sync && (
-          <div className="w-12 flex-shrink-0">
+          <div className="flex-shrink-0" style={{ width: columnWidths?.sync || 48 }}>
             {product.source === "moysklad" && (
               <Button
                 variant="ghost"
@@ -527,6 +529,9 @@ function areEqual(prevProps: MemoizedProductRowProps, nextProps: MemoizedProduct
   if (prevCols.groups !== nextCols.groups) return false;
   if (prevCols.catalogs !== nextCols.catalogs) return false;
   if (prevCols.sync !== nextCols.sync) return false;
+  
+  // Check column widths
+  if (prevProps.columnWidths !== nextProps.columnWidths) return false;
   
   // All checks passed
   return true;

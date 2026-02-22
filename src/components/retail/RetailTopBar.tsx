@@ -1,7 +1,25 @@
 import { useState } from "react";
-import { Search, User, MessageCircle } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Search, User, LogOut, ShoppingBag, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import type { RetailStore } from "@/hooks/useRetailStore";
 import { DeliveryInfoBanner } from "./DeliveryInfoBanner";
 import { TelegramIcon } from "@/components/icons/TelegramIcon";
@@ -28,14 +46,87 @@ export function RetailTopBar({
   onFavoritesClick,
   cartIconRef,
 }: RetailTopBarProps) {
+  const { user, profile, signIn, signUp, signOut } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const { subdomain } = useParams();
   const [deliveryExpanded, setDeliveryExpanded] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
 
   const logoUrl = store.retail_logo_url || store.logo_url;
   const storeName = store.retail_name || store.name;
 
-  // Helper to format phone for WhatsApp link
   const formatWhatsAppPhone = (phone: string) => {
     return phone.replace(/[^\d]/g, "");
+  };
+
+  const handleAuth = async () => {
+    setAuthLoading(true);
+    try {
+      if (authMode === "login") {
+        const { error } = await signIn(authEmail, authPassword);
+        if (error) {
+          toast({ title: "Ошибка входа", description: error.message, variant: "destructive" });
+          return;
+        }
+        toast({ title: "Вход выполнен" });
+      } else {
+        const { error } = await signUp(authEmail, authPassword, authName, "customer");
+        if (error) {
+          toast({ title: "Ошибка регистрации", description: error.message, variant: "destructive" });
+          return;
+        }
+        toast({ title: "Регистрация успешна", description: "Проверьте email для подтверждения" });
+      }
+      setAuthOpen(false);
+      setAuthEmail("");
+      setAuthPassword("");
+      setAuthName("");
+
+      // Auto-register as store customer after login
+      if (store.id) {
+        setTimeout(async () => {
+          try {
+            const { data: profileData } = await supabase
+              .from("profiles")
+              .select("id")
+              .eq("user_id", (await supabase.auth.getUser()).data.user?.id || "")
+              .maybeSingle();
+
+            if (profileData) {
+              // Check if already a customer
+              const { data: existing } = await supabase
+                .from("store_customers")
+                .select("id")
+                .eq("store_id", store.id)
+                .eq("profile_id", profileData.id)
+                .maybeSingle();
+
+              if (!existing) {
+                await supabase.from("store_customers").insert({
+                  store_id: store.id,
+                  profile_id: profileData.id,
+                });
+              }
+            }
+          } catch (e) {
+            console.error("Auto-register customer error:", e);
+          }
+        }, 1000);
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({ title: "Вы вышли из аккаунта" });
   };
 
   return (
@@ -74,16 +165,12 @@ export function RetailTopBar({
         </div>
       )}
 
-      {/* Desktop top bar: Logo | Search | Login */}
-        <div className="hidden lg:flex items-center gap-4 px-6 py-3 bg-card rounded-2xl mx-1.5 mt-1.5">
-        {/* Logo placeholder */}
+      {/* Desktop top bar */}
+      <div className="hidden lg:flex items-center gap-4 px-6 py-3 bg-card rounded-2xl mx-1.5 mt-1.5">
+        {/* Logo */}
         <div className="flex-shrink-0 w-40">
           {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt={storeName}
-              className="h-9 w-auto max-w-[140px] object-contain"
-            />
+            <img src={logoUrl} alt={storeName} className="h-9 w-auto max-w-[140px] object-contain" />
           ) : (
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
@@ -91,14 +178,12 @@ export function RetailTopBar({
                   {storeName.charAt(0).toUpperCase()}
                 </span>
               </div>
-              <span className="font-semibold text-foreground text-base truncate">
-                {storeName}
-              </span>
+              <span className="font-semibold text-foreground text-base truncate">{storeName}</span>
             </div>
           )}
         </div>
 
-        {/* Search bar - center, takes remaining space */}
+        {/* Search */}
         <div className="flex-1 max-w-2xl">
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -112,9 +197,8 @@ export function RetailTopBar({
           </div>
         </div>
 
-        {/* Right side: Login + messenger */}
+        {/* Right: messengers + auth */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Messenger icons */}
           {store.telegram_username && (
             <a
               href={`https://t.me/${store.telegram_username}`}
@@ -136,15 +220,46 @@ export function RetailTopBar({
             </a>
           )}
 
-          {/* Login button */}
-          <Button variant="outline" size="sm" className="rounded-xl gap-2 h-10 px-4">
-            <User className="h-4 w-4" />
-            <span>Войти</span>
-          </Button>
+          {/* Auth button */}
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="rounded-xl gap-2 h-10 px-4">
+                  <User className="h-4 w-4" />
+                  <span className="max-w-[100px] truncate">{profile?.full_name || profile?.email || "Профиль"}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => navigate("/customer-dashboard")}>
+                  <ShoppingBag className="h-4 w-4 mr-2" />
+                  Мои заказы
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/customer-dashboard")}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Личный кабинет
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Выйти
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl gap-2 h-10 px-4"
+              onClick={() => setAuthOpen(true)}
+            >
+              <User className="h-4 w-4" />
+              <span>Войти</span>
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Tablet top bar (md but not lg) */}
+      {/* Tablet top bar */}
       <div className="hidden md:flex lg:hidden items-center gap-3 px-4 py-3 border-b border-border">
         <div className="flex-shrink-0">
           {logoUrl ? (
@@ -165,12 +280,28 @@ export function RetailTopBar({
             />
           </div>
         </div>
-        <Button variant="outline" size="icon" className="h-9 w-9 rounded-lg" onClick={onCartClick}>
-          <User className="h-4 w-4" />
-        </Button>
+        {user ? (
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 rounded-lg"
+            onClick={() => navigate("/customer-dashboard")}
+          >
+            <User className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 rounded-lg"
+            onClick={() => setAuthOpen(true)}
+          >
+            <User className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
-      {/* Delivery info banner */}
+      {/* Delivery info */}
       <DeliveryInfoBanner
         isExpanded={deliveryExpanded}
         onToggle={() => setDeliveryExpanded(!deliveryExpanded)}
@@ -179,6 +310,81 @@ export function RetailTopBar({
         deliveryFreeFrom={store.retail_delivery_free_from}
         deliveryRegion={store.retail_delivery_region}
       />
+
+      {/* Auth Dialog */}
+      <Dialog open={authOpen} onOpenChange={setAuthOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {authMode === "login" ? "Вход в аккаунт" : "Регистрация"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {authMode === "register" && (
+              <div>
+                <Label htmlFor="auth-name">Имя</Label>
+                <Input
+                  id="auth-name"
+                  value={authName}
+                  onChange={(e) => setAuthName(e.target.value)}
+                  placeholder="Ваше имя"
+                />
+              </div>
+            )}
+            <div>
+              <Label htmlFor="auth-email">Email</Label>
+              <Input
+                id="auth-email"
+                type="email"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="email@example.com"
+              />
+            </div>
+            <div>
+              <Label htmlFor="auth-password">Пароль</Label>
+              <Input
+                id="auth-password"
+                type="password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="••••••••"
+                onKeyDown={(e) => e.key === "Enter" && handleAuth()}
+              />
+            </div>
+            <Button
+              onClick={handleAuth}
+              disabled={authLoading || !authEmail || !authPassword}
+              className="w-full"
+            >
+              {authLoading ? "Загрузка..." : authMode === "login" ? "Войти" : "Зарегистрироваться"}
+            </Button>
+            <div className="text-center text-sm text-muted-foreground">
+              {authMode === "login" ? (
+                <>
+                  Нет аккаунта?{" "}
+                  <button
+                    onClick={() => setAuthMode("register")}
+                    className="text-primary hover:underline"
+                  >
+                    Зарегистрируйтесь
+                  </button>
+                </>
+              ) : (
+                <>
+                  Уже есть аккаунт?{" "}
+                  <button
+                    onClick={() => setAuthMode("login")}
+                    className="text-primary hover:underline"
+                  >
+                    Войти
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
