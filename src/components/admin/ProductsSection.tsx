@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { VirtualProductTable, AllProductsFilters } from "./VirtualProductTable";
 import { VisibleColumns } from "./MemoizedProductRow";
 import { BulkEditPanel } from "./BulkEditPanel";
@@ -6,7 +7,7 @@ import { useOptimisticImagePreviews } from "@/hooks/useOptimisticImagePreviews";
 import { uploadFilesToStorage } from "@/hooks/useProductImages";
 import { Product, Catalog, ProductGroup, PackagingType } from "./types";
 import { Button } from "@/components/ui/button";
-import { Plus, Filter, Columns, Download, Sparkles } from "lucide-react";
+import { Plus, Filter, Columns, Download, Sparkles, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -102,6 +103,63 @@ export function ProductsSection({
   const [deletingImageProductId, setDeletingImageProductId] = useState<string | null>(null);
   const [uploadingImageProductId, setUploadingImageProductId] = useState<string | null>(null);
   // Megacatalog is now a separate section, no dialog needed
+  
+  // AI description generation state
+  const [aiGeneratingProductId, setAiGeneratingProductId] = useState<string | null>(null);
+  const [isBulkAIGenerating, setIsBulkAIGenerating] = useState(false);
+
+  const handleAIGenerateDescription = useCallback(async (productId: string, productName: string) => {
+    setAiGeneratingProductId(productId);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-generate-description", {
+        body: { productNames: [{ id: productId, name: productName }], maxChars: 200 },
+      });
+      if (error) throw error;
+      if (data?.descriptions?.[productId]) {
+        const product = products.find(p => p.id === productId);
+        if (product) {
+          await onUpdateProduct({ ...product, description: data.descriptions[productId] });
+          toast({ title: "Описание сгенерировано" });
+        }
+      }
+    } catch (err) {
+      console.error("AI description error:", err);
+      toast({ title: "Ошибка генерации", description: "Не удалось сгенерировать описание", variant: "destructive" });
+    } finally {
+      setAiGeneratingProductId(null);
+    }
+  }, [products, onUpdateProduct, toast]);
+
+  const handleBulkAIGenerateDescriptions = useCallback(async () => {
+    const selectedIds = Array.from(selectedBulkProducts);
+    const selectedProducts = products.filter(p => selectedIds.includes(p.id));
+    if (selectedProducts.length === 0) return;
+
+    setIsBulkAIGenerating(true);
+    try {
+      const productNames = selectedProducts.map(p => ({ id: p.id, name: p.name }));
+      const { data, error } = await supabase.functions.invoke("ai-generate-description", {
+        body: { productNames, maxChars: 200 },
+      });
+      if (error) throw error;
+      if (data?.descriptions) {
+        let count = 0;
+        for (const [id, desc] of Object.entries(data.descriptions)) {
+          const product = products.find(p => p.id === id);
+          if (product && desc) {
+            await onUpdateProduct({ ...product, description: desc as string });
+            count++;
+          }
+        }
+        toast({ title: "Описания сгенерированы", description: `Обновлено ${count} товар(ов)` });
+      }
+    } catch (err) {
+      console.error("Bulk AI description error:", err);
+      toast({ title: "Ошибка генерации", description: "Не удалось сгенерировать описания", variant: "destructive" });
+    } finally {
+      setIsBulkAIGenerating(false);
+    }
+  }, [selectedBulkProducts, products, onUpdateProduct, toast]);
 
   // Set of existing product IDs for megacatalog
   const existingProductIds = useMemo(() => new Set(products.map(p => p.id)), [products]);
@@ -458,17 +516,35 @@ export function ProductsSection({
 
       {/* Bulk Edit Panel */}
       {selectedBulkProducts.size > 0 && (
-        <BulkEditPanel
-          selectedCount={selectedBulkProducts.size}
-          onClearSelection={() => setSelectedBulkProducts(new Set())}
-          onBulkUpdate={handleBulkUpdate}
-          onBulkDelete={handleBulkDelete}
-          unitOptions={allUnitOptions}
-          packagingOptions={allPackagingOptions}
-          catalogs={catalogs}
-          onAddToCatalog={handleAddToCatalog}
-          onCreateCatalogAndAdd={handleCreateCatalogAndAdd}
-        />
+        <div className="space-y-2">
+          <BulkEditPanel
+            selectedCount={selectedBulkProducts.size}
+            onClearSelection={() => setSelectedBulkProducts(new Set())}
+            onBulkUpdate={handleBulkUpdate}
+            onBulkDelete={handleBulkDelete}
+            unitOptions={allUnitOptions}
+            packagingOptions={allPackagingOptions}
+            catalogs={catalogs}
+            onAddToCatalog={handleAddToCatalog}
+            onCreateCatalogAndAdd={handleCreateCatalogAndAdd}
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkAIGenerateDescriptions}
+              disabled={isBulkAIGenerating}
+            >
+              {isBulkAIGenerating ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-1" />
+              )}
+              AI Описание ({selectedBulkProducts.size})
+            </Button>
+            <span className="text-xs text-muted-foreground self-center">до 200 символов</span>
+          </div>
+        </div>
       )}
 
       {/* Virtualized Table */}
@@ -503,6 +579,9 @@ export function ProductsSection({
         onAddCustomPackaging={onAddCustomPackaging || (() => {})}
         onNavigateToCatalog={onNavigateToCatalog}
         optimisticImagePreviews={optimisticPreviews}
+        onAIGenerateDescription={handleAIGenerateDescription}
+        isAIGeneratingDescription={!!aiGeneratingProductId}
+        aiGeneratingProductId={aiGeneratingProductId}
       />
     </div>
   );

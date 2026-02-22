@@ -73,6 +73,9 @@ interface MemoizedProductRowProps {
   onAddCustomPackaging: (type: string) => void;
   onNavigateToCatalog?: (catalogId: string) => void;
   optimisticImages?: string[];
+  onAIGenerateDescription?: (productId: string, productName: string) => void;
+  isAIGeneratingDescription?: boolean;
+  aiGeneratingProductId?: string | null;
 }
 
 function ProductRowComponent({
@@ -103,6 +106,9 @@ function ProductRowComponent({
   onAddCustomPackaging,
   onNavigateToCatalog,
   optimisticImages,
+  onAIGenerateDescription,
+  isAIGeneratingDescription,
+  aiGeneratingProductId,
 }: MemoizedProductRowProps) {
   // If fixed price is enabled, use pricePerUnit directly
   // Otherwise calculate from buyPrice + markup, or fall back to pricePerUnit
@@ -286,6 +292,8 @@ function ProductRowComponent({
               onSave={handleUpdateDesc}
               placeholder="Описание..."
               className="text-muted-foreground"
+              onAIGenerate={onAIGenerateDescription ? () => onAIGenerateDescription(product.id, product.name) : undefined}
+              isAIGenerating={isAIGeneratingDescription && aiGeneratingProductId === product.id}
             />
           </div>
         )}

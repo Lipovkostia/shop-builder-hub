@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Check, X, Pencil } from "lucide-react";
+import { Check, X, Pencil, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -9,6 +9,8 @@ interface InlineEditableCellProps {
   placeholder?: string;
   className?: string;
   debounceMs?: number;
+  onAIGenerate?: () => void;
+  isAIGenerating?: boolean;
 }
 
 export function InlineEditableCell({
@@ -17,6 +19,8 @@ export function InlineEditableCell({
   placeholder = "Введите текст...",
   className = "",
   debounceMs = 500,
+  onAIGenerate,
+  isAIGenerating = false,
 }: InlineEditableCellProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedValue, setEditedValue] = useState(value);
@@ -115,13 +119,34 @@ export function InlineEditableCell({
   return (
     <div 
       className={`group flex items-center gap-1 cursor-pointer hover:text-primary transition-colors truncate ${className}`}
-      onClick={() => setIsEditing(true)}
       title={displayValue || placeholder}
     >
-      <span className={`truncate text-xs ${displayValue ? "" : "text-muted-foreground italic"}`}>
+      <span 
+        className={`truncate text-xs ${displayValue ? "" : "text-muted-foreground italic"}`}
+        onClick={() => setIsEditing(true)}
+      >
         {displayValue || placeholder}
       </span>
-      <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" />
+      {onAIGenerate && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-4 w-4 opacity-0 group-hover:opacity-70 transition-opacity flex-shrink-0 p-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAIGenerate();
+          }}
+          disabled={isAIGenerating}
+          title="Сгенерировать описание AI"
+        >
+          {isAIGenerating ? (
+            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+          ) : (
+            <Sparkles className="h-2.5 w-2.5 text-primary" />
+          )}
+        </Button>
+      )}
+      <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" onClick={() => setIsEditing(true)} />
     </div>
   );
 }

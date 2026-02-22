@@ -187,6 +187,10 @@ interface VirtualProductTableProps {
   onNavigateToCatalog?: (catalogId: string) => void;
   // Optimistic image previews
   optimisticImagePreviews?: Record<string, string[]>;
+  // AI description generation
+  onAIGenerateDescription?: (productId: string, productName: string) => void;
+  isAIGeneratingDescription?: boolean;
+  aiGeneratingProductId?: string | null;
 }
 
 const ROW_HEIGHT = 28;
@@ -224,6 +228,9 @@ export function VirtualProductTable({
   onAddCustomPackaging,
   onNavigateToCatalog,
   optimisticImagePreviews = {},
+  onAIGenerateDescription,
+  isAIGeneratingDescription,
+  aiGeneratingProductId,
 }: VirtualProductTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -481,6 +488,9 @@ export function VirtualProductTable({
                   onAddCustomPackaging={onAddCustomPackaging}
                   onNavigateToCatalog={onNavigateToCatalog}
                   optimisticImages={allImages}
+                  onAIGenerateDescription={onAIGenerateDescription}
+                  isAIGeneratingDescription={isAIGeneratingDescription}
+                  aiGeneratingProductId={aiGeneratingProductId}
                 />
               </div>
             );
