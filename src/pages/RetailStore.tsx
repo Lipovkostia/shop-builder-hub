@@ -422,6 +422,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                           onDescriptionExpandChange={setExpandedDescriptionCardId}
                           fontSettings={store?.retail_theme?.fonts}
                           onProductClick={setSelectedProduct}
+                          reviewStats={getProductStats(product.id)}
                         />
                       </div>
                     ))}
@@ -484,6 +485,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                             onDescriptionExpandChange={setExpandedDescriptionCardId}
                             fontSettings={store?.retail_theme?.fonts}
                             onProductClick={setSelectedProduct}
+                            reviewStats={getProductStats(product.id)}
                           />
                         </div>
                       ))}
@@ -523,6 +525,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                           onDescriptionExpandChange={setExpandedDescriptionCardId}
                           fontSettings={store?.retail_theme?.fonts}
                           onProductClick={setSelectedProduct}
+                          reviewStats={getProductStats(product.id)}
                         />
                       </div>
                     ))}
@@ -643,6 +646,8 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                         expandedDescriptionCardId={expandedDescriptionCardId}
                         onDescriptionExpandChange={setExpandedDescriptionCardId}
                         fontSettings={store?.retail_theme?.fonts}
+                        onProductClick={setSelectedProduct}
+                        reviewStats={getProductStats(product.id)}
                       />
                     </div>
                   ))}
@@ -676,12 +681,14 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                       expandedCardId={expandedCardId}
                       onExpandChange={setExpandedCardId}
                       expandedDescriptionCardId={expandedDescriptionCardId}
-                      onDescriptionExpandChange={setExpandedDescriptionCardId}
-                      fontSettings={store?.retail_theme?.fonts}
-                    />
-                  )}
-                />
-              ))}
+                     onDescriptionExpandChange={setExpandedDescriptionCardId}
+                        fontSettings={store?.retail_theme?.fonts}
+                        onProductClick={setSelectedProduct}
+                        reviewStats={getProductStats(product.id)}
+                      />
+                    )}
+                  />
+                ))}
               {productsByCategory.uncategorized.length > 0 && (
                 <section className="mb-8">
                   <h2 className="text-lg font-semibold text-foreground mb-4">Прочее</h2>
@@ -706,6 +713,8 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                             expandedDescriptionCardId={expandedDescriptionCardId}
                             onDescriptionExpandChange={setExpandedDescriptionCardId}
                             fontSettings={store?.retail_theme?.fonts}
+                            onProductClick={setSelectedProduct}
+                            reviewStats={getProductStats(product.id)}
                           />
                         </div>
                       ))}
@@ -745,6 +754,8 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                         expandedDescriptionCardId={expandedDescriptionCardId}
                         onDescriptionExpandChange={setExpandedDescriptionCardId}
                         fontSettings={store?.retail_theme?.fonts}
+                        onProductClick={setSelectedProduct}
+                        reviewStats={getProductStats(product.id)}
                       />
                     </div>
                   ))}
