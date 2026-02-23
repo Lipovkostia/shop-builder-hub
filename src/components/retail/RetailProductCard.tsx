@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Heart, ImageOff, Plus, Minus, ChevronRight } from "lucide-react";
+import { Heart, ImageOff, Plus, Minus, ChevronRight, Star, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -27,6 +27,7 @@ interface RetailProductCardProps {
   onDescriptionExpandChange?: (productId: string | null) => void; // Callback to update description expanded state
   fontSettings?: FontSettings;
   onProductClick?: (product: RetailProduct) => void; // Open product detail panel
+  reviewStats?: { averageRating: number; totalCount: number };
 }
 
 function formatPrice(price: number): string {
@@ -79,6 +80,7 @@ export function RetailProductCard({
   onDescriptionExpandChange,
   fontSettings,
   onProductClick,
+  reviewStats,
 }: RetailProductCardProps) {
   const isMobile = useIsMobile();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -766,6 +768,20 @@ export function RetailProductCard({
             )}
           </div>
         </div>
+
+        {/* Review stats row */}
+        {reviewStats && reviewStats.totalCount > 0 && (
+          <div className="flex items-center justify-between px-2 pb-1">
+            <div className="flex items-center gap-0.5">
+              <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+              <span className="text-[11px] font-medium text-foreground">{reviewStats.averageRating}</span>
+            </div>
+            <div className="flex items-center gap-0.5 text-muted-foreground">
+              <MessageSquare className="h-3 w-3" />
+              <span className="text-[11px]">{reviewStats.totalCount}</span>
+            </div>
+          </div>
+        )}
 
         {/* Buy button - compact fixed height */}
         <div className="mt-auto">

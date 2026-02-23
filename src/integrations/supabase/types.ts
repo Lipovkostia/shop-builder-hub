@@ -1151,6 +1151,54 @@ export type Database = {
           },
         ]
       }
+      product_reviews: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          is_approved: boolean
+          product_id: string
+          rating: number
+          reviewer_name: string
+          store_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          is_approved?: boolean
+          product_id: string
+          rating: number
+          reviewer_name: string
+          store_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          is_approved?: boolean
+          product_id?: string
+          rating?: number
+          reviewer_name?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_reviews_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_role_visibility: {
         Row: {
           created_at: string
@@ -1640,6 +1688,7 @@ export type Database = {
           retail_logo_url: string | null
           retail_name: string | null
           retail_phone: string | null
+          retail_sidebar_banner_url: string | null
           retail_theme: Json | null
           secondary_color: string | null
           seo_description: string | null
@@ -1710,6 +1759,7 @@ export type Database = {
           retail_logo_url?: string | null
           retail_name?: string | null
           retail_phone?: string | null
+          retail_sidebar_banner_url?: string | null
           retail_theme?: Json | null
           secondary_color?: string | null
           seo_description?: string | null
@@ -1780,6 +1830,7 @@ export type Database = {
           retail_logo_url?: string | null
           retail_name?: string | null
           retail_phone?: string | null
+          retail_sidebar_banner_url?: string | null
           retail_theme?: Json | null
           secondary_color?: string | null
           seo_description?: string | null

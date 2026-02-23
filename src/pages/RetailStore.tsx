@@ -25,6 +25,7 @@ import { RetailFavoritesSheet } from "@/components/retail/RetailFavoritesSheet";
 import { RetailFavoritesDrawer } from "@/components/retail/RetailFavoritesDrawer";
 import { CategoryProductsSection } from "@/components/retail/CategoryProductsSection";
 import { FlyToCartAnimation, triggerFlyToCart } from "@/components/retail/FlyToCartAnimation";
+import { useProductReviews } from "@/hooks/useProductReviews";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 
@@ -39,6 +40,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
   // Use subdomain for cart/favorites storage (available immediately from URL)
   const { cart, cartTotal, cartItemsCount, isOpen, setIsOpen, addToCart, updateQuantity, removeFromCart } = useRetailCart(subdomain || null);
   const { favorites, favoritesCount, toggleFavorite, isFavorite } = useRetailFavorites(subdomain || null);
+  const { getProductStats, getProductReviews, submitReview } = useProductReviews(store?.id || null);
   const isMobile = useIsMobile();
 
   // Ref for cart icon to animate items flying to it
@@ -457,6 +459,7 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                         onDescriptionExpandChange={setExpandedDescriptionCardId}
                         fontSettings={store?.retail_theme?.fonts}
                         onProductClick={setSelectedProduct}
+                        reviewStats={getProductStats(product.id)}
                       />
                     )}
                   />
@@ -554,6 +557,9 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
                 onAddToCart={(p) => handleAddToCart(p)}
                 onUpdateQuantity={updateQuantity}
                 cartQuantity={getCartQuantity(selectedProduct.id)}
+                productReviews={getProductReviews(selectedProduct.id)}
+                reviewStats={getProductStats(selectedProduct.id)}
+                onSubmitReview={submitReview}
               />
             )}
           </div>

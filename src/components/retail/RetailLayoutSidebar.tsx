@@ -87,23 +87,33 @@ export function RetailLayoutSidebar({
 
   return (
     <aside className="w-64 lg:w-72 bg-card rounded-2xl m-1.5 mr-0 flex flex-col h-[calc(100vh-12px)] sticky top-1.5 flex-shrink-0 overflow-hidden">
-      {/* Logo / Store name */}
-      <div className="p-6 border-b border-sidebar-border">
+      {/* Logo / Store name / Banner */}
+      <div className="border-b border-sidebar-border">
         <Link 
           to={`/retail/${subdomain}`} 
           className="block"
           onClick={() => onCategorySelect(null)}
         >
-          {logoUrl ? (
+          {(store as any).retail_sidebar_banner_url ? (
             <img 
-              src={logoUrl} 
+              src={(store as any).retail_sidebar_banner_url} 
               alt={storeName}
-              className="h-12 w-auto max-w-full object-contain"
+              className="w-full h-auto object-cover"
             />
+          ) : logoUrl ? (
+            <div className="p-6">
+              <img 
+                src={logoUrl} 
+                alt={storeName}
+                className="h-12 w-auto max-w-full object-contain"
+              />
+            </div>
           ) : (
-            <h1 className="text-lg font-medium tracking-widest uppercase text-sidebar-foreground">
-              {storeName}
-            </h1>
+            <div className="p-6">
+              <h1 className="text-lg font-medium tracking-widest uppercase text-sidebar-foreground">
+                {storeName}
+              </h1>
+            </div>
           )}
         </Link>
       </div>

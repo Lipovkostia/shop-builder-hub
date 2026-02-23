@@ -15,7 +15,8 @@ import {
   Phone,
   MessageCircle,
   Truck,
-  FileText
+  FileText,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
 import { cn } from "@/lib/utils";
 import { TelegramIcon } from "@/components/icons/TelegramIcon";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
+import { ReviewsManagementSection } from "./ReviewsManagementSection";
 
 interface RetailSettingsSectionProps {
   storeId: string | null;
@@ -222,7 +224,7 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-4 mb-6">
+        <TabsList className="w-full grid grid-cols-5 mb-6">
           <TabsTrigger value="general" className="gap-1.5">
             <Store className="h-4 w-4" />
             <span className="hidden sm:inline">Общее</span>
@@ -230,6 +232,10 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
           <TabsTrigger value="design" className="gap-1.5">
             <Palette className="h-4 w-4" />
             <span className="hidden sm:inline">Дизайн</span>
+          </TabsTrigger>
+          <TabsTrigger value="reviews" className="gap-1.5">
+            <MessageSquare className="h-4 w-4" />
+            <span className="hidden sm:inline">Отзывы</span>
           </TabsTrigger>
           <TabsTrigger value="seo" className="gap-1.5">
             <Search className="h-4 w-4" />
@@ -1001,6 +1007,13 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
                 Сохранить настройки шрифтов
               </Button>
             </div>
+          </div>
+        </TabsContent>
+
+        {/* Reviews Tab */}
+        <TabsContent value="reviews" className="space-y-6">
+          <div className="bg-card border border-border rounded-lg p-6">
+            <ReviewsManagementSection storeId={storeId} />
           </div>
         </TabsContent>
 
