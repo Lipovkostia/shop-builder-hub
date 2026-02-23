@@ -769,19 +769,28 @@ export function RetailProductCard({
           </div>
         </div>
 
-        {/* Review stats row */}
-        {reviewStats && reviewStats.totalCount > 0 && (
-          <div className="flex items-center justify-between px-2 pb-1">
-            <div className="flex items-center gap-0.5">
-              <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-              <span className="text-[11px] font-medium text-foreground">{reviewStats.averageRating}</span>
+        {/* Review stats row - always rendered for consistent card height */}
+        <div className="flex items-center justify-between px-2 pb-1 min-h-[20px]">
+          {reviewStats && reviewStats.totalCount > 0 ? (
+            <>
+              <div className="flex items-center gap-0.5">
+                <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+                <span className="text-[11px] font-medium text-foreground">
+                  {reviewStats.averageRating.toFixed(1).replace('.', ',')}
+                </span>
+              </div>
+              <div className="flex items-center gap-0.5 text-muted-foreground">
+                <MessageSquare className="h-3 w-3" />
+                <span className="text-[11px]">{reviewStats.totalCount}</span>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-0.5 opacity-0">
+              <Star className="h-3 w-3" />
+              <span className="text-[11px]">0</span>
             </div>
-            <div className="flex items-center gap-0.5 text-muted-foreground">
-              <MessageSquare className="h-3 w-3" />
-              <span className="text-[11px]">{reviewStats.totalCount}</span>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Buy button - compact fixed height */}
         <div className="mt-auto">
