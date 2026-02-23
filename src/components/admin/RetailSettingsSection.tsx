@@ -57,6 +57,7 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
     deleteFavicon,
     uploadSidebarBanner,
     deleteSidebarBanner,
+    updateMarqueeSettings,
   } = useRetailSettings(storeId);
 
   const { catalogs, productVisibility, loading: catalogsLoading } = useStoreCatalogs(storeId);
@@ -741,6 +742,13 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
             </div>
           </div>
 
+          {/* Marquee / Ticker Section */}
+          <MarqueeSettingsBlock
+            settings={settings}
+            saving={saving}
+            onSave={updateMarqueeSettings}
+          />
+
           <div className="bg-card border border-border rounded-lg p-6 space-y-4">
             <h3 className="font-semibold text-foreground">Цветовая схема</h3>
             
@@ -1248,6 +1256,122 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
           )}
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+/* ─── Marquee Settings Block ─── */
+function MarqueeSettingsBlock({ settings, saving, onSave }: {
+  settings: any;
+  saving: boolean;
+  onSave: (data: any) => void;
+}) {
+  const [text, setText] = React.useState(settings?.retail_marquee_text || "");
+  const [speed, setSpeed] = React.useState(settings?.retail_marquee_speed ?? 30);
+  const [textColor, setTextColor] = React.useState(settings?.retail_marquee_text_color || "#ffffff");
+  const [bgColor, setBgColor] = React.useState(settings?.retail_marquee_bg_color || "#16a34a");
+
+  React.useEffect(() => {
+    setText(settings?.retail_marquee_text || "");
+    setSpeed(settings?.retail_marquee_speed ?? 30);
+    setTextColor(settings?.retail_marquee_text_color || "#ffffff");
+    setBgColor(settings?.retail_marquee_bg_color || "#16a34a");
+  }, [settings]);
+
+  const handleSave = () => {
+    onSave({
+      retail_marquee_text: text || null,
+      retail_marquee_speed: speed,
+      retail_marquee_text_color: textColor,
+      retail_marquee_bg_color: bgColor,
+    });
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+      <h3 className="font-semibold text-foreground">Бегущая строка</h3>
+      <p className="text-sm text-muted-foreground">
+        Отображается под баннером в боковой панели. Оставьте текст пустым, чтобы скрыть.
+      </p>
+
+      <div className="space-y-3">
+        <div>
+          <Label>Текст</Label>
+          <Input
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder="Доставка бесплатно от 5000 ₽ · Новинки каждую неделю"
+          />
+        </div>
+
+        <div>
+          <Label>Скорость (1 — медленно, 60 — быстро)</Label>
+          <Input
+            type="number"
+            min={1}
+            max={60}
+            value={speed}
+            onChange={e => setSpeed(Number(e.target.value) || 30)}
+          />
+        </div>
+
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <Label>Цвет текста</Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={textColor}
+                onChange={e => setTextColor(e.target.value)}
+                className="w-8 h-8 rounded border cursor-pointer"
+              />
+              <Input
+                value={textColor}
+                onChange={e => setTextColor(e.target.value)}
+                className="flex-1"
+              />
+            </div>
+          </div>
+          <div className="flex-1">
+            <Label>Цвет фона</Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={bgColor}
+                onChange={e => setBgColor(e.target.value)}
+                className="w-8 h-8 rounded border cursor-pointer"
+              />
+              <Input
+                value={bgColor}
+                onChange={e => setBgColor(e.target.value)}
+                className="flex-1"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Preview */}
+        {text && (
+          <div>
+            <Label className="mb-1">Предпросмотр</Label>
+            <div
+              className="overflow-hidden whitespace-nowrap rounded"
+              style={{ backgroundColor: bgColor }}
+            >
+              <div
+                className="inline-block py-1 text-xs font-medium"
+                style={{ color: textColor, animation: `marquee ${Math.max(5, 60 - speed)}s linear infinite` }}
+              >
+                {text}<span className="mx-8">•</span>{text}<span className="mx-8">•</span>{text}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <Button onClick={handleSave} disabled={saving} size="sm">
+          {saving ? "Сохранение..." : "Сохранить"}
+        </Button>
+      </div>
     </div>
   );
 }
