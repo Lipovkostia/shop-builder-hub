@@ -55,6 +55,8 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
     uploadFavicon,
     deleteRetailLogo,
     deleteFavicon,
+    uploadSidebarBanner,
+    deleteSidebarBanner,
   } = useRetailSettings(storeId);
 
   const { catalogs, productVisibility, loading: catalogsLoading } = useStoreCatalogs(storeId);
@@ -86,6 +88,7 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
   
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
+  const sidebarBannerInputRef = useRef<HTMLInputElement>(null);
 
   // Sync form states with settings
   React.useEffect(() => {
@@ -172,6 +175,13 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
     const file = e.target.files?.[0];
     if (file) {
       uploadFavicon(file);
+    }
+  };
+
+  const handleSidebarBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadSidebarBanner(file);
     }
   };
 
@@ -676,6 +686,58 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
               <p className="text-xs text-muted-foreground">
                 Отображается рядом с логотипом в меню категорий. Если не указано, будет использоваться название из настроек магазина.
               </p>
+            </div>
+          </div>
+
+          {/* Sidebar Banner Section */}
+          <div className="bg-card border border-border rounded-lg p-6">
+            <h3 className="font-semibold text-foreground mb-2">Баннер в боковой панели</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Изображение заменяет логотип/название в шапке меню категорий. Рекомендуемый размер: <strong>520×120 px</strong> (для Retina) или 260×60 px.
+            </p>
+
+            <div className="flex items-start gap-4">
+              <div className="w-[260px] h-[60px] border border-dashed border-border rounded-lg flex items-center justify-center bg-muted/50 overflow-hidden flex-shrink-0">
+                {settings.retail_sidebar_banner_url ? (
+                  <img 
+                    src={settings.retail_sidebar_banner_url} 
+                    alt="Sidebar banner" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-xs text-muted-foreground">260 × 60</span>
+                )}
+              </div>
+              <div className="flex flex-col gap-2 flex-1">
+                <input
+                  ref={sidebarBannerInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleSidebarBannerUpload}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sidebarBannerInputRef.current?.click()}
+                  disabled={saving}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Загрузить баннер
+                </Button>
+                {settings.retail_sidebar_banner_url && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={deleteSidebarBanner}
+                    disabled={saving}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Удалить
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
 
