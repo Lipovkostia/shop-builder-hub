@@ -34,6 +34,9 @@ export interface RetailSettings {
   retail_logo_url: string | null;
   retail_name: string | null;
   retail_sidebar_banner_url: string | null;
+  retail_sidebar_banners: string[];
+  retail_sidebar_banner_effect: string;
+  retail_sidebar_banner_interval: number;
   retail_marquee_text: string | null;
   retail_marquee_speed: number;
   retail_marquee_text_color: string;
@@ -71,7 +74,7 @@ export function useRetailSettings(storeId: string | null) {
     try {
       const { data, error } = await supabase
         .from("stores")
-        .select("retail_enabled, retail_theme, retail_logo_url, retail_name, retail_sidebar_banner_url, retail_marquee_text, retail_marquee_speed, retail_marquee_text_color, retail_marquee_bg_color, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id, retail_phone, telegram_username, whatsapp_phone, retail_delivery_time, retail_delivery_info, retail_delivery_free_from, retail_delivery_region, retail_footer_delivery_payment, retail_footer_returns, yandex_maps_api_key")
+        .select("retail_enabled, retail_theme, retail_logo_url, retail_name, retail_sidebar_banner_url, retail_sidebar_banners, retail_sidebar_banner_effect, retail_sidebar_banner_interval, retail_marquee_text, retail_marquee_speed, retail_marquee_text_color, retail_marquee_bg_color, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id, retail_phone, telegram_username, whatsapp_phone, retail_delivery_time, retail_delivery_info, retail_delivery_free_from, retail_delivery_region, retail_footer_delivery_payment, retail_footer_returns, yandex_maps_api_key")
         .eq("id", storeId)
         .single();
 
@@ -83,6 +86,9 @@ export function useRetailSettings(storeId: string | null) {
         retail_logo_url: data.retail_logo_url,
         retail_name: (data as { retail_name?: string | null }).retail_name || null,
         retail_sidebar_banner_url: data.retail_sidebar_banner_url || null,
+        retail_sidebar_banners: (data as any).retail_sidebar_banners || [],
+        retail_sidebar_banner_effect: (data as any).retail_sidebar_banner_effect || 'fade',
+        retail_sidebar_banner_interval: (data as any).retail_sidebar_banner_interval ?? 5,
         retail_marquee_text: (data as any).retail_marquee_text || null,
         retail_marquee_speed: (data as any).retail_marquee_speed ?? 30,
         retail_marquee_text_color: (data as any).retail_marquee_text_color || '#ffffff',
@@ -638,20 +644,8 @@ export function useRetailSettings(storeId: string | null) {
 
     setSaving(true);
     try {
-      // Delete old file from storage if exists
-      const oldUrl = settings?.retail_sidebar_banner_url;
-      if (oldUrl) {
-        try {
-          const pathMatch = oldUrl.match(/product-images\/(.+)$/);
-          if (pathMatch) {
-            await supabase.storage.from("product-images").remove([pathMatch[1]]);
-          }
-        } catch { /* ignore cleanup errors */ }
-      }
-
       const processedFile = await compressImage(file, 2);
       const fileExt = processedFile.name.split(".").pop() || 'png';
-      // Use unique filename to avoid browser caching
       const fileName = `${storeId}/sidebar-banner-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
@@ -664,47 +658,91 @@ export function useRetailSettings(storeId: string | null) {
         .from("product-images")
         .getPublicUrl(fileName);
 
+      // Add to banners array
+      const currentBanners = settings?.retail_sidebar_banners || [];
+      const newBanners = [...currentBanners, publicUrl];
+
       const { error: updateError } = await supabase
         .from("stores")
-        .update({ retail_sidebar_banner_url: publicUrl })
+        .update({ 
+          retail_sidebar_banner_url: newBanners[0] || null,
+          retail_sidebar_banners: newBanners as any,
+        } as any)
         .eq("id", storeId);
 
       if (updateError) throw updateError;
 
-      setSettings(prev => prev ? { ...prev, retail_sidebar_banner_url: publicUrl } : null);
-      toast({ title: "Баннер загружен", description: "Баннер сайдбара обновлён" });
+      setSettings(prev => prev ? { 
+        ...prev, 
+        retail_sidebar_banner_url: newBanners[0] || null,
+        retail_sidebar_banners: newBanners,
+      } : null);
+      toast({ title: "Баннер загружен", description: "Баннер добавлен в галерею" });
     } catch (err) {
       console.error("Error uploading sidebar banner:", err);
       toast({ variant: "destructive", title: "Ошибка", description: "Не удалось загрузить баннер" });
     } finally {
       setSaving(false);
     }
-  }, [storeId, settings?.retail_sidebar_banner_url, toast]);
+  }, [storeId, settings?.retail_sidebar_banners, toast]);
 
-  const deleteSidebarBanner = useCallback(async () => {
+  const deleteSidebarBanner = useCallback(async (bannerUrl?: string) => {
     if (!storeId) return;
 
     setSaving(true);
     try {
-      // Delete file from storage
-      const oldUrl = settings?.retail_sidebar_banner_url;
-      if (oldUrl) {
+      const currentBanners = settings?.retail_sidebar_banners || [];
+      
+      if (bannerUrl) {
+        // Delete specific banner from storage
         try {
-          const pathMatch = oldUrl.match(/product-images\/(.+)$/);
+          const pathMatch = bannerUrl.match(/product-images\/(.+)$/);
           if (pathMatch) {
             await supabase.storage.from("product-images").remove([pathMatch[1]]);
           }
-        } catch { /* ignore cleanup errors */ }
+        } catch { /* ignore */ }
+
+        const newBanners = currentBanners.filter(b => b !== bannerUrl);
+        const { error } = await supabase
+          .from("stores")
+          .update({ 
+            retail_sidebar_banner_url: newBanners[0] || null,
+            retail_sidebar_banners: newBanners as any,
+          } as any)
+          .eq("id", storeId);
+        if (error) throw error;
+
+        setSettings(prev => prev ? { 
+          ...prev, 
+          retail_sidebar_banner_url: newBanners[0] || null,
+          retail_sidebar_banners: newBanners,
+        } : null);
+      } else {
+        // Delete all banners
+        for (const url of currentBanners) {
+          try {
+            const pathMatch = url.match(/product-images\/(.+)$/);
+            if (pathMatch) {
+              await supabase.storage.from("product-images").remove([pathMatch[1]]);
+            }
+          } catch { /* ignore */ }
+        }
+
+        const { error } = await supabase
+          .from("stores")
+          .update({ 
+            retail_sidebar_banner_url: null,
+            retail_sidebar_banners: [] as any,
+          } as any)
+          .eq("id", storeId);
+        if (error) throw error;
+
+        setSettings(prev => prev ? { 
+          ...prev, 
+          retail_sidebar_banner_url: null,
+          retail_sidebar_banners: [],
+        } : null);
       }
-
-      const { error } = await supabase
-        .from("stores")
-        .update({ retail_sidebar_banner_url: null })
-        .eq("id", storeId);
-
-      if (error) throw error;
-
-      setSettings(prev => prev ? { ...prev, retail_sidebar_banner_url: null } : null);
       toast({ title: "Баннер удалён" });
     } catch (err) {
       console.error("Error deleting sidebar banner:", err);
@@ -712,7 +750,29 @@ export function useRetailSettings(storeId: string | null) {
     } finally {
       setSaving(false);
     }
-  }, [storeId, settings?.retail_sidebar_banner_url, toast]);
+  }, [storeId, settings?.retail_sidebar_banners, toast]);
+
+  const updateSidebarBannerSettings = useCallback(async (bannerSettings: {
+    retail_sidebar_banner_effect: string;
+    retail_sidebar_banner_interval: number;
+  }) => {
+    if (!storeId) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("stores")
+        .update(bannerSettings as any)
+        .eq("id", storeId);
+      if (error) throw error;
+      setSettings(prev => prev ? { ...prev, ...bannerSettings } : prev);
+      toast({ title: "Настройки баннеров сохранены" });
+    } catch (err: any) {
+      console.error("Error updating banner settings:", err);
+      toast({ variant: "destructive", title: "Ошибка", description: err.message });
+    } finally {
+      setSaving(false);
+    }
+  }, [storeId, toast]);
 
   const updateMarqueeSettings = useCallback(async (marquee: {
     retail_marquee_text: string | null;
@@ -758,6 +818,7 @@ export function useRetailSettings(storeId: string | null) {
     deleteFavicon,
     uploadSidebarBanner,
     deleteSidebarBanner,
+    updateSidebarBannerSettings,
     updateMarqueeSettings,
     refetch: fetchSettings,
   };

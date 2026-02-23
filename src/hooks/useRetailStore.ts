@@ -60,6 +60,9 @@ export interface RetailStore {
   yandex_maps_api_key: string | null;
   // Sidebar banner
   retail_sidebar_banner_url: string | null;
+  retail_sidebar_banners: string[];
+  retail_sidebar_banner_effect: string;
+  retail_sidebar_banner_interval: number;
   // Marquee
   retail_marquee_text: string | null;
   retail_marquee_speed: number;

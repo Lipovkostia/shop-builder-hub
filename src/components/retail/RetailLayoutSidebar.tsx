@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -94,27 +94,38 @@ export function RetailLayoutSidebar({
           className="block"
           onClick={() => onCategorySelect(null)}
         >
-          {(store as any).retail_sidebar_banner_url ? (
-            <img 
-              src={(store as any).retail_sidebar_banner_url} 
-              alt={storeName}
-              className="w-full h-auto object-cover"
-            />
-          ) : logoUrl ? (
-            <div className="p-6">
-              <img 
-                src={logoUrl} 
-                alt={storeName}
-                className="h-12 w-auto max-w-full object-contain"
-              />
-            </div>
-          ) : (
-            <div className="p-6">
-              <h1 className="text-lg font-medium tracking-widest uppercase text-sidebar-foreground">
-                {storeName}
-              </h1>
-            </div>
-          )}
+          {(() => {
+            const banners = (store as any).retail_sidebar_banners?.filter(Boolean) || [];
+            const singleBanner = (store as any).retail_sidebar_banner_url;
+            const allBanners = banners.length > 0 ? banners : (singleBanner ? [singleBanner] : []);
+            
+            if (allBanners.length > 0) {
+              return (
+                <SidebarBannerCarousel
+                  banners={allBanners}
+                  storeName={storeName}
+                  effect={(store as any).retail_sidebar_banner_effect || 'fade'}
+                  interval={(store as any).retail_sidebar_banner_interval || 5}
+                />
+              );
+            }
+            
+            return logoUrl ? (
+              <div className="p-6">
+                <img 
+                  src={logoUrl} 
+                  alt={storeName}
+                  className="h-12 w-auto max-w-full object-contain"
+                />
+              </div>
+            ) : (
+              <div className="p-6">
+                <h1 className="text-lg font-medium tracking-widest uppercase text-sidebar-foreground">
+                  {storeName}
+                </h1>
+              </div>
+            );
+          })()}
         </Link>
 
         {/* Marquee ticker */}
@@ -248,5 +259,65 @@ export function RetailLayoutSidebar({
         </div>
       )}
     </aside>
+  );
+}
+
+/* ─── Sidebar Banner Carousel ─── */
+function SidebarBannerCarousel({ banners, storeName, effect, interval }: {
+  banners: string[];
+  storeName: string;
+  effect: string;
+  interval: number;
+}) {
+  const [current, setCurrent] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const advance = useCallback(() => {
+    if (banners.length <= 1) return;
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setCurrent(prev => (prev + 1) % banners.length);
+      setIsTransitioning(false);
+    }, 600); // transition duration
+  }, [banners.length]);
+
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    timeoutRef.current = setInterval(advance, interval * 1000);
+    return () => clearInterval(timeoutRef.current);
+  }, [advance, interval, banners.length]);
+
+  const transitionStyle = useMemo(() => {
+    const base: React.CSSProperties = {
+      transition: 'all 0.6s ease-in-out',
+    };
+    if (!isTransitioning) return base;
+
+    switch (effect) {
+      case 'slide':
+        return { ...base, transform: 'translateX(-100%)', opacity: 1 };
+      case 'zoom':
+        return { ...base, transform: 'scale(1.15)', opacity: 0 };
+      case 'flip':
+        return { ...base, transform: 'rotateY(90deg)', opacity: 0 };
+      case 'fade':
+      default:
+        return { ...base, opacity: 0 };
+    }
+  }, [isTransitioning, effect]);
+
+  if (banners.length === 0) return null;
+
+  return (
+    <div className="overflow-hidden" style={{ perspective: effect === 'flip' ? '600px' : undefined }}>
+      <img
+        key={current}
+        src={banners[current]}
+        alt={storeName}
+        className="w-full h-auto object-cover"
+        style={transitionStyle}
+      />
+    </div>
   );
 }

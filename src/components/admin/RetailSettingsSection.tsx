@@ -16,7 +16,9 @@ import {
   MessageCircle,
   Truck,
   FileText,
-  MessageSquare
+  MessageSquare,
+  Image,
+  Play
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +59,7 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
     deleteFavicon,
     uploadSidebarBanner,
     deleteSidebarBanner,
+    updateSidebarBannerSettings,
     updateMarqueeSettings,
   } = useRetailSettings(storeId);
 
@@ -690,56 +693,77 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
             </div>
           </div>
 
-          {/* Sidebar Banner Section */}
+          {/* Sidebar Banners Section */}
           <div className="bg-card border border-border rounded-lg p-6">
-            <h3 className="font-semibold text-foreground mb-2">Баннер в боковой панели</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Изображение заменяет логотип/название в шапке меню категорий. Рекомендуемый размер: <strong>520×120 px</strong> (для Retina) или 260×60 px.
-            </p>
-
-            <div className="flex items-start gap-4">
-              <div className="w-[260px] h-[60px] border border-dashed border-border rounded-lg flex items-center justify-center bg-muted/50 overflow-hidden flex-shrink-0">
-                {settings.retail_sidebar_banner_url ? (
-                  <img 
-                    src={settings.retail_sidebar_banner_url} 
-                    alt="Sidebar banner" 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-xs text-muted-foreground">260 × 60</span>
-                )}
-              </div>
-              <div className="flex flex-col gap-2 flex-1">
-                <input
-                  ref={sidebarBannerInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleSidebarBannerUpload}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => sidebarBannerInputRef.current?.click()}
-                  disabled={saving}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Загрузить баннер
-                </Button>
-                {settings.retail_sidebar_banner_url && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={deleteSidebarBanner}
-                    disabled={saving}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Удалить
-                  </Button>
-                )}
+            <div className="flex items-start gap-3 mb-2">
+              <Image className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground">Баннеры в боковой панели</h3>
+                <p className="text-sm text-muted-foreground">
+                  Добавьте несколько баннеров — они будут автоматически переключаться с выбранным эффектом. Рекомендуемый размер: <strong>520×120 px</strong>.
+                </p>
               </div>
             </div>
+
+            {/* Banner gallery */}
+            {settings.retail_sidebar_banners && settings.retail_sidebar_banners.length > 0 && (
+              <div className="grid grid-cols-2 gap-3 my-4">
+                {settings.retail_sidebar_banners.map((url, idx) => (
+                  <div key={url} className="relative group border border-border rounded-lg overflow-hidden">
+                    <img 
+                      src={url} 
+                      alt={`Баннер ${idx + 1}`} 
+                      className="w-full h-[60px] object-cover"
+                    />
+                    <button
+                      onClick={() => deleteSidebarBanner(url)}
+                      disabled={saving}
+                      className="absolute top-1 right-1 p-1 rounded-md bg-destructive/80 text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Удалить баннер"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                    <div className="absolute bottom-1 left-1 bg-background/80 text-foreground text-[10px] px-1.5 py-0.5 rounded">
+                      #{idx + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 mb-4">
+              <input
+                ref={sidebarBannerInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleSidebarBannerUpload}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => sidebarBannerInputRef.current?.click()}
+                disabled={saving}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Добавить баннер
+              </Button>
+              {settings.retail_sidebar_banners && settings.retail_sidebar_banners.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {settings.retail_sidebar_banners.length} баннер(ов)
+                </span>
+              )}
+            </div>
+
+            {/* Effect & interval settings */}
+            {settings.retail_sidebar_banners && settings.retail_sidebar_banners.length > 1 && (
+              <SidebarBannerEffectBlock
+                effect={settings.retail_sidebar_banner_effect}
+                interval={settings.retail_sidebar_banner_interval}
+                saving={saving}
+                onSave={updateSidebarBannerSettings}
+              />
+            )}
           </div>
 
           {/* Marquee / Ticker Section */}
@@ -1372,6 +1396,79 @@ function MarqueeSettingsBlock({ settings, saving, onSave }: {
           {saving ? "Сохранение..." : "Сохранить"}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/* ─── Sidebar Banner Effect Block ─── */
+function SidebarBannerEffectBlock({ effect, interval, saving, onSave }: {
+  effect: string;
+  interval: number;
+  saving: boolean;
+  onSave: (data: { retail_sidebar_banner_effect: string; retail_sidebar_banner_interval: number }) => void;
+}) {
+  const [localEffect, setLocalEffect] = React.useState(effect || 'fade');
+  const [localInterval, setLocalInterval] = React.useState(interval || 5);
+
+  React.useEffect(() => {
+    setLocalEffect(effect || 'fade');
+    setLocalInterval(interval || 5);
+  }, [effect, interval]);
+
+  const effects = [
+    { value: 'fade', label: 'Затухание' },
+    { value: 'slide', label: 'Перелистывание' },
+    { value: 'zoom', label: 'Масштаб' },
+    { value: 'flip', label: 'Переворот' },
+  ];
+
+  return (
+    <div className="space-y-3 pt-3 border-t border-border">
+      <div className="flex items-center gap-2 mb-2">
+        <Play className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-medium text-foreground">Настройки переключения</span>
+      </div>
+
+      <div>
+        <Label className="text-sm text-muted-foreground mb-2 block">Эффект перехода</Label>
+        <div className="flex flex-wrap gap-2">
+          {effects.map(e => (
+            <Button
+              key={e.value}
+              variant={localEffect === e.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setLocalEffect(e.value)}
+            >
+              {e.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <Label className="text-sm text-muted-foreground mb-2 block">
+          Интервал переключения: {localInterval} сек
+        </Label>
+        <Input
+          type="number"
+          min={2}
+          max={30}
+          value={localInterval}
+          onChange={e => setLocalInterval(Number(e.target.value) || 5)}
+          className="w-32"
+        />
+      </div>
+
+      <Button
+        size="sm"
+        disabled={saving}
+        onClick={() => onSave({
+          retail_sidebar_banner_effect: localEffect,
+          retail_sidebar_banner_interval: localInterval,
+        })}
+      >
+        {saving ? "Сохранение..." : "Сохранить настройки"}
+      </Button>
     </div>
   );
 }
