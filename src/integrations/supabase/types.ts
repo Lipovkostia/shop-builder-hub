@@ -1704,7 +1704,10 @@ export type Database = {
           retail_marquee_text_color: string | null
           retail_name: string | null
           retail_phone: string | null
+          retail_sidebar_banner_effect: string | null
+          retail_sidebar_banner_interval: number | null
           retail_sidebar_banner_url: string | null
+          retail_sidebar_banners: string[] | null
           retail_theme: Json | null
           secondary_color: string | null
           seo_description: string | null
@@ -1779,7 +1782,10 @@ export type Database = {
           retail_marquee_text_color?: string | null
           retail_name?: string | null
           retail_phone?: string | null
+          retail_sidebar_banner_effect?: string | null
+          retail_sidebar_banner_interval?: number | null
           retail_sidebar_banner_url?: string | null
+          retail_sidebar_banners?: string[] | null
           retail_theme?: Json | null
           secondary_color?: string | null
           seo_description?: string | null
@@ -1854,7 +1860,10 @@ export type Database = {
           retail_marquee_text_color?: string | null
           retail_name?: string | null
           retail_phone?: string | null
+          retail_sidebar_banner_effect?: string | null
+          retail_sidebar_banner_interval?: number | null
           retail_sidebar_banner_url?: string | null
+          retail_sidebar_banners?: string[] | null
           retail_theme?: Json | null
           secondary_color?: string | null
           seo_description?: string | null
