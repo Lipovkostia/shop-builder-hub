@@ -630,9 +630,21 @@ export function useRetailSettings(storeId: string | null) {
 
     setSaving(true);
     try {
+      // Delete old file from storage if exists
+      const oldUrl = settings?.retail_sidebar_banner_url;
+      if (oldUrl) {
+        try {
+          const pathMatch = oldUrl.match(/product-images\/(.+)$/);
+          if (pathMatch) {
+            await supabase.storage.from("product-images").remove([pathMatch[1]]);
+          }
+        } catch { /* ignore cleanup errors */ }
+      }
+
       const processedFile = await compressImage(file, 2);
       const fileExt = processedFile.name.split(".").pop() || 'png';
-      const fileName = `${storeId}/sidebar-banner.${fileExt}`;
+      // Use unique filename to avoid browser caching
+      const fileName = `${storeId}/sidebar-banner-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("product-images")
@@ -659,13 +671,24 @@ export function useRetailSettings(storeId: string | null) {
     } finally {
       setSaving(false);
     }
-  }, [storeId, toast]);
+  }, [storeId, settings?.retail_sidebar_banner_url, toast]);
 
   const deleteSidebarBanner = useCallback(async () => {
     if (!storeId) return;
 
     setSaving(true);
     try {
+      // Delete file from storage
+      const oldUrl = settings?.retail_sidebar_banner_url;
+      if (oldUrl) {
+        try {
+          const pathMatch = oldUrl.match(/product-images\/(.+)$/);
+          if (pathMatch) {
+            await supabase.storage.from("product-images").remove([pathMatch[1]]);
+          }
+        } catch { /* ignore cleanup errors */ }
+      }
+
       const { error } = await supabase
         .from("stores")
         .update({ retail_sidebar_banner_url: null })
@@ -681,7 +704,7 @@ export function useRetailSettings(storeId: string | null) {
     } finally {
       setSaving(false);
     }
-  }, [storeId, toast]);
+  }, [storeId, settings?.retail_sidebar_banner_url, toast]);
 
   return {
     settings,
