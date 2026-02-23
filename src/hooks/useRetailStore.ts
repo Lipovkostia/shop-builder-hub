@@ -58,6 +58,8 @@ export interface RetailStore {
   retail_footer_returns: string | null;
   // Yandex Maps
   yandex_maps_api_key: string | null;
+  // Sidebar banner
+  retail_sidebar_banner_url: string | null;
 }
 
 export interface RetailProduct {

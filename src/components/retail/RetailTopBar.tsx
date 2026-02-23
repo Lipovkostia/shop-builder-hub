@@ -233,7 +233,7 @@ export function RetailTopBar({
       {/* Desktop top bar */}
       <div className="hidden lg:flex items-center gap-4 px-6 py-3 bg-card border-b border-border">
         {/* Logo */}
-        <div className="flex-shrink-0 w-40">
+        <div className="flex-shrink-0">
           {logoUrl ? (
             <img src={logoUrl} alt={storeName} className="h-9 w-auto max-w-[140px] object-contain" />
           ) : (
@@ -243,14 +243,14 @@ export function RetailTopBar({
                   {storeName.charAt(0).toUpperCase()}
                 </span>
               </div>
-              <span className="font-semibold text-foreground text-base truncate">{storeName}</span>
+              <span className="font-semibold text-foreground text-base truncate max-w-[140px]">{storeName}</span>
             </div>
           )}
         </div>
 
-        {/* Search */}
-        <div className="flex-1 max-w-2xl">
-          <div className="relative">
+        {/* Search - centered */}
+        <div className="flex-1 flex justify-center">
+          <div className="relative w-full max-w-2xl">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
