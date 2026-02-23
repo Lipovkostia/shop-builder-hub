@@ -1698,6 +1698,10 @@ export type Database = {
           retail_footer_delivery_payment: string | null
           retail_footer_returns: string | null
           retail_logo_url: string | null
+          retail_marquee_bg_color: string | null
+          retail_marquee_speed: number | null
+          retail_marquee_text: string | null
+          retail_marquee_text_color: string | null
           retail_name: string | null
           retail_phone: string | null
           retail_sidebar_banner_url: string | null
@@ -1769,6 +1773,10 @@ export type Database = {
           retail_footer_delivery_payment?: string | null
           retail_footer_returns?: string | null
           retail_logo_url?: string | null
+          retail_marquee_bg_color?: string | null
+          retail_marquee_speed?: number | null
+          retail_marquee_text?: string | null
+          retail_marquee_text_color?: string | null
           retail_name?: string | null
           retail_phone?: string | null
           retail_sidebar_banner_url?: string | null
@@ -1840,6 +1848,10 @@ export type Database = {
           retail_footer_delivery_payment?: string | null
           retail_footer_returns?: string | null
           retail_logo_url?: string | null
+          retail_marquee_bg_color?: string | null
+          retail_marquee_speed?: number | null
+          retail_marquee_text?: string | null
+          retail_marquee_text_color?: string | null
           retail_name?: string | null
           retail_phone?: string | null
           retail_sidebar_banner_url?: string | null

@@ -34,6 +34,10 @@ export interface RetailSettings {
   retail_logo_url: string | null;
   retail_name: string | null;
   retail_sidebar_banner_url: string | null;
+  retail_marquee_text: string | null;
+  retail_marquee_speed: number;
+  retail_marquee_text_color: string;
+  retail_marquee_bg_color: string;
   seo_title: string | null;
   seo_description: string | null;
   favicon_url: string | null;
@@ -67,7 +71,7 @@ export function useRetailSettings(storeId: string | null) {
     try {
       const { data, error } = await supabase
         .from("stores")
-        .select("retail_enabled, retail_theme, retail_logo_url, retail_name, retail_sidebar_banner_url, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id, retail_phone, telegram_username, whatsapp_phone, retail_delivery_time, retail_delivery_info, retail_delivery_free_from, retail_delivery_region, retail_footer_delivery_payment, retail_footer_returns, yandex_maps_api_key")
+        .select("retail_enabled, retail_theme, retail_logo_url, retail_name, retail_sidebar_banner_url, retail_marquee_text, retail_marquee_speed, retail_marquee_text_color, retail_marquee_bg_color, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id, retail_phone, telegram_username, whatsapp_phone, retail_delivery_time, retail_delivery_info, retail_delivery_free_from, retail_delivery_region, retail_footer_delivery_payment, retail_footer_returns, yandex_maps_api_key")
         .eq("id", storeId)
         .single();
 
@@ -79,6 +83,10 @@ export function useRetailSettings(storeId: string | null) {
         retail_logo_url: data.retail_logo_url,
         retail_name: (data as { retail_name?: string | null }).retail_name || null,
         retail_sidebar_banner_url: data.retail_sidebar_banner_url || null,
+        retail_marquee_text: (data as any).retail_marquee_text || null,
+        retail_marquee_speed: (data as any).retail_marquee_speed ?? 30,
+        retail_marquee_text_color: (data as any).retail_marquee_text_color || '#ffffff',
+        retail_marquee_bg_color: (data as any).retail_marquee_bg_color || '#16a34a',
         seo_title: data.seo_title,
         seo_description: data.seo_description,
         favicon_url: data.favicon_url,
@@ -706,6 +714,30 @@ export function useRetailSettings(storeId: string | null) {
     }
   }, [storeId, settings?.retail_sidebar_banner_url, toast]);
 
+  const updateMarqueeSettings = useCallback(async (marquee: {
+    retail_marquee_text: string | null;
+    retail_marquee_speed: number;
+    retail_marquee_text_color: string;
+    retail_marquee_bg_color: string;
+  }) => {
+    if (!storeId) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("stores")
+        .update(marquee as any)
+        .eq("id", storeId);
+      if (error) throw error;
+      setSettings(prev => prev ? { ...prev, ...marquee } : prev);
+      toast({ title: "Бегущая строка сохранена" });
+    } catch (err: any) {
+      console.error("Error updating marquee:", err);
+      toast({ variant: "destructive", title: "Ошибка", description: err.message });
+    } finally {
+      setSaving(false);
+    }
+  }, [storeId, toast]);
+
   return {
     settings,
     loading,
@@ -726,6 +758,7 @@ export function useRetailSettings(storeId: string | null) {
     deleteFavicon,
     uploadSidebarBanner,
     deleteSidebarBanner,
+    updateMarqueeSettings,
     refetch: fetchSettings,
   };
 }

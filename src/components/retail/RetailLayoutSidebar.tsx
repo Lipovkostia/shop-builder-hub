@@ -116,6 +116,28 @@ export function RetailLayoutSidebar({
             </div>
           )}
         </Link>
+
+        {/* Marquee ticker */}
+        {(store as any).retail_marquee_text && (
+          <div
+            className="overflow-hidden whitespace-nowrap"
+            style={{ backgroundColor: (store as any).retail_marquee_bg_color || '#16a34a' }}
+          >
+            <div
+              className="inline-block animate-marquee py-1 text-xs font-medium"
+              style={{
+                color: (store as any).retail_marquee_text_color || '#ffffff',
+                animationDuration: `${Math.max(5, 60 - ((store as any).retail_marquee_speed || 30))}s`,
+              }}
+            >
+              {(store as any).retail_marquee_text}
+              <span className="mx-8">•</span>
+              {(store as any).retail_marquee_text}
+              <span className="mx-8">•</span>
+              {(store as any).retail_marquee_text}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Categories */}
