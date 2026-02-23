@@ -227,6 +227,10 @@ export type Database = {
       }
       categories: {
         Row: {
+          banner_effect: string | null
+          banner_enabled: boolean | null
+          banner_images: string[] | null
+          banner_interval: number | null
           created_at: string
           description: string | null
           id: string
@@ -238,6 +242,10 @@ export type Database = {
           store_id: string
         }
         Insert: {
+          banner_effect?: string | null
+          banner_enabled?: boolean | null
+          banner_images?: string[] | null
+          banner_interval?: number | null
           created_at?: string
           description?: string | null
           id?: string
@@ -249,6 +257,10 @@ export type Database = {
           store_id: string
         }
         Update: {
+          banner_effect?: string | null
+          banner_enabled?: boolean | null
+          banner_images?: string[] | null
+          banner_interval?: number | null
           created_at?: string
           description?: string | null
           id?: string

@@ -88,6 +88,10 @@ export interface RetailCategory {
   image_url: string | null;
   parent_id: string | null;
   product_count?: number;
+  banner_images?: string[];
+  banner_interval?: number;
+  banner_effect?: string;
+  banner_enabled?: boolean;
 }
 
 export function useRetailStore(subdomain: string | undefined) {
@@ -178,7 +182,7 @@ export function useRetailStore(subdomain: string | undefined) {
     if (!store?.id) return;
 
     try {
-      let categoriesData: { id: string; name: string; slug: string; image_url: string | null; parent_id: string | null }[] = [];
+      let categoriesData: { id: string; name: string; slug: string; image_url: string | null; parent_id: string | null; banner_images?: string[]; banner_interval?: number; banner_effect?: string; banner_enabled?: boolean }[] = [];
       
       // Use catalog-specific ordering if retail catalog is set
       if (store.retail_catalog_id) {
@@ -196,11 +200,28 @@ export function useRetailStore(subdomain: string | undefined) {
           image_url: c.image_url,
           parent_id: c.catalog_parent_id || c.parent_id || null,
         }));
+
+        // Fetch banner fields separately since RPC doesn't return them
+        const catIds = categoriesData.map(c => c.id);
+        if (catIds.length > 0) {
+          const { data: bannerData } = await supabase
+            .from("categories")
+            .select("id, banner_images, banner_interval, banner_effect, banner_enabled")
+            .in("id", catIds);
+          
+          if (bannerData) {
+            const bannerMap = new Map(bannerData.map((b: any) => [b.id, b]));
+            categoriesData = categoriesData.map(c => ({
+              ...c,
+              ...bannerMap.get(c.id),
+            }));
+          }
+        }
       } else {
         // Fallback to global sort order
         const { data, error: catError } = await supabase
           .from("categories")
-          .select("id, name, slug, image_url, parent_id")
+          .select("id, name, slug, image_url, parent_id, banner_images, banner_interval, banner_effect, banner_enabled")
           .eq("store_id", store.id)
           .order("sort_order");
 
