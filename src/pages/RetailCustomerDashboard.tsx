@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useRetailFavorites } from "@/hooks/useRetailFavorites";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ArrowLeft,
@@ -27,6 +28,7 @@ import {
   Plus,
   Trash2,
   Star,
+  Heart,
 } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { TelegramIcon } from "@/components/icons/TelegramIcon";
@@ -93,6 +95,8 @@ export default function RetailCustomerDashboard() {
 
   // Cart for repeat order
   const { addToCart } = useRetailCart(subdomain || "");
+  const { favorites, toggleFavorite, isFavorite } = useRetailFavorites(subdomain || null);
+  const [favoriteProducts, setFavoriteProducts] = useState<Array<{ id: string; name: string; price: number; images: string[] }>>([]);
 
   // Addresses
   const { addresses, loading: addressesLoading, addAddress, deleteAddress } = useCustomerAddresses();
@@ -112,6 +116,41 @@ export default function RetailCustomerDashboard() {
       addAddress(savedAddress, null, savedCity);
     }
   }, [user, subdomain, addressesLoading, addresses.length]);
+
+  // Fetch favorite products data
+  useEffect(() => {
+    if (!subdomain || favorites.length === 0) {
+      setFavoriteProducts([]);
+      return;
+    }
+    (async () => {
+      try {
+        const { data: store } = await supabase
+          .from("stores")
+          .select("id")
+          .eq("subdomain", subdomain)
+          .single();
+        if (!store) return;
+        
+        const { data } = await supabase
+          .from("products")
+          .select("id, name, price, images")
+          .eq("store_id", store.id)
+          .in("id", favorites);
+        
+        if (data) {
+          setFavoriteProducts(data.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: Number(p.price),
+            images: p.images || [],
+          })));
+        }
+      } catch (e) {
+        console.error("Error fetching favorite products:", e);
+      }
+    })();
+  }, [subdomain, favorites]);
 
   // Fetch store contacts
   useEffect(() => {
@@ -321,6 +360,15 @@ export default function RetailCustomerDashboard() {
               <ShoppingBag className="h-4 w-4" />
               Заказы
             </TabsTrigger>
+            <TabsTrigger value="favorites" className="flex-1 gap-2 relative">
+              <Heart className="h-4 w-4" />
+              Избранное
+              {favorites.length > 0 && (
+                <span className="ml-1 text-xs bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center">
+                  {favorites.length}
+                </span>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="addresses" className="flex-1 gap-2">
               <MapPin className="h-4 w-4" />
               Адреса
@@ -480,6 +528,74 @@ export default function RetailCustomerDashboard() {
                   )}
                 </CardContent>
               </Card>
+            )}
+          </TabsContent>
+
+          {/* Favorites Tab */}
+          <TabsContent value="favorites">
+            {favoriteProducts.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Heart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="font-medium text-lg mb-1">Избранного пока нет</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Добавляйте товары в избранное, нажимая на сердечко
+                  </p>
+                  <Button variant="outline" onClick={() => navigate(`/retail/${subdomain}`)}>
+                    Перейти к покупкам
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {favoriteProducts.map(product => (
+                  <Card key={product.id}>
+                    <CardContent className="py-3 flex items-center gap-3">
+                      {product.images[0] ? (
+                        <img
+                          src={product.images[0]}
+                          alt={product.name}
+                          className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                          <Package className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{product.name}</p>
+                        <p className="text-sm text-muted-foreground">{formatPrice(product.price)}</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            addToCart({
+                              productId: product.id,
+                              name: product.name,
+                              price: product.price,
+                              image: product.images[0],
+                              unit: "шт",
+                            });
+                            toast({ title: "Добавлено в корзину" });
+                          }}
+                        >
+                          В корзину
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-500 hover:text-red-600"
+                          onClick={() => toggleFavorite(product.id)}
+                        >
+                          <Heart className="h-4 w-4 fill-current" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             )}
           </TabsContent>
 

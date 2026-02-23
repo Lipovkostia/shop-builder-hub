@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 import { useNavigate, useParams } from "react-router-dom";
-import { Search, User, LogOut, ShoppingBag, Settings, MapPin } from "lucide-react";
+import { Search, User, LogOut, ShoppingBag, Settings, MapPin, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -262,9 +263,23 @@ export function RetailTopBar({
           </div>
         </div>
 
-        {/* Right: messengers + auth */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {store.telegram_username && (
+          {/* Right: favorites + messengers + auth */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Favorites */}
+            <button
+              onClick={onFavoritesClick}
+              className="relative flex items-center justify-center w-9 h-9 rounded-full hover:bg-muted transition-colors"
+              title="Избранное"
+            >
+              <Heart className={cn("h-5 w-5", favoritesCount > 0 ? "fill-red-500 text-red-500" : "text-muted-foreground")} />
+              {favoritesCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {favoritesCount > 9 ? "9+" : favoritesCount}
+                </span>
+              )}
+            </button>
+
+            {store.telegram_username && (
             <a
               href={`https://t.me/${store.telegram_username}`}
               target="_blank"
