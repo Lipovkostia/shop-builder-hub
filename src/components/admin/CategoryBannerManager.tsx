@@ -127,7 +127,7 @@ export function CategoryBannerManager({
           <div className="space-y-2">
             <Label>Изображения баннера</Label>
             <p className="text-xs text-muted-foreground">
-              Рекомендуемый размер: 1200×300px (соотношение 4:1). Для Retina — 2400×600px.
+              Для шапки категории: 1200×300px (4:1). Для сайдбара: 260×60px. Для Retina — удвойте размеры.
             </p>
 
             <div className="grid grid-cols-2 gap-2">
