@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { Tag, GripVertical, Pencil, Trash2, Plus, FolderOpen, ChevronDown, ChevronRight, Save, X, Check, ArrowRight, ArrowUpFromLine } from "lucide-react";
+import { Tag, GripVertical, Pencil, Trash2, Plus, FolderOpen, ChevronDown, ChevronRight, Save, X, Check, ArrowRight, ArrowUpFromLine, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
+import { CategoryBannerManager } from "@/components/admin/CategoryBannerManager";
 import { useToast } from "@/hooks/use-toast";
 import { StoreCategory } from "@/hooks/useStoreCategories";
 import { Catalog } from "@/hooks/useStoreCatalogs";
@@ -63,6 +64,7 @@ function SortableCategoryItem({
   sections,
   onMoveToSection,
   onRemoveFromParent,
+  onBannerClick,
 }: {
   item: CategorySettingItem;
   isChild: boolean;
@@ -79,6 +81,7 @@ function SortableCategoryItem({
   sections: CategorySettingItem[];
   onMoveToSection: (itemId: string, sectionId: string) => void;
   onRemoveFromParent: (itemId: string) => void;
+  onBannerClick: (id: string, name: string) => void;
 }) {
   const {
     attributes,
@@ -217,6 +220,15 @@ function SortableCategoryItem({
             size="icon"
             variant="ghost"
             className="h-7 w-7"
+            title="Баннер категории"
+            onClick={() => onBannerClick(item.id, item.customName || item.name)}
+          >
+            <Image className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7"
             onClick={() => onStartEdit(item.id, item.customName || item.name)}
           >
             <Pencil className="h-3.5 w-3.5" />
@@ -256,6 +268,8 @@ export function CategorySettingsSection({
   const [newSectionName, setNewSectionName] = useState("");
   const [showNewSectionInput, setShowNewSectionInput] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [bannerTarget, setBannerTarget] = useState<{ id: string; name: string } | null>(null);
+  const [bannerData, setBannerData] = useState<any>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -723,6 +737,16 @@ export function CategorySettingsSection({
                       sections={sectionsList}
                       onMoveToSection={handleMoveToSection}
                       onRemoveFromParent={handleRemoveFromParent}
+                      onBannerClick={async (id, name) => {
+                        // Fetch current banner data
+                        const { data } = await supabase
+                          .from("categories")
+                          .select("banner_enabled, banner_images, banner_interval, banner_effect")
+                          .eq("id", id)
+                          .single();
+                        setBannerData(data || { banner_enabled: false, banner_images: [], banner_interval: 5, banner_effect: "fade" });
+                        setBannerTarget({ id, name });
+                      }}
                     />
                   ))}
                 </div>
@@ -780,6 +804,19 @@ export function CategorySettingsSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Banner manager dialog */}
+      {bannerTarget && bannerData && storeId && (
+        <CategoryBannerManager
+          open={!!bannerTarget}
+          onOpenChange={(open) => { if (!open) { setBannerTarget(null); setBannerData(null); } }}
+          categoryId={bannerTarget.id}
+          categoryName={bannerTarget.name}
+          storeId={storeId}
+          initialData={bannerData}
+          onSaved={() => { setBannerTarget(null); setBannerData(null); }}
+        />
+      )}
     </div>
   );
 }
