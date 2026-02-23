@@ -33,25 +33,22 @@ export interface RetailSettings {
   retail_theme: RetailTheme;
   retail_logo_url: string | null;
   retail_name: string | null;
+  retail_sidebar_banner_url: string | null;
   seo_title: string | null;
   seo_description: string | null;
   favicon_url: string | null;
   custom_domain: string | null;
   subdomain: string;
   retail_catalog_id: string | null;
-  // Contact fields for mobile header
   retail_phone: string | null;
   telegram_username: string | null;
   whatsapp_phone: string | null;
-  // Delivery info fields
   retail_delivery_time: string | null;
   retail_delivery_info: string | null;
   retail_delivery_free_from: number | null;
   retail_delivery_region: string | null;
-  // Footer content fields
   retail_footer_delivery_payment: string | null;
   retail_footer_returns: string | null;
-  // Yandex Maps
   yandex_maps_api_key: string | null;
 }
 
@@ -70,7 +67,7 @@ export function useRetailSettings(storeId: string | null) {
     try {
       const { data, error } = await supabase
         .from("stores")
-        .select("retail_enabled, retail_theme, retail_logo_url, retail_name, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id, retail_phone, telegram_username, whatsapp_phone, retail_delivery_time, retail_delivery_info, retail_delivery_free_from, retail_delivery_region, retail_footer_delivery_payment, retail_footer_returns, yandex_maps_api_key")
+        .select("retail_enabled, retail_theme, retail_logo_url, retail_name, retail_sidebar_banner_url, seo_title, seo_description, favicon_url, custom_domain, subdomain, retail_catalog_id, retail_phone, telegram_username, whatsapp_phone, retail_delivery_time, retail_delivery_info, retail_delivery_free_from, retail_delivery_region, retail_footer_delivery_payment, retail_footer_returns, yandex_maps_api_key")
         .eq("id", storeId)
         .single();
 
@@ -81,6 +78,7 @@ export function useRetailSettings(storeId: string | null) {
         retail_theme: (data.retail_theme as RetailTheme) || {},
         retail_logo_url: data.retail_logo_url,
         retail_name: (data as { retail_name?: string | null }).retail_name || null,
+        retail_sidebar_banner_url: data.retail_sidebar_banner_url || null,
         seo_title: data.seo_title,
         seo_description: data.seo_description,
         favicon_url: data.favicon_url,
@@ -627,6 +625,64 @@ export function useRetailSettings(storeId: string | null) {
     }
   }, [storeId, toast]);
 
+  const uploadSidebarBanner = useCallback(async (file: File) => {
+    if (!storeId) return;
+
+    setSaving(true);
+    try {
+      const processedFile = await compressImage(file, 2);
+      const fileExt = processedFile.name.split(".").pop() || 'png';
+      const fileName = `${storeId}/sidebar-banner.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("product-images")
+        .upload(fileName, processedFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(fileName);
+
+      const { error: updateError } = await supabase
+        .from("stores")
+        .update({ retail_sidebar_banner_url: publicUrl })
+        .eq("id", storeId);
+
+      if (updateError) throw updateError;
+
+      setSettings(prev => prev ? { ...prev, retail_sidebar_banner_url: publicUrl } : null);
+      toast({ title: "Баннер загружен", description: "Баннер сайдбара обновлён" });
+    } catch (err) {
+      console.error("Error uploading sidebar banner:", err);
+      toast({ variant: "destructive", title: "Ошибка", description: "Не удалось загрузить баннер" });
+    } finally {
+      setSaving(false);
+    }
+  }, [storeId, toast]);
+
+  const deleteSidebarBanner = useCallback(async () => {
+    if (!storeId) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("stores")
+        .update({ retail_sidebar_banner_url: null })
+        .eq("id", storeId);
+
+      if (error) throw error;
+
+      setSettings(prev => prev ? { ...prev, retail_sidebar_banner_url: null } : null);
+      toast({ title: "Баннер удалён" });
+    } catch (err) {
+      console.error("Error deleting sidebar banner:", err);
+      toast({ variant: "destructive", title: "Ошибка", description: "Не удалось удалить баннер" });
+    } finally {
+      setSaving(false);
+    }
+  }, [storeId, toast]);
+
   return {
     settings,
     loading,
@@ -645,6 +701,8 @@ export function useRetailSettings(storeId: string | null) {
     uploadFavicon,
     deleteRetailLogo,
     deleteFavicon,
+    uploadSidebarBanner,
+    deleteSidebarBanner,
     refetch: fetchSettings,
   };
 }
