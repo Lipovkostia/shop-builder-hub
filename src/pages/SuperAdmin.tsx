@@ -804,15 +804,8 @@ export default function SuperAdmin() {
                           {customer.stores.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
                               {customer.stores.map((store, idx) => (
-                                <Badge key={idx} variant="secondary" className="text-xs flex items-center gap-1">
+                                <Badge key={idx} variant="secondary" className="text-xs">
                                   {store.store_name}
-                                  <button
-                                    onClick={() => unlinkCustomerFromStore(customer, store.store_id)}
-                                    className="ml-0.5 hover:text-destructive"
-                                    title="Отвязать"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
                                 </Badge>
                               ))}
                             </div>

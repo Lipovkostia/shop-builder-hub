@@ -945,9 +945,9 @@ const Index = () => {
                   <Store className="h-4 w-4" />
                   Продавец
                 </TabsTrigger>
-                <TabsTrigger value="customer" className="gap-2 text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <TabsTrigger value="customer" className="gap-2 text-sm font-semibold data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
                   <User className="h-4 w-4" />
-                  Покупатель
+                  🛒 Покупатель
                 </TabsTrigger>
               </TabsList>
 
