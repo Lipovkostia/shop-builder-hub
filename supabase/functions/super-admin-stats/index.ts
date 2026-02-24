@@ -218,11 +218,69 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ========== LINK/UNLINK CUSTOMER TO STORE (POST) ==========
+    if (action === "link_customer" && req.method === "POST") {
+      const body = await req.json();
+      const { profile_id, store_id, unlink } = body;
+      
+      if (!profile_id || !store_id) {
+        return new Response(
+          JSON.stringify({ error: "profile_id and store_id are required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (unlink) {
+        const { error } = await supabase
+          .from("store_customers")
+          .delete()
+          .eq("profile_id", profile_id)
+          .eq("store_id", store_id);
+        
+        if (error) throw error;
+        
+        return new Response(
+          JSON.stringify({ success: true, action: "unlinked" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Check if already linked
+      const { data: existing } = await supabase
+        .from("store_customers")
+        .select("id")
+        .eq("profile_id", profile_id)
+        .eq("store_id", store_id)
+        .maybeSingle();
+
+      if (existing) {
+        return new Response(
+          JSON.stringify({ error: "Покупатель уже привязан к этому магазину" }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { error } = await supabase
+        .from("store_customers")
+        .insert({ profile_id, store_id });
+
+      if (error) throw error;
+
+      return new Response(
+        JSON.stringify({ success: true, action: "linked" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (action === "customers") {
+      const roleFilter = url.searchParams.get("role") || "customer";
       let query = supabase
         .from("profiles")
-        .select("id, user_id, full_name, phone, email, created_at", { count: "exact" })
-        .eq("role", "customer");
+        .select("id, user_id, full_name, phone, email, role, created_at", { count: "exact" });
+      
+      if (roleFilter !== "all") {
+        query = query.eq("role", roleFilter);
+      }
 
       if (search) {
         query = query.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%`);
@@ -262,6 +320,7 @@ Deno.serve(async (req) => {
           full_name: profile.full_name,
           phone: profile.phone,
           email: profile.email,
+          role: profile.role,
           created_at: profile.created_at,
           stores: customerStores
         };
