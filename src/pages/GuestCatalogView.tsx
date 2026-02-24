@@ -866,7 +866,7 @@ const GuestCatalogView = () => {
       </div>
 
       {cart.length > 0 && (
-        <div className="px-3 py-2 border-t border-border bg-muted/30 space-y-1.5">
+        <div className="sticky bottom-0 px-3 py-2 border-t border-border bg-background space-y-1.5 pb-6">
           <Button 
             onClick={() => {
               setCartOpen(false);
