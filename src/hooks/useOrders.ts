@@ -18,7 +18,7 @@ export interface Order {
   order_number: string;
   store_id: string;
   customer_id: string | null;
-  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled" | "forming";
   subtotal: number;
   shipping_cost: number | null;
   discount: number | null;
@@ -28,7 +28,7 @@ export interface Order {
     phone?: string;
     address?: string;
     comment?: string;
-    source?: string; // 'retail' for retail orders
+    source?: string;
   } | null;
   notes: string | null;
   created_at: string;
@@ -36,6 +36,9 @@ export interface Order {
   items?: OrderItem[];
   customer_name?: string;
   customer_email?: string;
+  guest_name?: string;
+  guest_phone?: string;
+  is_guest_order?: boolean;
 }
 
 export interface CreateOrderData {
@@ -132,6 +135,9 @@ export function useStoreOrders(storeId: string | null) {
           notes: o.notes,
           created_at: o.created_at,
           updated_at: o.updated_at,
+          guest_name: o.guest_name,
+          guest_phone: o.guest_phone,
+          is_guest_order: o.is_guest_order,
           items: orderItems.map(i => ({
             id: i.id,
             order_id: i.order_id,
