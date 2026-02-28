@@ -2,10 +2,17 @@ import React, { memo, useCallback, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, Plus, Lock, Unlock, Link2, X, Search, Loader2 } from "lucide-react";
+import { GripVertical, Plus, Lock, Unlock, Link2, X, Search, Loader2, Unlink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { InlineEditableCell } from "./InlineEditableCell";
 import { InlineSelectCell } from "./InlineSelectCell";
 import { InlineMultiSelectCell } from "./InlineMultiSelectCell";
@@ -500,22 +507,22 @@ function ProductRowComponent({
         {/* MoySklad Product */}
         {visibleColumns.msProduct && (
           <div className="flex-shrink-0" style={{ width: columnWidths?.msProduct || 100 }}>
-            {moyskladLogin && moyskladPassword ? (
+           {moyskladLogin && moyskladPassword ? (
               product.moyskladId ? (
                 <div className="flex items-center gap-0.5">
-                  <Badge variant="secondary" className="text-[9px] gap-0.5 max-w-[70px] truncate">
+                  <Badge variant="secondary" className="text-[9px] gap-0.5 max-w-[70px] truncate cursor-default" title={linkedMsName || "Привязан"}>
                     <Link2 className="h-2.5 w-2.5 shrink-0" />
                     <span className="truncate">{linkedMsName || "Привязан"}</span>
                   </Badge>
-                  <Button variant="ghost" size="icon" className="h-4 w-4" onClick={handleUnlinkMsProduct}>
-                    <X className="h-2.5 w-2.5" />
+                  <Button variant="ghost" size="icon" className="h-4 w-4 text-muted-foreground hover:text-destructive" onClick={handleUnlinkMsProduct} title="Снять привязку">
+                    <Unlink className="h-2.5 w-2.5" />
                   </Button>
                 </div>
               ) : (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-5 text-[10px] px-1"
+                  className="h-5 text-[10px] px-1 text-muted-foreground hover:text-primary"
                   onClick={() => { setMsSearchOpen(true); handleMsSearch(); }}
                 >
                   <Link2 className="h-3 w-3 mr-0.5" />
@@ -566,48 +573,67 @@ function ProductRowComponent({
       )}
 
       {/* MoySklad product search dialog */}
-      {msSearchOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setMsSearchOpen(false)}>
-          <div className="bg-background rounded-lg shadow-lg w-[400px] max-h-[500px] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="p-3 border-b flex items-center gap-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Поиск товара в МойСклад..."
-                value={msSearchQuery}
-                onChange={(e) => setMsSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleMsSearch()}
-                className="h-8 text-sm"
-                autoFocus
-              />
-              <Button size="sm" variant="outline" onClick={handleMsSearch} disabled={msLoading}>
-                {msLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Найти"}
+      <Dialog open={msSearchOpen} onOpenChange={setMsSearchOpen}>
+        <DialogContent className="sm:max-w-md p-0 gap-0">
+          <DialogHeader className="px-4 pt-4 pb-3 border-b">
+            <DialogTitle className="text-sm font-medium">
+              Привязка к МойСклад
+            </DialogTitle>
+            <p className="text-xs text-muted-foreground mt-0.5 truncate" title={product.name}>
+              {product.name}
+            </p>
+          </DialogHeader>
+
+          <div className="px-4 py-3 border-b">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Поиск по названию или артикулу..."
+                  value={msSearchQuery}
+                  onChange={(e) => setMsSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleMsSearch()}
+                  className="h-8 text-sm pl-8"
+                  autoFocus
+                />
+              </div>
+              <Button size="sm" variant="secondary" onClick={handleMsSearch} disabled={msLoading} className="h-8 px-3">
+                {msLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Найти"}
               </Button>
             </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              {msProducts.length === 0 && !msLoading && (
-                <p className="text-xs text-muted-foreground text-center py-4">
+          </div>
+
+          <ScrollArea className="max-h-[320px]">
+            <div className="p-2 space-y-0.5">
+              {msLoading && msProducts.length === 0 && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {!msLoading && msProducts.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-8">
                   {msSearchQuery ? "Ничего не найдено" : "Введите запрос для поиска"}
                 </p>
               )}
               {msProducts.map((mp: any) => (
-                <div
+                <button
                   key={mp.id}
-                  className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-xs"
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent text-left text-xs transition-colors"
                   onClick={() => handleLinkMsProduct(mp)}
                 >
                   <div className="min-w-0 flex-1">
                     <div className="font-medium truncate">{mp.name}</div>
-                    {mp.article && <div className="text-muted-foreground text-[10px]">Арт: {mp.article}</div>}
+                    {mp.article && (
+                      <div className="text-muted-foreground text-[10px] mt-0.5">Арт: {mp.article}</div>
+                    )}
                   </div>
-                  <Button size="sm" variant="ghost" className="h-6 text-[10px]">
-                    <Link2 className="h-3 w-3" />
-                  </Button>
-                </div>
+                  <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                </button>
               ))}
             </div>
-          </div>
-        </div>
-      )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
