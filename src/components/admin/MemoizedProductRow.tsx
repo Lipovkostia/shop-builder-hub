@@ -251,7 +251,7 @@ function ProductRowComponent({
         },
       });
       if (error) throw error;
-      setMsProducts(data?.rows || []);
+      setMsProducts(data?.products || data?.rows || []);
     } catch (err) {
       console.error("MS search error:", err);
     } finally {
