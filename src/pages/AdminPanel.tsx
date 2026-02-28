@@ -5967,7 +5967,11 @@ export default function AdminPanel({
           )}
 
           {effectiveStoreId && activeSection === "clients" && (
-            <StoreCustomersTable storeId={effectiveStoreId} />
+            <StoreCustomersTable 
+              storeId={effectiveStoreId} 
+              moyskladLogin={firstMoyskladAccount?.login}
+              moyskladPassword={firstMoyskladAccount?.password}
+            />
           )}
 
           {effectiveStoreId && activeSection === "orders" && (
