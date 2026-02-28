@@ -1578,18 +1578,24 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          moysklad_counterparty_id: string | null
+          moysklad_counterparty_name: string | null
           profile_id: string
           store_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          moysklad_counterparty_id?: string | null
+          moysklad_counterparty_name?: string | null
           profile_id: string
           store_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          moysklad_counterparty_id?: string | null
+          moysklad_counterparty_name?: string | null
           profile_id?: string
           store_id?: string
         }

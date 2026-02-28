@@ -441,36 +441,46 @@ export function useCustomerOrders() {
                   price: Math.round(item.price * 100),
                 }));
 
-              if (moyskladPositions.length > 0) {
-                let orderComment = "";
-                if (data.shippingAddress.name) orderComment += `Клиент: ${data.shippingAddress.name}\n`;
-                if (data.shippingAddress.phone) orderComment += `Телефон: ${data.shippingAddress.phone}\n`;
-                if (data.shippingAddress.address) orderComment += `Адрес: ${data.shippingAddress.address}\n`;
-                if (data.shippingAddress.comment) orderComment += `Комментарий: ${data.shippingAddress.comment}`;
+              // Build comment with customer info
+              let orderComment = "";
+              if (data.shippingAddress.name) orderComment += `Клиент: ${data.shippingAddress.name}\n`;
+              if (data.shippingAddress.phone) orderComment += `Телефон: ${data.shippingAddress.phone}\n`;
+              if (data.shippingAddress.address) orderComment += `Адрес: ${data.shippingAddress.address}\n`;
+              if (data.shippingAddress.comment) orderComment += `Комментарий: ${data.shippingAddress.comment}\n`;
 
-                const moyskladOrderResult = await supabase.functions.invoke("moysklad", {
-                  body: {
-                    action: "create_customerorder",
-                    login: moyskladAccount.login,
-                    password: moyskladAccount.password,
-                    order: {
-                      name: orderNumber,
-                      description: orderComment.trim(),
-                      organization_id: syncSettings.moysklad_organization_id,
-                      counterparty_id: counterpartyId,
-                      positions: moyskladPositions,
-                    },
-                  },
+              // Add unmatched items to comment
+              const unmatchedItems = data.items.filter(item => !item.moyskladId);
+              if (unmatchedItems.length > 0) {
+                orderComment += `\n--- Товары без привязки к МойСклад ---\n`;
+                unmatchedItems.forEach(item => {
+                  orderComment += `• ${item.productName} — ${item.quantity} шт. × ${item.price} ₽\n`;
                 });
+              }
 
-                if (moyskladOrderResult.data?.order?.id) {
-                  await supabase
-                    .from("orders")
-                    .update({ moysklad_order_id: moyskladOrderResult.data.order.id })
-                    .eq("id", order.id);
-                  
-                  console.log("Order synced to MoySklad with counterparty:", counterpartyId);
-                }
+              const moyskladOrderResult = await supabase.functions.invoke("moysklad", {
+                body: {
+                  action: "create_customerorder",
+                  login: moyskladAccount.login,
+                  password: moyskladAccount.password,
+                  order: {
+                    name: orderNumber,
+                    description: orderComment.trim(),
+                    organization_id: syncSettings.moysklad_organization_id,
+                    counterparty_id: counterpartyId,
+                    positions: moyskladPositions.length > 0 ? moyskladPositions : undefined,
+                  },
+                },
+              });
+
+              if (moyskladOrderResult.data?.order?.id) {
+                await supabase
+                  .from("orders")
+                  .update({ moysklad_order_id: moyskladOrderResult.data.order.id })
+                  .eq("id", order.id);
+                
+                console.log("Order synced to MoySklad with counterparty:", counterpartyId);
+              } else {
+                console.error("MoySklad order creation failed:", moyskladOrderResult);
               }
             }
           }
