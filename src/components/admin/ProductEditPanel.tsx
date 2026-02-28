@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { X, ChevronDown, Plus, Search, Lock } from "lucide-react";
+import { X, ChevronDown, Plus, Search, Lock, Link2, Unlink, Loader2, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 import { unitOptions as baseUnitOptions, packagingOptions as basePackagingOptions, packagingTypeLabels, PackagingType } from "./types";
 import type { StoreProduct } from "@/hooks/useStoreProducts";
 import { useStoreCategories, StoreCategory } from "@/hooks/useStoreCategories";
@@ -46,6 +49,8 @@ interface ProductEditPanelProps {
   catalogSettings?: CatalogSettings;
   onCatalogSettingsChange?: (catalogId: string, productId: string, settings: Partial<CatalogSettings>) => void;
   storeId?: string | null;
+  moyskladLogin?: string | null;
+  moyskladPassword?: string | null;
 }
 
 export function ProductEditPanel({
@@ -61,6 +66,8 @@ export function ProductEditPanel({
   catalogSettings,
   onCatalogSettingsChange,
   storeId,
+  moyskladLogin,
+  moyskladPassword,
 }: ProductEditPanelProps) {
   // Onboarding context
   const onboarding = useOnboardingSafe();
@@ -117,6 +124,89 @@ export function ProductEditPanel({
   const [selectedCatalogs, setSelectedCatalogs] = useState<string[]>(productCatalogIds);
   const [saving, setSaving] = useState(false);
   const [showSeoPanel, setShowSeoPanel] = useState(false);
+  
+  // MoySklad product linking state
+  const [msLinkDialogOpen, setMsLinkDialogOpen] = useState(false);
+  const [msProducts, setMsProducts] = useState<any[]>([]);
+  const [msLoading, setMsLoading] = useState(false);
+  const [msSearch, setMsSearch] = useState("");
+  const [linkedMoyskladId, setLinkedMoyskladId] = useState<string | null>(product.moysklad_id || null);
+  const [linkedMoyskladName, setLinkedMoyskladName] = useState<string | null>(null);
+  const hasMoysklad = !!moyskladLogin && !!moyskladPassword;
+
+  const fetchMsProducts = useCallback(async () => {
+    if (!moyskladLogin || !moyskladPassword || msProducts.length > 0) return;
+    setMsLoading(true);
+    try {
+      let all: any[] = [];
+      let offset = 0;
+      const batchSize = 100;
+      let total = 0;
+      do {
+        const { data, error } = await supabase.functions.invoke("moysklad", {
+          body: { action: "get_assortment", login: moyskladLogin, password: moyskladPassword, limit: batchSize, offset },
+        });
+        if (error) throw error;
+        if (data.error) throw new Error(data.error);
+        all = [...all, ...(data.products || [])];
+        total = data.meta?.size || all.length;
+        offset += batchSize;
+      } while (offset < total && offset < 2000);
+      setMsProducts(all);
+    } catch (e: any) {
+      toast.error("Ошибка загрузки товаров МойСклад: " + e.message);
+    } finally {
+      setMsLoading(false);
+    }
+  }, [moyskladLogin, moyskladPassword, msProducts.length]);
+
+  const linkMsProduct = async (msProduct: any) => {
+    try {
+      const { error } = await supabase
+        .from("products")
+        .update({ moysklad_id: msProduct.id })
+        .eq("id", product.id);
+      if (error) throw error;
+      setLinkedMoyskladId(msProduct.id);
+      setLinkedMoyskladName(msProduct.name);
+      setMsLinkDialogOpen(false);
+      toast.success(`Товар привязан к МойСклад: ${msProduct.name}`);
+    } catch (e: any) {
+      toast.error("Ошибка: " + e.message);
+    }
+  };
+
+  const unlinkMsProduct = async () => {
+    try {
+      const { error } = await supabase
+        .from("products")
+        .update({ moysklad_id: null })
+        .eq("id", product.id);
+      if (error) throw error;
+      setLinkedMoyskladId(null);
+      setLinkedMoyskladName(null);
+      toast.success("Привязка к МойСклад удалена");
+    } catch (e: any) {
+      toast.error("Ошибка: " + e.message);
+    }
+  };
+
+  // Update linkedMoyskladId when product changes
+  useEffect(() => {
+    setLinkedMoyskladId(product.moysklad_id || null);
+  }, [product.moysklad_id]);
+
+  // Find linked product name from msProducts cache
+  useEffect(() => {
+    if (linkedMoyskladId && msProducts.length > 0) {
+      const found = msProducts.find(p => p.id === linkedMoyskladId);
+      if (found) setLinkedMoyskladName(found.name);
+    }
+  }, [linkedMoyskladId, msProducts]);
+
+  const filteredMsProducts = msSearch.trim()
+    ? msProducts.filter(p => p.name.toLowerCase().includes(msSearch.toLowerCase()) || p.article?.toLowerCase().includes(msSearch.toLowerCase()) || p.code?.includes(msSearch))
+    : msProducts;
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialMount = useRef(true);
   const catalogSettingsInitialized = useRef(false);
@@ -650,6 +740,39 @@ export function ProductEditPanel({
           />
         </div>
 
+        {/* MoySklad Product Linking */}
+        {hasMoysklad && (
+          <div className="col-span-2 sm:col-span-3 pt-1 border-t border-border/50">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Привязка к МойСклад</label>
+            <div className="flex items-center gap-1.5 mt-1">
+              {linkedMoyskladId ? (
+                <>
+                  <Badge variant="secondary" className="text-[10px] gap-1 flex-1 justify-start truncate">
+                    <Package className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{linkedMoyskladName || linkedMoyskladId.slice(0, 8) + "..."}</span>
+                  </Badge>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0" onClick={() => { setMsSearch(""); setMsLinkDialogOpen(true); fetchMsProducts(); }}>
+                    <Link2 className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive shrink-0" onClick={unlinkMsProduct}>
+                    <Unlink className="h-3 w-3" />
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1 w-full"
+                  onClick={() => { setMsSearch(""); setMsLinkDialogOpen(true); fetchMsProducts(); }}
+                >
+                  <Link2 className="h-3 w-3" />
+                  Привязать товар МойСклад
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* SEO Settings Button */}
         <div className="col-span-2 sm:col-span-3 pt-1 border-t border-border/50">
           <Button
@@ -697,6 +820,51 @@ export function ProductEditPanel({
           Закрыть
         </Button>
       </div>
+      {/* MoySklad Product Search Dialog */}
+      <Dialog open={msLinkDialogOpen} onOpenChange={setMsLinkDialogOpen}>
+        <DialogContent className="max-w-md max-h-[70vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Привязать товар МойСклад</DialogTitle>
+          </DialogHeader>
+          <Input
+            placeholder="Поиск по названию, артикулу..."
+            value={msSearch}
+            onChange={(e) => setMsSearch(e.target.value)}
+            className="h-8 text-xs"
+          />
+          <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
+            {msLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredMsProducts.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">Товары не найдены</p>
+            ) : (
+              filteredMsProducts.slice(0, 100).map((mp) => (
+                <button
+                  key={mp.id}
+                  className={`w-full text-left px-2 py-1.5 rounded text-xs hover:bg-accent transition-colors flex items-center justify-between gap-2 ${linkedMoyskladId === mp.id ? 'bg-primary/10 border border-primary/30' : ''}`}
+                  onClick={() => linkMsProduct(mp)}
+                >
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{mp.name}</div>
+                    {(mp.article || mp.code) && (
+                      <div className="text-[10px] text-muted-foreground">
+                        {mp.article && `Арт: ${mp.article}`}
+                        {mp.article && mp.code && " · "}
+                        {mp.code && `Код: ${mp.code}`}
+                      </div>
+                    )}
+                  </div>
+                  {mp.buyPrice > 0 && (
+                    <span className="text-[10px] text-muted-foreground shrink-0">{Math.round(mp.buyPrice)} ₽</span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
