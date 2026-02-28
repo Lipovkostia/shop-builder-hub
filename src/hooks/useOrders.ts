@@ -404,8 +404,7 @@ export function useCustomerOrders() {
 
         if (
           syncSettings?.sync_orders_enabled &&
-          syncSettings?.moysklad_organization_id &&
-          syncSettings?.moysklad_counterparty_id
+          syncSettings?.moysklad_organization_id
         ) {
           // Get MoySklad account credentials
           const { data: moyskladAccount } = await supabase
@@ -416,48 +415,62 @@ export function useCustomerOrders() {
             .maybeSingle();
 
           if (moyskladAccount) {
-            // Prepare positions - include all items, use moysklad_id if available
-            // For items without moysklad_id, we'll skip them in the order
-            const moyskladPositions = data.items
-              .filter(item => item.moyskladId) // Only include items with moysklad_id
-              .map(item => ({
-                moysklad_id: item.moyskladId!,
-                product_name: item.productName,
-                quantity: item.quantity,
-                price: Math.round(item.price * 100), // Convert to kopecks (must be integer)
-              }));
+            // Check if customer has a linked MoySklad counterparty
+            let counterpartyId = syncSettings.moysklad_counterparty_id;
+            
+            const { data: customerData } = await supabase
+              .from("store_customers")
+              .select("*")
+              .eq("id", storeCustomer.id)
+              .single() as { data: any; error: any };
+            
+            if (customerData?.moysklad_counterparty_id) {
+              counterpartyId = customerData.moysklad_counterparty_id;
+            }
 
-            if (moyskladPositions.length > 0) {
-              // Build order comment from shipping address
-              let orderComment = "";
-              if (data.shippingAddress.name) orderComment += `Клиент: ${data.shippingAddress.name}\n`;
-              if (data.shippingAddress.phone) orderComment += `Телефон: ${data.shippingAddress.phone}\n`;
-              if (data.shippingAddress.address) orderComment += `Адрес: ${data.shippingAddress.address}\n`;
-              if (data.shippingAddress.comment) orderComment += `Комментарий: ${data.shippingAddress.comment}`;
+            if (!counterpartyId) {
+              console.log("No counterparty ID available for MoySklad order");
+            } else {
+              // Prepare positions - include all items, use moysklad_id if available
+              const moyskladPositions = data.items
+                .filter(item => item.moyskladId)
+                .map(item => ({
+                  moysklad_id: item.moyskladId!,
+                  product_name: item.productName,
+                  quantity: item.quantity,
+                  price: Math.round(item.price * 100),
+                }));
 
-              const moyskladOrderResult = await supabase.functions.invoke("moysklad", {
-                body: {
-                  action: "create_customerorder",
-                  login: moyskladAccount.login,
-                  password: moyskladAccount.password,
-                  order: {
-                    name: orderNumber,
-                    description: orderComment.trim(),
-                    organization_id: syncSettings.moysklad_organization_id,
-                    counterparty_id: syncSettings.moysklad_counterparty_id,
-                    positions: moyskladPositions,
+              if (moyskladPositions.length > 0) {
+                let orderComment = "";
+                if (data.shippingAddress.name) orderComment += `Клиент: ${data.shippingAddress.name}\n`;
+                if (data.shippingAddress.phone) orderComment += `Телефон: ${data.shippingAddress.phone}\n`;
+                if (data.shippingAddress.address) orderComment += `Адрес: ${data.shippingAddress.address}\n`;
+                if (data.shippingAddress.comment) orderComment += `Комментарий: ${data.shippingAddress.comment}`;
+
+                const moyskladOrderResult = await supabase.functions.invoke("moysklad", {
+                  body: {
+                    action: "create_customerorder",
+                    login: moyskladAccount.login,
+                    password: moyskladAccount.password,
+                    order: {
+                      name: orderNumber,
+                      description: orderComment.trim(),
+                      organization_id: syncSettings.moysklad_organization_id,
+                      counterparty_id: counterpartyId,
+                      positions: moyskladPositions,
+                    },
                   },
-                },
-              });
+                });
 
-              if (moyskladOrderResult.data?.order?.id) {
-                // Save MoySklad order ID
-                await supabase
-                  .from("orders")
-                  .update({ moysklad_order_id: moyskladOrderResult.data.order.id })
-                  .eq("id", order.id);
-                
-                console.log("Order synced to MoySklad:", moyskladOrderResult.data.order.id);
+                if (moyskladOrderResult.data?.order?.id) {
+                  await supabase
+                    .from("orders")
+                    .update({ moysklad_order_id: moyskladOrderResult.data.order.id })
+                    .eq("id", order.id);
+                  
+                  console.log("Order synced to MoySklad with counterparty:", counterpartyId);
+                }
               }
             }
           }
