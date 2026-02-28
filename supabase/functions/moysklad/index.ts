@@ -15,7 +15,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, productId, limit = 100, offset = 0, login, password } = body;
+    const { action, productId, limit = 100, offset = 0, login, password, search } = body;
     
     console.log(`MoySklad API action: ${action}, productId: ${productId}, limit: ${limit}, offset: ${offset}`);
 
@@ -45,8 +45,9 @@ serve(async (req) => {
       // Fetch products/assortment list
       console.log('Fetching assortment from MoySklad...');
       
+      const searchParam = search ? `&search=${encodeURIComponent(search)}` : '';
       const response = await fetch(
-        `${MOYSKLAD_API_URL}/entity/assortment?limit=${limit}&offset=${offset}`,
+        `${MOYSKLAD_API_URL}/entity/assortment?limit=${limit}&offset=${offset}${searchParam}`,
         {
           method: 'GET',
           headers: {
