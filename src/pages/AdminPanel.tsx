@@ -4162,6 +4162,8 @@ export default function AdminPanel({
                       </div>
                     </>
                   )}
+                    </>
+                  )}
 
                   {importView === "counterparties" && (
                     <MoyskladCounterpartiesSection
