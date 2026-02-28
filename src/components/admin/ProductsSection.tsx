@@ -37,6 +37,8 @@ interface ProductsSectionProps {
   customPackagingTypes?: string[];
   onAddCustomUnit?: (unit: string) => void;
   onAddCustomPackaging?: (type: string) => void;
+  moyskladLogin?: string;
+  moyskladPassword?: string;
 }
 
 const defaultVisibleColumns: VisibleColumns = {
@@ -52,6 +54,7 @@ const defaultVisibleColumns: VisibleColumns = {
   price: true,
   groups: true,
   catalogs: true,
+  msProduct: false,
   sync: true,
 };
 
@@ -91,6 +94,8 @@ export function ProductsSection({
   customPackagingTypes = [],
   onAddCustomUnit,
   onAddCustomPackaging,
+  moyskladLogin,
+  moyskladPassword,
 }: ProductsSectionProps) {
   const { toast } = useToast();
   
@@ -495,6 +500,9 @@ export function ProductsSection({
             <DropdownMenuCheckboxItem checked={visibleColumns.sync} onCheckedChange={() => toggleColumn("sync")}>
               Синхр.
             </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={visibleColumns.msProduct} onCheckedChange={() => toggleColumn("msProduct")}>
+              МС товар
+            </DropdownMenuCheckboxItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -582,6 +590,8 @@ export function ProductsSection({
         onAIGenerateDescription={handleAIGenerateDescription}
         isAIGeneratingDescription={!!aiGeneratingProductId}
         aiGeneratingProductId={aiGeneratingProductId}
+        moyskladLogin={moyskladLogin}
+        moyskladPassword={moyskladPassword}
       />
     </div>
   );

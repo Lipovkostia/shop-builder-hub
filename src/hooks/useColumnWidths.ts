@@ -17,6 +17,7 @@ const DEFAULT_WIDTHS: ColumnWidthConfig = {
   price: 80,
   groups: 96,
   catalogs: 112,
+  msProduct: 100,
   sync: 48,
 };
 
