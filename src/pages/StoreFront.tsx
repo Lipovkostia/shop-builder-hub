@@ -41,6 +41,7 @@ import { ProductEditPanel } from "@/components/admin/ProductEditPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { ImageGalleryViewer } from "@/components/admin/ImageGalleryViewer";
 import { uploadFilesToStorage, deleteSingleImage } from "@/hooks/useProductImages";
+import { useMoyskladAccounts } from "@/hooks/useMoyskladAccounts";
 import { useToast } from "@/hooks/use-toast";
 import {
   formatPrice,
@@ -124,6 +125,8 @@ function ProductCard({
   onToggleGallery,
   onImagesUpdate,
   isOnboardingHighlighted = false,
+  moyskladLogin,
+  moyskladPassword,
 }: { 
   product: any;
   cart: CartItem[];
@@ -144,6 +147,8 @@ function ProductCard({
   onToggleGallery?: () => void;
   onImagesUpdate?: (productId: string, images: string[]) => void;
   isOnboardingHighlighted?: boolean;
+  moyskladLogin?: string | null;
+  moyskladPassword?: string | null;
 }) {
   const { toast } = useToast();
   const [isUploadingImages, setIsUploadingImages] = useState(false);
@@ -653,6 +658,8 @@ function ProductCard({
             } : undefined}
             onCatalogSettingsChange={onCatalogSettingsChange}
             storeId={product.store_id}
+            moyskladLogin={moyskladLogin}
+            moyskladPassword={moyskladPassword}
           />
         </CollapsibleContent>
       </Collapsible>
@@ -1037,6 +1044,8 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
   const { catalogs, productVisibility, setProductCatalogs, createCatalog, refetch: refetchCatalogs } = useStoreCatalogs(store?.id || null);
   const { settings: catalogProductSettings, getProductSettings, updateProductSettings, refetch: refetchCatalogSettings } = useCatalogProductSettings(store?.id || null);
   const { categories } = useStoreCategories(store?.id || null);
+  const { accounts: moyskladAccounts } = useMoyskladAccounts(store?.id || null);
+  const firstMsAccount = moyskladAccounts[0];
   
   // State for catalog-specific ordered categories (loaded via RPC)
   const [catalogSpecificCategories, setCatalogSpecificCategories] = useState<(typeof categories[0] & { catalog_parent_id?: string | null })[]>([]);
@@ -2132,6 +2141,8 @@ export default function StoreFront({ workspaceMode, storeData, onSwitchToAdmin, 
                   }}
                   onImagesUpdate={handleImagesUpdate}
                   isOnboardingHighlighted={false}
+                  moyskladLogin={firstMsAccount?.login}
+                  moyskladPassword={firstMsAccount?.password}
                 />
               );
             };
