@@ -192,6 +192,8 @@ interface VirtualProductTableProps {
   onAIGenerateDescription?: (productId: string, productName: string) => void;
   isAIGeneratingDescription?: boolean;
   aiGeneratingProductId?: string | null;
+  moyskladLogin?: string;
+  moyskladPassword?: string;
 }
 
 const ROW_HEIGHT = 28;
@@ -232,6 +234,8 @@ export function VirtualProductTable({
   onAIGenerateDescription,
   isAIGeneratingDescription,
   aiGeneratingProductId,
+  moyskladLogin,
+  moyskladPassword,
 }: VirtualProductTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const { widths, onResizeStart } = useColumnWidths("assortment");
@@ -432,6 +436,12 @@ export function VirtualProductTable({
               <ResizeHandle col="catalogs" />
             </div>
           )}
+          {visibleColumns.msProduct && (
+            <div className="flex-shrink-0 text-xs font-medium text-muted-foreground relative" style={{ width: widths.msProduct }}>
+              МС товар
+              <ResizeHandle col="msProduct" />
+            </div>
+          )}
           {visibleColumns.sync && (
             <div className="flex-shrink-0 relative" style={{ width: widths.sync }}>
               <SelectFilter
@@ -518,6 +528,8 @@ export function VirtualProductTable({
                   isAIGeneratingDescription={isAIGeneratingDescription}
                   aiGeneratingProductId={aiGeneratingProductId}
                   columnWidths={widths}
+                  moyskladLogin={moyskladLogin}
+                  moyskladPassword={moyskladPassword}
                 />
               </div>
             );

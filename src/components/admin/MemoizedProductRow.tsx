@@ -1,8 +1,11 @@
-import React, { memo, useCallback } from "react";
+import React, { memo, useCallback, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, Plus, Lock, Unlock } from "lucide-react";
+import { GripVertical, Plus, Lock, Unlock, Link2, X, Search, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { InlineEditableCell } from "./InlineEditableCell";
 import { InlineSelectCell } from "./InlineSelectCell";
 import { InlineMultiSelectCell } from "./InlineMultiSelectCell";
@@ -32,6 +35,7 @@ export interface VisibleColumns {
   price: boolean;
   groups: boolean;
   catalogs: boolean;
+  msProduct: boolean;
   sync: boolean;
 }
 
@@ -77,6 +81,8 @@ interface MemoizedProductRowProps {
   isAIGeneratingDescription?: boolean;
   aiGeneratingProductId?: string | null;
   columnWidths?: Record<string, number>;
+  moyskladLogin?: string;
+  moyskladPassword?: string;
 }
 
 function ProductRowComponent({
@@ -111,7 +117,18 @@ function ProductRowComponent({
   isAIGeneratingDescription,
   aiGeneratingProductId,
   columnWidths,
+  moyskladLogin,
+  moyskladPassword,
 }: MemoizedProductRowProps) {
+  const { toast } = useToast();
+  
+  // MoySklad product linking state
+  const [msSearchOpen, setMsSearchOpen] = useState(false);
+  const [msSearchQuery, setMsSearchQuery] = useState("");
+  const [msProducts, setMsProducts] = useState<any[]>([]);
+  const [msLoading, setMsLoading] = useState(false);
+  const [linkedMsName, setLinkedMsName] = useState<string | null>(null);
+
   // If fixed price is enabled, use pricePerUnit directly
   // Otherwise calculate from buyPrice + markup, or fall back to pricePerUnit
   const salePrice = product.isFixedPrice
@@ -213,6 +230,61 @@ function ProductRowComponent({
       }
     });
   }, [catalogVisibility, onToggleCatalogVisibility, product.id]);
+  const handleMsSearch = useCallback(async () => {
+    if (!moyskladLogin || !moyskladPassword) return;
+    setMsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("moysklad", {
+        body: {
+          action: "get_assortment",
+          login: moyskladLogin,
+          password: moyskladPassword,
+          search: msSearchQuery || undefined,
+          limit: 50,
+        },
+      });
+      if (error) throw error;
+      setMsProducts(data?.rows || []);
+    } catch (err) {
+      console.error("MS search error:", err);
+    } finally {
+      setMsLoading(false);
+    }
+  }, [moyskladLogin, moyskladPassword, msSearchQuery]);
+
+  const handleLinkMsProduct = useCallback(async (msProduct: any) => {
+    const msId = msProduct.id;
+    const msName = msProduct.name;
+    try {
+      const { error } = await supabase
+        .from("products")
+        .update({ moysklad_id: msId })
+        .eq("id", product.id);
+      if (error) throw error;
+      setLinkedMsName(msName);
+      onUpdateProduct({ ...product, moyskladId: msId });
+      setMsSearchOpen(false);
+      toast({ title: "Товар привязан", description: msName });
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  }, [product, onUpdateProduct, toast]);
+
+  const handleUnlinkMsProduct = useCallback(async () => {
+    try {
+      const { error } = await supabase
+        .from("products")
+        .update({ moysklad_id: null })
+        .eq("id", product.id);
+      if (error) throw error;
+      setLinkedMsName(null);
+      onUpdateProduct({ ...product, moyskladId: undefined });
+      toast({ title: "Привязка снята" });
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  }, [product, onUpdateProduct, toast]);
+  
 
   return (
     <div className="border-b border-border">
@@ -425,7 +497,37 @@ function ProductRowComponent({
           </div>
         )}
 
-        {/* Sync */}
+        {/* MoySklad Product */}
+        {visibleColumns.msProduct && (
+          <div className="flex-shrink-0" style={{ width: columnWidths?.msProduct || 100 }}>
+            {moyskladLogin && moyskladPassword ? (
+              product.moyskladId ? (
+                <div className="flex items-center gap-0.5">
+                  <Badge variant="secondary" className="text-[9px] gap-0.5 max-w-[70px] truncate">
+                    <Link2 className="h-2.5 w-2.5 shrink-0" />
+                    <span className="truncate">{linkedMsName || "Привязан"}</span>
+                  </Badge>
+                  <Button variant="ghost" size="icon" className="h-4 w-4" onClick={handleUnlinkMsProduct}>
+                    <X className="h-2.5 w-2.5" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 text-[10px] px-1"
+                  onClick={() => { setMsSearchOpen(true); handleMsSearch(); }}
+                >
+                  <Link2 className="h-3 w-3 mr-0.5" />
+                  Привязать
+                </Button>
+              )
+            ) : (
+              <span className="text-[10px] text-muted-foreground">—</span>
+            )}
+          </div>
+        )}
+
         {visibleColumns.sync && (
           <div className="flex-shrink-0" style={{ width: columnWidths?.sync || 48 }}>
             {product.source === "moysklad" && (
@@ -462,6 +564,50 @@ function ProductRowComponent({
           />
         </div>
       )}
+
+      {/* MoySklad product search dialog */}
+      {msSearchOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setMsSearchOpen(false)}>
+          <div className="bg-background rounded-lg shadow-lg w-[400px] max-h-[500px] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="p-3 border-b flex items-center gap-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Поиск товара в МойСклад..."
+                value={msSearchQuery}
+                onChange={(e) => setMsSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleMsSearch()}
+                className="h-8 text-sm"
+                autoFocus
+              />
+              <Button size="sm" variant="outline" onClick={handleMsSearch} disabled={msLoading}>
+                {msLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Найти"}
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {msProducts.length === 0 && !msLoading && (
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  {msSearchQuery ? "Ничего не найдено" : "Введите запрос для поиска"}
+                </p>
+              )}
+              {msProducts.map((mp: any) => (
+                <div
+                  key={mp.id}
+                  className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-xs"
+                  onClick={() => handleLinkMsProduct(mp)}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium truncate">{mp.name}</div>
+                    {mp.article && <div className="text-muted-foreground text-[10px]">Арт: {mp.article}</div>}
+                  </div>
+                  <Button size="sm" variant="ghost" className="h-6 text-[10px]">
+                    <Link2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -490,6 +636,7 @@ function areEqual(prevProps: MemoizedProductRowProps, nextProps: MemoizedProduct
   if (prevProduct.source !== nextProduct.source) return false;
   if (prevProduct.image !== nextProduct.image) return false;
   if (prevProduct.isFixedPrice !== nextProduct.isFixedPrice) return false;
+  if (prevProduct.moyskladId !== nextProduct.moyskladId) return false;
   
   // Check images array
   const prevImages = prevProduct.images || [];
@@ -528,6 +675,7 @@ function areEqual(prevProps: MemoizedProductRowProps, nextProps: MemoizedProduct
   if (prevCols.price !== nextCols.price) return false;
   if (prevCols.groups !== nextCols.groups) return false;
   if (prevCols.catalogs !== nextCols.catalogs) return false;
+  if (prevCols.msProduct !== nextCols.msProduct) return false;
   if (prevCols.sync !== nextCols.sync) return false;
   
   // Check column widths

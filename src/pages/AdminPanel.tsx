@@ -3460,6 +3460,8 @@ export default function AdminPanel({
                 onAddCustomUnit={(unit) => setCustomUnits(prev => [...prev, unit])}
                 onAddCustomPackaging={(type) => setCustomPackagingTypes(prev => [...prev, type])}
                 onAddProductsFromMegacatalog={handleAddProductsFromMegacatalog}
+                moyskladLogin={firstMoyskladAccount?.login}
+                moyskladPassword={firstMoyskladAccount?.password}
               />
 
               {/* Product Pricing Dialog */}
