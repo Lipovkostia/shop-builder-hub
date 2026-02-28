@@ -831,6 +831,44 @@ export type Database = {
           },
         ]
       }
+      order_attachments: {
+        Row: {
+          attachment_type: string
+          created_at: string
+          file_name: string
+          file_type: string
+          file_url: string
+          id: string
+          order_id: string
+        }
+        Insert: {
+          attachment_type?: string
+          created_at?: string
+          file_name: string
+          file_type?: string
+          file_url: string
+          id?: string
+          order_id: string
+        }
+        Update: {
+          attachment_type?: string
+          created_at?: string
+          file_name?: string
+          file_type?: string
+          file_url?: string
+          id?: string
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_attachments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           id: string

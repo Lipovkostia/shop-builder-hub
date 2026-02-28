@@ -251,19 +251,23 @@ serve(async (req) => {
     }
 
     if (action === 'get_counterparties') {
-      // Fetch counterparties list
-      console.log('Fetching counterparties from MoySklad...');
+      // Fetch counterparties list with all available fields
+      const { search, counterpartyLimit = 100, counterpartyOffset = 0 } = body;
+      console.log(`Fetching counterparties from MoySklad... limit=${counterpartyLimit}, offset=${counterpartyOffset}`);
       
-      const response = await fetch(
-        `${MOYSKLAD_API_URL}/entity/counterparty?limit=100`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': authHeader,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      let url = `${MOYSKLAD_API_URL}/entity/counterparty?limit=${counterpartyLimit}&offset=${counterpartyOffset}`;
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json',
+          'Accept-Encoding': 'gzip',
+        },
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -282,10 +286,41 @@ serve(async (req) => {
         name: cp.name,
         phone: cp.phone || null,
         email: cp.email || null,
+        description: cp.description || null,
+        companyType: cp.companyType || null,
+        legalTitle: cp.legalTitle || null,
+        legalAddress: cp.legalAddress || null,
+        legalAddressFull: cp.legalAddressFull || null,
+        actualAddress: cp.actualAddress || null,
+        actualAddressFull: cp.actualAddressFull || null,
+        inn: cp.inn || null,
+        kpp: cp.kpp || null,
+        ogrn: cp.ogrn || null,
+        ogrnip: cp.ogrnip || null,
+        okpo: cp.okpo || null,
+        certificateNumber: cp.certificateNumber || null,
+        certificateDate: cp.certificateDate || null,
+        tags: cp.tags || [],
+        code: cp.code || null,
+        externalCode: cp.externalCode || null,
+        archived: cp.archived || false,
+        created: cp.created || null,
+        updated: cp.updated || null,
+        salesAmount: cp.salesAmount || 0,
+        bonusProgram: cp.bonusProgram || null,
+        discountCardNumber: cp.discountCardNumber || null,
+        fax: cp.fax || null,
       })) || [];
 
       return new Response(
-        JSON.stringify({ counterparties }),
+        JSON.stringify({ 
+          counterparties,
+          meta: {
+            size: data.meta?.size || 0,
+            limit: data.meta?.limit || counterpartyLimit,
+            offset: data.meta?.offset || counterpartyOffset,
+          }
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

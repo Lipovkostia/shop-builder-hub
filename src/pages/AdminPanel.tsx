@@ -124,6 +124,7 @@ import { CategorySettingsSection } from "@/components/admin/CategorySettingsSect
 import { MegacatalogSection } from "@/components/admin/MegacatalogSection";
 import { ExchangeSection } from "@/components/admin/ExchangeSection";
 import { OrdersSection } from "@/components/admin/OrdersSection";
+import { MoyskladCounterpartiesSection } from "@/components/admin/MoyskladCounterpartiesSection";
 
 // Removed localStorage keys - now using Supabase
 
@@ -308,7 +309,7 @@ const formatVariants = (product: Product) => {
 };
 
 type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings" | "exchange";
-type ImportView = "accounts" | "catalog";
+type ImportView = "accounts" | "catalog" | "counterparties";
 type ImportSource = "select" | "moysklad" | "excel" | "google-sheets";
 type CatalogView = "list" | "detail";
 
@@ -3717,7 +3718,7 @@ export default function AdminPanel({
                 </>
               )}
 
-              {importView === "catalog" && currentAccount && (
+              {(importView === "catalog" || importView === "counterparties") && currentAccount && (
                 <>
                   <div className="mb-4 flex items-center gap-4">
                     <Button
@@ -3733,6 +3734,34 @@ export default function AdminPanel({
                       <p className="text-sm text-muted-foreground">{currentAccount.login}</p>
                     </div>
                   </div>
+
+                  {/* Sub-tabs: Каталог / Контрагенты */}
+                  <div className="flex gap-1 mb-4 border-b">
+                    <button
+                      onClick={() => setImportView("catalog")}
+                      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                        importView === "catalog"
+                          ? "border-primary text-primary"
+                          : "border-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      📦 Каталог
+                    </button>
+                    <button
+                      onClick={() => setImportView("counterparties")}
+                      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                        importView === "counterparties"
+                          ? "border-primary text-primary"
+                          : "border-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      👥 Контрагенты
+                    </button>
+                  </div>
+
+                  {importView === "catalog" && (
+                    <>
+
 
                   {/* Sync Settings Panel */}
                   <SyncSettingsPanel
@@ -4133,6 +4162,14 @@ export default function AdminPanel({
                       </div>
                     </>
                   )}
+
+                  {importView === "counterparties" && (
+                    <MoyskladCounterpartiesSection
+                      login={currentAccount.login}
+                      password={currentAccount.password}
+                    />
+                  )}
+
                 </>
               )}
                 </>
