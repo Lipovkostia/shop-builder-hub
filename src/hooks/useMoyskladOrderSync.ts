@@ -21,6 +21,8 @@ export interface MoyskladOrderData {
 export function useMoyskladOrderSync() {
   const [syncing, setSyncing] = useState(false);
   const [syncedData, setSyncedData] = useState<Record<string, MoyskladOrderData>>({});
+  const [syncErrors, setSyncErrors] = useState<Record<string, boolean>>({});
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
   const syncOrders = useCallback(async (
     orders: Array<{ id: string; moysklad_order_id: string | null; store_id: string }>
@@ -30,6 +32,8 @@ export function useMoyskladOrderSync() {
     if (msOrders.length === 0) return;
 
     setSyncing(true);
+    const newErrors: Record<string, boolean> = {};
+    
     try {
       // Group by store_id to use correct credentials
       const byStore: Record<string, typeof msOrders> = {};
@@ -49,7 +53,13 @@ export function useMoyskladOrderSync() {
           .limit(1)
           .maybeSingle();
 
-        if (!account) continue;
+        if (!account) {
+          // Mark all orders from this store as error
+          for (const order of storeOrders) {
+            newErrors[order.id] = true;
+          }
+          continue;
+        }
 
         const msOrderIds = storeOrders.map(o => o.moysklad_order_id!);
 
@@ -64,6 +74,9 @@ export function useMoyskladOrderSync() {
 
         if (error || !data?.results) {
           console.error("MoySklad sync error:", error || data);
+          for (const order of storeOrders) {
+            newErrors[order.id] = true;
+          }
           continue;
         }
 
@@ -72,6 +85,7 @@ export function useMoyskladOrderSync() {
           const msData = data.results[order.moysklad_order_id!];
           if (msData && !msData.error) {
             allResults[order.id] = msData;
+            newErrors[order.id] = false;
 
             // Update order in DB with synced status and positions
             await supabase
@@ -85,17 +99,25 @@ export function useMoyskladOrderSync() {
                 },
               })
               .eq("id", order.id);
+          } else {
+            newErrors[order.id] = true;
           }
         }
       }
 
       setSyncedData(allResults);
+      setSyncErrors(newErrors);
+      setLastSyncTime(new Date());
     } catch (e) {
       console.error("MoySklad order sync failed:", e);
+      for (const order of msOrders) {
+        newErrors[order.id] = true;
+      }
+      setSyncErrors(newErrors);
     } finally {
       setSyncing(false);
     }
   }, []);
 
-  return { syncing, syncedData, syncOrders };
+  return { syncing, syncedData, syncErrors, lastSyncTime, syncOrders };
 }

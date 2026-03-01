@@ -102,7 +102,7 @@ export default function RetailCustomerDashboard() {
   const [favoriteProducts, setFavoriteProducts] = useState<Array<{ id: string; name: string; price: number; images: string[] }>>([]);
 
   // MoySklad order sync
-  const { syncing: msOrdersSyncing, syncedData: msOrdersData, syncOrders: syncMsOrders } = useMoyskladOrderSync();
+  const { syncing: msOrdersSyncing, syncedData: msOrdersData, syncErrors: msOrdersErrors, lastSyncTime: msLastSyncTime, syncOrders: syncMsOrders } = useMoyskladOrderSync();
 
   // Addresses
   const { addresses, loading: addressesLoading, addAddress, deleteAddress } = useCustomerAddresses();
@@ -438,9 +438,28 @@ export default function RetailCustomerDashboard() {
                     <Card key={order.id}>
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-base">
-                            Заказ #{order.order_number}
-                          </CardTitle>
+                          <div className="flex items-center gap-2">
+                            <CardTitle className="text-base">
+                              Заказ #{order.order_number}
+                            </CardTitle>
+                            {/* CRM sync indicator */}
+                            {order.moysklad_order_id && (
+                              <span title={
+                                msOrdersErrors[order.id] === true 
+                                  ? 'Синхронизация с CRM не работает' 
+                                  : msData 
+                                    ? 'Синхронизировано с CRM' 
+                                    : 'Ожидание синхронизации'
+                              }>
+                                <div className={`w-2.5 h-2.5 rounded-full ${
+                                  msOrdersSyncing ? 'bg-amber-400 animate-pulse' :
+                                  msOrdersErrors[order.id] === true ? 'bg-destructive' :
+                                  msData ? 'bg-green-500' :
+                                  'bg-muted-foreground/40'
+                                }`} />
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2">
                             {msStatus && (
                               <Badge variant="outline" className="text-xs">
