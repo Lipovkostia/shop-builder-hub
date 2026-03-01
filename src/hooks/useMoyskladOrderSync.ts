@@ -73,13 +73,17 @@ export function useMoyskladOrderSync() {
           if (msData && !msData.error) {
             allResults[order.id] = msData;
 
-            // Update order in DB with synced status (cast needed for new columns)
+            // Update order in DB with synced status and positions
             await supabase
               .from("orders")
               .update({
-                moysklad_order_id: order.moysklad_order_id,
-                notes: `[МойСклад: ${msData.status || 'N/A'}]`,
-              } as any)
+                moysklad_status: msData.status || null,
+                moysklad_data: {
+                  positions: msData.positions,
+                  sum: msData.sum,
+                  updated: msData.updated,
+                },
+              })
               .eq("id", order.id);
           }
         }

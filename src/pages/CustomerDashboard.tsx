@@ -2837,8 +2837,14 @@ const CustomerDashboard = () => {
               <div className="space-y-1">
                 {myOrders.map((order) => {
                   const isExpanded = expandedOrderId === order.id;
-                  const msData = msOrdersData[order.id];
-                  const msStatus = msData?.status;
+                  // Use live-synced data first, fall back to persisted DB data
+                  const msData = msOrdersData[order.id] || (order.moysklad_data ? {
+                    status: order.moysklad_status,
+                    positions: (order.moysklad_data as any)?.positions || [],
+                    sum: (order.moysklad_data as any)?.sum || 0,
+                    updated: (order.moysklad_data as any)?.updated || null,
+                  } : null);
+                  const msStatus = msData?.status || order.moysklad_status;
                   
                   const statusColor = 
                     msStatus ? 'bg-primary' :
@@ -2878,14 +2884,20 @@ const CustomerDashboard = () => {
                         
                         {/* Items count + total */}
                         <div className="flex items-center gap-1.5">
-                          {order.items && order.items.length > 0 && (
+                          {/* Show MoySklad totals if available, otherwise local items */}
+                          {msData?.positions && msData.positions.length > 0 ? (
                             <span className="text-[9px] text-muted-foreground">
                               {(() => {
-                                // Суммируем объёмы по единицам измерения
+                                const totalQty = msData.positions.reduce((sum: number, p: any) => sum + (p.quantity || 0), 0);
+                                return `${Number.isInteger(totalQty) ? totalQty : totalQty.toFixed(1).replace('.', ',')} кг`;
+                              })()}
+                            </span>
+                          ) : order.items && order.items.length > 0 && (
+                            <span className="text-[9px] text-muted-foreground">
+                              {(() => {
                                 const totals = order.items!.reduce((acc, i) => {
                                   const product = i.product_id ? getProductById(i.product_id) : undefined;
                                   const unitLabel = getUnitLabel(product?.unit);
-                                  // quantity уже хранит реальный объём
                                   if (unitLabel === 'кг') {
                                     acc.kg += i.quantity || 0;
                                   } else {
@@ -2901,7 +2913,9 @@ const CustomerDashboard = () => {
                               })()}
                             </span>
                           )}
-                          <span className="text-[10px] font-bold text-primary">{formatPriceSpaced(order.total)}</span>
+                          <span className="text-[10px] font-bold text-primary">
+                            {formatPriceSpaced(msData?.sum && msData.sum > 0 ? msData.sum : order.total)}
+                          </span>
                         </div>
                         
                         {/* Expand icon */}
