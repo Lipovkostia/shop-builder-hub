@@ -413,6 +413,111 @@ serve(async (req) => {
       );
     }
 
+    if (action === 'sync_order_statuses') {
+      // Sync order statuses from MoySklad
+      // Expects: order_ids (array of moysklad_order_ids)
+      const { order_ids } = body;
+      
+      if (!order_ids || !Array.isArray(order_ids) || order_ids.length === 0) {
+        return new Response(
+          JSON.stringify({ error: 'order_ids array is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`Syncing ${order_ids.length} orders from MoySklad...`);
+
+      const results: Record<string, any> = {};
+
+      for (const msOrderId of order_ids) {
+        try {
+          // Fetch order details
+          const orderResp = await fetch(
+            `${MOYSKLAD_API_URL}/entity/customerorder/${msOrderId}`,
+            {
+              method: 'GET',
+              headers: {
+                'Authorization': authHeader,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+
+          if (!orderResp.ok) {
+            console.error(`Failed to fetch order ${msOrderId}: ${orderResp.status}`);
+            results[msOrderId] = { error: `HTTP ${orderResp.status}` };
+            continue;
+          }
+
+          const orderData = await orderResp.json();
+
+          // Get status name from state
+          let statusName = null;
+          if (orderData.state?.meta?.href) {
+            try {
+              const stateResp = await fetch(orderData.state.meta.href, {
+                method: 'GET',
+                headers: {
+                  'Authorization': authHeader,
+                  'Content-Type': 'application/json',
+                },
+              });
+              if (stateResp.ok) {
+                const stateData = await stateResp.json();
+                statusName = stateData.name || null;
+              }
+            } catch (e) {
+              console.error('Error fetching state:', e);
+            }
+          }
+
+          // Fetch positions
+          let positions: any[] = [];
+          if (orderData.positions?.meta?.href) {
+            try {
+              const posResp = await fetch(
+                `${orderData.positions.meta.href}?limit=100`,
+                {
+                  method: 'GET',
+                  headers: {
+                    'Authorization': authHeader,
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+              if (posResp.ok) {
+                const posData = await posResp.json();
+                positions = (posData.rows || []).map((p: any) => ({
+                  name: p.assortment?.name || 'Без названия',
+                  quantity: p.quantity || 0,
+                  price: p.price ? p.price / 100 : 0, // kopecks to rubles
+                  sum: p.quantity && p.price ? (p.quantity * p.price / 100) : 0,
+                }));
+              }
+            } catch (e) {
+              console.error('Error fetching positions:', e);
+            }
+          }
+
+          results[msOrderId] = {
+            status: statusName,
+            sum: orderData.sum ? orderData.sum / 100 : 0,
+            positions,
+            name: orderData.name || null,
+            updated: orderData.updated || null,
+          };
+        } catch (e) {
+          console.error(`Error syncing order ${msOrderId}:`, e);
+          results[msOrderId] = { error: 'sync failed' };
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ results }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: 'Unknown action' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

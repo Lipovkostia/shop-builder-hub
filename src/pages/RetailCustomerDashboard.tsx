@@ -34,6 +34,7 @@ import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { TelegramIcon } from "@/components/icons/TelegramIcon";
 import { useRetailCart } from "@/hooks/useRetailCart";
 import { useCustomerAddresses } from "@/hooks/useCustomerAddresses";
+import { useMoyskladOrderSync } from "@/hooks/useMoyskladOrderSync";
 
 interface RetailOrder {
   id: string;
@@ -41,6 +42,8 @@ interface RetailOrder {
   status: string;
   total: number;
   created_at: string;
+  store_id: string;
+  moysklad_order_id: string | null;
   shipping_address: {
     name?: string;
     phone?: string;
@@ -97,6 +100,9 @@ export default function RetailCustomerDashboard() {
   const { addToCart } = useRetailCart(subdomain || "");
   const { favorites, toggleFavorite, isFavorite } = useRetailFavorites(subdomain || null);
   const [favoriteProducts, setFavoriteProducts] = useState<Array<{ id: string; name: string; price: number; images: string[] }>>([]);
+
+  // MoySklad order sync
+  const { syncing: msOrdersSyncing, syncedData: msOrdersData, syncOrders: syncMsOrders } = useMoyskladOrderSync();
 
   // Addresses
   const { addresses, loading: addressesLoading, addAddress, deleteAddress } = useCustomerAddresses();
@@ -237,6 +243,8 @@ export default function RetailCustomerDashboard() {
         status: o.status,
         total: Number(o.total),
         created_at: o.created_at,
+        store_id: o.store_id,
+        moysklad_order_id: o.moysklad_order_id || null,
         shipping_address: o.shipping_address as RetailOrder["shipping_address"],
         items: (itemsData || [])
           .filter(i => i.order_id === o.id)
@@ -261,6 +269,22 @@ export default function RetailCustomerDashboard() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  // Auto-sync MoySklad order statuses
+  useEffect(() => {
+    if (orders.length > 0 && !ordersLoading) {
+      const ordersWithMs = orders
+        .filter(o => o.moysklad_order_id)
+        .map(o => ({
+          id: o.id,
+          moysklad_order_id: o.moysklad_order_id!,
+          store_id: o.store_id,
+        }));
+      if (ordersWithMs.length > 0) {
+        syncMsOrders(ordersWithMs);
+      }
+    }
+  }, [orders, ordersLoading]);
 
   const handleRepeatOrder = useCallback((order: RetailOrder) => {
     let addedCount = 0;
@@ -401,6 +425,8 @@ export default function RetailCustomerDashboard() {
             ) : (
               <div className="space-y-4">
                 {orders.map(order => {
+                  const msData = msOrdersData[order.id];
+                  const msStatus = msData?.status;
                   const sc = statusConfig[order.status] || statusConfig.pending;
                   const StatusIcon = sc.icon;
                   const canRepeat = order.status !== 'forming' && order.items.some(i => i.product_id);
@@ -411,10 +437,19 @@ export default function RetailCustomerDashboard() {
                           <CardTitle className="text-base">
                             Заказ #{order.order_number}
                           </CardTitle>
-                          <Badge variant="secondary" className={`${sc.color} border-0`}>
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {sc.label}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            {msStatus && (
+                              <Badge variant="outline" className="text-xs">
+                                {msStatus}
+                              </Badge>
+                            )}
+                            {!msStatus && (
+                              <Badge variant="secondary" className={`${sc.color} border-0`}>
+                                <StatusIcon className="h-3 w-3 mr-1" />
+                                {sc.label}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {new Date(order.created_at).toLocaleDateString("ru-RU", {
@@ -427,19 +462,37 @@ export default function RetailCustomerDashboard() {
                         </p>
                       </CardHeader>
                       <CardContent className="pt-0">
-                        {/* Items */}
-                        <div className="space-y-2 mb-3">
-                          {order.items.map(item => (
-                            <div key={item.id} className="flex justify-between text-sm">
-                              <span className="text-foreground">
-                                {item.product_name} × {item.quantity}
-                              </span>
-                              <span className="text-muted-foreground font-medium">
-                                {formatPrice(item.total)}
-                              </span>
+                        {/* Items - show MoySklad positions if available */}
+                        {msData?.positions && msData.positions.length > 0 ? (
+                          <div className="space-y-2 mb-3">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Данные из МойСклад</span>
                             </div>
-                          ))}
-                        </div>
+                            {msData.positions.map((pos, idx) => (
+                              <div key={idx} className="flex justify-between text-sm">
+                                <span className="text-foreground">
+                                  {pos.name} × {Number.isInteger(pos.quantity) ? pos.quantity : pos.quantity.toFixed(1)}
+                                </span>
+                                <span className="text-muted-foreground font-medium">
+                                  {formatPrice(pos.sum)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="space-y-2 mb-3">
+                            {order.items.map(item => (
+                              <div key={item.id} className="flex justify-between text-sm">
+                                <span className="text-foreground">
+                                  {item.product_name} × {item.quantity}
+                                </span>
+                                <span className="text-muted-foreground font-medium">
+                                  {formatPrice(item.total)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
                         <div className="border-t border-border pt-3 flex justify-between items-center">
                           <span className="font-medium">Итого:</span>
