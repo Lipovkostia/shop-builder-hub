@@ -272,7 +272,7 @@ export function useCustomerCatalogs(impersonateUserId?: string) {
           catalog_markup_value: row.setting_markup_value ? Number(row.setting_markup_value) : null,
           catalog_portion_prices: portionPrices,
           catalog_categories: row.setting_categories || null,
-          moysklad_id: null,
+          moysklad_id: row.product_moysklad_id || null,
         };
       });
 

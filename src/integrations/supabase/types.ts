@@ -924,7 +924,9 @@ export type Database = {
           id: string
           is_guest_order: boolean | null
           last_activity_at: string | null
+          moysklad_data: Json | null
           moysklad_order_id: string | null
+          moysklad_status: string | null
           notes: string | null
           order_number: string
           shipping_address: Json | null
@@ -944,7 +946,9 @@ export type Database = {
           id?: string
           is_guest_order?: boolean | null
           last_activity_at?: string | null
+          moysklad_data?: Json | null
           moysklad_order_id?: string | null
+          moysklad_status?: string | null
           notes?: string | null
           order_number: string
           shipping_address?: Json | null
@@ -964,7 +968,9 @@ export type Database = {
           id?: string
           is_guest_order?: boolean | null
           last_activity_at?: string | null
+          moysklad_data?: Json | null
           moysklad_order_id?: string | null
+          moysklad_status?: string | null
           notes?: string | null
           order_number?: string
           shipping_address?: Json | null
