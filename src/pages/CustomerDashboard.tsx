@@ -906,7 +906,7 @@ const CustomerDashboard = () => {
   const { orders: myOrders, loading: myOrdersLoading, refetch: refetchMyOrders } = useCustomerOrdersHistory();
   const { toastEnabled, updateSettings, isUpdating: updatingSettings } = useProfileSettings();
   const { addresses, addAddress, lastUsedAddress, deleteAddress } = useCustomerAddresses();
-  const { syncing: msOrdersSyncing, syncedData: msOrdersData, syncOrders: syncMsOrders } = useMoyskladOrderSync();
+  const { syncing: msOrdersSyncing, syncedData: msOrdersData, syncErrors: msOrdersErrors, lastSyncTime: msLastSyncTime, syncOrders: syncMsOrders } = useMoyskladOrderSync();
 
   // Auto-sync MoySklad order statuses when orders are loaded
   useEffect(() => {
@@ -2821,6 +2821,33 @@ const CustomerDashboard = () => {
             <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
               {myOrders.length}
             </Badge>
+            <div className="ml-auto flex items-center gap-1.5">
+              {msLastSyncTime && (
+                <span className="text-[8px] text-muted-foreground">
+                  {msLastSyncTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+              <button
+                onClick={() => {
+                  refetchMyOrders();
+                  const ordersWithMs = myOrders
+                    .filter(o => o.moysklad_order_id)
+                    .map(o => ({
+                      id: o.id,
+                      moysklad_order_id: o.moysklad_order_id as string,
+                      store_id: o.store_id,
+                    }));
+                  if (ordersWithMs.length > 0) {
+                    syncMsOrders(ordersWithMs);
+                  }
+                }}
+                disabled={msOrdersSyncing}
+                className="p-1 rounded hover:bg-muted transition-colors"
+                title="Обновить статусы из CRM"
+              >
+                <RotateCcw className={`w-3 h-3 text-muted-foreground ${msOrdersSyncing ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
           
           <div className="flex-1 overflow-y-auto px-2 py-1.5 max-h-[55vh]">
@@ -2880,6 +2907,23 @@ const CustomerDashboard = () => {
                           <span className="text-[9px] text-muted-foreground">
                             {new Date(order.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
                           </span>
+                          {/* CRM sync indicator */}
+                          {order.moysklad_order_id && (
+                            <span title={
+                              msOrdersErrors[order.id] === true 
+                                ? 'Синхронизация с CRM не работает' 
+                                : msData 
+                                  ? `Синхронизировано с CRM${msData.updated ? ` · ${new Date(msData.updated).toLocaleString('ru-RU')}` : ''}` 
+                                  : 'Ожидание синхронизации с CRM'
+                            }>
+                              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                msOrdersSyncing ? 'bg-amber-400 animate-pulse' :
+                                msOrdersErrors[order.id] === true ? 'bg-destructive' :
+                                msData ? 'bg-green-500' :
+                                'bg-muted-foreground/40'
+                              }`} />
+                            </span>
+                          )}
                         </div>
                         
                         {/* Items count + total */}
