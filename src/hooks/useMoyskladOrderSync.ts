@@ -17,6 +17,7 @@ export interface MoyskladOrderData {
 /**
  * Hook to sync order statuses from MoySklad.
  * Given a list of orders with moysklad_order_id, fetches their current status from MoySklad API.
+ * Credentials are looked up server-side by store_id, so customers don't need direct access.
  */
 export function useMoyskladOrderSync() {
   const [syncing, setSyncing] = useState(false);
@@ -35,7 +36,7 @@ export function useMoyskladOrderSync() {
     const newErrors: Record<string, boolean> = {};
     
     try {
-      // Group by store_id to use correct credentials
+      // Group by store_id to batch requests
       const byStore: Record<string, typeof msOrders> = {};
       for (const o of msOrders) {
         if (!byStore[o.store_id]) byStore[o.store_id] = [];
@@ -45,30 +46,21 @@ export function useMoyskladOrderSync() {
       const allResults: Record<string, MoyskladOrderData> = {};
 
       for (const [storeId, storeOrders] of Object.entries(byStore)) {
-        // Get moysklad credentials for this store
-        const { data: account } = await supabase
-          .from("moysklad_accounts")
-          .select("login, password")
-          .eq("store_id", storeId)
-          .limit(1)
-          .maybeSingle();
-
-        if (!account) {
-          // Mark all orders from this store as error
-          for (const order of storeOrders) {
-            newErrors[order.id] = true;
-          }
-          continue;
+        const msOrderIds = storeOrders.map(o => o.moysklad_order_id!);
+        
+        // Build mapping: moysklad_order_id -> local order id (for server-side DB persist)
+        const localOrderMap: Record<string, string> = {};
+        for (const order of storeOrders) {
+          localOrderMap[order.moysklad_order_id!] = order.id;
         }
 
-        const msOrderIds = storeOrders.map(o => o.moysklad_order_id!);
-
+        // Pass store_id to edge function — it looks up credentials & persists data server-side
         const { data, error } = await supabase.functions.invoke("moysklad", {
           body: {
             action: "sync_order_statuses",
-            login: account.login,
-            password: account.password,
+            store_id: storeId,
             order_ids: msOrderIds,
+            local_order_map: localOrderMap,
           },
         });
 
@@ -86,19 +78,6 @@ export function useMoyskladOrderSync() {
           if (msData && !msData.error) {
             allResults[order.id] = msData;
             newErrors[order.id] = false;
-
-            // Update order in DB with synced status and positions
-            await supabase
-              .from("orders")
-              .update({
-                moysklad_status: msData.status || null,
-                moysklad_data: {
-                  positions: msData.positions,
-                  sum: msData.sum,
-                  updated: msData.updated,
-                },
-              })
-              .eq("id", order.id);
           } else {
             newErrors[order.id] = true;
           }
