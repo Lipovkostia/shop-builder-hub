@@ -6,6 +6,7 @@ import { useCustomerOrders, useCustomerOrdersHistory, Order } from "@/hooks/useO
 import { useProfileSettings } from "@/hooks/useProfileSettings";
 import { useDraftOrder, DraftOrderItem } from "@/hooks/useDraftOrder";
 import { useCustomerAddresses } from "@/hooks/useCustomerAddresses";
+import { useMoyskladOrderSync } from "@/hooks/useMoyskladOrderSync";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -905,6 +906,23 @@ const CustomerDashboard = () => {
   const { orders: myOrders, loading: myOrdersLoading, refetch: refetchMyOrders } = useCustomerOrdersHistory();
   const { toastEnabled, updateSettings, isUpdating: updatingSettings } = useProfileSettings();
   const { addresses, addAddress, lastUsedAddress, deleteAddress } = useCustomerAddresses();
+  const { syncing: msOrdersSyncing, syncedData: msOrdersData, syncOrders: syncMsOrders } = useMoyskladOrderSync();
+
+  // Auto-sync MoySklad order statuses when orders are loaded
+  useEffect(() => {
+    if (myOrders.length > 0 && !myOrdersLoading) {
+      const ordersWithMs = myOrders
+        .filter(o => (o as any).moysklad_order_id)
+        .map(o => ({
+          id: o.id,
+          moysklad_order_id: (o as any).moysklad_order_id as string,
+          store_id: o.store_id,
+        }));
+      if (ordersWithMs.length > 0) {
+        syncMsOrders(ordersWithMs);
+      }
+    }
+  }, [myOrders, myOrdersLoading]);
   
   // Load store categories
   const currentStoreId = currentCatalog?.store_id || null;
@@ -2819,13 +2837,18 @@ const CustomerDashboard = () => {
               <div className="space-y-1">
                 {myOrders.map((order) => {
                   const isExpanded = expandedOrderId === order.id;
+                  const msData = msOrdersData[order.id];
+                  const msStatus = msData?.status;
+                  
                   const statusColor = 
+                    msStatus ? 'bg-primary' :
                     order.status === 'delivered' ? 'bg-green-500' :
                     order.status === 'cancelled' ? 'bg-destructive' :
                     order.status === 'shipped' ? 'bg-blue-500' :
                     order.status === 'processing' ? 'bg-amber-500' :
                     'bg-muted-foreground';
                   const statusText = 
+                    msStatus ? msStatus :
                     order.status === 'pending' ? 'Ожидает' :
                     order.status === 'processing' ? 'В работе' :
                     order.status === 'shipped' ? 'Отправлен' :
@@ -2959,37 +2982,61 @@ const CustomerDashboard = () => {
                               </button>
                             </div>
                           </div>
-                          <div className="space-y-0.5 border-t border-border/50 pt-1.5">
-                            {order.items.map((item, idx) => {
-                              const product = item.product_id ? getProductById(item.product_id) : undefined;
-                              const productAvailable = item.product_id ? !!product : false;
-
-                              const unitLabel = getUnitLabel(product?.unit);
-
-                              // quantity уже хранит реальный объём (кг или шт)
-                              const shownQty = item.quantity;
-
-                              // price хранит цену за единицу объёма
-                              const shownUnitPrice = item.price;
-
-                              return (
+                          {/* Show MoySklad positions if synced, otherwise show local items */}
+                          {msData?.positions && msData.positions.length > 0 ? (
+                            <div className="space-y-0.5 border-t border-border/50 pt-1.5">
+                              <div className="flex items-center gap-1 mb-1">
+                                <span className="text-[8px] text-muted-foreground bg-muted px-1 py-0.5 rounded">МойСклад</span>
+                                {msOrdersSyncing && <Loader2 className="w-2.5 h-2.5 animate-spin text-muted-foreground" />}
+                              </div>
+                              {msData.positions.map((pos, idx) => (
                                 <div key={idx} className="flex items-center justify-between text-[10px]">
                                   <div className="flex items-center gap-1 flex-1 min-w-0">
-                                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${productAvailable ? 'bg-green-500' : 'bg-muted-foreground/40'}`} />
-                                    <span className={`truncate ${productAvailable ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
-                                      {item.product_name}
-                                    </span>
+                                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-primary/60" />
+                                    <span className="truncate text-muted-foreground">{pos.name}</span>
                                   </div>
                                   <span className="flex-shrink-0 ml-2 text-foreground tabular-nums">
                                     <span className="text-muted-foreground">
-                                      {formatPriceSpaced(shownUnitPrice)} ₽/{unitLabel} · {Number.isInteger(shownQty) ? shownQty : shownQty.toFixed(1).replace('.', ',')} {unitLabel}
+                                      {formatPriceSpaced(pos.price)} ₽ · {Number.isInteger(pos.quantity) ? pos.quantity : pos.quantity.toFixed(1).replace('.', ',')}
                                     </span>
-                                    <span className="ml-1.5 font-medium">{formatPriceSpaced(item.total)} ₽</span>
+                                    <span className="ml-1.5 font-medium">{formatPriceSpaced(pos.sum)} ₽</span>
                                   </span>
                                 </div>
-                              );
-                            })}
-                          </div>
+                              ))}
+                              {msData.sum > 0 && (
+                                <div className="flex justify-end pt-1 border-t border-border/30 mt-1">
+                                  <span className="text-[10px] font-bold text-primary">{formatPriceSpaced(msData.sum)} ₽</span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-0.5 border-t border-border/50 pt-1.5">
+                              {order.items.map((item, idx) => {
+                                const product = item.product_id ? getProductById(item.product_id) : undefined;
+                                const productAvailable = item.product_id ? !!product : false;
+                                const unitLabel = getUnitLabel(product?.unit);
+                                const shownQty = item.quantity;
+                                const shownUnitPrice = item.price;
+
+                                return (
+                                  <div key={idx} className="flex items-center justify-between text-[10px]">
+                                    <div className="flex items-center gap-1 flex-1 min-w-0">
+                                      <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${productAvailable ? 'bg-green-500' : 'bg-muted-foreground/40'}`} />
+                                      <span className={`truncate ${productAvailable ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
+                                        {item.product_name}
+                                      </span>
+                                    </div>
+                                    <span className="flex-shrink-0 ml-2 text-foreground tabular-nums">
+                                      <span className="text-muted-foreground">
+                                        {formatPriceSpaced(shownUnitPrice)} ₽/{unitLabel} · {Number.isInteger(shownQty) ? shownQty : shownQty.toFixed(1).replace('.', ',')} {unitLabel}
+                                      </span>
+                                      <span className="ml-1.5 font-medium">{formatPriceSpaced(item.total)} ₽</span>
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
