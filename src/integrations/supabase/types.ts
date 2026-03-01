@@ -2016,43 +2016,6 @@ export type Database = {
           sort_order: number
         }[]
       }
-      get_catalog_products_public: {
-        Args: { _access_code: string }
-        Returns: {
-          catalog_description: string
-          catalog_id: string
-          catalog_name: string
-          category_id: string
-          category_name: string
-          category_slug: string
-          product_compare_price: number
-          product_description: string
-          product_id: string
-          product_images: string[]
-          product_name: string
-          product_packaging_type: string
-          product_portion_weight: number
-          product_price: number
-          product_price_full: number
-          product_price_half: number
-          product_price_portion: number
-          product_price_quarter: number
-          product_quantity: number
-          product_sku: string
-          product_slug: string
-          product_unit: string
-          product_unit_weight: number
-          setting_categories: string[]
-          setting_markup_type: string
-          setting_markup_value: number
-          setting_portion_prices: Json
-          setting_status: string
-          store_description: string
-          store_id: string
-          store_logo: string
-          store_name: string
-        }[]
-      }
       get_catalog_store_id: { Args: { _catalog_id: string }; Returns: string }
       get_retail_products_public: {
         Args: { _subdomain: string }
