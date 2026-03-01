@@ -425,8 +425,12 @@ export default function RetailCustomerDashboard() {
             ) : (
               <div className="space-y-4">
                 {orders.map(order => {
-                  const msData = msOrdersData[order.id];
-                  const msStatus = msData?.status;
+                  const msData = msOrdersData[order.id] || (order.moysklad_order_id && (order as any).moysklad_data ? {
+                    status: (order as any).moysklad_status,
+                    positions: ((order as any).moysklad_data as any)?.positions || [],
+                    sum: ((order as any).moysklad_data as any)?.sum || 0,
+                  } : null);
+                  const msStatus = msData?.status || (order as any).moysklad_status;
                   const sc = statusConfig[order.status] || statusConfig.pending;
                   const StatusIcon = sc.icon;
                   const canRepeat = order.status !== 'forming' && order.items.some(i => i.product_id);

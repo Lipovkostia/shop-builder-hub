@@ -39,6 +39,9 @@ export interface Order {
   guest_name?: string;
   guest_phone?: string;
   is_guest_order?: boolean;
+  moysklad_order_id?: string | null;
+  moysklad_status?: string | null;
+  moysklad_data?: any | null;
 }
 
 export interface CreateOrderData {
@@ -281,6 +284,9 @@ export function useCustomerOrdersHistory() {
         notes: o.notes,
         created_at: o.created_at,
         updated_at: o.updated_at,
+        moysklad_order_id: (o as any).moysklad_order_id || null,
+        moysklad_status: (o as any).moysklad_status || null,
+        moysklad_data: (o as any).moysklad_data || null,
         items: itemsData.filter(i => i.order_id === o.id).map(i => ({
           id: i.id,
           order_id: i.order_id,
