@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { logActivity } from "@/hooks/useActivityLogs";
@@ -320,8 +320,16 @@ export function useCustomerOrdersHistory() {
 export function useCustomerOrders() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   const createOrder = useCallback(async (data: CreateOrderData): Promise<string | null> => {
+    // Prevent duplicate submissions
+    if (submittingRef.current) {
+      console.log("Order submission already in progress, skipping duplicate");
+      return null;
+    }
+    submittingRef.current = true;
+    
     try {
       setLoading(true);
 
@@ -506,6 +514,7 @@ export function useCustomerOrders() {
       return null;
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   }, [toast]);
 
