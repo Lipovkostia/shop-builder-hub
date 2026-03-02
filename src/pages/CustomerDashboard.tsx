@@ -82,12 +82,14 @@ import {
   MessageCircle,
   Sparkles,
   Eye,
-  Folder
+  Folder,
+  FileText
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ShowcaseContactBar } from "@/components/retail/ShowcaseContactBar";
 import { FloatingMessengerButton } from "@/components/retail/FloatingMessengerButton";
 import { CustomerAIAssistantBanner } from "@/components/customer/CustomerAIAssistantBanner";
+import { CustomerCRMOrders } from "@/components/customer/CustomerCRMOrders";
 import { CustomerAIAssistantPanel } from "@/components/customer/CustomerAIAssistantPanel";
 import { useCustomerAIAssistant, FoundItem } from "@/hooks/useCustomerAIAssistant";
 import { openWhatsAppWithOrder, WhatsAppOrderData } from "@/lib/whatsappUtils";
@@ -1003,7 +1005,7 @@ const CustomerDashboard = () => {
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [showProfileView, setShowProfileView] = useState(false);
-  const [profileSection, setProfileSection] = useState<'personal' | 'catalogs' | 'settings'>('personal');
+  const [profileSection, setProfileSection] = useState<'personal' | 'catalogs' | 'crm' | 'settings'>('personal');
   const [showImages, setShowImages] = useState(true);
   const [showCartImages, setShowCartImages] = useState(true);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
@@ -1896,6 +1898,22 @@ const CustomerDashboard = () => {
               )}
             </button>
             <button
+              onClick={() => setProfileSection('crm')}
+              className={`flex-1 py-2.5 text-xs font-medium transition-colors relative ${
+                profileSection === 'crm' 
+                  ? 'text-primary' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-1.5">
+                <FileText className="w-3.5 h-3.5" />
+                <span>CRM</span>
+              </div>
+              {profileSection === 'crm' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+              )}
+            </button>
+            <button
               onClick={() => setProfileSection('settings')}
               className={`flex-1 py-2.5 text-xs font-medium transition-colors relative ${
                 profileSection === 'settings' 
@@ -2048,6 +2066,11 @@ const CustomerDashboard = () => {
                       )}
                     </div>
                   </div>
+                )}
+
+                {/* CRM */}
+                {profileSection === 'crm' && (
+                  <CustomerCRMOrders />
                 )}
 
                 {/* Настройки */}
