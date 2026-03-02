@@ -46,40 +46,46 @@ export function useMoyskladOrderSync() {
       const allResults: Record<string, MoyskladOrderData> = {};
 
       for (const [storeId, storeOrders] of Object.entries(byStore)) {
-        const msOrderIds = storeOrders.map(o => o.moysklad_order_id!);
-        
-        // Build mapping: moysklad_order_id -> local order id (for server-side DB persist)
-        const localOrderMap: Record<string, string> = {};
-        for (const order of storeOrders) {
-          localOrderMap[order.moysklad_order_id!] = order.id;
-        }
+        // Split into small batches to prevent edge function timeout on large order lists
+        const batchSize = 3;
 
-        // Pass store_id to edge function — it looks up credentials & persists data server-side
-        const { data, error } = await supabase.functions.invoke("moysklad", {
-          body: {
-            action: "sync_order_statuses",
-            store_id: storeId,
-            order_ids: msOrderIds,
-            local_order_map: localOrderMap,
-          },
-        });
+        for (let i = 0; i < storeOrders.length; i += batchSize) {
+          const batchOrders = storeOrders.slice(i, i + batchSize);
+          const msOrderIds = batchOrders.map(o => o.moysklad_order_id!);
 
-        if (error || !data?.results) {
-          console.error("MoySklad sync error:", error || data);
-          for (const order of storeOrders) {
-            newErrors[order.id] = true;
+          // Build mapping: moysklad_order_id -> local order id (for server-side DB persist)
+          const localOrderMap: Record<string, string> = {};
+          for (const order of batchOrders) {
+            localOrderMap[order.moysklad_order_id!] = order.id;
           }
-          continue;
-        }
 
-        // Map results back using our order IDs
-        for (const order of storeOrders) {
-          const msData = data.results[order.moysklad_order_id!];
-          if (msData && !msData.error) {
-            allResults[order.id] = msData;
-            newErrors[order.id] = false;
-          } else {
-            newErrors[order.id] = true;
+          // Pass store_id to edge function — it looks up credentials & persists data server-side
+          const { data, error } = await supabase.functions.invoke("moysklad", {
+            body: {
+              action: "sync_order_statuses",
+              store_id: storeId,
+              order_ids: msOrderIds,
+              local_order_map: localOrderMap,
+            },
+          });
+
+          if (error || !data?.results) {
+            console.error("MoySklad sync error:", error || data);
+            for (const order of batchOrders) {
+              newErrors[order.id] = true;
+            }
+            continue;
+          }
+
+          // Map results back using our order IDs
+          for (const order of batchOrders) {
+            const msData = data.results[order.moysklad_order_id!];
+            if (msData && !msData.error) {
+              allResults[order.id] = msData;
+              newErrors[order.id] = false;
+            } else {
+              newErrors[order.id] = true;
+            }
           }
         }
       }

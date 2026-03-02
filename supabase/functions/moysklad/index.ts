@@ -464,12 +464,11 @@ serve(async (req) => {
 
       console.log(`Syncing ${order_ids.length} orders from MoySklad...`);
 
-      // Process all orders in parallel to avoid timeout
+      // Process orders with minimal API roundtrips to avoid timeouts
       const syncOneOrder = async (msOrderId: string) => {
         try {
-          // Fetch order details
           const orderResp = await fetch(
-            `${MOYSKLAD_API_URL}/entity/customerorder/${msOrderId}`,
+            `${MOYSKLAD_API_URL}/entity/customerorder/${encodeURIComponent(msOrderId)}?expand=state,positions,positions.assortment`,
             {
               method: 'GET',
               headers: {
@@ -480,74 +479,66 @@ serve(async (req) => {
           );
 
           if (!orderResp.ok) {
-            console.error(`Failed to fetch order ${msOrderId}: ${orderResp.status}`);
+            const details = await orderResp.text().catch(() => '');
+            console.error(`Failed to fetch order ${msOrderId}: ${orderResp.status}`, details);
             return [msOrderId, { error: `HTTP ${orderResp.status}` }] as const;
           }
 
           const orderData = await orderResp.json();
 
-          // Fetch state and positions in parallel
-          const [statusName, positions] = await Promise.all([
-            // Fetch status name
-            (async () => {
-              if (!orderData.state?.meta?.href) return null;
-              try {
-                const stateResp = await fetch(orderData.state.meta.href, {
-                  method: 'GET',
-                  headers: { 'Authorization': syncAuthHeader, 'Content-Type': 'application/json' },
-                });
-                if (stateResp.ok) {
-                  const stateData = await stateResp.json();
-                  return stateData.name || null;
-                }
-              } catch (e) {
-                console.error('Error fetching state:', e);
-              }
-              return null;
-            })(),
-            // Fetch positions
-            (async () => {
-              if (!orderData.positions?.meta?.href) return [];
-              try {
-                const posResp = await fetch(
-                  `${orderData.positions.meta.href}?limit=100`,
-                  {
-                    method: 'GET',
-                    headers: { 'Authorization': syncAuthHeader, 'Content-Type': 'application/json' },
-                  }
-                );
-                if (posResp.ok) {
-                  const posData = await posResp.json();
-                  return (posData.rows || []).map((p: any) => ({
-                    name: p.assortment?.name || 'Без названия',
-                    quantity: p.quantity || 0,
-                    price: p.price ? p.price / 100 : 0,
-                    sum: p.quantity && p.price ? (p.quantity * p.price / 100) : 0,
-                  }));
-                }
-              } catch (e) {
-                console.error('Error fetching positions:', e);
-              }
-              return [];
-            })(),
-          ]);
+          const statusName = orderData.state?.name || null;
 
-          return [msOrderId, {
-            status: statusName,
-            sum: orderData.sum ? orderData.sum / 100 : 0,
-            positions,
-            name: orderData.name || null,
-            updated: orderData.updated || null,
-          }] as const;
+          let positions = (orderData.positions?.rows || []).map((p: any) => ({
+            name: p.assortment?.name || p.assortment?.meta?.href?.split('/').pop() || 'Без названия',
+            quantity: Number(p.quantity || 0),
+            price: p.price ? Number(p.price) / 100 : 0,
+            sum: p.quantity && p.price ? (Number(p.quantity) * Number(p.price)) / 100 : 0,
+          }));
+
+          // Fallback for accounts where positions are not expanded in the response
+          if (positions.length === 0 && orderData.positions?.meta?.href) {
+            try {
+              const posResp = await fetch(`${orderData.positions.meta.href}?limit=100`, {
+                method: 'GET',
+                headers: {
+                  'Authorization': syncAuthHeader,
+                  'Content-Type': 'application/json',
+                },
+              });
+
+              if (posResp.ok) {
+                const posData = await posResp.json();
+                positions = (posData.rows || []).map((p: any) => ({
+                  name: p.assortment?.name || p.assortment?.meta?.href?.split('/').pop() || 'Без названия',
+                  quantity: Number(p.quantity || 0),
+                  price: p.price ? Number(p.price) / 100 : 0,
+                  sum: p.quantity && p.price ? (Number(p.quantity) * Number(p.price)) / 100 : 0,
+                }));
+              }
+            } catch (e) {
+              console.error('Error fetching fallback positions:', e);
+            }
+          }
+
+          return [
+            msOrderId,
+            {
+              status: statusName,
+              sum: orderData.sum ? Number(orderData.sum) / 100 : 0,
+              positions,
+              name: orderData.name || null,
+              updated: orderData.updated || null,
+            },
+          ] as const;
         } catch (e) {
           console.error(`Error syncing order ${msOrderId}:`, e);
           return [msOrderId, { error: 'sync failed' }] as const;
         }
       };
 
-      // Run all order syncs in parallel (batches of 5 to avoid rate limits)
+      // Run order syncs in parallel (batches of 10 to balance throughput and rate-limits)
       const results: Record<string, any> = {};
-      const batchSize = 5;
+      const batchSize = 10;
       for (let i = 0; i < order_ids.length; i += batchSize) {
         const batch = order_ids.slice(i, i + batchSize);
         const batchResults = await Promise.all(batch.map(syncOneOrder));
@@ -560,14 +551,21 @@ serve(async (req) => {
       if (local_order_map && typeof local_order_map === 'object') {
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
         const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-        
-        for (const [msId, localId] of Object.entries(local_order_map)) {
+
+        const persistEntries = Object.entries(local_order_map).filter(([msId]) => {
           const msData = results[msId];
-          if (msData && !msData.error) {
-            try {
-              await fetch(
-                `${supabaseUrl}/rest/v1/orders?id=eq.${localId}`,
-                {
+          return msData && !msData.error;
+        });
+
+        const persistBatchSize = 20;
+        for (let i = 0; i < persistEntries.length; i += persistBatchSize) {
+          const persistBatch = persistEntries.slice(i, i + persistBatchSize);
+
+          await Promise.all(
+            persistBatch.map(async ([msId, localId]) => {
+              const msData = results[msId];
+              try {
+                const persistResp = await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${localId}`, {
                   method: 'PATCH',
                   headers: {
                     'apikey': serviceKey,
@@ -583,12 +581,17 @@ serve(async (req) => {
                       updated: msData.updated,
                     },
                   }),
+                });
+
+                if (!persistResp.ok) {
+                  const details = await persistResp.text().catch(() => '');
+                  console.error(`Failed to persist sync data for order ${localId}: ${persistResp.status}`, details);
                 }
-              );
-            } catch (e) {
-              console.error(`Failed to persist sync data for order ${localId}:`, e);
-            }
-          }
+              } catch (e) {
+                console.error(`Failed to persist sync data for order ${localId}:`, e);
+              }
+            })
+          );
         }
       }
 
