@@ -6,12 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
   Upload, MessageCircle, HelpCircle, CalendarIcon, Send, ChevronLeft, ChevronRight, FileSpreadsheet, X
 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import * as XLSX from "xlsx";
 
 // Helper to bypass typed supabase client for new tables
@@ -45,6 +47,7 @@ interface PurchaseSession {
 }
 
 export default function Zakupka() {
+  const isMobile = useIsMobile();
   const [session, setSession] = useState<PurchaseSession | null>(null);
   const [items, setItems] = useState<PurchaseItem[]>([]);
   const [questions, setQuestions] = useState<PurchaseQuestion[]>([]);
@@ -56,6 +59,7 @@ export default function Zakupka() {
   const [authorName, setAuthorName] = useState(() => localStorage.getItem("zakupka_name") || "");
   const [chatInput, setChatInput] = useState("");
   const [chatAuthor, setChatAuthor] = useState(() => localStorage.getItem("zakupka_name") || "");
+  const [chatOpen, setChatOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -334,23 +338,184 @@ export default function Zakupka() {
     setSelectedDate(d);
   };
 
+  const chatPanel = (
+    <div className={cn("flex flex-col bg-card", isMobile ? "h-[70vh]" : "h-full")}>
+      {!isMobile && (
+        <div className="px-4 py-3 border-b shrink-0">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <MessageCircle className="h-4 w-4" />
+            Вопросы по закупке
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {format(selectedDate, "d MMMM yyyy", { locale: ru })}
+          </p>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto p-3 min-h-0">
+        {questions.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            <HelpCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
+            Пока нет вопросов
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {questions.map((q) => (
+              <div key={q.id} className="text-sm">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="font-medium text-xs">{q.author_name}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {format(new Date(q.created_at), "HH:mm")}
+                      </span>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] px-1 py-0 mb-1">
+                      {q.item_name}
+                    </Badge>
+                    <p className="text-muted-foreground text-xs">{q.message}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+        )}
+      </div>
+
+      {session && (
+        <div className="border-t p-3 space-y-2 shrink-0">
+          <Input
+            placeholder="Ваше имя"
+            value={chatAuthor}
+            onChange={(e) => setChatAuthor(e.target.value)}
+            className="h-8 text-xs"
+          />
+          <div className="flex gap-2">
+            <Input
+              placeholder="Написать сообщение..."
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              className="h-8 text-xs"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") sendChatMessage();
+              }}
+            />
+            <Button
+              size="sm"
+              className="h-8 px-2"
+              onClick={sendChatMessage}
+              disabled={!chatInput.trim() || !chatAuthor.trim()}
+            >
+              <Send className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Mobile product list
+  const mobileProductList = (
+    <div className="flex-1 overflow-auto">
+      <div className="px-3 py-2 flex items-center justify-between border-b bg-muted/30">
+        <div className="flex items-center gap-2 min-w-0">
+          <FileSpreadsheet className="h-4 w-4 text-muted-foreground shrink-0" />
+          <span className="text-xs text-muted-foreground truncate">{session?.file_name}</span>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} className="text-xs shrink-0">
+          <Upload className="h-3 w-3 mr-1" />
+          Заменить
+        </Button>
+        <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileSelect} />
+      </div>
+      <div className="divide-y">
+        {items.map((item, idx) => {
+          const itemQuestions = questions.filter(q => q.item_id === item.id);
+
+          if (item.is_supplier_header) {
+            return (
+              <div key={item.id || idx} className="bg-primary/5 border-t-2 border-primary/20 px-3 py-2">
+                <span className="font-bold text-primary text-sm">{item.name}</span>
+              </div>
+            );
+          }
+
+          return (
+            <div key={item.id || idx} className="px-3 py-2.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium leading-tight">{item.name}</p>
+                  {item.comment && (
+                    <p className="text-xs mt-1 text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 px-2 py-0.5 rounded inline-block">
+                      {item.comment}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                    {item.quantity != null && <span>{item.quantity} {item.unit || ""}</span>}
+                    {item.price != null && <span>× {item.price.toLocaleString("ru-RU")} ₽</span>}
+                    {item.total != null && <span className="font-medium text-foreground">= {item.total.toLocaleString("ru-RU")} ₽</span>}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setAskingItemId(askingItemId === item.id ? null : item.id!)}
+                  className={cn(
+                    "shrink-0 mt-1 transition-colors",
+                    askingItemId === item.id ? "text-primary" : "text-muted-foreground/40"
+                  )}
+                >
+                  <HelpCircle className="h-5 w-5" />
+                </button>
+              </div>
+              {itemQuestions.length > 0 && (
+                <div className="mt-1">
+                  <Badge variant="secondary" className="text-[10px] px-1 py-0">{itemQuestions.length} вопр.</Badge>
+                </div>
+              )}
+              {askingItemId === item.id && (
+                <div className="mt-2 flex gap-2 items-end">
+                  <Input
+                    placeholder="Имя"
+                    value={authorName}
+                    onChange={(e) => setAuthorName(e.target.value)}
+                    className="w-20 h-8 text-xs"
+                  />
+                  <Input
+                    placeholder="Вопрос..."
+                    value={questionText}
+                    onChange={(e) => setQuestionText(e.target.value)}
+                    className="flex-1 h-8 text-xs"
+                    onKeyDown={(e) => { if (e.key === "Enter") sendQuestion(item.id!, item.name); }}
+                  />
+                  <Button size="sm" className="h-8" onClick={() => sendQuestion(item.id!, item.name)}>
+                    <Send className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="border-b bg-card px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <FileSpreadsheet className="h-6 w-6 text-primary" />
-          <h1 className="text-lg font-bold">Закупка</h1>
+      <div className="border-b bg-card px-3 md:px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2 md:gap-3">
+          <FileSpreadsheet className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+          <h1 className="text-base md:text-lg font-bold">Закупка</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={prevDay}>
+        <div className="flex items-center gap-1 md:gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevDay}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <CalendarIcon className="h-4 w-4" />
-                {format(selectedDate, "d MMMM yyyy", { locale: ru })}
+              <Button variant="outline" size="sm" className="gap-1 md:gap-2 text-xs md:text-sm h-8">
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {format(selectedDate, isMobile ? "d MMM" : "d MMMM yyyy", { locale: ru })}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="center">
@@ -362,14 +527,14 @@ export default function Zakupka() {
               />
             </PopoverContent>
           </Popover>
-          <Button variant="ghost" size="icon" onClick={nextDay}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextDay}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* Left: Table */}
+        {/* Main content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {!session && !loading ? (
             <div
@@ -382,25 +547,21 @@ export default function Zakupka() {
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
             >
-              <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-lg font-medium text-muted-foreground">
-                Перетащите Excel-файл сюда
+              <Upload className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground mb-3 md:mb-4" />
+              <p className="text-base md:text-lg font-medium text-muted-foreground text-center px-4">
+                {isMobile ? "Нажмите для загрузки Excel" : "Перетащите Excel-файл сюда"}
               </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                или нажмите для выбора файла
-              </p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={handleFileSelect}
-              />
+              {!isMobile && (
+                <p className="text-sm text-muted-foreground mt-1">или нажмите для выбора файла</p>
+              )}
+              <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileSelect} />
             </div>
           ) : loading ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
             </div>
+          ) : isMobile ? (
+            mobileProductList
           ) : (
             <div className="flex-1 overflow-auto">
               <div className="px-4 py-2 flex items-center justify-between border-b bg-muted/30">
@@ -408,22 +569,11 @@ export default function Zakupka() {
                   <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">{session?.file_name}</span>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-xs"
-                >
+                <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} className="text-xs">
                   <Upload className="h-3 w-3 mr-1" />
                   Заменить
                 </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
+                <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileSelect} />
               </div>
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 sticky top-0 z-10">
@@ -458,7 +608,7 @@ export default function Zakupka() {
                           <div className="flex items-start gap-2">
                             <span className="truncate">{item.name}</span>
                             {item.comment && (
-                              <span className="shrink-0 text-xs text-accent-foreground bg-accent px-1.5 py-0.5 rounded max-w-[200px] truncate" title={item.comment}>
+                              <span className="shrink-0 text-xs text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 px-1.5 py-0.5 rounded max-w-[200px] truncate" title={item.comment}>
                                 {item.comment}
                               </span>
                             )}
@@ -497,7 +647,6 @@ export default function Zakupka() {
                       </tr>
                     );
                   })}
-                  {/* Inline question form */}
                   {askingItemId && (
                     <tr className="bg-primary/5">
                       <td colSpan={7} className="px-3 py-2">
@@ -540,81 +689,41 @@ export default function Zakupka() {
           )}
         </div>
 
-        {/* Right: Q&A Chat */}
-        <div className="w-80 border-l flex flex-col bg-card h-full">
-          <div className="px-4 py-3 border-b shrink-0">
-            <h2 className="text-sm font-semibold flex items-center gap-2">
-              <MessageCircle className="h-4 w-4" />
-              Вопросы по закупке
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {format(selectedDate, "d MMMM yyyy", { locale: ru })}
-            </p>
+        {/* Desktop: Right sidebar chat */}
+        {!isMobile && (
+          <div className="w-80 border-l flex flex-col bg-card h-full">
+            {chatPanel}
           </div>
-
-          <div className="flex-1 overflow-y-auto p-3 min-h-0">
-            {questions.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground text-sm">
-                <HelpCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                Пока нет вопросов
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {questions.map((q) => (
-                  <div key={q.id} className="text-sm">
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="font-medium text-xs">{q.author_name}</span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {format(new Date(q.created_at), "HH:mm")}
-                          </span>
-                        </div>
-                        <Badge variant="outline" className="text-[10px] px-1 py-0 mb-1">
-                          {q.item_name}
-                        </Badge>
-                        <p className="text-muted-foreground text-xs">{q.message}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <div ref={chatEndRef} />
-              </div>
-            )}
-          </div>
-
-          {/* Chat input fixed at bottom */}
-          {session && (
-            <div className="border-t p-3 space-y-2 shrink-0">
-              <Input
-                placeholder="Ваше имя"
-                value={chatAuthor}
-                onChange={(e) => setChatAuthor(e.target.value)}
-                className="h-7 text-xs"
-              />
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Написать сообщение..."
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  className="h-7 text-xs"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") sendChatMessage();
-                  }}
-                />
-                <Button
-                  size="sm"
-                  className="h-7 px-2"
-                  onClick={sendChatMessage}
-                  disabled={!chatInput.trim() || !chatAuthor.trim()}
-                >
-                  <Send className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
+
+      {/* Mobile: Floating chat button + Drawer */}
+      {isMobile && session && (
+        <>
+          <button
+            onClick={() => setChatOpen(true)}
+            className="fixed bottom-5 right-5 z-50 bg-primary text-primary-foreground rounded-full w-14 h-14 flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+          >
+            <MessageCircle className="h-6 w-6" />
+            {questions.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {questions.length}
+              </span>
+            )}
+          </button>
+          <Drawer open={chatOpen} onOpenChange={setChatOpen}>
+            <DrawerContent>
+              <DrawerHeader>
+                <DrawerTitle className="flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4" />
+                  Вопросы по закупке
+                </DrawerTitle>
+              </DrawerHeader>
+              {chatPanel}
+            </DrawerContent>
+          </Drawer>
+        </>
+      )}
     </div>
   );
 }
