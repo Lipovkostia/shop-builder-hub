@@ -1494,6 +1494,115 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_items: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          is_supplier_header: boolean
+          name: string
+          price: number | null
+          quantity: number | null
+          row_index: number
+          session_id: string
+          total: number | null
+          unit: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          is_supplier_header?: boolean
+          name: string
+          price?: number | null
+          quantity?: number | null
+          row_index?: number
+          session_id: string
+          total?: number | null
+          unit?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          is_supplier_header?: boolean
+          name?: string
+          price?: number | null
+          quantity?: number | null
+          row_index?: number
+          session_id?: string
+          total?: number | null
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_items_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_questions: {
+        Row: {
+          author_name: string
+          created_at: string
+          id: string
+          item_id: string
+          item_name: string
+          message: string
+          session_id: string
+        }
+        Insert: {
+          author_name: string
+          created_at?: string
+          id?: string
+          item_id: string
+          item_name?: string
+          message: string
+          session_id: string
+        }
+        Update: {
+          author_name?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_name?: string
+          message?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_questions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_sessions: {
+        Row: {
+          created_at: string
+          file_name: string
+          id: string
+          upload_date: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          id?: string
+          upload_date: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          upload_date?: string
+        }
+        Relationships: []
+      }
       role_product_pricing: {
         Row: {
           created_at: string
