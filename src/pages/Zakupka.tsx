@@ -368,7 +368,7 @@ export default function Zakupka() {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Left: Table */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {!session && !loading ? (
@@ -482,21 +482,17 @@ export default function Zakupka() {
                           {item.total != null ? item.total.toLocaleString("ru-RU") : ""}
                         </td>
                         <td className="px-3 py-1.5 text-center">
-                          {askingItemId === item.id ? (
-                            <button
-                              onClick={() => setAskingItemId(null)}
-                              className="text-muted-foreground hover:text-foreground"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => setAskingItemId(item.id!)}
-                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity"
-                            >
-                              <HelpCircle className="h-4 w-4" />
-                            </button>
-                          )}
+                          <button
+                            onClick={() => setAskingItemId(askingItemId === item.id ? null : item.id!)}
+                            className={cn(
+                              "transition-colors",
+                              askingItemId === item.id
+                                ? "text-primary"
+                                : "text-muted-foreground/40 hover:text-primary"
+                            )}
+                          >
+                            <HelpCircle className="h-5 w-5" />
+                          </button>
                         </td>
                       </tr>
                     );
@@ -545,8 +541,8 @@ export default function Zakupka() {
         </div>
 
         {/* Right: Q&A Chat */}
-        <div className="w-80 border-l flex flex-col bg-card">
-          <div className="px-4 py-3 border-b">
+        <div className="w-80 border-l flex flex-col bg-card h-full">
+          <div className="px-4 py-3 border-b shrink-0">
             <h2 className="text-sm font-semibold flex items-center gap-2">
               <MessageCircle className="h-4 w-4" />
               Вопросы по закупке
@@ -556,7 +552,7 @@ export default function Zakupka() {
             </p>
           </div>
 
-          <ScrollArea className="flex-1 p-3">
+          <div className="flex-1 overflow-y-auto p-3 min-h-0">
             {questions.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-sm">
                 <HelpCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
@@ -585,11 +581,11 @@ export default function Zakupka() {
                 <div ref={chatEndRef} />
               </div>
             )}
-          </ScrollArea>
+          </div>
 
-          {/* Chat input */}
+          {/* Chat input fixed at bottom */}
           {session && (
-            <div className="border-t p-3 space-y-2">
+            <div className="border-t p-3 space-y-2 shrink-0">
               <Input
                 placeholder="Ваше имя"
                 value={chatAuthor}
