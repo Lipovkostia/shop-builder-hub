@@ -2,11 +2,8 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -16,6 +13,9 @@ import {
   Upload, MessageCircle, HelpCircle, CalendarIcon, Send, ChevronLeft, ChevronRight, FileSpreadsheet, X
 } from "lucide-react";
 import * as XLSX from "xlsx";
+
+// Helper to bypass typed supabase client for new tables
+const db = supabase as any;
 
 interface PurchaseItem {
   id?: string;
@@ -59,34 +59,33 @@ export default function Zakupka() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load session for selected date
   const loadSession = useCallback(async (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd");
-    
-    const { data: sessions } = await supabase
+
+    const { data: sessions } = await db
       .from("purchase_sessions")
       .select("*")
       .eq("upload_date", dateStr)
       .order("created_at", { ascending: false })
-      .limit(1) as any;
+      .limit(1);
 
     if (sessions && sessions.length > 0) {
       const s = sessions[0];
       setSession(s);
 
-      const { data: itemsData } = await supabase
+      const { data: itemsData } = await db
         .from("purchase_items")
         .select("*")
         .eq("session_id", s.id)
-        .order("row_index") as any;
+        .order("row_index");
 
       setItems(itemsData || []);
 
-      const { data: questionsData } = await supabase
+      const { data: questionsData } = await db
         .from("purchase_questions")
         .select("*")
         .eq("session_id", s.id)
-        .order("created_at") as any;
+        .order("created_at");
 
       setQuestions(questionsData || []);
     } else {
@@ -133,16 +132,21 @@ export default function Zakupka() {
 
       if (rows.length === 0) return;
 
-      // Detect header row (skip it)
       const dataRows = rows.slice(1).filter((r: any[]) => r.some((c: any) => c !== undefined && c !== null && c !== ""));
+
+      const parseNum = (s: string) => {
+        if (!s) return null;
+        const cleaned = s.replace(/\s/g, "").replace(",", ".");
+        const n = parseFloat(cleaned);
+        return isNaN(n) ? null : n;
+      };
 
       const parsedItems: PurchaseItem[] = dataRows.map((row: any[], idx: number) => {
         const cells = row.map((c: any) => (c !== undefined && c !== null ? String(c).trim() : ""));
-        
-        // Check if this is a supplier header: only has name, no meaningful numeric data
+
         const name = cells[0] || cells[1] || "";
         const hasNumeric = cells.slice(1).some((c: string) => /^\d+([.,]\d+)?$/.test(c.replace(/\s/g, "")));
-        
+
         if (!hasNumeric && name) {
           return {
             row_index: idx,
@@ -156,15 +160,6 @@ export default function Zakupka() {
           };
         }
 
-        // Regular item row - try to extract fields
-        // Common patterns: Name, Qty, Unit, Price, Total, Comment
-        const parseNum = (s: string) => {
-          const cleaned = s.replace(/\s/g, "").replace(",", ".");
-          const n = parseFloat(cleaned);
-          return isNaN(n) ? null : n;
-        };
-
-        // Find the last non-empty cell for comment
         let comment: string | null = null;
         const lastCells = cells.slice(4);
         const lastNonEmpty = lastCells.filter((c: string) => c && !(/^\d+([.,]\d+)?$/.test(c.replace(/\s/g, ""))));
@@ -184,32 +179,31 @@ export default function Zakupka() {
         };
       });
 
-      // Save to DB
       const dateStr = format(selectedDate, "yyyy-MM-dd");
 
       // Delete existing session for this date
-      const { data: existing } = await supabase
+      const { data: existing } = await db
         .from("purchase_sessions")
         .select("id")
-        .eq("upload_date", dateStr) as any;
+        .eq("upload_date", dateStr);
 
       if (existing && existing.length > 0) {
         for (const ex of existing) {
-          await supabase.from("purchase_questions").delete().eq("session_id", ex.id) as any;
-          await supabase.from("purchase_items").delete().eq("session_id", ex.id) as any;
+          await db.from("purchase_questions").delete().eq("session_id", ex.id);
+          await db.from("purchase_items").delete().eq("session_id", ex.id);
         }
-        await supabase.from("purchase_sessions").delete().eq("upload_date", dateStr) as any;
+        await db.from("purchase_sessions").delete().eq("upload_date", dateStr);
       }
 
-      const { data: newSession, error: sessionError } = await supabase
+      const { data: newSession, error: sessionError } = await db
         .from("purchase_sessions")
         .insert({ upload_date: dateStr, file_name: file.name })
         .select()
-        .single() as any;
+        .single();
 
       if (sessionError) throw sessionError;
 
-      const itemsToInsert = parsedItems.map((item: PurchaseItem) => ({
+      const itemsToInsert = parsedItems.map((item) => ({
         session_id: newSession.id,
         row_index: item.row_index,
         name: item.name,
@@ -221,16 +215,16 @@ export default function Zakupka() {
         is_supplier_header: item.is_supplier_header,
       }));
 
-      await supabase.from("purchase_items").insert(itemsToInsert) as any;
+      await db.from("purchase_items").insert(itemsToInsert);
 
       setSession(newSession);
-      // Reload items with IDs
-      const { data: savedItems } = await supabase
+
+      const { data: savedItems } = await db
         .from("purchase_items")
         .select("*")
         .eq("session_id", newSession.id)
-        .order("row_index") as any;
-      
+        .order("row_index");
+
       setItems(savedItems || []);
       setQuestions([]);
     } catch (err) {
@@ -258,29 +252,29 @@ export default function Zakupka() {
     if (!questionText.trim() || !authorName.trim() || !session?.id) return;
     localStorage.setItem("zakupka_name", authorName);
 
-    await supabase.from("purchase_questions").insert({
+    await db.from("purchase_questions").insert({
       session_id: session.id,
       item_id: itemId,
       item_name: itemName,
       author_name: authorName,
       message: questionText.trim(),
-    }) as any;
+    });
 
     setQuestionText("");
     setAskingItemId(null);
   }, [questionText, authorName, session?.id]);
 
-  const sendChatMessage = useCallback(async (itemId: string, itemName: string) => {
+  const sendChatMessage = useCallback(async () => {
     if (!chatInput.trim() || !chatAuthor.trim() || !session?.id) return;
     localStorage.setItem("zakupka_name", chatAuthor);
 
-    await supabase.from("purchase_questions").insert({
+    await db.from("purchase_questions").insert({
       session_id: session.id,
-      item_id: itemId,
-      item_name: itemName,
+      item_id: "general",
+      item_name: "Общий вопрос",
       author_name: chatAuthor,
       message: chatInput.trim(),
-    }) as any;
+    });
 
     setChatInput("");
   }, [chatInput, chatAuthor, session?.id]);
@@ -321,7 +315,6 @@ export default function Zakupka() {
                 selected={selectedDate}
                 onSelect={(d) => d && setSelectedDate(d)}
                 className="pointer-events-auto"
-                locale={ru}
               />
             </PopoverContent>
           </Popover>
@@ -378,7 +371,7 @@ export default function Zakupka() {
                   className="text-xs"
                 >
                   <Upload className="h-3 w-3 mr-1" />
-                  Заменить файл
+                  Заменить
                 </Button>
                 <input
                   ref={fileInputRef}
@@ -389,7 +382,7 @@ export default function Zakupka() {
                 />
               </div>
               <table className="w-full text-sm">
-                <thead className="bg-muted/50 sticky top-0">
+                <thead className="bg-muted/50 sticky top-0 z-10">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground w-8">№</th>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">Наименование</th>
@@ -403,7 +396,7 @@ export default function Zakupka() {
                 <tbody>
                   {items.map((item, idx) => {
                     const itemQuestions = questions.filter(q => q.item_id === item.id);
-                    
+
                     if (item.is_supplier_header) {
                       return (
                         <tr key={item.id || idx} className="bg-primary/5 border-t-2 border-primary/20">
@@ -574,16 +567,13 @@ export default function Zakupka() {
                   onChange={(e) => setChatInput(e.target.value)}
                   className="h-7 text-xs"
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && chatInput.trim()) {
-                      // Send as general question
-                      sendChatMessage("general", "Общий вопрос");
-                    }
+                    if (e.key === "Enter") sendChatMessage();
                   }}
                 />
                 <Button
                   size="sm"
                   className="h-7 px-2"
-                  onClick={() => sendChatMessage("general", "Общий вопрос")}
+                  onClick={sendChatMessage}
                   disabled={!chatInput.trim() || !chatAuthor.trim()}
                 >
                   <Send className="h-3 w-3" />

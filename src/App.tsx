@@ -21,6 +21,7 @@ import CatalogAccess from "./pages/CatalogAccess";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import GuestCatalogView from "./pages/GuestCatalogView";
 import RetailCustomerDashboard from "./pages/RetailCustomerDashboard";
+import Zakupka from "./pages/Zakupka";
 import { useStoreBySubdomain } from "@/hooks/useUserStore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CustomDomainHandler } from "@/components/CustomDomainHandler";
@@ -127,6 +128,8 @@ const App = () => {
               <Route path="/wholesale/:subdomain" element={<WholesaleStore />} />
               <Route path="/wholesale/:subdomain/checkout" element={<WholesaleCheckout />} />
               <Route path="/wholesale/:subdomain/product/:slug" element={<WholesaleProduct />} />
+              {/* Zakupka mini-service */}
+              <Route path="/zakupka" element={<Zakupka />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
