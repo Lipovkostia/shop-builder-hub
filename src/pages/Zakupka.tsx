@@ -144,8 +144,24 @@ export default function Zakupka() {
       const parsedItems: PurchaseItem[] = dataRows.map((row: any[], idx: number) => {
         const cells = row.map((c: any) => (c !== undefined && c !== null ? String(c).trim() : ""));
 
-        const name = cells[0] || cells[1] || "";
-        const hasNumeric = cells.slice(1).some((c: string) => /^\d+([.,]\d+)?$/.test(c.replace(/\s/g, "")));
+        // Find the name: look for the first cell with text (not purely numeric)
+        // Excel structure: Col A = buy price, Col B = name, Col C = sell price, Col D = qty, Col E = unit, Col F = total, Col G+ = comments
+        const isNumericCell = (c: string) => !c || /^\d+([.,]\d+)?$/.test(c.replace(/\s/g, ""));
+        
+        // Find name - first long text cell (product name), skip short numeric cells
+        let nameIdx = -1;
+        for (let i = 0; i < Math.min(cells.length, 4); i++) {
+          if (cells[i] && !isNumericCell(cells[i])) {
+            nameIdx = i;
+            break;
+          }
+        }
+        
+        const name = nameIdx >= 0 ? cells[nameIdx] : "";
+        
+        // Supplier header: row has a text name but NO numeric values at all in other cells
+        const otherCells = cells.filter((_, i) => i !== nameIdx);
+        const hasNumeric = otherCells.some((c: string) => c && /^\d+([.,]\d+)?$/.test(c.replace(/\s/g, "")));
 
         if (!hasNumeric && name) {
           return {
@@ -160,20 +176,48 @@ export default function Zakupka() {
           };
         }
 
-        let comment: string | null = null;
-        const lastCells = cells.slice(4);
-        const lastNonEmpty = lastCells.filter((c: string) => c && !(/^\d+([.,]\d+)?$/.test(c.replace(/\s/g, ""))));
-        if (lastNonEmpty.length > 0) {
-          comment = lastNonEmpty[lastNonEmpty.length - 1];
+        // Extract numeric columns after the name
+        const numericCells: (number | null)[] = [];
+        const textCells: { idx: number; val: string }[] = [];
+        
+        for (let i = 0; i < cells.length; i++) {
+          if (i === nameIdx) continue;
+          const n = parseNum(cells[i]);
+          if (n !== null) {
+            numericCells.push(n);
+          } else if (cells[i]) {
+            textCells.push({ idx: i, val: cells[i] });
+          }
         }
+
+        // Typically: buyPrice, sellPrice, quantity, ... or sellPrice, quantity
+        // Find unit among text cells (short text like "кг", "шт")
+        let unit: string | null = null;
+        const commentParts: string[] = [];
+        
+        for (const tc of textCells) {
+          if (!unit && /^(кг|шт|л|уп|пач|бут|бан|кор|блок)\.?$/i.test(tc.val)) {
+            unit = tc.val;
+          } else {
+            commentParts.push(tc.val);
+          }
+        }
+        
+        const comment = commentParts.length > 0 ? commentParts.join('; ') : null;
+
+        // Map numeric values: buy_price, sell_price, quantity, total (flexible)
+        const buyPrice = numericCells[0] ?? null;
+        const sellPrice = numericCells.length >= 3 ? numericCells[1] : numericCells[0];
+        const quantity = numericCells.length >= 4 ? numericCells[2] : (numericCells.length >= 3 ? numericCells[1] : numericCells[0]);
+        const total = numericCells.length >= 4 ? numericCells[3] : (numericCells.length >= 3 ? numericCells[2] : numericCells[1]) ?? null;
 
         return {
           row_index: idx,
-          name: cells[0] || cells[1] || "Без названия",
-          quantity: parseNum(cells[1]) ?? parseNum(cells[2]),
-          unit: cells[2] && !/^\d/.test(cells[2]) ? cells[2] : (cells[3] && !/^\d/.test(cells[3]) ? cells[3] : null),
-          price: parseNum(cells[3]) ?? parseNum(cells[4]),
-          total: parseNum(cells[4]) ?? parseNum(cells[5]),
+          name: name || "Без названия",
+          quantity,
+          unit,
+          price: sellPrice,
+          total,
           comment,
           is_supplier_header: false,
         };
@@ -411,20 +455,12 @@ export default function Zakupka() {
                       <tr key={item.id || idx} className="border-b hover:bg-muted/30 group">
                         <td className="px-3 py-1.5 text-muted-foreground text-xs">{idx + 1}</td>
                         <td className="px-3 py-1.5">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-start gap-2">
                             <span className="truncate">{item.name}</span>
                             {item.comment && (
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <button className="shrink-0 text-amber-500 hover:text-amber-600">
-                                    <MessageCircle className="h-4 w-4 fill-current" />
-                                  </button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-72 text-sm">
-                                  <p className="font-medium mb-1">Комментарий закупщика:</p>
-                                  <p className="text-muted-foreground">{item.comment}</p>
-                                </PopoverContent>
-                              </Popover>
+                              <span className="shrink-0 text-xs text-accent-foreground bg-accent px-1.5 py-0.5 rounded max-w-[200px] truncate" title={item.comment}>
+                                {item.comment}
+                              </span>
                             )}
                             {itemQuestions.length > 0 && (
                               <Badge variant="secondary" className="text-[10px] px-1 py-0">
