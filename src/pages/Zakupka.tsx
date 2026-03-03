@@ -145,27 +145,38 @@ export default function Zakupka() {
         return isNaN(n) ? null : n;
       };
 
+      // Detect column mapping from header row
+      const headerRow = rows[0]?.map((c: any) => (c !== undefined && c !== null ? String(c).trim().toLowerCase() : "")) || [];
+      
+      // Try to find columns by header names
+      let colPrice = -1, colName = -1, colQty = -1, colUnit = -1, colCommentStart = -1;
+      
+      for (let i = 0; i < headerRow.length; i++) {
+        const h = headerRow[i];
+        if (!h) continue;
+        if (colPrice < 0 && /цена/.test(h)) colPrice = i;
+        else if (colName < 0 && /наименование|название|товар/.test(h)) colName = i;
+        else if (colQty < 0 && /кол|количество/.test(h)) colQty = i;
+        else if (colUnit < 0 && /ед\.?\s*(изм)?|единица/.test(h)) colUnit = i;
+        else if (colCommentStart < 0 && /сумма|комментар|примечан/.test(h)) colCommentStart = i;
+      }
+      
+      // Fallback: Excel structure from screenshot — A=price, B=name, F=price2, G=qty, H=unit, I+=comments
+      if (colName < 0) colName = 1; // B
+      if (colQty < 0) colQty = 6;   // G
+      if (colUnit < 0) colUnit = 7;  // H
+      if (colCommentStart < 0) colCommentStart = 8; // I
+      if (colPrice < 0) colPrice = 0; // A
+
       const parsedItems: PurchaseItem[] = dataRows.map((row: any[], idx: number) => {
         const cells = row.map((c: any) => (c !== undefined && c !== null ? String(c).trim() : ""));
 
-        // Find the name: look for the first cell with text (not purely numeric)
-        // Excel structure: Col A = buy price, Col B = name, Col C = sell price, Col D = qty, Col E = unit, Col F = total, Col G+ = comments
-        const isNumericCell = (c: string) => !c || /^\d+([.,]\d+)?$/.test(c.replace(/\s/g, ""));
+        const name = cells[colName] || "";
         
-        // Find name - first long text cell (product name), skip short numeric cells
-        let nameIdx = -1;
-        for (let i = 0; i < Math.min(cells.length, 4); i++) {
-          if (cells[i] && !isNumericCell(cells[i])) {
-            nameIdx = i;
-            break;
-          }
-        }
-        
-        const name = nameIdx >= 0 ? cells[nameIdx] : "";
-        
-        // Supplier header: row has a text name but NO numeric values at all in other cells
-        const otherCells = cells.filter((_, i) => i !== nameIdx);
-        const hasNumeric = otherCells.some((c: string) => c && /^\d+([.,]\d+)?$/.test(c.replace(/\s/g, "")));
+        // Supplier header: row has a text name but NO numeric values in qty/price columns
+        const qtyVal = parseNum(cells[colQty] || "");
+        const priceVal = parseNum(cells[colPrice] || "");
+        const hasNumeric = qtyVal !== null || priceVal !== null;
 
         if (!hasNumeric && name) {
           return {
@@ -180,47 +191,28 @@ export default function Zakupka() {
           };
         }
 
-        // Extract numeric columns after the name
-        const numericCells: (number | null)[] = [];
-        const textCells: { idx: number; val: string }[] = [];
+        const unit = cells[colUnit] || null;
+        const price = priceVal;
+        const quantity = qtyVal;
         
-        for (let i = 0; i < cells.length; i++) {
-          if (i === nameIdx) continue;
-          const n = parseNum(cells[i]);
-          if (n !== null) {
-            numericCells.push(n);
-          } else if (cells[i]) {
-            textCells.push({ idx: i, val: cells[i] });
-          }
-        }
-
-        // Typically: buyPrice, sellPrice, quantity, ... or sellPrice, quantity
-        // Find unit among text cells (short text like "кг", "шт")
-        let unit: string | null = null;
+        // Gather comments from colCommentStart onwards (I, J, K, ...)
         const commentParts: string[] = [];
-        
-        for (const tc of textCells) {
-          if (!unit && /^(кг|шт|л|уп|пач|бут|бан|кор|блок)\.?$/i.test(tc.val)) {
-            unit = tc.val;
-          } else {
-            commentParts.push(tc.val);
+        for (let i = colCommentStart; i < cells.length; i++) {
+          if (cells[i]) {
+            commentParts.push(cells[i]);
           }
         }
-        
         const comment = commentParts.length > 0 ? commentParts.join('; ') : null;
 
-        // Map numeric values: buy_price, sell_price, quantity, total (flexible)
-        const buyPrice = numericCells[0] ?? null;
-        const sellPrice = numericCells.length >= 3 ? numericCells[1] : numericCells[0];
-        const quantity = numericCells.length >= 4 ? numericCells[2] : (numericCells.length >= 3 ? numericCells[1] : numericCells[0]);
-        const total = numericCells.length >= 4 ? numericCells[3] : (numericCells.length >= 3 ? numericCells[2] : numericCells[1]) ?? null;
+        // Total = price * quantity if both exist
+        const total = (price !== null && quantity !== null) ? price * quantity : null;
 
         return {
           row_index: idx,
           name: name || "Без названия",
           quantity,
           unit,
-          price: sellPrice,
+          price,
           total,
           comment,
           is_supplier_header: false,
