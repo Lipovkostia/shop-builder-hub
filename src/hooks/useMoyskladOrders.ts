@@ -35,23 +35,44 @@ export function useMoyskladOrders(login: string | null, password: string | null)
   const [counterparties, setCounterparties] = useState<MoyskladCounterparty[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchOrganizations = useCallback(async () => {
-    if (!login || !password) return;
+  const fetchOrganizations = useCallback(async (overrideLogin?: string | null, overridePassword?: string | null) => {
+    const activeLogin = overrideLogin ?? login;
+    const activePassword = overridePassword ?? password;
+    if (!activeLogin || !activePassword) return;
 
     try {
       setLoading(true);
-      const { data, error } = await supabase.functions.invoke("moysklad", {
-        body: {
-          action: "get_organizations",
-          login,
-          password,
-        },
-      });
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      const allOrganizations: MoyskladOrganization[] = [];
+      let offset = 0;
+      const pageLimit = 50;
+      let hasMore = true;
 
-      setOrganizations(data.organizations || []);
+      while (hasMore) {
+        const { data, error } = await supabase.functions.invoke("moysklad", {
+          body: {
+            action: "get_organizations",
+            login: activeLogin,
+            password: activePassword,
+            organizationLimit: pageLimit,
+            organizationOffset: offset,
+          },
+        });
+
+        if (error) throw error;
+        if (data.error) throw new Error(data.error);
+
+        const page = data.organizations || [];
+        const total = data.meta?.size ?? page.length;
+        const effectiveLimit = data.meta?.limit ?? pageLimit;
+
+        allOrganizations.push(...page);
+        offset += page.length;
+
+        hasMore = page.length > 0 && offset < total && page.length >= effectiveLimit;
+      }
+
+      setOrganizations(allOrganizations);
     } catch (error: any) {
       console.error("Error fetching organizations:", error);
       toast({
@@ -64,23 +85,44 @@ export function useMoyskladOrders(login: string | null, password: string | null)
     }
   }, [login, password, toast]);
 
-  const fetchCounterparties = useCallback(async () => {
-    if (!login || !password) return;
+  const fetchCounterparties = useCallback(async (overrideLogin?: string | null, overridePassword?: string | null) => {
+    const activeLogin = overrideLogin ?? login;
+    const activePassword = overridePassword ?? password;
+    if (!activeLogin || !activePassword) return;
 
     try {
       setLoading(true);
-      const { data, error } = await supabase.functions.invoke("moysklad", {
-        body: {
-          action: "get_counterparties",
-          login,
-          password,
-        },
-      });
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      const allCounterparties: MoyskladCounterparty[] = [];
+      let offset = 0;
+      const pageLimit = 20;
+      let hasMore = true;
 
-      setCounterparties(data.counterparties || []);
+      while (hasMore) {
+        const { data, error } = await supabase.functions.invoke("moysklad", {
+          body: {
+            action: "get_counterparties",
+            login: activeLogin,
+            password: activePassword,
+            counterpartyLimit: pageLimit,
+            counterpartyOffset: offset,
+          },
+        });
+
+        if (error) throw error;
+        if (data.error) throw new Error(data.error);
+
+        const page = data.counterparties || [];
+        const total = data.meta?.size ?? page.length;
+        const effectiveLimit = data.meta?.limit ?? pageLimit;
+
+        allCounterparties.push(...page);
+        offset += page.length;
+
+        hasMore = page.length > 0 && offset < total && page.length >= effectiveLimit;
+      }
+
+      setCounterparties(allCounterparties);
     } catch (error: any) {
       console.error("Error fetching counterparties:", error);
       toast({
