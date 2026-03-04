@@ -97,6 +97,39 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
   
   const logoInputRef = useRef<HTMLInputElement>(null);
 
+  // Fetch MoySklad-synced products for the "Товары" tab
+  const fetchMsProducts = useCallback(async () => {
+    if (!storeId) return;
+    setMsProductsLoading(true);
+    try {
+      let query = supabase
+        .from("products")
+        .select("id, name, sku, price, buy_price, quantity, unit, images, moysklad_id, moysklad_account_id")
+        .eq("store_id", storeId)
+        .not("moysklad_id", "is", null)
+        .is("deleted_at", null)
+        .order("name");
+
+      if (selectedMsAccountFilter && selectedMsAccountFilter !== "all") {
+        query = query.eq("moysklad_account_id", selectedMsAccountFilter);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setMsProducts((data || []) as MoyskladProduct[]);
+    } catch (err) {
+      console.error("Error fetching MS products:", err);
+    } finally {
+      setMsProductsLoading(false);
+    }
+  }, [storeId, selectedMsAccountFilter]);
+
+  useEffect(() => {
+    if (activeTab === "products") {
+      fetchMsProducts();
+    }
+  }, [activeTab, fetchMsProducts]);
+
   // Fetch settings
   useEffect(() => {
     if (!storeId) return;
