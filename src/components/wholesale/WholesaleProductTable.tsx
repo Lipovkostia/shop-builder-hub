@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { Plus, Minus, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -10,6 +9,7 @@ interface WholesaleProductTableProps {
   getCartQuantity: (productId: string) => number;
   onAddToCart: (product: WholesaleProduct) => void;
   onUpdateQuantity: (productId: string, qty: number) => void;
+  onSelectProduct?: (product: WholesaleProduct) => void;
 }
 
 function formatPrice(price: number): string {
@@ -23,6 +23,7 @@ export function WholesaleProductTable({
   getCartQuantity,
   onAddToCart,
   onUpdateQuantity,
+  onSelectProduct,
 }: WholesaleProductTableProps) {
   return (
     <div className="w-full overflow-x-auto">
@@ -50,11 +51,12 @@ export function WholesaleProductTable({
             return (
               <tr
                 key={product.id}
-                className="border-b border-border/50 hover:bg-muted/30 transition-colors h-10"
+                className="border-b border-border/50 hover:bg-muted/30 transition-colors h-10 cursor-pointer"
+                onClick={() => onSelectProduct?.(product)}
               >
                 {/* Checkbox placeholder */}
                 <td className="px-1 py-1 text-center">
-                  <input type="checkbox" className="h-3.5 w-3.5 rounded border-muted-foreground/30" />
+                  <input type="checkbox" className="h-3.5 w-3.5 rounded border-muted-foreground/30" onClick={e => e.stopPropagation()} />
                 </td>
 
                 {/* Image */}
@@ -71,14 +73,10 @@ export function WholesaleProductTable({
                   )}
                 </td>
 
-                {/* Name */}
                 <td className="px-2 py-1">
-                  <Link
-                    to={`/wholesale/${subdomain}/product/${product.slug}`}
-                    className="hover:text-primary hover:underline line-clamp-1"
-                  >
+                  <span className="hover:text-primary hover:underline line-clamp-1">
                     {product.name}
-                  </Link>
+                  </span>
                 </td>
 
                 {/* SKU */}
@@ -121,7 +119,7 @@ export function WholesaleProductTable({
                 </td>
 
                 {/* Cart actions */}
-                <td className="px-2 py-1 text-center">
+                <td className="px-2 py-1 text-center" onClick={e => e.stopPropagation()}>
                   {cartQty > 0 ? (
                     <div className="inline-flex items-center gap-1">
                       <Button
