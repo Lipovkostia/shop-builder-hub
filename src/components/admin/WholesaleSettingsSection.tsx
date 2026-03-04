@@ -97,28 +97,41 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
   
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch MoySklad-synced products for the "Товары" tab
+  // Fetch all store products for the "Товары" tab (with optional MS account filter)
   const fetchMsProducts = useCallback(async () => {
     if (!storeId) return;
     setMsProductsLoading(true);
     try {
-      let query = supabase
-        .from("products")
-        .select("id, name, sku, price, buy_price, quantity, unit, images, moysklad_id, moysklad_account_id")
-        .eq("store_id", storeId)
-        .not("moysklad_id", "is", null)
-        .is("deleted_at", null)
-        .order("name");
+      // Paginate to handle >1000 products
+      const allProducts: MoyskladProduct[] = [];
+      const batchSize = 1000;
+      let offset = 0;
+      let hasMore = true;
 
-      if (selectedMsAccountFilter && selectedMsAccountFilter !== "all") {
-        query = query.eq("moysklad_account_id", selectedMsAccountFilter);
+      while (hasMore) {
+        let query = supabase
+          .from("products")
+          .select("id, name, sku, price, buy_price, quantity, unit, images, moysklad_id, moysklad_account_id")
+          .eq("store_id", storeId)
+          .is("deleted_at", null)
+          .order("name")
+          .range(offset, offset + batchSize - 1);
+
+        if (selectedMsAccountFilter && selectedMsAccountFilter !== "all") {
+          query = query.eq("moysklad_account_id", selectedMsAccountFilter);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        const page = (data || []) as MoyskladProduct[];
+        allProducts.push(...page);
+        offset += page.length;
+        hasMore = page.length >= batchSize;
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      setMsProducts((data || []) as MoyskladProduct[]);
+      setMsProducts(allProducts);
     } catch (err) {
-      console.error("Error fetching MS products:", err);
+      console.error("Error fetching products:", err);
     } finally {
       setMsProductsLoading(false);
     }
