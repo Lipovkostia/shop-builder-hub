@@ -210,6 +210,22 @@ const Index = () => {
   // Normalize phone to digits only
   const normalizePhone = (phone: string) => phone.replace(/\D/g, '');
 
+  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 12000): Promise<T> => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error("Сервис временно перегружен. Попробуйте снова через 10–20 секунд."));
+      }, timeoutMs);
+    });
+
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  };
+
   // Convert phone to pseudo-email for legacy users
   const phoneToPseudoEmail = (phone: string) => `${normalizePhone(phone)}@store.local`;
 
@@ -244,10 +260,12 @@ const Index = () => {
 
     setSellerLoading(true);
     try {
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
-        email: sellerEmail.trim().toLowerCase(),
-        password: sellerPassword
-      });
+      const { data: authData, error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email: sellerEmail.trim().toLowerCase(),
+          password: sellerPassword
+        })
+      );
 
       if (error) throw error;
 
@@ -317,10 +335,12 @@ const Index = () => {
     setSellerLoading(true);
     try {
       const pseudoEmail = phoneToPseudoEmail(sellerLoginPhone);
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
-        email: pseudoEmail,
-        password: sellerPassword
-      });
+      const { data: authData, error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email: pseudoEmail,
+          password: sellerPassword
+        })
+      );
 
       if (error) throw error;
 
@@ -446,10 +466,12 @@ const Index = () => {
 
     setCustomerLoading(true);
     try {
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
-        email: customerEmail.trim().toLowerCase(),
-        password: customerPassword
-      });
+      const { data: authData, error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email: customerEmail.trim().toLowerCase(),
+          password: customerPassword
+        })
+      );
 
       if (error) throw error;
 
@@ -481,10 +503,12 @@ const Index = () => {
     setCustomerLoading(true);
     try {
       const pseudoEmail = phoneToPseudoEmail(customerLoginPhone);
-      const { error } = await supabase.auth.signInWithPassword({
-        email: pseudoEmail,
-        password: customerPassword
-      });
+      const { error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email: pseudoEmail,
+          password: customerPassword
+        })
+      );
 
       if (error) throw error;
 
