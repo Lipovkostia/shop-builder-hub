@@ -883,9 +883,9 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
             <div className="flex items-start gap-3 mb-4">
               <ShoppingCart className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
-                <h3 className="font-semibold text-foreground">Синхронизированные товары</h3>
+                <h3 className="font-semibold text-foreground">Товары магазина</h3>
                 <p className="text-sm text-muted-foreground">
-                  Товары, импортированные из МойСклад
+                  Все товары из ассортимента для управления оптовым каталогом
                 </p>
               </div>
             </div>
