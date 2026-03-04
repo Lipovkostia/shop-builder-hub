@@ -783,6 +783,7 @@ export default function AdminPanel({
     status: "all",
     sync: "all",
     groups: [] as string[],
+    msAccount: "all",
   });
 
   // Filters for MoySklad import table
