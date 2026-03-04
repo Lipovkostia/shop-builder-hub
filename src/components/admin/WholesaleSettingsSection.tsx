@@ -926,8 +926,8 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
             ) : filteredMsProducts.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Database className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                <p>Нет синхронизированных товаров</p>
-                <p className="text-xs mt-1">Синхронизируйте товары из МойСклад в разделе ассортимента</p>
+                <p>Нет товаров</p>
+                <p className="text-xs mt-1">Добавьте товары в ассортимент или синхронизируйте из МойСклад</p>
               </div>
             ) : (
               <div className="border border-border rounded-lg overflow-hidden">
