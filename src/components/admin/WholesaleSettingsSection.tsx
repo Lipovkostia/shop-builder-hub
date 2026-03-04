@@ -905,7 +905,8 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
                   <SelectValue placeholder="Все аккаунты" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Все аккаунты</SelectItem>
+                  <SelectItem value="all">Все товары</SelectItem>
+                  <SelectItem value="no_ms">Без МС аккаунта</SelectItem>
                   {msAccounts.map((acc) => (
                     <SelectItem key={acc.id} value={acc.id}>
                       {acc.name}
