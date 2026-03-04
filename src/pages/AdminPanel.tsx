@@ -1578,18 +1578,32 @@ export default function AdminPanel({
         const account = accounts.find(a => a.id === accountId);
         if (!account) continue;
 
-        const { data } = await supabase.functions.invoke('moysklad', {
-          body: { 
-            action: 'get_assortment', 
-            limit: 100, 
-            offset: 0,
-            login: account.login,
-            password: account.password
+        // Fetch ALL products with pagination
+        const allMsProducts: MoySkladProduct[] = [];
+        let offset = 0;
+        const batchSize = 1000;
+        let hasMore = true;
+        while (hasMore) {
+          const { data } = await supabase.functions.invoke('moysklad', {
+            body: { 
+              action: 'get_assortment', 
+              limit: batchSize, 
+              offset,
+              login: account.login,
+              password: account.password
+            }
+          });
+          if (data?.products?.length) {
+            allMsProducts.push(...data.products);
+            offset += data.products.length;
+            hasMore = data.products.length >= batchSize && offset < (data.meta?.size || 0);
+          } else {
+            hasMore = false;
           }
-        });
+        }
 
-        if (data?.products) {
-          const msProductsMap = new Map(data.products.map((p: MoySkladProduct) => [p.id, p]));
+        if (allMsProducts.length > 0) {
+          const msProductsMap = new Map(allMsProducts.map((p: MoySkladProduct) => [p.id, p]));
           
           // Update each product in Supabase
           for (const product of products) {
@@ -2414,39 +2428,59 @@ export default function AdminPanel({
     try {
       console.log("Fetching products from MoySklad...");
       
-      const { data, error } = await supabase.functions.invoke('moysklad', {
-        body: { 
-          action: 'get_assortment', 
-          limit: 100, 
-          offset: 0,
-          login: acc.login,
-          password: acc.password
+      // Fetch ALL products with pagination
+      const allProducts: MoySkladProduct[] = [];
+      let offset = 0;
+      const batchSize = 1000;
+      let totalSize = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase.functions.invoke('moysklad', {
+          body: { 
+            action: 'get_assortment', 
+            limit: batchSize, 
+            offset,
+            login: acc.login,
+            password: acc.password
+          }
+        });
+
+        if (error) {
+          console.error("Error fetching products:", error);
+          toast({
+            title: "Ошибка",
+            description: "Не удалось загрузить товары из МойСклад",
+            variant: "destructive",
+          });
+          return;
         }
-      });
 
-      if (error) {
-        console.error("Error fetching products:", error);
-        toast({
-          title: "Ошибка",
-          description: "Не удалось загрузить товары из МойСклад",
-          variant: "destructive",
-        });
-        return;
+        if (data.error) {
+          console.error("MoySklad API error:", data.error);
+          toast({
+            title: "Ошибка авторизации",
+            description: "Неверный логин или пароль МойСклад",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (data.products?.length) {
+          allProducts.push(...data.products);
+          totalSize = data.meta?.size || allProducts.length;
+          offset += data.products.length;
+          hasMore = data.products.length >= batchSize && offset < totalSize;
+          console.log(`Fetched ${allProducts.length}/${totalSize} products...`);
+        } else {
+          hasMore = false;
+          totalSize = data.meta?.size || allProducts.length;
+        }
       }
 
-      if (data.error) {
-        console.error("MoySklad API error:", data.error);
-        toast({
-          title: "Ошибка авторизации",
-          description: "Неверный логин или пароль МойСклад",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log("Fetched products:", data);
-      setMoyskladProducts(data.products || []);
-      setTotalProducts(data.meta?.size || 0);
+      console.log("Fetched all products:", allProducts.length);
+      setMoyskladProducts(allProducts);
+      setTotalProducts(totalSize);
       
       // Update account's last sync time
       setAccounts(prev => prev.map(a => 
@@ -2455,7 +2489,7 @@ export default function AdminPanel({
       
       toast({
         title: "Товары загружены",
-        description: `Загружено ${data.products?.length || 0} товаров`,
+        description: `Загружено ${allProducts.length} товаров из ${totalSize}`,
       });
     } catch (err) {
       console.error("Error:", err);
@@ -2739,12 +2773,26 @@ export default function AdminPanel({
 
     setIsSyncing(true);
     try {
-      const { data } = await supabase.functions.invoke('moysklad', {
-        body: { action: 'get_assortment', limit: 100, offset: 0, login: currentAccount.login, password: currentAccount.password }
-      });
+      // Fetch ALL products with pagination
+      const allMsProducts: MoySkladProduct[] = [];
+      let syncOffset = 0;
+      const syncBatchSize = 1000;
+      let syncHasMore = true;
+      while (syncHasMore) {
+        const { data } = await supabase.functions.invoke('moysklad', {
+          body: { action: 'get_assortment', limit: syncBatchSize, offset: syncOffset, login: currentAccount.login, password: currentAccount.password }
+        });
+        if (data?.products?.length) {
+          allMsProducts.push(...data.products);
+          syncOffset += data.products.length;
+          syncHasMore = data.products.length >= syncBatchSize && syncOffset < (data.meta?.size || 0);
+        } else {
+          syncHasMore = false;
+        }
+      }
 
-      if (data?.products) {
-        const msProductsMap = new Map(data.products.map((p: MoySkladProduct) => [p.id, p]));
+      if (allMsProducts.length > 0) {
+        const msProductsMap = new Map(allMsProducts.map((p: MoySkladProduct) => [p.id, p]));
         const mapping = syncSettings.fieldMapping;
         
         setImportedProducts(prev => prev.map(product => {
