@@ -153,6 +153,7 @@ export interface AllProductsFilters {
   status: string;
   sync: string;
   groups: string[];
+  msAccount: string;
 }
 
 interface VirtualProductTableProps {

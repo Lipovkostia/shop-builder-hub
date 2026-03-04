@@ -43,6 +43,7 @@ export interface VisibleColumns {
   groups: boolean;
   catalogs: boolean;
   msProduct: boolean;
+  msAccount: boolean;
   sync: boolean;
 }
 

@@ -55,6 +55,7 @@ const defaultVisibleColumns: VisibleColumns = {
   groups: true,
   catalogs: true,
   msProduct: false,
+  msAccount: true,
   sync: true,
 };
 
@@ -71,6 +72,7 @@ const defaultFilters: AllProductsFilters = {
   status: "all",
   sync: "all",
   groups: [],
+  msAccount: "all",
 };
 
 export function ProductsSection({
