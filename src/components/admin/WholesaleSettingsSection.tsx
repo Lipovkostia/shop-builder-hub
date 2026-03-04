@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from "react";
+import React, { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { 
   Store, 
   Palette, 
@@ -15,7 +15,9 @@ import {
   Phone,
   Sparkles,
   Video,
-  Radio
+  Radio,
+  Database,
+  ShoppingCart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,12 +27,27 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { useRetailSettings, RetailTheme } from "@/hooks/useRetailSettings";
 import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
 import { useProductSeo } from "@/hooks/useProductSeo";
+import { useMoyskladAccounts } from "@/hooks/useMoyskladAccounts";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+interface MoyskladProduct {
+  id: string;
+  name: string;
+  sku: string | null;
+  price: number;
+  buy_price: number | null;
+  quantity: number;
+  unit: string | null;
+  images: string[] | null;
+  moysklad_id: string | null;
+  moysklad_account_id: string | null;
+}
 
 interface WholesaleSettingsSectionProps {
   storeId: string | null;
@@ -57,9 +74,14 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
 
   const { catalogs, productVisibility, loading: catalogsLoading } = useStoreCatalogs(storeId);
   const { generating, progress, generateBulkSeo } = useProductSeo(storeId, storeName);
+  const { accounts: msAccounts, loading: msAccountsLoading } = useMoyskladAccounts(storeId);
 
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
+  const [selectedMsAccountFilter, setSelectedMsAccountFilter] = useState<string>("all");
+  const [msProducts, setMsProducts] = useState<MoyskladProduct[]>([]);
+  const [msProductsLoading, setMsProductsLoading] = useState(false);
+  const [msProductSearch, setMsProductSearch] = useState("");
   
   // Form states
   const [wholesaleName, setWholesaleName] = useState("");
@@ -74,6 +96,48 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
   const [livestreamTitle, setLivestreamTitle] = useState("");
   
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch MoySklad-synced products for the "Товары" tab
+  const fetchMsProducts = useCallback(async () => {
+    if (!storeId) return;
+    setMsProductsLoading(true);
+    try {
+      let query = supabase
+        .from("products")
+        .select("id, name, sku, price, buy_price, quantity, unit, images, moysklad_id, moysklad_account_id")
+        .eq("store_id", storeId)
+        .not("moysklad_id", "is", null)
+        .is("deleted_at", null)
+        .order("name");
+
+      if (selectedMsAccountFilter && selectedMsAccountFilter !== "all") {
+        query = query.eq("moysklad_account_id", selectedMsAccountFilter);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setMsProducts((data || []) as MoyskladProduct[]);
+    } catch (err) {
+      console.error("Error fetching MS products:", err);
+    } finally {
+      setMsProductsLoading(false);
+    }
+  }, [storeId, selectedMsAccountFilter]);
+
+  useEffect(() => {
+    if (activeTab === "products") {
+      fetchMsProducts();
+    }
+  }, [activeTab, fetchMsProducts]);
+
+  const filteredMsProducts = useMemo(() => {
+    if (!msProductSearch) return msProducts;
+    const q = msProductSearch.toLowerCase();
+    return msProducts.filter(p => 
+      p.name.toLowerCase().includes(q) || 
+      (p.sku && p.sku.toLowerCase().includes(q))
+    );
+  }, [msProducts, msProductSearch]);
 
   // Fetch settings
   useEffect(() => {
@@ -212,7 +276,7 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-5 mb-6">
+        <TabsList className="w-full grid grid-cols-6 mb-6">
           <TabsTrigger value="general" className="gap-1.5">
             <Store className="h-4 w-4" />
             <span className="hidden sm:inline">Общее</span>
@@ -232,6 +296,10 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
           <TabsTrigger value="domain" className="gap-1.5">
             <Globe className="h-4 w-4" />
             <span className="hidden sm:inline">Домен</span>
+          </TabsTrigger>
+          <TabsTrigger value="products" className="gap-1.5">
+            <ShoppingCart className="h-4 w-4" />
+            <span className="hidden sm:inline">Товары</span>
           </TabsTrigger>
         </TabsList>
 
@@ -348,6 +416,35 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
                   <span className="text-muted-foreground">
                     В прайс-листе <span className="font-medium text-foreground">{selectedCatalog.name}</span>: {selectedCatalogProductCount} товаров
                   </span>
+                </div>
+              )}
+
+              {/* MoySklad Account Filter */}
+              {msAccounts.length > 0 && (
+                <div className="pt-2 border-t border-border">
+                  <Label className="text-sm text-muted-foreground mb-2 block">
+                    <Database className="h-4 w-4 inline mr-1.5" />
+                    Фильтр по аккаунту МойСклад
+                  </Label>
+                  <Select
+                    value={selectedMsAccountFilter}
+                    onValueChange={setSelectedMsAccountFilter}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Все аккаунты" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Все аккаунты</SelectItem>
+                      {msAccounts.map((acc) => (
+                        <SelectItem key={acc.id} value={acc.id}>
+                          {acc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Отфильтруйте товары по конкретному аккаунту МойСклад
+                  </p>
                 </div>
               )}
             </div>
@@ -764,6 +861,109 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
                 )}
               </Button>
             </div>
+          </div>
+        </TabsContent>
+
+        {/* Products Tab */}
+        <TabsContent value="products" className="space-y-6">
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <ShoppingCart className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground">Синхронизированные товары</h3>
+                <p className="text-sm text-muted-foreground">
+                  Товары, импортированные из МойСклад
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <Input
+                placeholder="Поиск по названию или артикулу..."
+                value={msProductSearch}
+                onChange={(e) => setMsProductSearch(e.target.value)}
+                className="flex-1"
+              />
+              <Select
+                value={selectedMsAccountFilter}
+                onValueChange={setSelectedMsAccountFilter}
+              >
+                <SelectTrigger className="w-full sm:w-[220px]">
+                  <SelectValue placeholder="Все аккаунты" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все аккаунты</SelectItem>
+                  {msAccounts.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      {acc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="text-sm text-muted-foreground mb-3">
+              Найдено: {filteredMsProducts.length} товаров
+            </div>
+
+            {msProductsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredMsProducts.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Database className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                <p>Нет синхронизированных товаров</p>
+                <p className="text-xs mt-1">Синхронизируйте товары из МойСклад в разделе ассортимента</p>
+              </div>
+            ) : (
+              <div className="border border-border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 sticky top-0">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Название</th>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Артикул</th>
+                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">Цена</th>
+                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">Себестоимость</th>
+                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">Остаток</th>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Ед.</th>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">МС аккаунт</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {filteredMsProducts.slice(0, 200).map((product) => {
+                        const accountName = msAccounts.find(a => a.id === product.moysklad_account_id)?.name;
+                        return (
+                          <tr key={product.id} className="hover:bg-muted/30">
+                            <td className="px-3 py-2 max-w-[300px] truncate">{product.name}</td>
+                            <td className="px-3 py-2 text-muted-foreground font-mono text-xs">{product.sku || "—"}</td>
+                            <td className="px-3 py-2 text-right">{product.price?.toLocaleString("ru-RU")} ₽</td>
+                            <td className="px-3 py-2 text-right text-muted-foreground">
+                              {product.buy_price ? `${product.buy_price.toLocaleString("ru-RU")} ₽` : "—"}
+                            </td>
+                            <td className="px-3 py-2 text-right">{product.quantity}</td>
+                            <td className="px-3 py-2 text-muted-foreground">{product.unit || "шт"}</td>
+                            <td className="px-3 py-2">
+                              {accountName ? (
+                                <Badge variant="secondary" className="text-xs font-normal">{accountName}</Badge>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {filteredMsProducts.length > 200 && (
+                  <div className="px-3 py-2 text-xs text-muted-foreground bg-muted/30 text-center">
+                    Показано 200 из {filteredMsProducts.length} товаров
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>
