@@ -45,9 +45,15 @@ serve(async (req) => {
       // Fetch products/assortment list
       console.log('Fetching assortment from MoySklad...');
       
+      const requestedLimit = Number(limit);
+      const safeLimit = Math.min(
+        Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.floor(requestedLimit) : 100,
+        search ? 50 : 20
+      );
+      const safeOffset = Number.isFinite(Number(offset)) ? Math.max(0, Number(offset)) : 0;
       const searchParam = search ? `&search=${encodeURIComponent(search)}` : '';
       const response = await fetch(
-        `${MOYSKLAD_API_URL}/entity/assortment?limit=${limit}&offset=${offset}${searchParam}`,
+        `${MOYSKLAD_API_URL}/entity/assortment?limit=${safeLimit}&offset=${safeOffset}${searchParam}`,
         {
           method: 'GET',
           headers: {
@@ -96,8 +102,8 @@ serve(async (req) => {
           products, 
           meta: {
             size: data.meta?.size || 0,
-            limit: data.meta?.limit || limit,
-            offset: data.meta?.offset || offset,
+            limit: data.meta?.limit || safeLimit,
+            offset: data.meta?.offset || safeOffset,
           }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
