@@ -53,6 +53,7 @@ export interface Product {
   status?: ProductStatus;       // Статус товара: в наличии, нет, скрыт
   source?: "local" | "moysklad";
   moyskladId?: string;
+  moyskladAccountName?: string;
   autoSync?: boolean;
   buyPrice?: number;
   markup?: MarkupSettings;
