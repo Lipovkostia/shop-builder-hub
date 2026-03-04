@@ -1581,10 +1581,10 @@ export default function AdminPanel({
         // Fetch ALL products with pagination
         const allMsProducts: MoySkladProduct[] = [];
         let offset = 0;
-        const batchSize = 1000;
+        const batchSize = 20;
         let hasMore = true;
         while (hasMore) {
-          const { data } = await supabase.functions.invoke('moysklad', {
+          const { data, error } = await supabase.functions.invoke('moysklad', {
             body: { 
               action: 'get_assortment', 
               limit: batchSize, 
@@ -1593,10 +1593,18 @@ export default function AdminPanel({
               password: account.password
             }
           });
-          if (data?.products?.length) {
-            allMsProducts.push(...data.products);
-            offset += data.products.length;
-            hasMore = data.products.length >= batchSize && offset < (data.meta?.size || 0);
+
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
+
+          const page = data?.products || [];
+          const total = data?.meta?.size || 0;
+          const effectiveLimit = data?.meta?.limit || batchSize;
+
+          if (page.length > 0) {
+            allMsProducts.push(...page);
+            offset += page.length;
+            hasMore = offset < total && page.length >= effectiveLimit;
           } else {
             hasMore = false;
           }
@@ -2431,7 +2439,7 @@ export default function AdminPanel({
       // Fetch ALL products with pagination
       const allProducts: MoySkladProduct[] = [];
       let offset = 0;
-      const batchSize = 1000;
+      const batchSize = 20;
       let totalSize = 0;
       let hasMore = true;
 
@@ -2460,21 +2468,23 @@ export default function AdminPanel({
           console.error("MoySklad API error:", data.error);
           toast({
             title: "Ошибка авторизации",
-            description: "Неверный логин или пароль МойСклад",
+            description: data.error,
             variant: "destructive",
           });
           return;
         }
 
-        if (data.products?.length) {
-          allProducts.push(...data.products);
-          totalSize = data.meta?.size || allProducts.length;
-          offset += data.products.length;
-          hasMore = data.products.length >= batchSize && offset < totalSize;
+        const page = data.products || [];
+        totalSize = data.meta?.size || totalSize || page.length;
+        const effectiveLimit = data.meta?.limit || batchSize;
+
+        if (page.length > 0) {
+          allProducts.push(...page);
+          offset += page.length;
+          hasMore = offset < totalSize && page.length >= effectiveLimit;
           console.log(`Fetched ${allProducts.length}/${totalSize} products...`);
         } else {
           hasMore = false;
-          totalSize = data.meta?.size || allProducts.length;
         }
       }
 
@@ -2776,16 +2786,24 @@ export default function AdminPanel({
       // Fetch ALL products with pagination
       const allMsProducts: MoySkladProduct[] = [];
       let syncOffset = 0;
-      const syncBatchSize = 1000;
+      const syncBatchSize = 20;
       let syncHasMore = true;
       while (syncHasMore) {
-        const { data } = await supabase.functions.invoke('moysklad', {
+        const { data, error } = await supabase.functions.invoke('moysklad', {
           body: { action: 'get_assortment', limit: syncBatchSize, offset: syncOffset, login: currentAccount.login, password: currentAccount.password }
         });
-        if (data?.products?.length) {
-          allMsProducts.push(...data.products);
-          syncOffset += data.products.length;
-          syncHasMore = data.products.length >= syncBatchSize && syncOffset < (data.meta?.size || 0);
+
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+
+        const page = data?.products || [];
+        const total = data?.meta?.size || 0;
+        const effectiveLimit = data?.meta?.limit || syncBatchSize;
+
+        if (page.length > 0) {
+          allMsProducts.push(...page);
+          syncOffset += page.length;
+          syncHasMore = syncOffset < total && page.length >= effectiveLimit;
         } else {
           syncHasMore = false;
         }
