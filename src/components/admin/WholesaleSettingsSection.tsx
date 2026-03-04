@@ -97,28 +97,43 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
   
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch MoySklad-synced products for the "Товары" tab
+  // Fetch all store products for the "Товары" tab (with optional MS account filter)
   const fetchMsProducts = useCallback(async () => {
     if (!storeId) return;
     setMsProductsLoading(true);
     try {
-      let query = supabase
-        .from("products")
-        .select("id, name, sku, price, buy_price, quantity, unit, images, moysklad_id, moysklad_account_id")
-        .eq("store_id", storeId)
-        .not("moysklad_id", "is", null)
-        .is("deleted_at", null)
-        .order("name");
+      // Paginate to handle >1000 products
+      const allProducts: MoyskladProduct[] = [];
+      const batchSize = 1000;
+      let offset = 0;
+      let hasMore = true;
 
-      if (selectedMsAccountFilter && selectedMsAccountFilter !== "all") {
-        query = query.eq("moysklad_account_id", selectedMsAccountFilter);
+      while (hasMore) {
+        let query = supabase
+          .from("products")
+          .select("id, name, sku, price, buy_price, quantity, unit, images, moysklad_id, moysklad_account_id")
+          .eq("store_id", storeId)
+          .is("deleted_at", null)
+          .order("name")
+          .range(offset, offset + batchSize - 1);
+
+        if (selectedMsAccountFilter === "no_ms") {
+          query = query.is("moysklad_account_id", null);
+        } else if (selectedMsAccountFilter && selectedMsAccountFilter !== "all") {
+          query = query.eq("moysklad_account_id", selectedMsAccountFilter);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        const page = (data || []) as MoyskladProduct[];
+        allProducts.push(...page);
+        offset += page.length;
+        hasMore = page.length >= batchSize;
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      setMsProducts((data || []) as MoyskladProduct[]);
+      setMsProducts(allProducts);
     } catch (err) {
-      console.error("Error fetching MS products:", err);
+      console.error("Error fetching products:", err);
     } finally {
       setMsProductsLoading(false);
     }
@@ -870,9 +885,9 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
             <div className="flex items-start gap-3 mb-4">
               <ShoppingCart className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
-                <h3 className="font-semibold text-foreground">Синхронизированные товары</h3>
+                <h3 className="font-semibold text-foreground">Товары магазина</h3>
                 <p className="text-sm text-muted-foreground">
-                  Товары, импортированные из МойСклад
+                  Все товары из ассортимента для управления оптовым каталогом
                 </p>
               </div>
             </div>
@@ -892,7 +907,8 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
                   <SelectValue placeholder="Все аккаунты" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Все аккаунты</SelectItem>
+                  <SelectItem value="all">Все товары</SelectItem>
+                  <SelectItem value="no_ms">Без МС аккаунта</SelectItem>
                   {msAccounts.map((acc) => (
                     <SelectItem key={acc.id} value={acc.id}>
                       {acc.name}
@@ -913,8 +929,8 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
             ) : filteredMsProducts.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Database className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                <p>Нет синхронизированных товаров</p>
-                <p className="text-xs mt-1">Синхронизируйте товары из МойСклад в разделе ассортимента</p>
+                <p>Нет товаров</p>
+                <p className="text-xs mt-1">Добавьте товары в ассортимент или синхронизируйте из МойСклад</p>
               </div>
             ) : (
               <div className="border border-border rounded-lg overflow-hidden">
