@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   Search,
   ShoppingCart,
   Phone,
   Mail,
   Package,
+  ListTree,
 } from "lucide-react";
 import { useWholesaleStore, WholesaleProduct } from "@/hooks/useWholesaleStore";
 import { useRetailCart } from "@/hooks/useRetailCart";
@@ -18,7 +20,7 @@ import { WholesaleCartSheet } from "@/components/wholesale/WholesaleCartSheet";
 import { WholesaleCartDrawer } from "@/components/wholesale/WholesaleCartDrawer";
 import { WholesaleCategorySidebar } from "@/components/wholesale/WholesaleCategorySidebar";
 import { WholesaleProductTable } from "@/components/wholesale/WholesaleProductTable";
-import { WholesaleCategorySelector } from "@/components/wholesale/WholesaleCategorySelector";
+import { WholesaleProductDetailPanel } from "@/components/wholesale/WholesaleProductDetailPanel";
 
 interface WholesaleStoreProps {
   subdomain?: string;
@@ -33,10 +35,11 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<WholesaleProduct | null>(null);
+  const [categoriesDrawerOpen, setCategoriesDrawerOpen] = useState(false);
 
   const filteredProducts = useMemo(() => {
     let result = [...products];
-
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
@@ -46,13 +49,11 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
           p.sku?.toLowerCase().includes(query)
       );
     }
-
     if (selectedCategory) {
       result = result.filter((p) =>
         p.category_ids.includes(selectedCategory) || p.category_id === selectedCategory
       );
     }
-
     return result;
   }, [products, searchQuery, selectedCategory]);
 
@@ -69,6 +70,11 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
   const getCartQuantity = (productId: string): number => {
     const item = cart.find(i => i.productId === productId);
     return item?.quantity || 0;
+  };
+
+  const handleMobileCategorySelect = (catId: string | null) => {
+    setSelectedCategory(catId);
+    setCategoriesDrawerOpen(false);
   };
 
   // SEO
@@ -116,10 +122,21 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header - compact */}
+      {/* Header */}
       <header className="sticky top-0 z-50 bg-card border-b">
         <div className="max-w-[1600px] mx-auto px-4 py-2">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Mobile: Categories button */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="lg:hidden h-8 text-xs shrink-0"
+              onClick={() => setCategoriesDrawerOpen(true)}
+            >
+              <ListTree className="h-3.5 w-3.5 mr-1" />
+              Категории
+            </Button>
+
             {/* Logo */}
             <Link to={`/wholesale/${subdomain}`} className="flex items-center gap-2 shrink-0">
               {store.wholesale_logo_url || store.logo_url ? (
@@ -194,7 +211,7 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
 
       {/* Main content */}
       <div className="flex-1 max-w-[1600px] mx-auto w-full flex">
-        {/* Left sidebar - categories */}
+        {/* Left sidebar - categories (desktop) */}
         <aside className="hidden lg:block w-56 shrink-0 border-r bg-card overflow-y-auto p-3" style={{ maxHeight: "calc(100vh - 48px)", position: "sticky", top: "48px" }}>
           <WholesaleCategorySidebar
             categories={categories.filter(c => c.product_count && c.product_count > 0) as any}
@@ -206,16 +223,6 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
 
         {/* Product table area */}
         <main className="flex-1 min-w-0 overflow-hidden">
-          {/* Mobile category selector */}
-          <div className="lg:hidden p-2 border-b">
-            <WholesaleCategorySelector
-              categories={categories}
-              selectedCategory={selectedCategory}
-              onSelectCategory={setSelectedCategory}
-              totalProductsCount={products.length}
-            />
-          </div>
-
           {/* Min order notice */}
           {store.wholesale_min_order_amount && store.wholesale_min_order_amount > 0 && (
             <div className="px-3 py-1.5 bg-muted/30 border-b text-xs text-muted-foreground">
@@ -240,10 +247,39 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
               getCartQuantity={getCartQuantity}
               onAddToCart={handleAddToCart}
               onUpdateQuantity={updateQuantity}
+              onSelectProduct={setSelectedProduct}
             />
           )}
         </main>
       </div>
+
+      {/* Product detail panel */}
+      {selectedProduct && (
+        <WholesaleProductDetailPanel
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onAddToCart={handleAddToCart}
+          onUpdateQuantity={updateQuantity}
+          cartQuantity={getCartQuantity(selectedProduct.id)}
+        />
+      )}
+
+      {/* Mobile categories drawer */}
+      <Sheet open={categoriesDrawerOpen} onOpenChange={setCategoriesDrawerOpen}>
+        <SheetContent side="left" className="w-72 p-0">
+          <div className="p-4 border-b">
+            <h3 className="font-semibold text-sm">Категории</h3>
+          </div>
+          <div className="p-3 overflow-y-auto" style={{ maxHeight: "calc(100vh - 60px)" }}>
+            <WholesaleCategorySidebar
+              categories={categories.filter(c => c.product_count && c.product_count > 0) as any}
+              selectedCategory={selectedCategory}
+              onSelectCategory={handleMobileCategorySelect}
+              totalProductsCount={products.length}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Cart */}
       {isMobile ? (

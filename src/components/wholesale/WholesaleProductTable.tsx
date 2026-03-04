@@ -120,7 +120,7 @@ export function WholesaleProductTable({
                 </td>
 
                 {/* Cart actions */}
-                <td className="px-2 py-1 text-center">
+                <td className="px-2 py-1 text-center" onClick={e => e.stopPropagation()}>
                   {cartQty > 0 ? (
                     <div className="inline-flex items-center gap-1">
                       <Button
