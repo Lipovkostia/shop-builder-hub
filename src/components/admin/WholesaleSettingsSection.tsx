@@ -117,7 +117,9 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
           .order("name")
           .range(offset, offset + batchSize - 1);
 
-        if (selectedMsAccountFilter && selectedMsAccountFilter !== "all") {
+        if (selectedMsAccountFilter === "no_ms") {
+          query = query.is("moysklad_account_id", null);
+        } else if (selectedMsAccountFilter && selectedMsAccountFilter !== "all") {
           query = query.eq("moysklad_account_id", selectedMsAccountFilter);
         }
 
