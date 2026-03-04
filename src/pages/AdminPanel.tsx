@@ -3138,11 +3138,14 @@ export default function AdminPanel({
       moyskladId: sp.moysklad_id || undefined,
       autoSync: sp.auto_sync || false,
       accountId: sp.moysklad_account_id || undefined,
+      moyskladAccountName: sp.moysklad_account_id 
+        ? accounts.find(a => a.id === sp.moysklad_account_id)?.name || undefined
+        : undefined,
       syncedMoyskladImages: sp.synced_moysklad_images || [],
       status: sp.is_active ? "in_stock" as const : "hidden" as const,
       isFixedPrice: sp.is_fixed_price || false,
     })) as Product[];
-  }, [supabaseProducts]);
+  }, [supabaseProducts, accounts]);
 
   // Update product via Supabase
   const updateProduct = async (updatedProduct: Product) => {

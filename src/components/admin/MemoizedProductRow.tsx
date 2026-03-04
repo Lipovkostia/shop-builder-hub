@@ -536,6 +536,19 @@ function ProductRowComponent({
           </div>
         )}
 
+        {/* MoySklad Account */}
+        {visibleColumns.msAccount && (
+          <div className="flex-shrink-0" style={{ width: columnWidths?.msAccount || 100 }}>
+            {product.moyskladAccountName ? (
+              <Badge variant="outline" className="text-[9px] max-w-[90px] truncate" title={product.moyskladAccountName}>
+                {product.moyskladAccountName}
+              </Badge>
+            ) : (
+              <span className="text-[10px] text-muted-foreground">—</span>
+            )}
+          </div>
+        )}
+
         {visibleColumns.sync && (
           <div className="flex-shrink-0" style={{ width: columnWidths?.sync || 48 }}>
             {product.source === "moysklad" && (
