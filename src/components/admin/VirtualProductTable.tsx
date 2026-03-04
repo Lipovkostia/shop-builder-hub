@@ -443,6 +443,26 @@ export function VirtualProductTable({
               <ResizeHandle col="msProduct" />
             </div>
           )}
+          {visibleColumns.msAccount && (
+            <div className="flex-shrink-0 relative" style={{ width: widths.msAccount || 100 }}>
+              <SelectFilter
+                value={filters.msAccount}
+                onChange={(v) => onFiltersChange({...filters, msAccount: v})}
+                options={(() => {
+                  const accountNames = new Set<string>();
+                  products.forEach(p => {
+                    if (p.moyskladAccountName) accountNames.add(p.moyskladAccountName);
+                  });
+                  return [
+                    { value: "none", label: "Без МС" },
+                    ...Array.from(accountNames).sort().map(name => ({ value: name, label: name })),
+                  ];
+                })()}
+                placeholder="Все"
+              />
+              <ResizeHandle col="msAccount" />
+            </div>
+          )}
           {visibleColumns.sync && (
             <div className="flex-shrink-0 relative" style={{ width: widths.sync }}>
               <SelectFilter
