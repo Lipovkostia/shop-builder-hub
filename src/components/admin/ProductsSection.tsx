@@ -505,6 +505,9 @@ export function ProductsSection({
             <DropdownMenuCheckboxItem checked={visibleColumns.msProduct} onCheckedChange={() => toggleColumn("msProduct")}>
               МС товар
             </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={visibleColumns.msAccount} onCheckedChange={() => toggleColumn("msAccount")}>
+              МС аккаунт
+            </DropdownMenuCheckboxItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
