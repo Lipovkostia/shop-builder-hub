@@ -74,9 +74,14 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
 
   const { catalogs, productVisibility, loading: catalogsLoading } = useStoreCatalogs(storeId);
   const { generating, progress, generateBulkSeo } = useProductSeo(storeId, storeName);
+  const { accounts: msAccounts, loading: msAccountsLoading } = useMoyskladAccounts(storeId);
 
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
+  const [selectedMsAccountFilter, setSelectedMsAccountFilter] = useState<string>("all");
+  const [msProducts, setMsProducts] = useState<MoyskladProduct[]>([]);
+  const [msProductsLoading, setMsProductsLoading] = useState(false);
+  const [msProductSearch, setMsProductSearch] = useState("");
   
   // Form states
   const [wholesaleName, setWholesaleName] = useState("");
