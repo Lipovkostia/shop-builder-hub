@@ -6257,8 +6257,8 @@ export default function AdminPanel({
                                           const enabled = e.target.checked;
                                           await updateSyncSettings({ sync_orders_enabled: enabled });
                                           if (enabled && !supabaseSyncSettings?.moysklad_organization_id) {
-                                            fetchOrganizations();
-                                            fetchCounterparties();
+                                            fetchOrganizations(currentAccount?.login, currentAccount?.password);
+                                            fetchCounterparties(currentAccount?.login, currentAccount?.password);
                                           }
                                           toast({
                                             title: enabled ? "Синхронизация включена" : "Синхронизация отключена",
@@ -6298,7 +6298,7 @@ export default function AdminPanel({
                                               variant="default"
                                               size="sm"
                                               className="h-9 gap-2 bg-orange-500 hover:bg-orange-600 text-white"
-                                              onClick={() => fetchOrganizations()}
+                                              onClick={() => fetchOrganizations(currentAccount?.login, currentAccount?.password)}
                                             >
                                               <Download className="h-4 w-4" />
                                               Загрузить организации
@@ -6329,7 +6329,7 @@ export default function AdminPanel({
                                               variant="ghost"
                                               size="sm"
                                               className="h-7 text-xs gap-1"
-                                              onClick={() => fetchOrganizations()}
+                                              onClick={() => fetchOrganizations(currentAccount?.login, currentAccount?.password)}
                                               disabled={moyskladOrdersLoading}
                                             >
                                               <RefreshCw className={`h-3 w-3 ${moyskladOrdersLoading ? 'animate-spin' : ''}`} />
@@ -6374,7 +6374,7 @@ export default function AdminPanel({
                                               variant="default"
                                               size="sm"
                                               className="h-9 gap-2 bg-orange-500 hover:bg-orange-600 text-white"
-                                              onClick={() => fetchCounterparties()}
+                                              onClick={() => fetchCounterparties(currentAccount?.login, currentAccount?.password)}
                                             >
                                               <Download className="h-4 w-4" />
                                               Загрузить контрагентов
@@ -6405,7 +6405,7 @@ export default function AdminPanel({
                                               variant="ghost"
                                               size="sm"
                                               className="h-7 text-xs gap-1"
-                                              onClick={() => fetchCounterparties()}
+                                              onClick={() => fetchCounterparties(currentAccount?.login, currentAccount?.password)}
                                               disabled={moyskladOrdersLoading}
                                             >
                                               <RefreshCw className={`h-3 w-3 ${moyskladOrdersLoading ? 'animate-spin' : ''}`} />
