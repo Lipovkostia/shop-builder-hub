@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Plus, Minus, TrendingUp, TrendingDown } from "lucide-react";
 import { Plus, Minus, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
