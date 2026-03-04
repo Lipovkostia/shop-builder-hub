@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from "react";
+import React, { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { 
   Store, 
   Palette, 
@@ -15,7 +15,9 @@ import {
   Phone,
   Sparkles,
   Video,
-  Radio
+  Radio,
+  Database,
+  ShoppingCart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,12 +27,27 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { useRetailSettings, RetailTheme } from "@/hooks/useRetailSettings";
 import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
 import { useProductSeo } from "@/hooks/useProductSeo";
+import { useMoyskladAccounts } from "@/hooks/useMoyskladAccounts";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+interface MoyskladProduct {
+  id: string;
+  name: string;
+  sku: string | null;
+  price: number;
+  buy_price: number | null;
+  quantity: number;
+  unit: string | null;
+  images: string[] | null;
+  moysklad_id: string | null;
+  moysklad_account_id: string | null;
+}
 
 interface WholesaleSettingsSectionProps {
   storeId: string | null;
