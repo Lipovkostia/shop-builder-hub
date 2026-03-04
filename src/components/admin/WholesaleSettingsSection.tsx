@@ -130,6 +130,15 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
     }
   }, [activeTab, fetchMsProducts]);
 
+  const filteredMsProducts = useMemo(() => {
+    if (!msProductSearch) return msProducts;
+    const q = msProductSearch.toLowerCase();
+    return msProducts.filter(p => 
+      p.name.toLowerCase().includes(q) || 
+      (p.sku && p.sku.toLowerCase().includes(q))
+    );
+  }, [msProducts, msProductSearch]);
+
   // Fetch settings
   useEffect(() => {
     if (!storeId) return;
