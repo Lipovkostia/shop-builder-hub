@@ -10,6 +10,7 @@ interface WholesaleProductTableProps {
   getCartQuantity: (productId: string) => number;
   onAddToCart: (product: WholesaleProduct) => void;
   onUpdateQuantity: (productId: string, qty: number) => void;
+  onSelectProduct?: (product: WholesaleProduct) => void;
 }
 
 function formatPrice(price: number): string {
