@@ -267,7 +267,7 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-5 mb-6">
+        <TabsList className="w-full grid grid-cols-6 mb-6">
           <TabsTrigger value="general" className="gap-1.5">
             <Store className="h-4 w-4" />
             <span className="hidden sm:inline">Общее</span>
@@ -287,6 +287,10 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
           <TabsTrigger value="domain" className="gap-1.5">
             <Globe className="h-4 w-4" />
             <span className="hidden sm:inline">Домен</span>
+          </TabsTrigger>
+          <TabsTrigger value="products" className="gap-1.5">
+            <ShoppingCart className="h-4 w-4" />
+            <span className="hidden sm:inline">Товары</span>
           </TabsTrigger>
         </TabsList>
 
