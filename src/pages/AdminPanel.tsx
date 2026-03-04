@@ -3314,6 +3314,14 @@ export default function AdminPanel({
         
         if (!matchesNone && !matchesGroups) return false;
       }
+      // Filter by MoySklad account
+      if (allProductsFilters.msAccount && allProductsFilters.msAccount !== "all") {
+        if (allProductsFilters.msAccount === "none") {
+          if (product.moyskladAccountName) return false;
+        } else {
+          if (product.moyskladAccountName !== allProductsFilters.msAccount) return false;
+        }
+      }
       return true;
     });
     
