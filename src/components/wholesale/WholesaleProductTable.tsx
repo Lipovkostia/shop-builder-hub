@@ -24,6 +24,7 @@ export function WholesaleProductTable({
   getCartQuantity,
   onAddToCart,
   onUpdateQuantity,
+  onSelectProduct,
 }: WholesaleProductTableProps) {
   return (
     <div className="w-full overflow-x-auto">
@@ -51,7 +52,8 @@ export function WholesaleProductTable({
             return (
               <tr
                 key={product.id}
-                className="border-b border-border/50 hover:bg-muted/30 transition-colors h-10"
+                className="border-b border-border/50 hover:bg-muted/30 transition-colors h-10 cursor-pointer"
+                onClick={() => onSelectProduct?.(product)}
               >
                 {/* Checkbox placeholder */}
                 <td className="px-1 py-1 text-center">
