@@ -57,7 +57,7 @@ export function WholesaleProductTable({
               >
                 {/* Checkbox placeholder */}
                 <td className="px-1 py-1 text-center">
-                  <input type="checkbox" className="h-3.5 w-3.5 rounded border-muted-foreground/30" />
+                  <input type="checkbox" className="h-3.5 w-3.5 rounded border-muted-foreground/30" onClick={e => e.stopPropagation()} />
                 </td>
 
                 {/* Image */}
@@ -74,14 +74,10 @@ export function WholesaleProductTable({
                   )}
                 </td>
 
-                {/* Name */}
                 <td className="px-2 py-1">
-                  <Link
-                    to={`/wholesale/${subdomain}/product/${product.slug}`}
-                    className="hover:text-primary hover:underline line-clamp-1"
-                  >
+                  <span className="hover:text-primary hover:underline line-clamp-1">
                     {product.name}
-                  </Link>
+                  </span>
                 </td>
 
                 {/* SKU */}
