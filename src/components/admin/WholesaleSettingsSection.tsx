@@ -854,6 +854,109 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
             </div>
           </div>
         </TabsContent>
+
+        {/* Products Tab */}
+        <TabsContent value="products" className="space-y-6">
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <ShoppingCart className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground">Синхронизированные товары</h3>
+                <p className="text-sm text-muted-foreground">
+                  Товары, импортированные из МойСклад
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <Input
+                placeholder="Поиск по названию или артикулу..."
+                value={msProductSearch}
+                onChange={(e) => setMsProductSearch(e.target.value)}
+                className="flex-1"
+              />
+              <Select
+                value={selectedMsAccountFilter}
+                onValueChange={setSelectedMsAccountFilter}
+              >
+                <SelectTrigger className="w-full sm:w-[220px]">
+                  <SelectValue placeholder="Все аккаунты" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все аккаунты</SelectItem>
+                  {msAccounts.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      {acc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="text-sm text-muted-foreground mb-3">
+              Найдено: {filteredMsProducts.length} товаров
+            </div>
+
+            {msProductsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredMsProducts.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Database className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                <p>Нет синхронизированных товаров</p>
+                <p className="text-xs mt-1">Синхронизируйте товары из МойСклад в разделе ассортимента</p>
+              </div>
+            ) : (
+              <div className="border border-border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 sticky top-0">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Название</th>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Артикул</th>
+                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">Цена</th>
+                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">Себестоимость</th>
+                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">Остаток</th>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Ед.</th>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">МС аккаунт</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {filteredMsProducts.slice(0, 200).map((product) => {
+                        const accountName = msAccounts.find(a => a.id === product.moysklad_account_id)?.name;
+                        return (
+                          <tr key={product.id} className="hover:bg-muted/30">
+                            <td className="px-3 py-2 max-w-[300px] truncate">{product.name}</td>
+                            <td className="px-3 py-2 text-muted-foreground font-mono text-xs">{product.sku || "—"}</td>
+                            <td className="px-3 py-2 text-right">{product.price?.toLocaleString("ru-RU")} ₽</td>
+                            <td className="px-3 py-2 text-right text-muted-foreground">
+                              {product.buy_price ? `${product.buy_price.toLocaleString("ru-RU")} ₽` : "—"}
+                            </td>
+                            <td className="px-3 py-2 text-right">{product.quantity}</td>
+                            <td className="px-3 py-2 text-muted-foreground">{product.unit || "шт"}</td>
+                            <td className="px-3 py-2">
+                              {accountName ? (
+                                <Badge variant="secondary" className="text-xs font-normal">{accountName}</Badge>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {filteredMsProducts.length > 200 && (
+                  <div className="px-3 py-2 text-xs text-muted-foreground bg-muted/30 text-center">
+                    Показано 200 из {filteredMsProducts.length} товаров
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
