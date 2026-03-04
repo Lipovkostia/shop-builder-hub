@@ -153,6 +153,7 @@ export interface AllProductsFilters {
   status: string;
   sync: string;
   groups: string[];
+  msAccount: string;
 }
 
 interface VirtualProductTableProps {
@@ -440,6 +441,26 @@ export function VirtualProductTable({
             <div className="flex-shrink-0 text-xs font-medium text-muted-foreground relative" style={{ width: widths.msProduct }}>
               МС товар
               <ResizeHandle col="msProduct" />
+            </div>
+          )}
+          {visibleColumns.msAccount && (
+            <div className="flex-shrink-0 relative" style={{ width: widths.msAccount || 100 }}>
+              <SelectFilter
+                value={filters.msAccount}
+                onChange={(v) => onFiltersChange({...filters, msAccount: v})}
+                options={(() => {
+                  const accountNames = new Set<string>();
+                  products.forEach(p => {
+                    if (p.moyskladAccountName) accountNames.add(p.moyskladAccountName);
+                  });
+                  return [
+                    { value: "none", label: "Без МС" },
+                    ...Array.from(accountNames).sort().map(name => ({ value: name, label: name })),
+                  ];
+                })()}
+                placeholder="Все"
+              />
+              <ResizeHandle col="msAccount" />
             </div>
           )}
           {visibleColumns.sync && (

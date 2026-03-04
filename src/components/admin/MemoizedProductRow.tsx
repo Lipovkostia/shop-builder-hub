@@ -43,6 +43,7 @@ export interface VisibleColumns {
   groups: boolean;
   catalogs: boolean;
   msProduct: boolean;
+  msAccount: boolean;
   sync: boolean;
 }
 
@@ -529,6 +530,19 @@ function ProductRowComponent({
                   Привязать
                 </Button>
               )
+            ) : (
+              <span className="text-[10px] text-muted-foreground">—</span>
+            )}
+          </div>
+        )}
+
+        {/* MoySklad Account */}
+        {visibleColumns.msAccount && (
+          <div className="flex-shrink-0" style={{ width: columnWidths?.msAccount || 100 }}>
+            {product.moyskladAccountName ? (
+              <Badge variant="outline" className="text-[9px] max-w-[90px] truncate" title={product.moyskladAccountName}>
+                {product.moyskladAccountName}
+              </Badge>
             ) : (
               <span className="text-[10px] text-muted-foreground">—</span>
             )}

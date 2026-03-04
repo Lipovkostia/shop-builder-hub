@@ -55,6 +55,7 @@ const defaultVisibleColumns: VisibleColumns = {
   groups: true,
   catalogs: true,
   msProduct: false,
+  msAccount: true,
   sync: true,
 };
 
@@ -71,6 +72,7 @@ const defaultFilters: AllProductsFilters = {
   status: "all",
   sync: "all",
   groups: [],
+  msAccount: "all",
 };
 
 export function ProductsSection({
@@ -502,6 +504,9 @@ export function ProductsSection({
             </DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem checked={visibleColumns.msProduct} onCheckedChange={() => toggleColumn("msProduct")}>
               МС товар
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={visibleColumns.msAccount} onCheckedChange={() => toggleColumn("msAccount")}>
+              МС аккаунт
             </DropdownMenuCheckboxItem>
           </DropdownMenuContent>
         </DropdownMenu>
