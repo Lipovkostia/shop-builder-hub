@@ -220,11 +220,19 @@ serve(async (req) => {
     }
 
     if (action === 'get_organizations') {
-      // Fetch organizations list
-      console.log('Fetching organizations from MoySklad...');
+      // Fetch organizations list (paged)
+      const { organizationLimit = 50, organizationOffset = 0 } = body;
+      const requestedLimit = Number(organizationLimit);
+      const safeLimit = Math.min(
+        Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.floor(requestedLimit) : 50,
+        50
+      );
+      const safeOffset = Number.isFinite(Number(organizationOffset)) ? Math.max(0, Number(organizationOffset)) : 0;
+
+      console.log(`Fetching organizations from MoySklad... limit=${safeLimit}, offset=${safeOffset}`);
       
       const response = await fetch(
-        `${MOYSKLAD_API_URL}/entity/organization?limit=100`,
+        `${MOYSKLAD_API_URL}/entity/organization?limit=${safeLimit}&offset=${safeOffset}`,
         {
           method: 'GET',
           headers: {
@@ -252,7 +260,14 @@ serve(async (req) => {
       })) || [];
 
       return new Response(
-        JSON.stringify({ organizations }),
+        JSON.stringify({
+          organizations,
+          meta: {
+            size: data.meta?.size || 0,
+            limit: data.meta?.limit || safeLimit,
+            offset: data.meta?.offset || safeOffset,
+          },
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -260,9 +275,15 @@ serve(async (req) => {
     if (action === 'get_counterparties') {
       // Fetch counterparties list with all available fields
       const { search, counterpartyLimit = 100, counterpartyOffset = 0 } = body;
-      console.log(`Fetching counterparties from MoySklad... limit=${counterpartyLimit}, offset=${counterpartyOffset}`);
+      const requestedLimit = Number(counterpartyLimit);
+      const safeLimit = Math.min(
+        Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.floor(requestedLimit) : 100,
+        20
+      );
+      const safeOffset = Number.isFinite(Number(counterpartyOffset)) ? Math.max(0, Number(counterpartyOffset)) : 0;
+      console.log(`Fetching counterparties from MoySklad... limit=${safeLimit}, offset=${safeOffset}`);
       
-      let url = `${MOYSKLAD_API_URL}/entity/counterparty?limit=${counterpartyLimit}&offset=${counterpartyOffset}`;
+      let url = `${MOYSKLAD_API_URL}/entity/counterparty?limit=${safeLimit}&offset=${safeOffset}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -324,8 +345,8 @@ serve(async (req) => {
           counterparties,
           meta: {
             size: data.meta?.size || 0,
-            limit: data.meta?.limit || counterpartyLimit,
-            offset: data.meta?.offset || counterpartyOffset,
+            limit: data.meta?.limit || safeLimit,
+            offset: data.meta?.offset || safeOffset,
           }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
