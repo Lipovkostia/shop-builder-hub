@@ -409,6 +409,35 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
                   </span>
                 </div>
               )}
+
+              {/* MoySklad Account Filter */}
+              {msAccounts.length > 0 && (
+                <div className="pt-2 border-t border-border">
+                  <Label className="text-sm text-muted-foreground mb-2 block">
+                    <Database className="h-4 w-4 inline mr-1.5" />
+                    Фильтр по аккаунту МойСклад
+                  </Label>
+                  <Select
+                    value={selectedMsAccountFilter}
+                    onValueChange={setSelectedMsAccountFilter}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Все аккаунты" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Все аккаунты</SelectItem>
+                      {msAccounts.map((acc) => (
+                        <SelectItem key={acc.id} value={acc.id}>
+                          {acc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Отфильтруйте товары по конкретному аккаунту МойСклад
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
