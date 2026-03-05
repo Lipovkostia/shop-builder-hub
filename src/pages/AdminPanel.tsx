@@ -3644,6 +3644,8 @@ export default function AdminPanel({
                 moyskladLogin={firstMoyskladAccount?.login}
                 moyskladPassword={firstMoyskladAccount?.password}
                 onAddToAvitoFeed={avitoFeed.addProductsToFeed}
+                avitoFeedProductIds={avitoFeed.feedProductIds}
+                onRemoveFromAvitoFeed={avitoFeed.removeProductsFromFeed}
               />
 
               {/* Product Pricing Dialog */}
