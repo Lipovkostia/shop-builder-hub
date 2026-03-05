@@ -449,6 +449,42 @@ export function ProductsSection({
     [selectedBulkProducts, onCreateCatalog, onToggleCatalogVisibility, toast]
   );
 
+  const handleBulkSetCategories = useCallback(
+    async (categoryIds: string[]) => {
+      const selectedIds = Array.from(selectedBulkProducts);
+      for (const productId of selectedIds) {
+        // Update product_category_assignments
+        // First remove existing
+        await supabase.from("product_category_assignments").delete().eq("product_id", productId);
+        // Then insert new
+        if (categoryIds.length > 0) {
+          await supabase.from("product_category_assignments").insert(
+            categoryIds.map(cid => ({ product_id: productId, category_id: cid }))
+          );
+        }
+        // Also update product.category_id to first category
+        const product = products.find(p => p.id === productId);
+        if (product) {
+          await onUpdateProduct({ ...product, categoryId: categoryIds[0] || null, categories: categoryIds });
+        }
+      }
+      toast({ title: "Категории обновлены", description: `Изменено ${selectedIds.length} товар(ов)` });
+    },
+    [selectedBulkProducts, products, onUpdateProduct, toast]
+  );
+
+  const handleBulkClearCategories = useCallback(async () => {
+    const selectedIds = Array.from(selectedBulkProducts);
+    for (const productId of selectedIds) {
+      await supabase.from("product_category_assignments").delete().eq("product_id", productId);
+      const product = products.find(p => p.id === productId);
+      if (product) {
+        await onUpdateProduct({ ...product, categoryId: null, categories: [] });
+      }
+    }
+    toast({ title: "Категории очищены", description: `Изменено ${selectedIds.length} товар(ов)` });
+  }, [selectedBulkProducts, products, onUpdateProduct, toast]);
+
   const toggleColumn = useCallback((columnKey: keyof VisibleColumns) => {
     setVisibleColumns((prev) => ({
       ...prev,
