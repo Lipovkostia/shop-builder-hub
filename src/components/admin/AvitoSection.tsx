@@ -1141,6 +1141,36 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
             </div>
           )}
 
+          {/* Filter bar */}
+          {avitoFeed && avitoFeed.feedProducts.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative flex-1 min-w-[180px] max-w-xs">
+                <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Поиск по названию, описанию, артикулу..."
+                  value={feedSearchQuery}
+                  onChange={(e) => setFeedSearchQuery(e.target.value)}
+                  className="h-8 text-xs pl-8"
+                />
+              </div>
+              <Select value={feedPriceFilter} onValueChange={setFeedPriceFilter}>
+                <SelectTrigger className="h-8 text-xs w-[160px]">
+                  <SelectValue placeholder="Цена" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все цены</SelectItem>
+                  <SelectItem value="zero">Цена = 0</SelectItem>
+                  <SelectItem value="nonzero">Цена &gt; 0</SelectItem>
+                </SelectContent>
+              </Select>
+              {(feedSearchQuery || feedPriceFilter !== "all") && (
+                <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setFeedSearchQuery(""); setFeedPriceFilter("all"); }}>
+                  <X className="h-3.5 w-3.5 mr-1" /> Сбросить фильтры
+                </Button>
+              )}
+            </div>
+          )}
+
           {/* Bulk actions bar */}
           {avitoFeed && avitoFeed.feedProducts.length > 0 && (
             <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -1183,6 +1213,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
               handleInlineParamUpdate={handleInlineParamUpdate}
               openAiForProducts={openAiForProducts}
               removeProductFromFeed={avitoFeed.removeProductFromFeed}
+              feedSearchQuery={feedSearchQuery}
+              feedPriceFilter={feedPriceFilter}
             />
           ) : (
             <Card className="p-8 text-center">
