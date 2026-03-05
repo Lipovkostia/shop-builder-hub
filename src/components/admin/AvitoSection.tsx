@@ -260,9 +260,9 @@ function AvitoFeedTable({
               >
                 {col.key === "check" ? (
                   <Checkbox
-                    checked={selectedFeedProducts.size === feedProducts.length && feedProducts.length > 0}
+                    checked={selectedFeedProducts.size === filteredFeedProducts.length && filteredFeedProducts.length > 0}
                     onCheckedChange={(checked) => {
-                      if (checked) setSelectedFeedProducts(new Set(feedProducts.map(fp => fp.product_id)));
+                      if (checked) setSelectedFeedProducts(new Set(filteredFeedProducts.map(fp => fp.product_id)));
                       else setSelectedFeedProducts(new Set());
                     }}
                   />
