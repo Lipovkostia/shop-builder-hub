@@ -706,6 +706,30 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
           params.email || d.email,
           params.companyName || d.companyName,
           params.dateEnd || "",
+          // Promo columns
+          (() => {
+            const promo = params.promo || d.promo || "";
+            return promo;
+          })(),
+          (() => {
+            const promo = params.promo || d.promo || "";
+            if (promo === "Manual") {
+              const region = params.promoRegion || d.promoRegion || "";
+              const promoPrice = params.promoPrice || d.promoPrice || "";
+              const limit = params.promoLimit || d.promoLimit || "";
+              return [region, promoPrice, limit].filter(Boolean).join(", ");
+            }
+            return "";
+          })(),
+          (() => {
+            const promo = params.promo || d.promo || "";
+            if (promo && promo.startsWith("Auto")) {
+              const region = params.promoRegion || d.promoRegion || "";
+              const budget = params.promoBudget || d.promoBudget || "";
+              return [region, budget].filter(Boolean).join(", ");
+            }
+            return "";
+          })(),
         ]);
       }
 
@@ -716,6 +740,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
         { wch: 50 }, { wch: 60 }, { wch: 60 }, { wch: 30 }, { wch: 28 },
         { wch: 10 }, { wch: 20 }, { wch: 25 }, { wch: 28 }, { wch: 25 },
         { wch: 14 }, { wch: 40 }, { wch: 14 }, { wch: 25 }, { wch: 22 }, { wch: 25 },
+        { wch: 12 }, { wch: 30 }, { wch: 30 },
       ];
       for (let r = 4; r < wsData.length; r++) {
         const cellRef = XLSX.utils.encode_cell({ r, c: 6 });
