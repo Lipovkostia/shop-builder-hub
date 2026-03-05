@@ -46,21 +46,39 @@ export function useStoreProducts(storeId: string | null) {
   const [loading, setLoading] = useState(false);
   const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
-  // Fetch all products for the store (excluding deleted)
+  // Fetch all products for the store (excluding deleted) with pagination to bypass 1000-row limit
   const fetchProducts = useCallback(async () => {
     if (!storeId) return;
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("store_id", storeId)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false });
+      const PAGE_SIZE = 1000;
+      let allProducts: StoreProduct[] = [];
+      let from = 0;
+      let hasMore = true;
 
-      if (error) throw error;
-      setProducts(data || []);
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .eq("store_id", storeId)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (error) throw error;
+        
+        const batch = data || [];
+        allProducts = allProducts.concat(batch);
+        
+        if (batch.length < PAGE_SIZE) {
+          hasMore = false;
+        } else {
+          from += PAGE_SIZE;
+        }
+      }
+
+      setProducts(allProducts);
     } catch (error: any) {
       console.error("Error fetching products:", error);
       toast({
