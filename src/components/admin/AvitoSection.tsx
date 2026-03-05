@@ -22,7 +22,7 @@ import {
 import {
   ExternalLink, Loader2, Link2, Unlink, RefreshCw, Check, Package, Search,
   MapPin, Calendar, Eye, Image as ImageIcon, X, Download, Settings, Save, Sparkles, Wand2,
-  Plus, Trash2, BookOpen,
+  Plus, Trash2, BookOpen, Clock,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
