@@ -150,15 +150,16 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 }
 // Avito Feed Table with resizable columns
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
-const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, category: 130, goodsType: 130, adType: 130, promo: 100, cpcBid: 80, address: 120, imgs: 50, actions: 60 };
+const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, cpcBid: 80, address: 120, imgs: 50, actions: 60 };
 
 function AvitoFeedTable({
-  feedProducts, storeProducts, selectedFeedProducts, setSelectedFeedProducts,
+  feedProducts, storeProducts, storeCategories, selectedFeedProducts, setSelectedFeedProducts,
   aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
   feedSearchQuery, feedPriceFilter,
 }: {
   feedProducts: AvitoFeedProduct[];
   storeProducts: Product[];
+  storeCategories: StoreCategory[];
   selectedFeedProducts: Set<string>;
   setSelectedFeedProducts: React.Dispatch<React.SetStateAction<Set<string>>>;
   aiGeneratingIds: Set<string>;
@@ -233,13 +234,17 @@ function AvitoFeedTable({
 
   const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
 
+  // Build category name map
+  const categoryMap = new Map(storeCategories.map(c => [c.id, c.name]));
+
   const cols = [
     { key: "check", label: "", resizable: false },
     { key: "photo", label: "Фото", resizable: false },
     { key: "title", label: "Название", resizable: true },
     { key: "desc", label: "Описание", resizable: true },
     { key: "price", label: "Цена", resizable: true },
-    { key: "category", label: "Категория", resizable: true },
+    { key: "storeCategory", label: "Категория товара", resizable: true },
+    { key: "category", label: "Категория Авито", resizable: true },
     { key: "adType", label: "Вид объявления", resizable: true },
     { key: "goodsType", label: "Вид товара", resizable: true },
     { key: "promo", label: "Promo", resizable: true },
