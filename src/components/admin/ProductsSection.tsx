@@ -37,6 +37,7 @@ interface ProductsSectionProps {
   customPackagingTypes?: string[];
   onAddCustomUnit?: (unit: string) => void;
   onAddCustomPackaging?: (type: string) => void;
+  onAddToAvitoFeed?: (productIds: string[]) => Promise<boolean>;
   moyskladLogin?: string;
   moyskladPassword?: string;
 }
@@ -96,6 +97,7 @@ export function ProductsSection({
   customPackagingTypes = [],
   onAddCustomUnit,
   onAddCustomPackaging,
+  onAddToAvitoFeed,
   moyskladLogin,
   moyskladPassword,
 }: ProductsSectionProps) {
