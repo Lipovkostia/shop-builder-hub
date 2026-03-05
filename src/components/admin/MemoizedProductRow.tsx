@@ -93,6 +93,8 @@ interface MemoizedProductRowProps {
   columnWidths?: Record<string, number>;
   moyskladLogin?: string;
   moyskladPassword?: string;
+  isInAvitoFeed?: boolean;
+  onToggleAvitoFeed?: (productId: string) => Promise<void>;
 }
 
 function ProductRowComponent({
