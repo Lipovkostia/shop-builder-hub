@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -152,6 +152,63 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
 const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, cpcBid: 80, address: 120, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
 
+// Column filter dropdown component
+function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
+  values: string[];
+  selected: string;
+  onSelect: (val: string) => void;
+  colKey: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        className={`ml-1 p-0.5 rounded hover:bg-primary/10 ${selected ? "text-primary" : "text-muted-foreground/50"}`}
+        title="Фильтр"
+      >
+        <Filter className="h-3 w-3" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-lg min-w-[180px] max-h-[280px] overflow-y-auto text-xs">
+          <button
+            className={`w-full text-left px-3 py-1.5 hover:bg-muted/60 ${!selected ? "font-semibold text-primary" : ""}`}
+            onClick={() => { onSelect(""); setOpen(false); }}
+          >
+            Все
+          </button>
+          <button
+            className={`w-full text-left px-3 py-1.5 hover:bg-muted/60 ${selected === "__empty__" ? "font-semibold text-primary" : ""}`}
+            onClick={() => { onSelect("__empty__"); setOpen(false); }}
+          >
+            <span className="text-muted-foreground italic">Пустые</span>
+          </button>
+          {values.map((v) => (
+            <button
+              key={v}
+              className={`w-full text-left px-3 py-1.5 hover:bg-muted/60 truncate ${selected === v ? "font-semibold text-primary" : ""}`}
+              onClick={() => { onSelect(v); setOpen(false); }}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AvitoFeedTable({
   feedProducts, storeProducts, storeCategories, selectedFeedProducts, setSelectedFeedProducts,
   aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
@@ -179,6 +236,20 @@ function AvitoFeedTable({
     } catch { return { ...DEFAULT_COL_WIDTHS }; }
   });
   const resizingRef = useRef<{ col: string; startX: number; startW: number } | null>(null);
+
+  // Column filters state
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+
+  const setFilter = (col: string, val: string) => {
+    setColumnFilters(prev => {
+      const next = { ...prev };
+      if (val) next[col] = val;
+      else delete next[col];
+      return next;
+    });
+  };
+
+  const activeFilterCount = Object.keys(columnFilters).length;
 
   const onMouseDown = (col: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -209,18 +280,39 @@ function AvitoFeedTable({
     />
   );
 
-  // Filter feed products
-  const filteredFeedProducts = feedProducts.filter((fp) => {
+  // Build category name map
+  const categoryMap = new Map(storeCategories.map(c => [c.id, c.name]));
+
+  // Helper: get column value for a feed product
+  const getColValue = (fp: AvitoFeedProduct, product: Product, colKey: string): string => {
+    const params = fp.avito_params || {};
+    switch (colKey) {
+      case "storeCategory":
+        return (product.categories || []).map(cid => categoryMap.get(cid) || "").filter(Boolean).join(", ");
+      case "category": return params.category || "";
+      case "adType": return params.goodsType || params.adType || "";
+      case "goodsType": return params.goodsSubType || params.GoodsType || "";
+      case "promo": return params.promo || "";
+      case "address": return params.address || "";
+      case "managerName": return params.managerName || "";
+      case "contactPhone": return params.contactPhone || "";
+      case "email": return params.email || "";
+      case "companyName": return params.companyName || "";
+      default: return "";
+    }
+  };
+
+  // Filterable columns
+  const filterableCols = ["storeCategory", "category", "adType", "goodsType", "promo", "address", "managerName", "contactPhone", "email", "companyName"];
+
+  // Pre-filter: search + price
+  const preFiltered = feedProducts.filter((fp) => {
     const product = storeProducts.find(p => p.id === fp.product_id);
     if (!product) return false;
     const params = fp.avito_params || {};
     const price = Number(params.price || params.Price || product.pricePerUnit || 0);
-    
-    // Price filter
     if (feedPriceFilter === "zero" && price !== 0) return false;
     if (feedPriceFilter === "nonzero" && price === 0) return false;
-    
-    // Search filter
     if (feedSearchQuery) {
       const q = feedSearchQuery.toLowerCase();
       const title = (params.title || product.name || "").toLowerCase();
@@ -228,14 +320,40 @@ function AvitoFeedTable({
       const sku = (product.sku || "").toLowerCase();
       if (!title.includes(q) && !desc.includes(q) && !sku.includes(q)) return false;
     }
-    
     return true;
   });
 
-  const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
+  // Collect unique values for filterable columns (from preFiltered set)
+  const uniqueValues = useMemo(() => {
+    const result: Record<string, string[]> = {};
+    for (const col of filterableCols) {
+      const valSet = new Set<string>();
+      for (const fp of preFiltered) {
+        const product = storeProducts.find(p => p.id === fp.product_id);
+        if (!product) continue;
+        const v = getColValue(fp, product, col);
+        if (v) valSet.add(v);
+      }
+      result[col] = Array.from(valSet).sort((a, b) => a.localeCompare(b, "ru"));
+    }
+    return result;
+  }, [preFiltered, storeProducts, storeCategories]);
 
-  // Build category name map
-  const categoryMap = new Map(storeCategories.map(c => [c.id, c.name]));
+  // Apply column filters
+  const filteredFeedProducts = preFiltered.filter((fp) => {
+    const product = storeProducts.find(p => p.id === fp.product_id);
+    if (!product) return false;
+    for (const [col, filterVal] of Object.entries(columnFilters)) {
+      const cellVal = getColValue(fp, product, col);
+      if (filterVal === "__empty__") {
+        if (cellVal) return false;
+      } else {
+        if (cellVal !== filterVal) return false;
+      }
+    }
+    return true;
+  });
+  const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
 
   const cols = [
     { key: "check", label: "", resizable: false },
@@ -262,6 +380,26 @@ function AvitoFeedTable({
 
   return (
     <div className="border rounded-lg overflow-hidden">
+      {/* Active filters bar */}
+      {activeFilterCount > 0 && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 border-b text-xs flex-wrap">
+          <span className="text-muted-foreground">Фильтры:</span>
+          {Object.entries(columnFilters).map(([col, val]) => {
+            const colDef = cols.find(c => c.key === col);
+            return (
+              <Badge key={col} variant="secondary" className="text-xs gap-1 py-0.5">
+                {colDef?.label}: {val === "__empty__" ? "Пустые" : val}
+                <button onClick={() => setFilter(col, "")} className="ml-0.5 hover:text-destructive">
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            );
+          })}
+          <Button variant="ghost" size="sm" className="h-5 text-xs px-2" onClick={() => setColumnFilters({})}>
+            Сбросить все
+          </Button>
+        </div>
+      )}
       <div className="overflow-x-auto">
         <div style={{ minWidth: totalWidth }}>
           {/* Header */}
@@ -269,7 +407,7 @@ function AvitoFeedTable({
             {cols.map((col) => (
               <div
                 key={col.key}
-                className="relative px-2 py-2 flex-shrink-0 truncate"
+                className="relative px-2 py-2 flex-shrink-0 truncate flex items-center"
                 style={{ width: colWidths[col.key] }}
               >
                 {col.key === "check" ? (
@@ -280,7 +418,19 @@ function AvitoFeedTable({
                       else setSelectedFeedProducts(new Set());
                     }}
                   />
-                ) : col.label}
+                ) : (
+                  <>
+                    <span className="truncate">{col.label}</span>
+                    {filterableCols.includes(col.key) && (
+                      <ColumnFilterDropdown
+                        values={uniqueValues[col.key] || []}
+                        selected={columnFilters[col.key] || ""}
+                        onSelect={(val) => setFilter(col.key, val)}
+                        colKey={col.key}
+                      />
+                    )}
+                  </>
+                )}
                 {col.resizable && <ResizeHandle col={col.key} />}
               </div>
             ))}
