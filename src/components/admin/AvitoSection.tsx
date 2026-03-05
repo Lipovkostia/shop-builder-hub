@@ -920,7 +920,48 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
                         <SelectItem value="Бизнес">Бизнес</SelectItem>
                       </SelectContent>
                     </Select>
+                </div>
+
+                {/* Promo settings */}
+                <div className="pt-3 border-t space-y-3">
+                  <Label className="text-xs font-medium">Настройка цены целевого действия (Promo)</Label>
+                  <p className="text-[11px] text-muted-foreground">Оставьте пустым, если продвижение не нужно. Выберите режим и заполните параметры.</p>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Режим продвижения (Promo)</Label>
+                      <Select value={localDefaults.promo} onValueChange={(v) => setLocalDefaults(p => ({ ...p, promo: v }))}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Не использовать" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Не использовать</SelectItem>
+                          <SelectItem value="Manual">Manual — ручной режим</SelectItem>
+                          <SelectItem value="Auto_1">Auto_1 — авто, бюджет на 1 день</SelectItem>
+                          <SelectItem value="Auto_7">Auto_7 — авто, бюджет на 7 дней</SelectItem>
+                          <SelectItem value="Auto_30">Auto_30 — авто, бюджет на 30 дней</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Регион</Label>
+                      <Input value={localDefaults.promoRegion} onChange={(e) => setLocalDefaults(p => ({ ...p, promoRegion: e.target.value }))} placeholder="Москва" className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Бюджет (₽)</Label>
+                      <Input value={localDefaults.promoBudget} onChange={(e) => setLocalDefaults(p => ({ ...p, promoBudget: e.target.value }))} placeholder="1000" className="h-8 text-sm" type="number" />
+                    </div>
+                    {localDefaults.promo === "Manual" && (
+                      <>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Цена целевого действия (₽)</Label>
+                          <Input value={localDefaults.promoPrice} onChange={(e) => setLocalDefaults(p => ({ ...p, promoPrice: e.target.value }))} placeholder="50" className="h-8 text-sm" type="number" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Лимит в день (₽)</Label>
+                          <Input value={localDefaults.promoLimit} onChange={(e) => setLocalDefaults(p => ({ ...p, promoLimit: e.target.value }))} placeholder="500" className="h-8 text-sm" type="number" />
+                        </div>
+                      </>
+                    )}
                   </div>
+                </div>
                 </div>
                 <Button size="sm" onClick={() => { avitoFeed?.saveDefaults(localDefaults); toast({ title: "Настройки сохранены" }); }}>
                   <Save className="h-3.5 w-3.5 mr-1" /> Сохранить настройки
