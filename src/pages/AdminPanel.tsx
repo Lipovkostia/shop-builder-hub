@@ -1489,7 +1489,8 @@ export default function AdminPanel({
           quantity: msProduct.quantity || msProduct.stock || 0,
           auto_sync: true,
           is_active: true,
-        });
+          ...(msProduct.salePrices?.length ? { moysklad_prices: Object.fromEntries(msProduct.salePrices.map(sp => [sp.name, sp.value])) } : {}),
+        } as any);
         
         toast({
           title: "Товар обновлён",
@@ -1517,7 +1518,8 @@ export default function AdminPanel({
           moysklad_account_id: currentAccount.id,
           auto_sync: true,
           is_active: true,
-        });
+          ...(msProduct.salePrices?.length ? { moysklad_prices: Object.fromEntries(msProduct.salePrices.map(sp => [sp.name, sp.value])) } : {}),
+        } as any);
         
         toast({
           title: "Товар импортирован",
