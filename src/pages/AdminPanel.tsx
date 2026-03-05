@@ -3121,11 +3121,13 @@ export default function AdminPanel({
     // Save products to Supabase
     let savedCount = 0;
     for (const product of newProducts) {
-      // Check if product already exists in Supabase by moysklad_id
+      const msProduct = moyskladProducts.find(p => p.id === product.moyskladId);
+      const categoryId = msProduct ? await resolveOrCreateCategory(msProduct.productFolderName) : null;
+      const msPrices = msProduct?.salePrices?.length ? Object.fromEntries(msProduct.salePrices.map(sp => [sp.name, sp.value])) : undefined;
+      
       const existingSupabaseProduct = supabaseProducts.find(sp => sp.moysklad_id === product.moyskladId);
       
       if (existingSupabaseProduct) {
-        // Update existing product
         await updateSupabaseProduct(existingSupabaseProduct.id, {
           name: product.name,
           description: product.description || null,
@@ -3140,10 +3142,11 @@ export default function AdminPanel({
           moysklad_account_id: currentAccount.id,
           auto_sync: product.autoSync || false,
           synced_moysklad_images: product.syncedMoyskladImages || null,
-        });
+          ...(categoryId ? { category_id: categoryId } : {}),
+          ...(msPrices ? { moysklad_prices: msPrices } : {}),
+        } as any);
         savedCount++;
       } else {
-        // Create new product in Supabase
         const slug = product.name
           .toLowerCase()
           .replace(/[^a-zа-яё0-9\s]/gi, '')
@@ -3166,7 +3169,9 @@ export default function AdminPanel({
           synced_moysklad_images: product.syncedMoyskladImages || null,
           slug,
           store_id: effectiveStoreId!,
-        });
+          ...(categoryId ? { category_id: categoryId } : {}),
+          ...(msPrices ? { moysklad_prices: msPrices } : {}),
+        } as any);
         savedCount++;
       }
     }
