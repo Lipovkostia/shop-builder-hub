@@ -4041,21 +4041,57 @@ export default function AdminPanel({
                     <>
 
 
-                  {/* Sync Settings Panel */}
-                  <SyncSettingsPanel
-                    settings={syncSettings}
-                    onSettingsChange={handleSyncSettingsChange}
-                    onSyncNow={handleSyncNow}
-                    isSyncing={isSyncing}
-                    syncedProductsCount={importedProducts.filter(p => p.autoSync).length}
-                    syncOrdersEnabled={supabaseSyncSettings?.sync_orders_enabled}
-                    availablePriceTypes={Array.from(new Set(moyskladProducts.flatMap((p) => (p.salePrices || []).map((sp) => sp.name)).filter(Boolean)))}
-                    onNavigateToOrderSettings={() => {
-                      setActiveSection('orders');
-                      setShowOrderNotificationsPanel(true);
-                      setSelectedNotificationChannel('moysklad');
-                    }}
-                  />
+                  <div className="grid gap-2 mb-3">
+                    <div className="rounded-md border border-border bg-card p-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium">1) Разовая загрузка товаров из МойСклад</p>
+                          <p className="text-xs text-muted-foreground">Загружает/обновляет список в этом окне и сохраняет его для следующих входов</p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            onClick={() => fetchMoySkladProducts()}
+                            disabled={isLoading}
+                            variant="outline"
+                            size="sm"
+                            className="h-8"
+                          >
+                            {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+                            Загрузить товары
+                          </Button>
+                          <Button
+                            onClick={exportMoyskladTableToExcel}
+                            disabled={filteredMoyskladProducts.length === 0}
+                            variant="outline"
+                            size="sm"
+                            className="h-8"
+                            title="Скачать текущую таблицу в Excel"
+                          >
+                            <FileSpreadsheet className="h-3.5 w-3.5 mr-1" />
+                            Excel
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border border-border bg-card p-2.5">
+                      <p className="text-sm font-medium mb-2">2) Синхронизация по выбранным полям/столбцам</p>
+                      <SyncSettingsPanel
+                        settings={syncSettings}
+                        onSettingsChange={handleSyncSettingsChange}
+                        onSyncNow={handleSyncNow}
+                        isSyncing={isSyncing}
+                        syncedProductsCount={importedProducts.filter(p => p.autoSync).length}
+                        syncOrdersEnabled={supabaseSyncSettings?.sync_orders_enabled}
+                        availablePriceTypes={Array.from(new Set(moyskladProducts.flatMap((p) => (p.salePrices || []).map((sp) => sp.name)).filter(Boolean)))}
+                        onNavigateToOrderSettings={() => {
+                          setActiveSection('orders');
+                          setShowOrderNotificationsPanel(true);
+                          setSelectedNotificationChannel('moysklad');
+                        }}
+                      />
+                    </div>
+                  </div>
 
                   {isLoading && moyskladProducts.length === 0 ? (
                     <div className="bg-card rounded-lg border border-border p-8 text-center">
@@ -4066,26 +4102,12 @@ export default function AdminPanel({
                     <>
                       <div className="flex items-center justify-between mb-2 px-1">
                         <div className="flex items-center gap-1.5">
-                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                          <div className="w-2 h-2 rounded-full bg-primary" />
                           <span className="text-xs text-muted-foreground font-medium">
                             {filteredMoyskladProducts.length}
                           </span>
                         </div>
                         <div className="flex items-center gap-0.5">
-                          <Button
-                            onClick={() => fetchMoySkladProducts()}
-                            disabled={isLoading}
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            title="Обновить список"
-                          >
-                            {isLoading ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <RefreshCw className="h-3.5 w-3.5" />
-                            )}
-                          </Button>
                           <Button
                             onClick={bulkSyncSelectedProducts}
                             disabled={isSyncing || selectedProducts.size === 0}
