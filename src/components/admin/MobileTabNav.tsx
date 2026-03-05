@@ -25,9 +25,9 @@ const navItems: NavItem[] = [
   { id: "profile", label: "Профиль", icon: User },
   { id: "help", label: "Помощь", icon: HelpCircle },
   { id: "category-settings", label: "Категории", icon: Tag },
-  { id: "avito", label: "Авито", icon: Megaphone },
   { id: "exchange", label: "Биржа", icon: ArrowLeftRight },
   { id: "megacatalog", label: "Мегакаталог", icon: Globe },
+  { id: "avito", label: "Авито", icon: Megaphone },
 ];
 
 interface MobileTabNavProps {
