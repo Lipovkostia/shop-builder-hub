@@ -671,9 +671,9 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
                 <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-1.5 w-full">
                   <span className="text-sm font-medium">Выбрано: {selectedFeedProducts.size}</span>
                   <div className="flex gap-2 ml-auto">
-                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAiPromptOpen(true)}>
-                      <Sparkles className="h-3.5 w-3.5" /> AI описание
-                    </Button>
+                     <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => openAiForProducts(Array.from(selectedFeedProducts))}>
+                       <Sparkles className="h-3.5 w-3.5" /> AI описание
+                     </Button>
                     <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={async () => {
                       await avitoFeed.removeProductsFromFeed(Array.from(selectedFeedProducts));
                       setSelectedFeedProducts(new Set());
