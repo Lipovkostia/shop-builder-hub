@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Trash2, Package, Tag, Check, FolderPlus, FolderMinus, Wand2, ImagePlus, Loader2 } from "lucide-react";
+import { X, Trash2, Package, Tag, Check, FolderPlus, FolderMinus, Wand2, ImagePlus, Loader2, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +62,8 @@ interface BulkEditPanelProps {
   onBulkSetPrice?: (price: number) => void;
   // Bulk best photo
   onBulkBestPhoto?: () => Promise<void>;
+  // Add to Avito feed
+  onAddToAvitoFeed?: () => Promise<boolean>;
 }
 
 export function BulkEditPanel({
@@ -83,6 +85,7 @@ export function BulkEditPanel({
   onBulkAutoFillCategories,
   onBulkSetPrice,
   onBulkBestPhoto,
+  onAddToAvitoFeed,
 }: BulkEditPanelProps) {
   const [editField, setEditField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
@@ -358,7 +361,24 @@ export function BulkEditPanel({
             </>
           )}
 
-          {/* Auto-fill categories from other price lists */}
+          {/* Add to Avito feed */}
+          {onAddToAvitoFeed && (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-8"
+                onClick={async () => {
+                  await onAddToAvitoFeed();
+                }}
+              >
+                <ShoppingCart className="h-4 w-4 mr-1" />
+                В Авито
+              </Button>
+              <div className="w-px h-6 bg-primary-foreground/20 mx-1" />
+            </>
+          )}
+
           {onBulkAutoFillCategories && (
             <>
               <Popover open={isAutoFillPopoverOpen} onOpenChange={setIsAutoFillPopoverOpen}>

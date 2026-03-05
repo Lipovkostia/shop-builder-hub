@@ -5109,6 +5109,22 @@ export default function AdminPanel({
                         description: `Обновлено: ${updated} из ${productsWithMultipleImages.length} товаров`,
                       });
                     }}
+                    onAddToAvitoFeed={async () => {
+                      if (!currentCatalog) return false;
+                      const selectedIds = Array.from(selectedCatalogBulkProducts);
+                      const priceMap: Record<string, number> = {};
+                      selectedIds.forEach(productId => {
+                        const product = allProducts.find(p => p.id === productId);
+                        if (product) {
+                          const cp = getCatalogProductPricing(currentCatalog.id, productId);
+                          const price = getCatalogSalePrice(product, cp);
+                          if (price > 0) priceMap[productId] = price;
+                        }
+                      });
+                      const ok = await avitoFeed.addProductsToFeed(selectedIds, priceMap);
+                      if (ok) setSelectedCatalogBulkProducts(new Set());
+                      return ok;
+                    }}
                   />
 
                   <p className="text-xs text-muted-foreground mb-2">
