@@ -167,6 +167,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
 
   // AI generation state
   const [aiPromptOpen, setAiPromptOpen] = useState(false);
+  const [aiMode, setAiMode] = useState<"description" | "title">("description");
   const [aiInstruction, setAiInstruction] = useState("");
   const [aiMaxChars, setAiMaxChars] = useState(500);
   const [aiGenerating, setAiGenerating] = useState(false);
