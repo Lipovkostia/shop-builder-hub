@@ -59,6 +59,7 @@ const defaultVisibleColumns: VisibleColumns = {
   msProduct: false,
   msAccount: true,
   sync: true,
+  msPrices: false,
 };
 
 const defaultFilters: AllProductsFilters = {
