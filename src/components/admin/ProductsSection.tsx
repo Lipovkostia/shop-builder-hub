@@ -620,6 +620,14 @@ export function ProductsSection({
         aiGeneratingProductId={aiGeneratingProductId}
         moyskladLogin={moyskladLogin}
         moyskladPassword={moyskladPassword}
+        avitoFeedProductIds={avitoFeedProductIds}
+        onToggleAvitoFeed={onAddToAvitoFeed && onRemoveFromAvitoFeed ? async (productId: string) => {
+          if (avitoFeedProductIds?.has(productId)) {
+            await onRemoveFromAvitoFeed([productId]);
+          } else {
+            await onAddToAvitoFeed([productId]);
+          }
+        } : undefined}
       />
     </div>
   );
