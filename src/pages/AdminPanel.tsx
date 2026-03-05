@@ -489,6 +489,9 @@ export default function AdminPanel({
     refetch: refetchProducts
   } = useStoreProducts(effectiveStoreId);
   
+  // Avito feed products
+  const avitoFeed = useAvitoFeedProducts(effectiveStoreId);
+  
   // Catalogs from Supabase
   const {
     catalogs: supabaseCatalogs,
