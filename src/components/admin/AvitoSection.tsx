@@ -1438,6 +1438,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                    <span className="font-medium text-sm">Экспорт для Авито</span>
                  </div>
                  <div className="flex items-center gap-2 flex-wrap">
+                   <Button size="sm" variant="outline" onClick={() => importFileRef.current?.click()} disabled={importingExcel}>
+                     {importingExcel ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
+                     {importingExcel ? "Импорт..." : "Загрузить Excel"}
+                   </Button>
+                   <input ref={importFileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
                    <Button size="sm" onClick={handleExportExcelOnly} disabled={exportingExcel}>
                      {exportingExcel ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
                      {exportingExcel ? "Подготовка..." : "Скачать Excel"}
