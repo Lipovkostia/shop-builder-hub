@@ -178,7 +178,7 @@ export function AvitoSection({ storeId }: AvitoSectionProps) {
           </p>
         </div>
         {isConnected && (
-          <Badge variant="outline" className="gap-1 text-green-600 border-green-300">
+          <Badge variant="outline" className="gap-1 text-primary border-primary/30">
             <Check className="h-3 w-3" />
             Подключено: {account.profile_name}
           </Badge>
