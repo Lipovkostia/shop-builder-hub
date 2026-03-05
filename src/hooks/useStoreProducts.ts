@@ -37,7 +37,7 @@ export interface StoreProduct {
   auto_sync: boolean | null;
   source: string | null;
   is_fixed_price: boolean | null;
-  moysklad_prices?: Record<string, number> | null;
+  moysklad_prices?: any;
 }
 
 export function useStoreProducts(storeId: string | null) {
