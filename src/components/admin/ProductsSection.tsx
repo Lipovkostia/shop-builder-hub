@@ -7,6 +7,7 @@ import { BulkEditPanel } from "./BulkEditPanel";
 import { useOptimisticImagePreviews } from "@/hooks/useOptimisticImagePreviews";
 import { uploadFilesToStorage } from "@/hooks/useProductImages";
 import { Product, Catalog, ProductGroup, PackagingType } from "./types";
+import { StoreCategory } from "@/hooks/useStoreCategories";
 import { Button } from "@/components/ui/button";
 import { Plus, Filter, Columns, Download, Sparkles, Loader2 } from "lucide-react";
 import {
