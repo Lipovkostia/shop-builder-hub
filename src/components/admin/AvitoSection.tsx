@@ -314,12 +314,15 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
 
   // === AI DESCRIPTION GENERATION ===
   const handleAiGenerate = async () => {
-    if (!avitoFeed || selectedFeedProducts.size === 0) return;
+    if (!avitoFeed) return;
+    const targetIds = aiSingleProductId ? [aiSingleProductId] : Array.from(selectedFeedProducts);
+    if (targetIds.length === 0) return;
+
     setAiGenerating(true);
-    setAiGeneratingIds(new Set(selectedFeedProducts));
+    setAiGeneratingIds(new Set(targetIds));
 
     try {
-      const productsToGenerate = Array.from(selectedFeedProducts).map(pid => {
+      const productsToGenerate = targetIds.map(pid => {
         const product = storeProducts.find(p => p.id === pid);
         return product ? { id: pid, name: product.name, description: product.description, price: product.pricePerUnit } : null;
       }).filter(Boolean);
@@ -345,6 +348,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
 
       toast({ title: `Сгенерировано ${updated} описаний` });
       setAiPromptOpen(false);
+      setAiSingleProductId(null);
     } catch (err: any) {
       console.error("AI generation error:", err);
       toast({ title: "Ошибка генерации", description: err.message, variant: "destructive" });
