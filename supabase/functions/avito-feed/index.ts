@@ -28,6 +28,12 @@ Deno.serve(async (req) => {
       return new Response("Missing store_id", { status: 400, headers: corsHeaders });
     }
 
+    // Store-level defaults from query params
+    const defaultAddress = url.searchParams.get("address") || "";
+    const defaultCategory = url.searchParams.get("category") || "Продукты питания";
+    const defaultGoodsType = url.searchParams.get("goods_type") || "Товар приобретен на продажу";
+    const defaultAdType = url.searchParams.get("ad_type") || "Товар приобретен на продажу";
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -72,9 +78,11 @@ Deno.serve(async (req) => {
       const title = escapeXml(params.title || product.name || "Товар");
       const description = escapeXml(params.description || product.description || product.name || "");
       const price = params.Price || params.price || product.price || 0;
-      const category = escapeXml(fp.avito_category || params.category || "Продукты питания");
+      const category = escapeXml(fp.avito_category || params.category || defaultCategory);
       const images = product.images || [];
-      const address = escapeXml(fp.avito_address || params.address || "");
+      const address = escapeXml(fp.avito_address || params.address || defaultAddress);
+      const adType = escapeXml(params.adType || params.goodsType || defaultAdType);
+      const goodsType = escapeXml(params.GoodsType || params.goodsSubType || defaultGoodsType);
 
       let imagesXml = "";
       if (images.length > 0) {
@@ -87,6 +95,7 @@ Deno.serve(async (req) => {
 
       ads += `  <Ad>\n`;
       ads += `    <Id>${escapeXml(id)}</Id>\n`;
+      ads += `    <AdType>${adType}</AdType>\n`;
       ads += `    <Title>${title}</Title>\n`;
       ads += `    <Description>${description}</Description>\n`;
       ads += `    <Price>${price}</Price>\n`;
@@ -94,13 +103,17 @@ Deno.serve(async (req) => {
       if (address) {
         ads += `    <Address>${address}</Address>\n`;
       }
+      if (goodsType) {
+        ads += `    <GoodsType>${goodsType}</GoodsType>\n`;
+      }
       ads += imagesXml;
-      // Additional params — skip keys already handled above and Excel-only fields
+      // Additional params — skip keys already handled above
       const skipKeys = new Set([
         'Price', 'price', 'title', 'description', 'category', 'address',
         'avitoId', 'avitoNumber', 'listingFee', 'contactMethod', 'contactPhone',
         'managerName', 'email', 'companyName', 'avitoStatus', 'dateEnd',
         'goodsType', 'goodsSubType', 'targetAudience', 'includeVAT',
+        'adType', 'AdType', 'GoodsType',
       ]);
       for (const [key, value] of Object.entries(params)) {
         if (value && !skipKeys.has(key)) {
