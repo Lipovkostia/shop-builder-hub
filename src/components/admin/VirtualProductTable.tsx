@@ -195,6 +195,8 @@ interface VirtualProductTableProps {
   aiGeneratingProductId?: string | null;
   moyskladLogin?: string;
   moyskladPassword?: string;
+  avitoFeedProductIds?: Set<string>;
+  onToggleAvitoFeed?: (productId: string) => Promise<void>;
 }
 
 const ROW_HEIGHT = 28;
