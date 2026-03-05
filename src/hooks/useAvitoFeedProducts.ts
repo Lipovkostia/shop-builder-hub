@@ -49,6 +49,11 @@ export function useAvitoFeedProducts(storeId: string | null) {
     contactMethod: "По телефону и в сообщениях",
     listingFee: "Package",
     targetAudience: "Частные лица и бизнес",
+    promo: "",
+    promoRegion: "",
+    promoBudget: "",
+    promoPrice: "",
+    promoLimit: "",
   });
 
   // Load defaults from localStorage
