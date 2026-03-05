@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      avito_accounts: {
+        Row: {
+          avito_user_id: number | null
+          client_id: string
+          client_secret: string
+          created_at: string
+          id: string
+          last_sync: string | null
+          profile_name: string | null
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          avito_user_id?: number | null
+          client_id: string
+          client_secret: string
+          created_at?: string
+          id?: string
+          last_sync?: string | null
+          profile_name?: string | null
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          avito_user_id?: number | null
+          client_id?: string
+          client_secret?: string
+          created_at?: string
+          id?: string
+          last_sync?: string | null
+          profile_name?: string | null
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avito_accounts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       canonical_products: {
         Row: {
           canonical_name: string
