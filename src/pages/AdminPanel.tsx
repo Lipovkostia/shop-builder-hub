@@ -1647,6 +1647,11 @@ export default function AdminPanel({
                 updates.unit = msProduct.uom;
               }
               
+              // Always sync all price types
+              if (msProduct.salePrices?.length) {
+                (updates as any).moysklad_prices = Object.fromEntries(msProduct.salePrices.map(sp => [sp.name, sp.value]));
+              }
+              
               // Only update if there are changes
               if (Object.keys(updates).length > 0) {
                 await updateSupabaseProduct(product.id, updates);
