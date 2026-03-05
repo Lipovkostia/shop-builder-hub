@@ -6791,6 +6791,7 @@ export default function AdminPanel({
               storeId={effectiveStoreId} 
               products={allProducts}
               avitoFeed={avitoFeed}
+              storeCategories={storeCategories}
             />
           )}
         </main>
