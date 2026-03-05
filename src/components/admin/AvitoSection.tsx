@@ -380,6 +380,26 @@ function AvitoFeedTable({
 
   return (
     <div className="border rounded-lg overflow-hidden">
+      {/* Active filters bar */}
+      {activeFilterCount > 0 && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 border-b text-xs flex-wrap">
+          <span className="text-muted-foreground">Фильтры:</span>
+          {Object.entries(columnFilters).map(([col, val]) => {
+            const colDef = cols.find(c => c.key === col);
+            return (
+              <Badge key={col} variant="secondary" className="text-xs gap-1 py-0.5">
+                {colDef?.label}: {val === "__empty__" ? "Пустые" : val}
+                <button onClick={() => setFilter(col, "")} className="ml-0.5 hover:text-destructive">
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            );
+          })}
+          <Button variant="ghost" size="sm" className="h-5 text-xs px-2" onClick={() => setColumnFilters({})}>
+            Сбросить все
+          </Button>
+        </div>
+      )}
       <div className="overflow-x-auto">
         <div style={{ minWidth: totalWidth }}>
           {/* Header */}
@@ -387,7 +407,7 @@ function AvitoFeedTable({
             {cols.map((col) => (
               <div
                 key={col.key}
-                className="relative px-2 py-2 flex-shrink-0 truncate"
+                className="relative px-2 py-2 flex-shrink-0 truncate flex items-center"
                 style={{ width: colWidths[col.key] }}
               >
                 {col.key === "check" ? (
@@ -398,7 +418,19 @@ function AvitoFeedTable({
                       else setSelectedFeedProducts(new Set());
                     }}
                   />
-                ) : col.label}
+                ) : (
+                  <>
+                    <span className="truncate">{col.label}</span>
+                    {filterableCols.includes(col.key) && (
+                      <ColumnFilterDropdown
+                        values={uniqueValues[col.key] || []}
+                        selected={columnFilters[col.key] || ""}
+                        onSelect={(val) => setFilter(col.key, val)}
+                        colKey={col.key}
+                      />
+                    )}
+                  </>
+                )}
                 {col.resizable && <ResizeHandle col={col.key} />}
               </div>
             ))}
