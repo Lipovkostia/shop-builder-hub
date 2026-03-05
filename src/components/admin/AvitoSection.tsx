@@ -1602,6 +1602,78 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                 }} />
               </div>
 
+              {/* PromoManualOptions row */}
+              {localDefaults.promo === "Manual" && (
+                <div className="flex items-start gap-2 flex-wrap border-t border-dashed pt-2">
+                  <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0 pt-1.5">PromoManual</span>
+                  <div className="flex-1 min-w-[280px] space-y-1.5">
+                    <p className="text-[10px] text-muted-foreground">
+                      Формат: <code className="bg-muted px-1 rounded">Город|Цена|Лимит</code>. Несколько городов — каждый с новой строки. Если город не указан (регион объявления) — начните с <code className="bg-muted px-1 rounded">|Цена|Лимит</code>
+                    </p>
+                    <div className="grid gap-1.5 sm:grid-cols-3">
+                      <div className="space-y-0.5">
+                        <Label className="text-[10px] text-muted-foreground">Город/Регион</Label>
+                        <Input
+                          className="h-7 text-xs"
+                          placeholder="Москва"
+                          value={localDefaults.promoRegion || ""}
+                          onChange={(e) => setLocalDefaults(prev => ({ ...prev, promoRegion: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        <Label className="text-[10px] text-muted-foreground">Цена действия (₽)</Label>
+                        <Input
+                          className="h-7 text-xs"
+                          placeholder="10"
+                          type="number"
+                          min="1"
+                          value={localDefaults.promoPrice || ""}
+                          onChange={(e) => setLocalDefaults(prev => ({ ...prev, promoPrice: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        <Label className="text-[10px] text-muted-foreground">Лимит в день (₽)</Label>
+                        <Input
+                          className="h-7 text-xs"
+                          placeholder="1000"
+                          type="number"
+                          min="1"
+                          value={localDefaults.promoLimit || ""}
+                          onChange={(e) => setLocalDefaults(prev => ({ ...prev, promoLimit: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Результат: <code className="bg-muted px-1 rounded text-foreground">{
+                        (() => {
+                          const r = localDefaults.promoRegion || "";
+                          const p = localDefaults.promoPrice || "";
+                          const l = localDefaults.promoLimit || "";
+                          if (!p && !l) return "—";
+                          return `${r}|${p}|${l}`;
+                        })()
+                      }</code>
+                    </p>
+                  </div>
+                  <BulkButtons onApply={async (onlySelected) => {
+                    const promoPrice = localDefaults.promoPrice || "";
+                    const promoLimit = localDefaults.promoLimit || "";
+                    if (!promoPrice) { toast({ title: "Укажите цену целевого действия", variant: "destructive" }); return; }
+                    if (promoLimit && Number(promoLimit) <= Number(promoPrice)) { toast({ title: "Лимит на день должен быть больше цены действия", variant: "destructive" }); return; }
+                    const region = localDefaults.promoRegion || "";
+                    const line = `${region}|${promoPrice}|${promoLimit}`;
+                    await applyToTargets(async (targets) => {
+                      for (const fp of targets) {
+                        const params = { ...(fp.avito_params || {}), promoManualOptions: line };
+                        await avitoFeed.updateProductParams(fp.product_id, params);
+                      }
+                      avitoFeed.saveDefaults(localDefaults);
+                      toast({ title: `PromoManualOptions проставлен для ${targets.length} товар(ов)` });
+                    }, onlySelected);
+                  }} />
+                </div>
+              )}
+
               {/* CPC Bid row */}
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Ставка CPC</span>
