@@ -3540,6 +3540,54 @@ export default function AdminPanel({
     });
   }, [moyskladProducts, importFilters]);
 
+  const getPriceByType = useCallback((product: MoySkladProduct, aliases: string[]) => {
+    const normalized = aliases.map((name) => name.toLowerCase());
+    const found = product.salePrices?.find((sp) => normalized.includes((sp.name || "").toLowerCase()));
+    return found?.value ?? null;
+  }, []);
+
+  const getCategoryLabel = useCallback((product: MoySkladProduct) => {
+    if (!product.productFolderName) return "-";
+    const parts = product.productFolderName.split('/').map((x) => x.trim()).filter(Boolean);
+    return parts[parts.length - 1] || product.productFolderName;
+  }, []);
+
+  const exportMoyskladTableToExcel = useCallback(() => {
+    if (filteredMoyskladProducts.length === 0) {
+      toast({ title: "Нет данных", description: "Сначала загрузите товары", variant: "destructive" });
+      return;
+    }
+
+    const rows = filteredMoyskladProducts.map((product) => {
+      const linkedProduct = getLinkedProduct(product.id);
+      const retailPrice = getPriceByType(product, ["Розница", "Розничная", "Цена продажи"]) ?? product.price;
+      const utp1 = getPriceByType(product, ["УТП1", "УТП-1", "Утп 1"]);
+      const utp2 = getPriceByType(product, ["УТП2", "УТП-2", "Утп 2"]);
+
+      return {
+        "Связан": linkedProduct ? "Да" : "Нет",
+        "Автосинхр": linkedProduct?.autoSync ? "Вкл" : "Выкл",
+        "Название": product.name,
+        "Артикул": product.article || "",
+        "Код": product.code || "",
+        "Розница": retailPrice,
+        "УТП 1": utp1,
+        "УТП 2": utp2,
+        "Закупочная": product.buyPrice || null,
+        "Остаток": product.quantity || product.stock || 0,
+        "Ед. изм.": product.uom || "",
+        "Категория": getCategoryLabel(product),
+        "Путь категории": product.productFolderName || "",
+        "Все цены JSON": JSON.stringify(product.salePrices || []),
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "МойСклад");
+    XLSX.writeFile(wb, `moysklad_import_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }, [filteredMoyskladProducts, getCategoryLabel, getLinkedProduct, getPriceByType, toast]);
+
   // Loading state - wait for auth and store context
   // В workspaceMode не показываем спиннер, так как данные магазина уже загружены в SellerWorkspace
   if (!workspaceMode && (authLoading || storeContextLoading)) {
