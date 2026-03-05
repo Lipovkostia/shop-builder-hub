@@ -109,6 +109,7 @@ export function ProductsSection({
   onRemoveFromAvitoFeed,
   moyskladLogin,
   moyskladPassword,
+  storeCategories = [],
 }: ProductsSectionProps) {
   const { toast } = useToast();
   
