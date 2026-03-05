@@ -36,7 +36,10 @@ import {
   Eye,
   Image as ImageIcon,
 } from "lucide-react";
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Product } from "./types";
+import { AvitoFeedProduct } from "@/hooks/useAvitoFeedProducts";
 interface AvitoItem {
   id: number;
   title: string;
