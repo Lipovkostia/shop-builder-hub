@@ -4353,7 +4353,7 @@ export default function AdminPanel({
                                   {/* Expanded row with images */}
                                   {isExpanded && (
                                     <TableRow className="bg-muted/30 hover:bg-muted/30">
-                                    <TableCell colSpan={10} className="p-4">
+                                    <TableCell colSpan={13} className="p-4">
                                         {isLoadingImages ? (
                                           <div className="flex items-center justify-center py-4">
                                             <Loader2 className="h-6 w-6 animate-spin text-primary" />
