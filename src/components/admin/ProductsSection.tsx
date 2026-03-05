@@ -39,6 +39,8 @@ interface ProductsSectionProps {
   onAddCustomUnit?: (unit: string) => void;
   onAddCustomPackaging?: (type: string) => void;
   onAddToAvitoFeed?: (productIds: string[]) => Promise<boolean>;
+  avitoFeedProductIds?: Set<string>;
+  onRemoveFromAvitoFeed?: (productIds: string[]) => Promise<void>;
   moyskladLogin?: string;
   moyskladPassword?: string;
 }
@@ -60,6 +62,7 @@ const defaultVisibleColumns: VisibleColumns = {
   msAccount: true,
   sync: true,
   msPrices: false,
+  avito: false,
 };
 
 const defaultFilters: AllProductsFilters = {
@@ -100,6 +103,8 @@ export function ProductsSection({
   onAddCustomUnit,
   onAddCustomPackaging,
   onAddToAvitoFeed,
+  avitoFeedProductIds,
+  onRemoveFromAvitoFeed,
   moyskladLogin,
   moyskladPassword,
 }: ProductsSectionProps) {
@@ -615,6 +620,14 @@ export function ProductsSection({
         aiGeneratingProductId={aiGeneratingProductId}
         moyskladLogin={moyskladLogin}
         moyskladPassword={moyskladPassword}
+        avitoFeedProductIds={avitoFeedProductIds}
+        onToggleAvitoFeed={onAddToAvitoFeed && onRemoveFromAvitoFeed ? async (productId: string) => {
+          if (avitoFeedProductIds?.has(productId)) {
+            await onRemoveFromAvitoFeed([productId]);
+          } else {
+            await onAddToAvitoFeed([productId]);
+          }
+        } : undefined}
       />
     </div>
   );

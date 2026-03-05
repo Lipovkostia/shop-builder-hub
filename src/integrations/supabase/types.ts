@@ -20,6 +20,7 @@ export type Database = {
           client_id: string
           client_secret: string
           created_at: string
+          feed_defaults: Json | null
           id: string
           last_sync: string | null
           profile_name: string | null
@@ -31,6 +32,7 @@ export type Database = {
           client_id: string
           client_secret: string
           created_at?: string
+          feed_defaults?: Json | null
           id?: string
           last_sync?: string | null
           profile_name?: string | null
@@ -42,6 +44,7 @@ export type Database = {
           client_id?: string
           client_secret?: string
           created_at?: string
+          feed_defaults?: Json | null
           id?: string
           last_sync?: string | null
           profile_name?: string | null

@@ -21,6 +21,7 @@ const DEFAULT_WIDTHS: ColumnWidthConfig = {
   msAccount: 100,
   sync: 48,
   msPrices: 160,
+  avito: 48,
 };
 
 const MIN_WIDTH = 40;
