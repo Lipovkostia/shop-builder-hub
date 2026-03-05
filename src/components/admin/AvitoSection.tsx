@@ -437,7 +437,7 @@ function AvitoFeedTable({
   );
 }
 
-export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed }: AvitoSectionProps) {
+export function AvitoSection({ storeId, products: storeProducts = [], storeCategories = [], avitoFeed }: AvitoSectionProps) {
   const { toast } = useToast();
   const [account, setAccount] = useState<AvitoAccount | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1391,6 +1391,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
             <AvitoFeedTable
               feedProducts={avitoFeed.feedProducts}
               storeProducts={storeProducts}
+              storeCategories={storeCategories}
               selectedFeedProducts={selectedFeedProducts}
               setSelectedFeedProducts={setSelectedFeedProducts}
               aiGeneratingIds={aiGeneratingIds}
