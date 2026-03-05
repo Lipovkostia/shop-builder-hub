@@ -273,7 +273,7 @@ function AvitoFeedTable({
           </div>
           {/* Body */}
           <div>
-            {feedProducts.map((fp) => {
+            {filteredFeedProducts.map((fp) => {
               const product = storeProducts.find(p => p.id === fp.product_id);
               if (!product) return null;
               const imageUrl = product.images?.[0] || product.image;
@@ -345,6 +345,38 @@ function AvitoFeedTable({
                       onChange={(val) => handleInlineParamUpdate(fp.product_id, "price", val)}
                       placeholder="0"
                       type="number"
+                    />
+                  </div>
+                  {/* Категория */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.category }}>
+                    <InlineCell
+                      value={params.category || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "category", val)}
+                      placeholder={localDefaults.category || "Категория"}
+                    />
+                  </div>
+                  {/* Вид объявления (AdType/goodsType) */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.adType }}>
+                    <InlineCell
+                      value={params.goodsType || params.adType || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "goodsType", val)}
+                      placeholder={localDefaults.goodsType || "Вид объявления"}
+                    />
+                  </div>
+                  {/* Вид товара (GoodsType/goodsSubType) */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.goodsType }}>
+                    <InlineCell
+                      value={params.goodsSubType || params.GoodsType || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "goodsSubType", val)}
+                      placeholder={localDefaults.goodsSubType || "Вид товара"}
+                    />
+                  </div>
+                  {/* Promo */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.promo }}>
+                    <InlineCell
+                      value={params.promo || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "promo", val)}
+                      placeholder={localDefaults.promo || "—"}
                     />
                   </div>
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.address }}>
