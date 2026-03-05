@@ -1093,6 +1093,126 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     }
   };
 
+  // === EXCEL IMPORT ===
+  const [importingExcel, setImportingExcel] = useState(false);
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !avitoFeed) return;
+    setImportingExcel(true);
+    try {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      if (!ws) throw new Error("Лист не найден");
+
+      const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      // Find header row (row2 in our export) — look for "Уникальный идентификатор"
+      let headerRowIdx = -1;
+      for (let i = 0; i < Math.min(rows.length, 10); i++) {
+        const row = rows[i];
+        if (row && row.some((cell: any) => String(cell || "").includes("Уникальный идентификатор"))) {
+          headerRowIdx = i;
+          break;
+        }
+      }
+      if (headerRowIdx < 0) throw new Error("Не найдена строка заголовков. Убедитесь, что файл был экспортирован из этого сервиса.");
+
+      const headers = (rows[headerRowIdx] || []).map((h: any) => String(h || "").trim());
+      // Column index mapping
+      const colIdx = (name: string) => headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()));
+      const idxId = colIdx("Уникальный идентификатор");
+      const idxListingFee = colIdx("Способ размещения");
+      const idxAvitoNumber = colIdx("Номер объявления");
+      const idxManager = colIdx("Контактное лицо");
+      const idxPhone = colIdx("Номер телефона");
+      const idxTitle = colIdx("Название объявления");
+      const idxDesc = colIdx("Описание объявления");
+      const idxContactMethod = colIdx("Способ связи");
+      const idxPrice = colIdx("Цена");
+      const idxCategory = colIdx("Категория");
+      const idxAdType = colIdx("Вид объявления");
+      const idxGoodsType = colIdx("Вид товара");
+      const idxTargetAudience = colIdx("Целевая аудитория");
+      const idxAddress = colIdx("Адрес");
+      const idxEmail = colIdx("Почта");
+      const idxCompany = colIdx("Название компании");
+      const idxPromo = colIdx("Promo");
+      const idxPromoManual = colIdx("PromoManualOptions");
+
+      // Data starts after headerRowIdx + 2 rows (required/type rows)
+      const dataStartIdx = headerRowIdx + 3; // skip header, required, type rows
+      // But if we exported with row1=category line, row2=headers, row3=required, row4=type → data at row5 (idx=4)
+      // Let's just use headerRowIdx + 3 as start and handle sparse
+      
+      // Build product lookup by avitoId (first 10 chars of product.id) 
+      const feedProductMap = new Map<string, AvitoFeedProduct>();
+      for (const fp of avitoFeed.feedProducts) {
+        const product = storeProducts.find(p => p.id === fp.product_id);
+        if (product) {
+          feedProductMap.set(product.id.substring(0, 10), fp);
+          feedProductMap.set(product.id, fp);
+        }
+      }
+
+      let updated = 0;
+      for (let i = dataStartIdx; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length === 0) continue;
+        const avitoId = String(row[idxId] || "").trim();
+        if (!avitoId) continue;
+
+        const fp = feedProductMap.get(avitoId);
+        if (!fp) continue;
+
+        const params: any = { ...(fp.avito_params || {}) };
+        const setIfPresent = (idx: number, key: string) => {
+          if (idx >= 0 && row[idx] !== undefined && row[idx] !== null && String(row[idx]).trim() !== "") {
+            params[key] = String(row[idx]).trim();
+          }
+        };
+
+        setIfPresent(idxTitle, "title");
+        setIfPresent(idxDesc, "description");
+        if (idxPrice >= 0 && row[idxPrice] !== undefined) params.price = String(row[idxPrice]);
+        setIfPresent(idxCategory, "category");
+        setIfPresent(idxAdType, "goodsType");
+        setIfPresent(idxGoodsType, "goodsSubType");
+        setIfPresent(idxAddress, "address");
+        setIfPresent(idxManager, "managerName");
+        setIfPresent(idxPhone, "contactPhone");
+        setIfPresent(idxEmail, "email");
+        setIfPresent(idxCompany, "companyName");
+        setIfPresent(idxListingFee, "listingFee");
+        setIfPresent(idxContactMethod, "contactMethod");
+        setIfPresent(idxTargetAudience, "targetAudience");
+        setIfPresent(idxAvitoNumber, "avitoNumber");
+        setIfPresent(idxPromo, "promo");
+        // Parse PromoManualOptions: "Город, цена, лимит"
+        if (idxPromoManual >= 0 && row[idxPromoManual]) {
+          const parts = String(row[idxPromoManual]).split(/[,|]/).map(s => s.trim());
+          if (parts[0]) params.promoRegion = parts[0];
+          if (parts[1]) params.promoPrice = parts[1];
+          if (parts[2]) params.promoLimit = parts[2];
+        }
+
+        await avitoFeed.updateProductParams(fp.product_id, params);
+        updated++;
+      }
+
+      await avitoFeed.refetch();
+      toast({ title: `Импортировано: ${updated} товар(ов) обновлено` });
+    } catch (err: any) {
+      console.error("Import error:", err);
+      toast({ title: "Ошибка импорта", description: err.message, variant: "destructive" });
+    } finally {
+      setImportingExcel(false);
+      if (importFileRef.current) importFileRef.current.value = "";
+    }
+  };
+
+
   const filteredItems = items.filter((item) =>
     !searchQuery || item.title?.toLowerCase().includes(searchQuery.toLowerCase())
   );
