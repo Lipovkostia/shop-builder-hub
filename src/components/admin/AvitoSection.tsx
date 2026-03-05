@@ -35,6 +35,7 @@ import {
   Calendar,
   Eye,
   Image as ImageIcon,
+  X,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
