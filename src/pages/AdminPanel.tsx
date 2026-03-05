@@ -1408,6 +1408,53 @@ export default function AdminPanel({
     }
   };
 
+  // Helper: resolve or create a category from MoySklad folder path
+  // pathName format: "Parent/Child/SubChild" or just "CategoryName"
+  const msfolderCategoryCache = useRef<Record<string, string>>({});
+  
+  const resolveOrCreateCategory = async (productFolderName: string | null | undefined): Promise<string | null> => {
+    if (!productFolderName || !effectiveStoreId) return null;
+    
+    // Use the leaf folder name (last segment of path)
+    const segments = productFolderName.split('/').map(s => s.trim()).filter(Boolean);
+    if (segments.length === 0) return null;
+    
+    const leafName = segments[segments.length - 1];
+    
+    // Check cache first
+    if (msfolderCategoryCache.current[leafName]) {
+      return msfolderCategoryCache.current[leafName];
+    }
+    
+    // Check existing categories by name
+    const existingCat = storeCategories.find(c => c.name === leafName);
+    if (existingCat) {
+      msfolderCategoryCache.current[leafName] = existingCat.id;
+      return existingCat.id;
+    }
+    
+    // Create new category
+    const created = await createStoreCategory(leafName);
+    if (created) {
+      msfolderCategoryCache.current[leafName] = created.id;
+      
+      // If has parent segments, try to set parent
+      if (segments.length > 1) {
+        const parentName = segments[segments.length - 2];
+        const parentId = await resolveOrCreateCategory(segments.slice(0, -1).join('/'));
+        if (parentId && parentId !== created.id) {
+          await supabase
+            .from('categories')
+            .update({ parent_id: parentId })
+            .eq('id', created.id);
+        }
+      }
+      
+      return created.id;
+    }
+    return null;
+  };
+
   // Import a single product and enable auto-sync
   const importAndLinkProduct = async (msProductId: string) => {
     if (!currentAccount) return;
