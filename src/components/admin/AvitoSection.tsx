@@ -911,43 +911,100 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
         )}
       </Tabs>
 
-      {/* AI Description Generation Dialog */}
-      <Dialog open={aiPromptOpen} onOpenChange={setAiPromptOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-base flex items-center gap-2">
+      {/* AI Description Generation Sheet */}
+      <Sheet open={aiPromptOpen} onOpenChange={(open) => { setAiPromptOpen(open); if (!open) setAiSingleProductId(null); }}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="text-base flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              AI-генерация описаний для Авито
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
+              AI-генерация описаний
+            </SheetTitle>
+          </SheetHeader>
+          <div className="space-y-5 mt-4">
+            {/* Target info */}
             <p className="text-xs text-muted-foreground">
-              Будет сгенерировано описание для {selectedFeedProducts.size} выбранных товаров. Опишите инструкцию — как именно AI должен писать описания.
+              {aiSingleProductId ? (
+                <>Генерация для: <span className="font-medium text-foreground">{storeProducts.find(p => p.id === aiSingleProductId)?.name || "товар"}</span></>
+              ) : (
+                <>Будет сгенерировано для {selectedFeedProducts.size} выбранных товаров</>
+              )}
             </p>
+
+            {/* Saved templates */}
+            {savedTemplates.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs flex items-center gap-1.5">
+                  <BookOpen className="h-3.5 w-3.5" /> Сохранённые шаблоны
+                </Label>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {savedTemplates.map((tpl) => (
+                    <div key={tpl.id} className="flex items-center gap-2 p-2 rounded-md border bg-muted/30 hover:bg-muted/60 transition-colors group">
+                      <button
+                        className="flex-1 text-left text-xs font-medium truncate"
+                        onClick={() => loadTemplate(tpl)}
+                        title={tpl.instruction || "Стандартное описание"}
+                      >
+                        {tpl.name}
+                      </button>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{tpl.maxChars} сим.</span>
+                      <Button
+                        size="icon" variant="ghost"
+                        className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        onClick={() => deleteTemplate(tpl.id)}
+                      >
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Prompt */}
             <div className="space-y-1.5">
               <Label className="text-xs">Инструкция для AI (промпт)</Label>
               <Textarea
                 value={aiInstruction}
                 onChange={(e) => setAiInstruction(e.target.value)}
-                placeholder="Например: Пиши от лица оптового поставщика мясной продукции. Упоминай, что доставка по Москве и МО. В конце добавь: «Свежая продукция каждый день»."
+                placeholder="Например: Пиши от лица оптового поставщика мясной продукции. Упоминай, что доставка по Москве и МО."
                 className="text-sm min-h-[120px]"
               />
               <p className="text-[10px] text-muted-foreground">Оставьте пустым для стандартного описания</p>
             </div>
+
+            {/* Max chars */}
             <div className="space-y-1.5">
               <Label className="text-xs">Максимум символов</Label>
               <Input type="number" value={aiMaxChars} onChange={(e) => setAiMaxChars(Number(e.target.value) || 500)} className="h-8 text-sm w-32" min={100} max={2000} />
             </div>
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="outline" onClick={() => setAiPromptOpen(false)}>Отмена</Button>
-              <Button size="sm" onClick={handleAiGenerate} disabled={aiGenerating}>
+
+            {/* Save template */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Сохранить как шаблон</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={newTemplateName}
+                  onChange={(e) => setNewTemplateName(e.target.value)}
+                  placeholder="Название шаблона"
+                  className="h-8 text-sm"
+                  onKeyDown={(e) => { if (e.key === "Enter") saveTemplate(); }}
+                />
+                <Button size="sm" variant="outline" onClick={saveTemplate} className="h-8 shrink-0">
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Сохранить
+                </Button>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-2 border-t">
+              <Button className="flex-1" onClick={handleAiGenerate} disabled={aiGenerating}>
                 {aiGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Wand2 className="h-3.5 w-3.5 mr-1" />}
                 Сгенерировать
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* Item Detail Dialog */}
       <Dialog open={!!detailDialogItem} onOpenChange={(open) => !open && setDetailDialogItem(null)}>
