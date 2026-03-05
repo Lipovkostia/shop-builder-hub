@@ -103,6 +103,8 @@ export function ProductsSection({
   onAddCustomUnit,
   onAddCustomPackaging,
   onAddToAvitoFeed,
+  avitoFeedProductIds,
+  onRemoveFromAvitoFeed,
   moyskladLogin,
   moyskladPassword,
 }: ProductsSectionProps) {
