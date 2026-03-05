@@ -179,6 +179,7 @@ serve(async (req) => {
       );
     }
 
+    if (action === 'get_product_images') {
       // Fetch images for a specific product
       if (!productId) {
         return new Response(
