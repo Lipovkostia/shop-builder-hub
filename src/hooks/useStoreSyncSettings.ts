@@ -9,6 +9,9 @@ export interface SyncFieldMapping {
   name: boolean;
   description: boolean;
   unit: boolean;
+  images: boolean;
+  article: boolean;
+  priceTypeName?: string | null;
 }
 
 export interface SyncSettings {
@@ -37,6 +40,9 @@ export const defaultSyncSettings: Omit<SyncSettings, "store_id"> = {
     name: false,
     description: false,
     unit: false,
+    images: false,
+    article: false,
+    priceTypeName: null,
   },
   // MoySklad order sync defaults
   moysklad_organization_id: null,
@@ -45,7 +51,7 @@ export const defaultSyncSettings: Omit<SyncSettings, "store_id"> = {
 };
 
 function parseFieldMapping(json: Json | null): SyncFieldMapping {
-  if (!json || typeof json !== 'object' || Array.isArray(json)) {
+  if (!json || typeof json !== "object" || Array.isArray(json)) {
     return defaultSyncSettings.field_mapping;
   }
   const obj = json as Record<string, unknown>;
@@ -56,6 +62,12 @@ function parseFieldMapping(json: Json | null): SyncFieldMapping {
     name: Boolean(obj.name ?? false),
     description: Boolean(obj.description ?? false),
     unit: Boolean(obj.unit ?? false),
+    images: Boolean(obj.images ?? false),
+    article: Boolean(obj.article ?? false),
+    priceTypeName:
+      typeof obj.priceTypeName === "string" && obj.priceTypeName.trim().length > 0
+        ? obj.priceTypeName
+        : null,
   };
 }
 
@@ -67,6 +79,9 @@ function toJson(mapping: SyncFieldMapping): Json {
     name: mapping.name,
     description: mapping.description,
     unit: mapping.unit,
+    images: mapping.images,
+    article: mapping.article,
+    priceTypeName: mapping.priceTypeName ?? null,
   };
 }
 
@@ -104,7 +119,6 @@ export function useStoreSyncSettings(storeId: string | null) {
           sync_orders_enabled: data.sync_orders_enabled ?? false,
         });
       } else {
-        // No settings yet, use defaults
         setSettings({
           store_id: storeId,
           ...defaultSyncSettings,
@@ -130,7 +144,6 @@ export function useStoreSyncSettings(storeId: string | null) {
       if (!storeId) return null;
 
       try {
-        // Check if settings exist
         const { data: existing } = await supabase
           .from("store_sync_settings")
           .select("id")
@@ -138,7 +151,6 @@ export function useStoreSyncSettings(storeId: string | null) {
           .maybeSingle();
 
         if (existing) {
-          // Update existing
           const updateData: Record<string, unknown> = {};
           if (updates.enabled !== undefined) updateData.enabled = updates.enabled;
           if (updates.interval_minutes !== undefined) updateData.interval_minutes = updates.interval_minutes;
@@ -171,45 +183,41 @@ export function useStoreSyncSettings(storeId: string | null) {
             sync_orders_enabled: data.sync_orders_enabled ?? false,
           });
           return data;
-        } else {
-          // Insert new
-          const newSettings = {
-            store_id: storeId,
-            enabled: updates.enabled ?? defaultSyncSettings.enabled,
-            interval_minutes:
-              updates.interval_minutes ?? defaultSyncSettings.interval_minutes,
-            last_sync_time: updates.last_sync_time ?? null,
-            next_sync_time: updates.next_sync_time ?? null,
-            field_mapping: toJson(
-              updates.field_mapping ?? defaultSyncSettings.field_mapping
-            ),
-            moysklad_organization_id: updates.moysklad_organization_id ?? null,
-            moysklad_counterparty_id: updates.moysklad_counterparty_id ?? null,
-            sync_orders_enabled: updates.sync_orders_enabled ?? false,
-          };
-
-          const { data, error } = await supabase
-            .from("store_sync_settings")
-            .insert(newSettings)
-            .select()
-            .single();
-
-          if (error) throw error;
-
-          setSettings({
-            id: data.id,
-            store_id: data.store_id,
-            enabled: data.enabled,
-            interval_minutes: data.interval_minutes,
-            last_sync_time: data.last_sync_time,
-            next_sync_time: data.next_sync_time,
-            field_mapping: parseFieldMapping(data.field_mapping),
-            moysklad_organization_id: data.moysklad_organization_id ?? null,
-            moysklad_counterparty_id: data.moysklad_counterparty_id ?? null,
-            sync_orders_enabled: data.sync_orders_enabled ?? false,
-          });
-          return data;
         }
+
+        const newSettings = {
+          store_id: storeId,
+          enabled: updates.enabled ?? defaultSyncSettings.enabled,
+          interval_minutes: updates.interval_minutes ?? defaultSyncSettings.interval_minutes,
+          last_sync_time: updates.last_sync_time ?? null,
+          next_sync_time: updates.next_sync_time ?? null,
+          field_mapping: toJson(updates.field_mapping ?? defaultSyncSettings.field_mapping),
+          moysklad_organization_id: updates.moysklad_organization_id ?? null,
+          moysklad_counterparty_id: updates.moysklad_counterparty_id ?? null,
+          sync_orders_enabled: updates.sync_orders_enabled ?? false,
+        };
+
+        const { data, error } = await supabase
+          .from("store_sync_settings")
+          .insert(newSettings)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setSettings({
+          id: data.id,
+          store_id: data.store_id,
+          enabled: data.enabled,
+          interval_minutes: data.interval_minutes,
+          last_sync_time: data.last_sync_time,
+          next_sync_time: data.next_sync_time,
+          field_mapping: parseFieldMapping(data.field_mapping),
+          moysklad_organization_id: data.moysklad_organization_id ?? null,
+          moysklad_counterparty_id: data.moysklad_counterparty_id ?? null,
+          sync_orders_enabled: data.sync_orders_enabled ?? false,
+        });
+        return data;
       } catch (error) {
         console.error("Error updating sync settings:", error);
         return null;

@@ -893,6 +893,23 @@ export default function AdminPanel({
   // Track deleted MoySklad product IDs to allow re-import
   const [deletedMoyskladIds, setDeletedMoyskladIds] = useState<Set<string>>(new Set());
 
+  // Hydrate sync settings from backend settings table
+  useEffect(() => {
+    if (!supabaseSyncSettings) return;
+
+    setSyncSettings((prev) => ({
+      ...prev,
+      enabled: supabaseSyncSettings.enabled,
+      intervalMinutes: supabaseSyncSettings.interval_minutes,
+      lastSyncTime: supabaseSyncSettings.last_sync_time || undefined,
+      nextSyncTime: supabaseSyncSettings.next_sync_time || undefined,
+      fieldMapping: {
+        ...prev.fieldMapping,
+        ...supabaseSyncSettings.field_mapping,
+      },
+    }));
+  }, [supabaseSyncSettings]);
+
   // Expanded product images state for assortment section
   const [expandedAssortmentImages, setExpandedAssortmentImages] = useState<string | null>(null);
   const [deletingImageProductId, setDeletingImageProductId] = useState<string | null>(null);
@@ -1746,7 +1763,6 @@ export default function AdminPanel({
 
   // Auto-sync timer effect
   useEffect(() => {
-    // Clear existing timer
     if (syncTimerRef.current) {
       clearInterval(syncTimerRef.current);
       syncTimerRef.current = null;
@@ -1757,36 +1773,40 @@ export default function AdminPanel({
     const syncedProductsCount = importedProducts.filter(p => p.autoSync).length;
     if (syncedProductsCount === 0) return;
 
-    // Set initial next sync time if not set
     if (!syncSettings.nextSyncTime) {
-      setSyncSettings(prev => ({
-        ...prev,
-        nextSyncTime: new Date(Date.now() + prev.intervalMinutes * 60000).toISOString(),
-      }));
+      const nextSyncAt = new Date(Date.now() + syncSettings.intervalMinutes * 60000).toISOString();
+      setSyncSettings(prev => ({ ...prev, nextSyncTime: nextSyncAt }));
+      void updateSyncSettings({ next_sync_time: nextSyncAt });
+      return;
     }
 
-    // Check every second if it's time to sync
     syncTimerRef.current = setInterval(() => {
       if (syncSettings.nextSyncTime) {
         const now = Date.now();
         const nextSync = new Date(syncSettings.nextSyncTime).getTime();
-        
+
         if (now >= nextSync && !isSyncing) {
           syncAutoSyncProducts(syncSettings.fieldMapping);
         }
       }
-    }, 10000); // Check every 10 seconds
+    }, 10000);
 
     return () => {
       if (syncTimerRef.current) {
         clearInterval(syncTimerRef.current);
       }
     };
-  }, [syncSettings.enabled, syncSettings.intervalMinutes, syncSettings.nextSyncTime, importedProducts.length]);
+  }, [syncSettings.enabled, syncSettings.intervalMinutes, syncSettings.nextSyncTime, importedProducts.length, isSyncing]);
 
   // Handle sync settings change
-  const handleSyncSettingsChange = (newSettings: SyncSettings) => {
+  const handleSyncSettingsChange = async (newSettings: SyncSettings) => {
     setSyncSettings(newSettings);
+    await updateSyncSettings({
+      enabled: newSettings.enabled,
+      interval_minutes: newSettings.intervalMinutes,
+      next_sync_time: newSettings.nextSyncTime || null,
+      field_mapping: newSettings.fieldMapping as any,
+    } as any);
   };
 
   // Manual sync now handler
@@ -3925,6 +3945,7 @@ export default function AdminPanel({
                     isSyncing={isSyncing}
                     syncedProductsCount={importedProducts.filter(p => p.autoSync).length}
                     syncOrdersEnabled={supabaseSyncSettings?.sync_orders_enabled}
+                    availablePriceTypes={Array.from(new Set(moyskladProducts.flatMap((p) => (p.salePrices || []).map((sp) => sp.name)).filter(Boolean)))}
                     onNavigateToOrderSettings={() => {
                       setActiveSection('orders');
                       setShowOrderNotificationsPanel(true);
