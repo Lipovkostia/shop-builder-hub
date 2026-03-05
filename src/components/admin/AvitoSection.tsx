@@ -401,32 +401,13 @@ function AvitoFeedTable({
                       placeholder={localDefaults.promo || "—"}
                     />
                   </div>
-                  {/* Ставка CPC */}
-                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.cpcBid }}>
-                    <InlineCell
-                      value={params.cpcBid || ""}
-                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "cpcBid", val)}
-                      placeholder="—"
-                      type="number"
-                    />
-                  </div>
-                  {/* PromoManualOptions - Город|цена|лимит */}
+                   {/* PromoManualOptions - Город|цена|лимит (многострочное) */}
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.promoManual }}>
                     <InlineCell
-                      value={(() => {
-                        const region = params.promoRegion || "";
-                        const price = params.promoPrice || "";
-                        const limit = params.promoLimit || "";
-                        if (region || price || limit) return [region, price, limit].filter(Boolean).join("|");
-                        return "";
-                      })()}
-                      onChange={(val) => {
-                        const parts = val.split("|").map(s => s.trim());
-                        handleInlineParamUpdate(fp.product_id, "promoRegion", parts[0] || "");
-                        handleInlineParamUpdate(fp.product_id, "promoPrice", parts[1] || "");
-                        handleInlineParamUpdate(fp.product_id, "promoLimit", parts[2] || "");
-                      }}
+                      value={params.promoManualOptions || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "promoManualOptions", val)}
                       placeholder="Город|цена|лимит"
+                      type="textarea"
                     />
                   </div>
                   {/* Ставка CPC */}
@@ -878,16 +859,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             const promo = params.promo || d.promo || "";
             return promo;
           })(),
-          (() => {
-            const promo = params.promo || d.promo || "";
-            if (promo === "Manual") {
-              const region = params.promoRegion || d.promoRegion || "";
-              const promoPrice = params.promoPrice || d.promoPrice || "";
-              const limit = params.promoLimit || d.promoLimit || "";
-              return [region, promoPrice, limit].filter(Boolean).join(", ");
-            }
-            return "";
-          })(),
+          // PromoManualOptions - use stored multi-line value
+          params.promoManualOptions || "",
           (() => {
             const promo = params.promo || d.promo || "";
             if (promo && promo.startsWith("Auto")) {
@@ -1027,16 +1000,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             const promo = params.promo || d.promo || "";
             return promo;
           })(),
-          (() => {
-            const promo = params.promo || d.promo || "";
-            if (promo === "Manual") {
-              const region = params.promoRegion || d.promoRegion || "";
-              const promoPrice = params.promoPrice || d.promoPrice || "";
-              const limit = params.promoLimit || d.promoLimit || "";
-              return [region, promoPrice, limit].filter(Boolean).join(", ");
-            }
-            return "";
-          })(),
+          // PromoManualOptions - use stored multi-line value
+          params.promoManualOptions || "",
           (() => {
             const promo = params.promo || d.promo || "";
             if (promo && promo.startsWith("Auto")) {
@@ -1189,12 +1154,9 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         setIfPresent(idxTargetAudience, "targetAudience");
         setIfPresent(idxAvitoNumber, "avitoNumber");
         setIfPresent(idxPromo, "promo");
-        // Parse PromoManualOptions: "Город, цена, лимит"
+        // Parse PromoManualOptions: store as-is (multi-line format City|Price|Limit)
         if (idxPromoManual >= 0 && row[idxPromoManual]) {
-          const parts = String(row[idxPromoManual]).split(/[,|]/).map(s => s.trim());
-          if (parts[0]) params.promoRegion = parts[0];
-          if (parts[1]) params.promoPrice = parts[1];
-          if (parts[2]) params.promoLimit = parts[2];
+          params.promoManualOptions = String(row[idxPromoManual]).trim();
         }
 
         await avitoFeed.updateProductParams(fp.product_id, params);
@@ -1639,6 +1601,78 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                   }, onlySelected);
                 }} />
               </div>
+
+              {/* PromoManualOptions row */}
+              {localDefaults.promo === "Manual" && (
+                <div className="flex items-start gap-2 flex-wrap border-t border-dashed pt-2">
+                  <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0 pt-1.5">PromoManual</span>
+                  <div className="flex-1 min-w-[280px] space-y-1.5">
+                    <p className="text-[10px] text-muted-foreground">
+                      Формат: <code className="bg-muted px-1 rounded">Город|Цена|Лимит</code>. Несколько городов — каждый с новой строки. Если город не указан (регион объявления) — начните с <code className="bg-muted px-1 rounded">|Цена|Лимит</code>
+                    </p>
+                    <div className="grid gap-1.5 sm:grid-cols-3">
+                      <div className="space-y-0.5">
+                        <Label className="text-[10px] text-muted-foreground">Город/Регион</Label>
+                        <Input
+                          className="h-7 text-xs"
+                          placeholder="Москва"
+                          value={localDefaults.promoRegion || ""}
+                          onChange={(e) => setLocalDefaults(prev => ({ ...prev, promoRegion: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        <Label className="text-[10px] text-muted-foreground">Цена действия (₽)</Label>
+                        <Input
+                          className="h-7 text-xs"
+                          placeholder="10"
+                          type="number"
+                          min="1"
+                          value={localDefaults.promoPrice || ""}
+                          onChange={(e) => setLocalDefaults(prev => ({ ...prev, promoPrice: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        <Label className="text-[10px] text-muted-foreground">Лимит в день (₽)</Label>
+                        <Input
+                          className="h-7 text-xs"
+                          placeholder="1000"
+                          type="number"
+                          min="1"
+                          value={localDefaults.promoLimit || ""}
+                          onChange={(e) => setLocalDefaults(prev => ({ ...prev, promoLimit: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Результат: <code className="bg-muted px-1 rounded text-foreground">{
+                        (() => {
+                          const r = localDefaults.promoRegion || "";
+                          const p = localDefaults.promoPrice || "";
+                          const l = localDefaults.promoLimit || "";
+                          if (!p && !l) return "—";
+                          return `${r}|${p}|${l}`;
+                        })()
+                      }</code>
+                    </p>
+                  </div>
+                  <BulkButtons onApply={async (onlySelected) => {
+                    const promoPrice = localDefaults.promoPrice || "";
+                    const promoLimit = localDefaults.promoLimit || "";
+                    if (!promoPrice) { toast({ title: "Укажите цену целевого действия", variant: "destructive" }); return; }
+                    if (promoLimit && Number(promoLimit) <= Number(promoPrice)) { toast({ title: "Лимит на день должен быть больше цены действия", variant: "destructive" }); return; }
+                    const region = localDefaults.promoRegion || "";
+                    const line = `${region}|${promoPrice}|${promoLimit}`;
+                    await applyToTargets(async (targets) => {
+                      for (const fp of targets) {
+                        const params = { ...(fp.avito_params || {}), promoManualOptions: line };
+                        await avitoFeed.updateProductParams(fp.product_id, params);
+                      }
+                      avitoFeed.saveDefaults(localDefaults);
+                      toast({ title: `PromoManualOptions проставлен для ${targets.length} товар(ов)` });
+                    }, onlySelected);
+                  }} />
+                </div>
+              )}
 
               {/* CPC Bid row */}
               <div className="flex items-center gap-2 flex-wrap">

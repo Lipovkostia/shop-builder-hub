@@ -140,8 +140,15 @@ Deno.serve(async (req) => {
       if (promo) {
         ads += `    <Promo>${escapeXml(promo)}</Promo>\n`;
         if (promo === 'Manual') {
-          const manualOpts = [params.promoRegion, params.promoPrice, params.promoLimit].filter(Boolean).join(', ');
-          if (manualOpts) ads += `    <PromoManualOptions>${escapeXml(manualOpts)}</PromoManualOptions>\n`;
+          // Use promoManualOptions directly (multi-line: City|Price|Limit per line)
+          const manualOpts = params.promoManualOptions || '';
+          if (manualOpts) {
+            ads += `    <PromoManualOptions>${escapeXml(manualOpts)}</PromoManualOptions>\n`;
+          } else {
+            // Fallback to legacy separate fields
+            const legacyOpts = [params.promoRegion, params.promoPrice, params.promoLimit].filter(Boolean).join('|');
+            if (legacyOpts) ads += `    <PromoManualOptions>${escapeXml(legacyOpts)}</PromoManualOptions>\n`;
+          }
         } else if (promo.startsWith('Auto')) {
           const autoOpts = [params.promoRegion, params.promoBudget].filter(Boolean).join(', ');
           if (autoOpts) ads += `    <PromoAutoOptions>${escapeXml(autoOpts)}</PromoAutoOptions>\n`;
@@ -160,7 +167,7 @@ Deno.serve(async (req) => {
         'managerName', 'email', 'companyName', 'avitoStatus', 'dateEnd',
         'goodsType', 'goodsSubType', 'targetAudience', 'includeVAT',
         'adType', 'AdType', 'GoodsType',
-        'promo', 'promoRegion', 'promoBudget', 'promoPrice', 'promoLimit',
+        'promo', 'promoRegion', 'promoBudget', 'promoPrice', 'promoLimit', 'promoManualOptions',
         'cpcBid', 'CompanyName', 'Email', 'AvitoId', 'ManagerName', 'ContactPhone',
       ]);
       for (const [key, value] of Object.entries(params)) {
