@@ -976,20 +976,30 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
 
             {/* Prompt */}
             <div className="space-y-1.5">
-              <Label className="text-xs">Инструкция для AI (промпт)</Label>
+              <Label className="text-xs">
+                {aiMode === "title" ? "Инструкция для сокращения названий" : "Инструкция для AI (промпт)"}
+              </Label>
               <Textarea
                 value={aiInstruction}
                 onChange={(e) => setAiInstruction(e.target.value)}
-                placeholder="Например: Пиши от лица оптового поставщика мясной продукции. Упоминай, что доставка по Москве и МО."
+                placeholder={aiMode === "title" 
+                  ? "Например: Сохраняй бренд и вес. Убирай слова на латинице если есть русский аналог."
+                  : "Например: Пиши от лица оптового поставщика мясной продукции. Упоминай, что доставка по Москве и МО."
+                }
                 className="text-sm min-h-[120px]"
               />
-              <p className="text-[10px] text-muted-foreground">Оставьте пустым для стандартного описания</p>
+              <p className="text-[10px] text-muted-foreground">
+                {aiMode === "title" ? "Оставьте пустым для стандартного сокращения" : "Оставьте пустым для стандартного описания"}
+              </p>
             </div>
 
             {/* Max chars */}
             <div className="space-y-1.5">
-              <Label className="text-xs">Максимум символов</Label>
-              <Input type="number" value={aiMaxChars} onChange={(e) => setAiMaxChars(Number(e.target.value) || 500)} className="h-8 text-sm w-32" min={100} max={2000} />
+              <Label className="text-xs">
+                {aiMode === "title" ? "Максимум символов в названии" : "Максимум символов"}
+              </Label>
+              <Input type="number" value={aiMaxChars} onChange={(e) => setAiMaxChars(Number(e.target.value) || (aiMode === "title" ? 50 : 500))} className="h-8 text-sm w-32" min={10} max={2000} />
+              {aiMode === "title" && <p className="text-[10px] text-muted-foreground">Авито рекомендует до 50 символов</p>}
             </div>
 
             {/* Save template */}
