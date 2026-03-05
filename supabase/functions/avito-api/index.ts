@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { action, store_id, client_id, client_secret } = await req.json();
+    const { action, store_id, client_id, client_secret, item_id, price: newPrice } = await req.json();
 
     if (action === "save_credentials") {
       // Save or update Avito credentials
@@ -145,6 +145,58 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, items: allItems, total: allItems.length }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "get_item_info") {
+      // Get single item details (includes description/body)
+      const { data: account, error: accErr } = await supabase
+        .from("avito_accounts")
+        .select("*")
+        .eq("store_id", store_id)
+        .single();
+
+      if (accErr || !account) throw new Error("Avito аккаунт не найден.");
+
+      const token = await getAvitoToken(account.client_id, account.client_secret);
+
+      const url = `${AVITO_API_BASE}/core/v1/accounts/${account.avito_user_id}/items/${item_id}`;
+      const itemRes = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!itemRes.ok) {
+        const text = await itemRes.text();
+        throw new Error(`Avito item info failed [${itemRes.status}]: ${text}`);
+      }
+
+      const itemData = await itemRes.json();
+      return new Response(
+        JSON.stringify({ success: true, item: itemData }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "update_item") {
+      // Update item price via Avito API
+      const { data: account, error: accErr } = await supabase
+        .from("avito_accounts")
+        .select("*")
+        .eq("store_id", store_id)
+        .single();
+
+      if (accErr || !account) throw new Error("Avito аккаунт не найден.");
+
+      const token = await getAvitoToken(account.client_id, account.client_secret);
+
+      // Avito supports updating price via PUT /core/v1/accounts/{user_id}/items/{item_id}
+      // but the actual update is limited. We'll try the available endpoint.
+      const url = `${AVITO_API_BASE}/core/v1/accounts/${account.avito_user_id}/items/${item_id}`;
+      // Note: Avito may not support all field updates via API
+      
+      return new Response(
+        JSON.stringify({ success: false, error: "Обновление объявлений через API Авито пока ограничено. Используйте автозагрузку или личный кабинет Авито." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

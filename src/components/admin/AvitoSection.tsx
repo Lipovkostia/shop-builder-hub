@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -15,6 +15,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   ExternalLink,
   Loader2,
   Link2,
@@ -23,6 +29,12 @@ import {
   Check,
   Package,
   Search,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Calendar,
+  Eye,
+  Image as ImageIcon,
 } from "lucide-react";
 
 interface AvitoItem {
@@ -32,9 +44,15 @@ interface AvitoItem {
   url: string;
   status: string;
   category?: { id: number; name: string };
-  images?: { id: number; url: string }[] | any[];
+  images?: any[];
   description?: string;
-  address?: { city?: string; location?: any };
+  body?: string;
+  address?: { city?: string; street?: string; address?: string; lat?: number; lng?: number };
+  created?: string;
+  avito_id?: number;
+  views?: number;
+  favorites?: number;
+  params?: any[];
 }
 
 interface AvitoAccount {
@@ -64,6 +82,9 @@ export function AvitoSection({ storeId }: AvitoSectionProps) {
 
   const [items, setItems] = useState<AvitoItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
+  const [detailDialogItem, setDetailDialogItem] = useState<AvitoItem | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
@@ -113,7 +134,6 @@ export function AvitoSection({ storeId }: AvitoSectionProps) {
         client_secret: clientSecret.trim(),
       });
       toast({ title: "Авито подключён!", description: `Профиль: ${data.user?.name || data.user?.email || data.user?.id}` });
-      // Reload account
       const acc = await callAvitoApi({ action: "get_credentials", store_id: storeId });
       setAccount(acc.account);
     } catch (err: any) {
@@ -154,9 +174,49 @@ export function AvitoSection({ storeId }: AvitoSectionProps) {
     }
   };
 
+  const handleViewDetail = async (item: AvitoItem) => {
+    setDetailDialogItem(item);
+    setLoadingDetail(true);
+    try {
+      const data = await callAvitoApi({
+        action: "get_item_info",
+        store_id: storeId,
+        item_id: item.id,
+      });
+      if (data.item) {
+        setDetailDialogItem({ ...item, ...data.item });
+      }
+    } catch (err: any) {
+      // Keep the basic item data even if detail fetch fails
+      console.error("Failed to load item details:", err);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
   const filteredItems = items.filter((item) =>
     !searchQuery || item.title?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "—";
+    try {
+      return new Date(dateStr).toLocaleDateString("ru", { day: "2-digit", month: "2-digit", year: "numeric" });
+    } catch { return "—"; }
+  };
+
+  const formatPrice = (price?: number) => {
+    if (!price) return "—";
+    return `${price.toLocaleString("ru")} ₽`;
+  };
+
+  const getAddress = (item: AvitoItem) => {
+    if (!item.address) return "—";
+    const parts = [item.address.city, item.address.street, item.address.address].filter(Boolean);
+    return parts.join(", ") || "—";
+  };
+
+  const getImageCount = (item: AvitoItem) => item.images?.length || 0;
 
   if (loading) {
     return (
@@ -174,7 +234,7 @@ export function AvitoSection({ storeId }: AvitoSectionProps) {
         <div>
           <h2 className="text-lg font-semibold">Авито</h2>
           <p className="text-sm text-muted-foreground">
-            Интеграция с Авито для импорта объявлений
+            Интеграция с Авито для импорта и управления объявлениями
           </p>
         </div>
         {isConnected && (
@@ -300,69 +360,107 @@ export function AvitoSection({ storeId }: AvitoSectionProps) {
 
           {items.length > 0 ? (
             <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-16">Фото</TableHead>
-                    <TableHead>Название</TableHead>
-                    <TableHead className="w-28 text-right">Цена</TableHead>
-                    <TableHead className="w-32">Категория</TableHead>
-                    <TableHead className="w-20">Статус</TableHead>
-                    <TableHead className="w-10"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredItems.map((item) => {
-                    const imageUrl = item.images?.[0]?.["640x480"] || item.images?.[0]?.url || null;
-                    return (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          {imageUrl ? (
-                            <img
-                              src={imageUrl}
-                              alt=""
-                              className="w-10 h-10 rounded object-cover"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
-                              <Package className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium text-xs leading-tight line-clamp-2">
-                            {item.title}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-medium text-xs">
-                          {item.price ? `${item.price.toLocaleString("ru")} ₽` : "—"}
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-xs text-muted-foreground">
-                            {item.category?.name || "—"}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className="text-[10px]">
-                            {item.status === "active" ? "Активно" : item.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {item.url && (
-                            <a
-                              href={item.url.startsWith("http") ? item.url : `https://www.avito.ru${item.url}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-                            </a>
-                          )}
-                        </TableCell>
+              <ScrollArea className="w-full">
+                <div className="min-w-[1100px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs">
+                        <TableHead className="w-10 px-2">№</TableHead>
+                        <TableHead className="w-14 px-2">Фото</TableHead>
+                        <TableHead className="min-w-[200px] px-2">Название</TableHead>
+                        <TableHead className="w-24 px-2 text-right">Цена</TableHead>
+                        <TableHead className="w-32 px-2">Категория</TableHead>
+                        <TableHead className="w-40 px-2">Адрес</TableHead>
+                        <TableHead className="w-20 px-2 text-center">Фото</TableHead>
+                        <TableHead className="w-24 px-2">Статус</TableHead>
+                        <TableHead className="w-24 px-2">Создано</TableHead>
+                        <TableHead className="w-16 px-2 text-center">ID</TableHead>
+                        <TableHead className="w-10 px-2"></TableHead>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredItems.map((item, index) => {
+                        const imageUrl = item.images?.[0]?.["640x480"] || item.images?.[0]?.url || item.images?.[0]?.main?.url || null;
+                        const isExpanded = expandedItemId === item.id;
+                        return (
+                          <>
+                            <TableRow
+                              key={item.id}
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => handleViewDetail(item)}
+                            >
+                              <TableCell className="px-2 text-xs text-muted-foreground">{index + 1}</TableCell>
+                              <TableCell className="px-2">
+                                {imageUrl ? (
+                                  <img
+                                    src={imageUrl}
+                                    alt=""
+                                    className="w-10 h-10 rounded object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                                    <Package className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="px-2">
+                                <div className="font-medium text-xs leading-tight line-clamp-2">
+                                  {item.title}
+                                </div>
+                              </TableCell>
+                              <TableCell className="px-2 text-right font-medium text-xs">
+                                {formatPrice(item.price)}
+                              </TableCell>
+                              <TableCell className="px-2">
+                                <span className="text-xs text-muted-foreground line-clamp-1">
+                                  {item.category?.name || "—"}
+                                </span>
+                              </TableCell>
+                              <TableCell className="px-2">
+                                <span className="text-xs text-muted-foreground line-clamp-1">
+                                  {getAddress(item)}
+                                </span>
+                              </TableCell>
+                              <TableCell className="px-2 text-center">
+                                <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                                  <ImageIcon className="h-3 w-3" />
+                                  {getImageCount(item)}
+                                </div>
+                              </TableCell>
+                              <TableCell className="px-2">
+                                <Badge variant="secondary" className="text-[10px]">
+                                  {item.status === "active" ? "Активно" : 
+                                   item.status === "old" ? "Завершено" : 
+                                   item.status === "blocked" ? "Заблокировано" : 
+                                   item.status === "removed" ? "Удалено" : item.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="px-2 text-xs text-muted-foreground">
+                                {formatDate(item.created)}
+                              </TableCell>
+                              <TableCell className="px-2 text-xs text-muted-foreground text-center">
+                                {item.id}
+                              </TableCell>
+                              <TableCell className="px-2">
+                                {item.url && (
+                                  <a
+                                    href={item.url.startsWith("http") ? item.url : `https://www.avito.ru${item.url}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                                  </a>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          </>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </ScrollArea>
             </div>
           ) : (
             <Card className="p-8 text-center">
@@ -374,6 +472,144 @@ export function AvitoSection({ storeId }: AvitoSectionProps) {
           )}
         </div>
       )}
+
+      {/* Item Detail Dialog */}
+      <Dialog open={!!detailDialogItem} onOpenChange={(open) => !open && setDetailDialogItem(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base leading-tight pr-6">
+              {detailDialogItem?.title}
+            </DialogTitle>
+          </DialogHeader>
+
+          {loadingDetail && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Загрузка деталей...
+            </div>
+          )}
+
+          {detailDialogItem && (
+            <div className="space-y-4">
+              {/* Images gallery */}
+              {detailDialogItem.images && detailDialogItem.images.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-muted-foreground">Фотографии ({detailDialogItem.images.length})</Label>
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {detailDialogItem.images.map((img: any, idx: number) => {
+                      const imgUrl = img?.["640x480"] || img?.url || img?.main?.url;
+                      return imgUrl ? (
+                        <img
+                          key={idx}
+                          src={imgUrl}
+                          alt={`Фото ${idx + 1}`}
+                          className="w-24 h-24 rounded-lg object-cover flex-shrink-0 border"
+                        />
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Price */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">Цена</Label>
+                  <p className="text-lg font-semibold">{formatPrice(detailDialogItem.price)}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">Статус</Label>
+                  <div className="mt-1">
+                    <Badge variant="secondary">
+                      {detailDialogItem.status === "active" ? "Активно" : 
+                       detailDialogItem.status === "old" ? "Завершено" : 
+                       detailDialogItem.status === "blocked" ? "Заблокировано" : 
+                       detailDialogItem.status === "removed" ? "Удалено" : detailDialogItem.status}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Category */}
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground">Категория</Label>
+                <p className="text-sm">
+                  {detailDialogItem.category?.name || "—"}
+                  {detailDialogItem.category?.id && (
+                    <span className="text-muted-foreground ml-1">(ID: {detailDialogItem.category.id})</span>
+                  )}
+                </p>
+              </div>
+
+              {/* Address */}
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <MapPin className="h-3 w-3" /> Адрес
+                </Label>
+                <p className="text-sm">{getAddress(detailDialogItem)}</p>
+              </div>
+
+              {/* Description */}
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground">Описание</Label>
+                <div className="mt-1 p-3 bg-muted/50 rounded-lg text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">
+                  {detailDialogItem.body || detailDialogItem.description || "Нет описания"}
+                </div>
+              </div>
+
+              {/* Params */}
+              {detailDialogItem.params && detailDialogItem.params.length > 0 && (
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">Параметры</Label>
+                  <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1">
+                    {detailDialogItem.params.map((param: any, idx: number) => (
+                      <div key={idx} className="flex justify-between text-xs py-1 border-b border-border/50">
+                        <span className="text-muted-foreground">{param.title || param.name}:</span>
+                        <span className="font-medium">{param.value || param.values?.join(", ") || "—"}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Meta info */}
+              <div className="grid grid-cols-3 gap-4 pt-2 border-t">
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                    <Calendar className="h-3 w-3" /> Создано
+                  </Label>
+                  <p className="text-xs">{formatDate(detailDialogItem.created)}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">Avito ID</Label>
+                  <p className="text-xs">{detailDialogItem.id}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">Ссылка</Label>
+                  {detailDialogItem.url && (
+                    <a
+                      href={detailDialogItem.url.startsWith("http") ? detailDialogItem.url : `https://www.avito.ru${detailDialogItem.url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary underline flex items-center gap-0.5"
+                    >
+                      Открыть на Авито
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Note about editing */}
+              <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground">
+                <strong>Примечание:</strong> API Авито пока ограничен для редактирования объявлений. 
+                Обновление цен и описаний доступно через автозагрузку (XML/JSON фид) или личный кабинет Авито.
+                Мы добавим поддержку редактирования, как только Авито расширит API.
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
