@@ -899,18 +899,31 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
                 </a>{" "}(способ «Загрузка файлом»). Также доступна ссылка на XML-фид:
               </p>
               <div className="flex items-center gap-2">
-                <Input
-                  readOnly
-                  value={`https://${projectId}.supabase.co/functions/v1/avito-feed?store_id=${storeId}`}
-                  className="h-8 text-xs font-mono"
-                  onClick={(e) => (e.target as HTMLInputElement).select()}
-                />
-                <Button size="sm" variant="outline" onClick={() => {
-                  navigator.clipboard.writeText(`https://${projectId}.supabase.co/functions/v1/avito-feed?store_id=${storeId}`);
-                  toast({ title: "Ссылка скопирована" });
-                }}>
-                  Копировать
-                </Button>
+                {(() => {
+                  const feedUrl = new URL(`https://${projectId}.supabase.co/functions/v1/avito-feed`);
+                  feedUrl.searchParams.set("store_id", storeId!);
+                  if (localDefaults.address) feedUrl.searchParams.set("address", localDefaults.address);
+                  if (localDefaults.category) feedUrl.searchParams.set("category", localDefaults.category);
+                  if (localDefaults.goodsType) feedUrl.searchParams.set("ad_type", localDefaults.goodsType);
+                  if (localDefaults.goodsSubType) feedUrl.searchParams.set("goods_type", localDefaults.goodsSubType);
+                  const urlStr = feedUrl.toString();
+                  return (
+                    <>
+                      <Input
+                        readOnly
+                        value={urlStr}
+                        className="h-8 text-xs font-mono"
+                        onClick={(e) => (e.target as HTMLInputElement).select()}
+                      />
+                      <Button size="sm" variant="outline" onClick={() => {
+                        navigator.clipboard.writeText(urlStr);
+                        toast({ title: "Ссылка скопирована" });
+                      }}>
+                        Копировать
+                      </Button>
+                    </>
+                  );
+                })()}
               </div>
             </Card>
           )}
