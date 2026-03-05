@@ -928,6 +928,36 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
             </Card>
           )}
 
+          {/* Quick address fill */}
+          {avitoFeed && avitoFeed.feedProducts.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <Input
+                value={localDefaults.address}
+                onChange={(e) => setLocalDefaults(prev => ({ ...prev, address: e.target.value }))}
+                onBlur={() => avitoFeed.saveDefaults(localDefaults)}
+                placeholder="Адрес для всех товаров, напр. Тамбовская область, Моршанск, Лесная улица, 7"
+                className="h-8 text-xs flex-1 min-w-[200px]"
+              />
+              <Button size="sm" variant="outline" className="h-8 text-xs whitespace-nowrap" onClick={async () => {
+                if (!localDefaults.address) {
+                  toast({ title: "Введите адрес", variant: "destructive" }); return;
+                }
+                const targets = selectedFeedProducts.size > 0 
+                  ? avitoFeed.feedProducts.filter(fp => selectedFeedProducts.has(fp.product_id))
+                  : avitoFeed.feedProducts;
+                for (const fp of targets) {
+                  const params = { ...(fp.avito_params || {}), address: localDefaults.address };
+                  await avitoFeed.updateProductParams(fp.product_id, params);
+                }
+                toast({ title: `Адрес проставлен для ${targets.length} товар(ов)` });
+              }}>
+                <Check className="h-3.5 w-3.5 mr-1" />
+                {selectedFeedProducts.size > 0 ? `Применить к ${selectedFeedProducts.size} выбранным` : "Применить ко всем"}
+              </Button>
+            </div>
+          )}
+
           {/* Bulk actions bar */}
           {avitoFeed && avitoFeed.feedProducts.length > 0 && (
             <div className="flex items-center justify-between gap-2 flex-wrap">
