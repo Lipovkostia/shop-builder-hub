@@ -194,7 +194,7 @@ function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
       >
         <Filter className="h-3 w-3" />
       </button>
-      {open && ReactDOM.createPortal(
+      {open && createPortal(
         <div
           ref={dropdownRef}
           className="fixed bg-popover border border-border rounded-md shadow-lg min-w-[180px] max-h-[280px] overflow-y-auto text-xs"
