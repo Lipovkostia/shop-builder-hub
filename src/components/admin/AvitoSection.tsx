@@ -105,9 +105,9 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
   if (!editing) {
     return (
       <div
-        className={`cursor-text px-1.5 py-1 rounded hover:bg-muted/60 min-h-[28px] text-xs leading-tight ${className}`}
+        className={`cursor-text px-1.5 py-1 rounded hover:bg-muted/60 min-h-[28px] text-xs leading-tight truncate overflow-hidden ${className}`}
         onClick={() => setEditing(true)}
-        title="Нажмите для редактирования"
+        title={value || placeholder || "—"}
       >
         {value || <span className="text-muted-foreground/50">{placeholder || "—"}</span>}
       </div>
