@@ -88,6 +88,8 @@ Deno.serve(async (req) => {
       if (images.length > 0) {
         imagesXml = "    <Images>\n";
         for (const img of images.slice(0, 10)) {
+          // Skip thumbnail/small image URLs
+          if (/[_\-](thumb|small|xs|50x|100x|150x)/i.test(img)) continue;
           imagesXml += `      <Image url="${escapeXml(img)}" />\n`;
         }
         imagesXml += "    </Images>\n";
