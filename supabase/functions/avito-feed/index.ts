@@ -68,13 +68,13 @@ Deno.serve(async (req) => {
       if (!product || product.deleted_at) continue;
 
       const id = product.id.substring(0, 8);
-      const title = escapeXml((fp.avito_params && fp.avito_params.title) ? fp.avito_params.title : (product.name || "Товар"));
-      const description = escapeXml((fp.avito_params && fp.avito_params.description) ? fp.avito_params.description : (product.description || product.name || ""));
-      // Use price from avito_params if available (catalog price), otherwise product base price
-      const price = (fp.avito_params && fp.avito_params.Price) ? fp.avito_params.Price : (product.price || 0);
-      const category = escapeXml(fp.avito_category || "Товары для дома");
+      const params = (fp.avito_params && typeof fp.avito_params === 'object') ? fp.avito_params : {};
+      const title = escapeXml(params.title || product.name || "Товар");
+      const description = escapeXml(params.description || product.description || product.name || "");
+      const price = params.Price || params.price || product.price || 0;
+      const category = escapeXml(fp.avito_category || params.category || "Продукты питания");
       const images = product.images || [];
-      const address = escapeXml(fp.avito_address || "");
+      const address = escapeXml(fp.avito_address || params.address || "");
 
       let imagesXml = "";
       if (images.length > 0) {
@@ -95,13 +95,16 @@ Deno.serve(async (req) => {
         ads += `    <Address>${address}</Address>\n`;
       }
       ads += imagesXml;
-      // Additional params from avito_params
-      if (fp.avito_params && typeof fp.avito_params === 'object') {
-        const skipKeys = new Set(['Price', 'title', 'description']);
-        for (const [key, value] of Object.entries(fp.avito_params)) {
-          if (value && !skipKeys.has(key)) {
-            ads += `    <${escapeXml(key)}>${escapeXml(String(value))}</${escapeXml(key)}>\n`;
-          }
+      // Additional params — skip keys already handled above and Excel-only fields
+      const skipKeys = new Set([
+        'Price', 'price', 'title', 'description', 'category', 'address',
+        'avitoId', 'avitoNumber', 'listingFee', 'contactMethod', 'contactPhone',
+        'managerName', 'email', 'companyName', 'avitoStatus', 'dateEnd',
+        'goodsType', 'goodsSubType', 'targetAudience', 'includeVAT',
+      ]);
+      for (const [key, value] of Object.entries(params)) {
+        if (value && !skipKeys.has(key)) {
+          ads += `    <${escapeXml(key)}>${escapeXml(String(value))}</${escapeXml(key)}>\n`;
         }
       }
       ads += `  </Ad>\n`;
