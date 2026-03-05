@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
       let hasMore = true;
 
       while (hasMore) {
-        const url = `${AVITO_API_BASE}/core/v1/accounts/${account.avito_user_id}/items?per_page=${perPage}&page=${page}&status=active`;
+        const url = `${AVITO_API_BASE}/core/v1/items?per_page=${perPage}&page=${page}&status=active`;
         const itemsRes = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` },
         });
