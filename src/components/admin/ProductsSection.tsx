@@ -465,7 +465,7 @@ export function ProductsSection({
         // Also update product.category_id to first category
         const product = products.find(p => p.id === productId);
         if (product) {
-          await onUpdateProduct({ ...product, categoryId: categoryIds[0] || null, categories: categoryIds });
+          await onUpdateProduct({ ...product, category: categoryIds[0] || undefined, categories: categoryIds });
         }
       }
       toast({ title: "Категории обновлены", description: `Изменено ${selectedIds.length} товар(ов)` });
@@ -479,7 +479,7 @@ export function ProductsSection({
       await supabase.from("product_category_assignments").delete().eq("product_id", productId);
       const product = products.find(p => p.id === productId);
       if (product) {
-        await onUpdateProduct({ ...product, categoryId: null, categories: [] });
+        await onUpdateProduct({ ...product, category: undefined, categories: [] });
       }
     }
     toast({ title: "Категории очищены", description: `Изменено ${selectedIds.length} товар(ов)` });
