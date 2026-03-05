@@ -249,9 +249,11 @@ function AvitoFeedTable({
               const imageUrl = product.images?.[0] || product.image;
               const params = fp.avito_params || {};
               const isGenerating = aiGeneratingIds.has(fp.product_id);
+              const isDone = aiDoneIds.has(fp.product_id);
+              const isQueued = aiQueuedIds.has(fp.product_id);
 
               return (
-                <div key={fp.id} className="flex border-b text-xs hover:bg-muted/30 items-start">
+                <div key={fp.id} className={`flex border-b text-xs hover:bg-muted/30 items-start transition-colors ${isDone ? 'bg-green-50 dark:bg-green-950/20' : isGenerating ? 'bg-yellow-50 dark:bg-yellow-950/20' : isQueued ? 'bg-muted/20' : ''}`}>
                   <div className="flex-shrink-0 px-2 pt-2.5" style={{ width: colWidths.check }}>
                     <Checkbox
                       checked={selectedFeedProducts.has(fp.product_id)}
@@ -288,7 +290,15 @@ function AvitoFeedTable({
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.desc }}>
                     {isGenerating ? (
                       <div className="flex items-center gap-1.5 py-2 text-xs text-muted-foreground">
-                        <Loader2 className="h-3 w-3 animate-spin" /> Генерация...
+                        <Loader2 className="h-3 w-3 animate-spin text-yellow-500" /> Генерация...
+                      </div>
+                    ) : isDone ? (
+                      <div className="flex items-center gap-1.5 py-2 text-xs text-green-600">
+                        <Check className="h-3 w-3" /> Готово
+                      </div>
+                    ) : isQueued ? (
+                      <div className="flex items-center gap-1.5 py-2 text-xs text-muted-foreground/60">
+                        <Clock className="h-3 w-3" /> В очереди...
                       </div>
                     ) : (
                       <InlineCell
@@ -1033,6 +1043,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
               selectedFeedProducts={selectedFeedProducts}
               setSelectedFeedProducts={setSelectedFeedProducts}
               aiGeneratingIds={aiGeneratingIds}
+              aiDoneIds={aiDoneIds}
+              aiQueuedIds={aiQueuedIds}
               localDefaults={localDefaults}
               handleInlineParamUpdate={handleInlineParamUpdate}
               openAiForProducts={openAiForProducts}
