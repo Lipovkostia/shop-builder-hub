@@ -60,6 +60,7 @@ const defaultVisibleColumns: VisibleColumns = {
   msAccount: true,
   sync: true,
   msPrices: false,
+  avito: false,
 };
 
 const defaultFilters: AllProductsFilters = {
