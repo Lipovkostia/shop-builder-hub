@@ -1093,6 +1093,126 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     }
   };
 
+  // === EXCEL IMPORT ===
+  const [importingExcel, setImportingExcel] = useState(false);
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !avitoFeed) return;
+    setImportingExcel(true);
+    try {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      if (!ws) throw new Error("Лист не найден");
+
+      const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      // Find header row (row2 in our export) — look for "Уникальный идентификатор"
+      let headerRowIdx = -1;
+      for (let i = 0; i < Math.min(rows.length, 10); i++) {
+        const row = rows[i];
+        if (row && row.some((cell: any) => String(cell || "").includes("Уникальный идентификатор"))) {
+          headerRowIdx = i;
+          break;
+        }
+      }
+      if (headerRowIdx < 0) throw new Error("Не найдена строка заголовков. Убедитесь, что файл был экспортирован из этого сервиса.");
+
+      const headers = (rows[headerRowIdx] || []).map((h: any) => String(h || "").trim());
+      // Column index mapping
+      const colIdx = (name: string) => headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()));
+      const idxId = colIdx("Уникальный идентификатор");
+      const idxListingFee = colIdx("Способ размещения");
+      const idxAvitoNumber = colIdx("Номер объявления");
+      const idxManager = colIdx("Контактное лицо");
+      const idxPhone = colIdx("Номер телефона");
+      const idxTitle = colIdx("Название объявления");
+      const idxDesc = colIdx("Описание объявления");
+      const idxContactMethod = colIdx("Способ связи");
+      const idxPrice = colIdx("Цена");
+      const idxCategory = colIdx("Категория");
+      const idxAdType = colIdx("Вид объявления");
+      const idxGoodsType = colIdx("Вид товара");
+      const idxTargetAudience = colIdx("Целевая аудитория");
+      const idxAddress = colIdx("Адрес");
+      const idxEmail = colIdx("Почта");
+      const idxCompany = colIdx("Название компании");
+      const idxPromo = colIdx("Promo");
+      const idxPromoManual = colIdx("PromoManualOptions");
+
+      // Data starts after headerRowIdx + 2 rows (required/type rows)
+      const dataStartIdx = headerRowIdx + 3; // skip header, required, type rows
+      // But if we exported with row1=category line, row2=headers, row3=required, row4=type → data at row5 (idx=4)
+      // Let's just use headerRowIdx + 3 as start and handle sparse
+      
+      // Build product lookup by avitoId (first 10 chars of product.id) 
+      const feedProductMap = new Map<string, AvitoFeedProduct>();
+      for (const fp of avitoFeed.feedProducts) {
+        const product = storeProducts.find(p => p.id === fp.product_id);
+        if (product) {
+          feedProductMap.set(product.id.substring(0, 10), fp);
+          feedProductMap.set(product.id, fp);
+        }
+      }
+
+      let updated = 0;
+      for (let i = dataStartIdx; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length === 0) continue;
+        const avitoId = String(row[idxId] || "").trim();
+        if (!avitoId) continue;
+
+        const fp = feedProductMap.get(avitoId);
+        if (!fp) continue;
+
+        const params: any = { ...(fp.avito_params || {}) };
+        const setIfPresent = (idx: number, key: string) => {
+          if (idx >= 0 && row[idx] !== undefined && row[idx] !== null && String(row[idx]).trim() !== "") {
+            params[key] = String(row[idx]).trim();
+          }
+        };
+
+        setIfPresent(idxTitle, "title");
+        setIfPresent(idxDesc, "description");
+        if (idxPrice >= 0 && row[idxPrice] !== undefined) params.price = String(row[idxPrice]);
+        setIfPresent(idxCategory, "category");
+        setIfPresent(idxAdType, "goodsType");
+        setIfPresent(idxGoodsType, "goodsSubType");
+        setIfPresent(idxAddress, "address");
+        setIfPresent(idxManager, "managerName");
+        setIfPresent(idxPhone, "contactPhone");
+        setIfPresent(idxEmail, "email");
+        setIfPresent(idxCompany, "companyName");
+        setIfPresent(idxListingFee, "listingFee");
+        setIfPresent(idxContactMethod, "contactMethod");
+        setIfPresent(idxTargetAudience, "targetAudience");
+        setIfPresent(idxAvitoNumber, "avitoNumber");
+        setIfPresent(idxPromo, "promo");
+        // Parse PromoManualOptions: "Город, цена, лимит"
+        if (idxPromoManual >= 0 && row[idxPromoManual]) {
+          const parts = String(row[idxPromoManual]).split(/[,|]/).map(s => s.trim());
+          if (parts[0]) params.promoRegion = parts[0];
+          if (parts[1]) params.promoPrice = parts[1];
+          if (parts[2]) params.promoLimit = parts[2];
+        }
+
+        await avitoFeed.updateProductParams(fp.product_id, params);
+        updated++;
+      }
+
+      await avitoFeed.refetch();
+      toast({ title: `Импортировано: ${updated} товар(ов) обновлено` });
+    } catch (err: any) {
+      console.error("Import error:", err);
+      toast({ title: "Ошибка импорта", description: err.message, variant: "destructive" });
+    } finally {
+      setImportingExcel(false);
+      if (importFileRef.current) importFileRef.current.value = "";
+    }
+  };
+
+
   const filteredItems = items.filter((item) =>
     !searchQuery || item.title?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -1318,6 +1438,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                    <span className="font-medium text-sm">Экспорт для Авито</span>
                  </div>
                  <div className="flex items-center gap-2 flex-wrap">
+                   <Button size="sm" variant="outline" onClick={() => importFileRef.current?.click()} disabled={importingExcel}>
+                     {importingExcel ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
+                     {importingExcel ? "Импорт..." : "Загрузить Excel"}
+                   </Button>
+                   <input ref={importFileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
                    <Button size="sm" onClick={handleExportExcelOnly} disabled={exportingExcel}>
                      {exportingExcel ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
                      {exportingExcel ? "Подготовка..." : "Скачать Excel"}
@@ -1541,6 +1666,117 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     }
                     avitoFeed.saveDefaults(localDefaults);
                     toast({ title: val ? `Ставка CPC ${val}₽ проставлена для ${targets.length} товар(ов)` : `Ставка CPC убрана у ${targets.length} товар(ов)` });
+                  }, onlySelected);
+                }} />
+              </div>
+
+              {/* Contact person row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Конт. лицо</span>
+                <Input
+                  className="h-8 text-xs flex-1 min-w-[180px]"
+                  placeholder="Имя менеджера"
+                  value={localDefaults.managerName || ""}
+                  onChange={(e) => setLocalDefaults(prev => ({ ...prev, managerName: e.target.value }))}
+                />
+                <BulkButtons onApply={async (onlySelected) => {
+                  if (!localDefaults.managerName) { toast({ title: "Введите контактное лицо", variant: "destructive" }); return; }
+                  await applyToTargets(async (targets) => {
+                    for (const fp of targets) {
+                      const params = { ...(fp.avito_params || {}), managerName: localDefaults.managerName };
+                      await avitoFeed.updateProductParams(fp.product_id, params);
+                    }
+                    avitoFeed.saveDefaults(localDefaults);
+                    toast({ title: `Контактное лицо проставлено для ${targets.length} товар(ов)` });
+                  }, onlySelected);
+                }} />
+              </div>
+
+              {/* Phone row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Телефон</span>
+                <Input
+                  className="h-8 text-xs flex-1 min-w-[180px]"
+                  placeholder="79001234567"
+                  value={localDefaults.contactPhone || ""}
+                  onChange={(e) => setLocalDefaults(prev => ({ ...prev, contactPhone: e.target.value }))}
+                />
+                <BulkButtons onApply={async (onlySelected) => {
+                  if (!localDefaults.contactPhone) { toast({ title: "Введите телефон", variant: "destructive" }); return; }
+                  await applyToTargets(async (targets) => {
+                    for (const fp of targets) {
+                      const params = { ...(fp.avito_params || {}), contactPhone: localDefaults.contactPhone };
+                      await avitoFeed.updateProductParams(fp.product_id, params);
+                    }
+                    avitoFeed.saveDefaults(localDefaults);
+                    toast({ title: `Телефон проставлен для ${targets.length} товар(ов)` });
+                  }, onlySelected);
+                }} />
+              </div>
+
+              {/* Email row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Почта</span>
+                <Input
+                  className="h-8 text-xs flex-1 min-w-[180px]"
+                  placeholder="email@example.com"
+                  value={localDefaults.email || ""}
+                  onChange={(e) => setLocalDefaults(prev => ({ ...prev, email: e.target.value }))}
+                />
+                <BulkButtons onApply={async (onlySelected) => {
+                  if (!localDefaults.email) { toast({ title: "Введите email", variant: "destructive" }); return; }
+                  await applyToTargets(async (targets) => {
+                    for (const fp of targets) {
+                      const params = { ...(fp.avito_params || {}), email: localDefaults.email };
+                      await avitoFeed.updateProductParams(fp.product_id, params);
+                    }
+                    avitoFeed.saveDefaults(localDefaults);
+                    toast({ title: `Почта проставлена для ${targets.length} товар(ов)` });
+                  }, onlySelected);
+                }} />
+              </div>
+
+              {/* Company name row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Компания</span>
+                <Input
+                  className="h-8 text-xs flex-1 min-w-[180px]"
+                  placeholder="ООО Компания"
+                  value={localDefaults.companyName || ""}
+                  onChange={(e) => setLocalDefaults(prev => ({ ...prev, companyName: e.target.value }))}
+                />
+                <BulkButtons onApply={async (onlySelected) => {
+                  if (!localDefaults.companyName) { toast({ title: "Введите название компании", variant: "destructive" }); return; }
+                  await applyToTargets(async (targets) => {
+                    for (const fp of targets) {
+                      const params = { ...(fp.avito_params || {}), companyName: localDefaults.companyName };
+                      await avitoFeed.updateProductParams(fp.product_id, params);
+                    }
+                    avitoFeed.saveDefaults(localDefaults);
+                    toast({ title: `Компания проставлена для ${targets.length} товар(ов)` });
+                  }, onlySelected);
+                }} />
+              </div>
+
+              {/* Target audience row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Аудитория</span>
+                <Select value={localDefaults.targetAudience} onValueChange={(v) => { setLocalDefaults(prev => ({ ...prev, targetAudience: v })); }}>
+                  <SelectTrigger className="h-8 text-xs flex-1 min-w-[180px]"><SelectValue placeholder="Частные лица и бизнес" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Частные лица и бизнес">Частные лица и бизнес</SelectItem>
+                    <SelectItem value="Частные лица">Частные лица</SelectItem>
+                    <SelectItem value="Бизнес">Бизнес</SelectItem>
+                  </SelectContent>
+                </Select>
+                <BulkButtons onApply={async (onlySelected) => {
+                  await applyToTargets(async (targets) => {
+                    for (const fp of targets) {
+                      const params = { ...(fp.avito_params || {}), targetAudience: localDefaults.targetAudience };
+                      await avitoFeed.updateProductParams(fp.product_id, params);
+                    }
+                    avitoFeed.saveDefaults(localDefaults);
+                    toast({ title: `Аудитория проставлена для ${targets.length} товар(ов)` });
                   }, onlySelected);
                 }} />
               </div>
