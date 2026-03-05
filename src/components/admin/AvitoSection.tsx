@@ -366,6 +366,9 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
   const [aiMaxChars, setAiMaxChars] = useState(500);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiGeneratingIds, setAiGeneratingIds] = useState<Set<string>>(new Set());
+  const [aiDoneIds, setAiDoneIds] = useState<Set<string>>(new Set());
+  const [aiQueuedIds, setAiQueuedIds] = useState<Set<string>>(new Set());
+  const [aiProgress, setAiProgress] = useState({ done: 0, total: 0 });
   const [aiSingleProductId, setAiSingleProductId] = useState<string | null>(null);
 
   // Saved templates
