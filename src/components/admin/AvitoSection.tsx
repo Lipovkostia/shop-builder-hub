@@ -925,13 +925,13 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
         )}
       </Tabs>
 
-      {/* AI Description Generation Sheet */}
+      {/* AI Generation Sheet */}
       <Sheet open={aiPromptOpen} onOpenChange={(open) => { setAiPromptOpen(open); if (!open) setAiSingleProductId(null); }}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="text-base flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              AI-генерация описаний
+              {aiMode === "title" ? <Wand2 className="h-4 w-4 text-primary" /> : <Sparkles className="h-4 w-4 text-primary" />}
+              {aiMode === "title" ? "AI-сокращение названий" : "AI-генерация описаний"}
             </SheetTitle>
           </SheetHeader>
           <div className="space-y-5 mt-4">
