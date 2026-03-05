@@ -3738,6 +3738,7 @@ export default function AdminPanel({
                 onAddToAvitoFeed={avitoFeed.addProductsToFeed}
                 avitoFeedProductIds={avitoFeed.feedProductIds}
                 onRemoveFromAvitoFeed={avitoFeed.removeProductsFromFeed}
+                storeCategories={storeCategories}
               />
 
               {/* Product Pricing Dialog */}

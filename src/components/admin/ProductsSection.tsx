@@ -7,6 +7,7 @@ import { BulkEditPanel } from "./BulkEditPanel";
 import { useOptimisticImagePreviews } from "@/hooks/useOptimisticImagePreviews";
 import { uploadFilesToStorage } from "@/hooks/useProductImages";
 import { Product, Catalog, ProductGroup, PackagingType } from "./types";
+import { StoreCategory } from "@/hooks/useStoreCategories";
 import { Button } from "@/components/ui/button";
 import { Plus, Filter, Columns, Download, Sparkles, Loader2 } from "lucide-react";
 import {
@@ -43,6 +44,7 @@ interface ProductsSectionProps {
   onRemoveFromAvitoFeed?: (productIds: string[]) => Promise<void>;
   moyskladLogin?: string;
   moyskladPassword?: string;
+  storeCategories?: StoreCategory[];
 }
 
 const defaultVisibleColumns: VisibleColumns = {
@@ -107,6 +109,7 @@ export function ProductsSection({
   onRemoveFromAvitoFeed,
   moyskladLogin,
   moyskladPassword,
+  storeCategories = [],
 }: ProductsSectionProps) {
   const { toast } = useToast();
   
@@ -446,6 +449,42 @@ export function ProductsSection({
     [selectedBulkProducts, onCreateCatalog, onToggleCatalogVisibility, toast]
   );
 
+  const handleBulkSetCategories = useCallback(
+    async (categoryIds: string[]) => {
+      const selectedIds = Array.from(selectedBulkProducts);
+      for (const productId of selectedIds) {
+        // Update product_category_assignments
+        // First remove existing
+        await supabase.from("product_category_assignments").delete().eq("product_id", productId);
+        // Then insert new
+        if (categoryIds.length > 0) {
+          await supabase.from("product_category_assignments").insert(
+            categoryIds.map(cid => ({ product_id: productId, category_id: cid }))
+          );
+        }
+        // Also update product.category_id to first category
+        const product = products.find(p => p.id === productId);
+        if (product) {
+          await onUpdateProduct({ ...product, category: categoryIds[0] || undefined, categories: categoryIds });
+        }
+      }
+      toast({ title: "Категории обновлены", description: `Изменено ${selectedIds.length} товар(ов)` });
+    },
+    [selectedBulkProducts, products, onUpdateProduct, toast]
+  );
+
+  const handleBulkClearCategories = useCallback(async () => {
+    const selectedIds = Array.from(selectedBulkProducts);
+    for (const productId of selectedIds) {
+      await supabase.from("product_category_assignments").delete().eq("product_id", productId);
+      const product = products.find(p => p.id === productId);
+      if (product) {
+        await onUpdateProduct({ ...product, category: undefined, categories: [] });
+      }
+    }
+    toast({ title: "Категории очищены", description: `Изменено ${selectedIds.length} товар(ов)` });
+  }, [selectedBulkProducts, products, onUpdateProduct, toast]);
+
   const toggleColumn = useCallback((columnKey: keyof VisibleColumns) => {
     setVisibleColumns((prev) => ({
       ...prev,
@@ -549,6 +588,9 @@ export function ProductsSection({
             catalogs={catalogs}
             onAddToCatalog={handleAddToCatalog}
             onCreateCatalogAndAdd={handleCreateCatalogAndAdd}
+            categories={storeCategories.map(c => ({ id: c.id, name: c.name, sort_order: c.sort_order }))}
+            onBulkSetCategories={handleBulkSetCategories}
+            onBulkClearCategories={handleBulkClearCategories}
           />
           <div className="flex gap-2 flex-wrap">
             <Button

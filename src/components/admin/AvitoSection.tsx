@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -152,7 +153,7 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
 const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, cpcBid: 80, address: 120, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
 
-// Column filter dropdown component
+// Column filter dropdown component - uses fixed positioning to escape overflow containers
 function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
   values: string[];
   selected: string;
@@ -160,28 +161,45 @@ function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
   colKey: string;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+          buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  useEffect(() => {
+    if (open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 4, left: rect.left });
+    }
+  }, [open]);
+
   return (
-    <div ref={ref} className="relative inline-block">
+    <>
       <button
+        ref={buttonRef}
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
         className={`ml-1 p-0.5 rounded hover:bg-primary/10 ${selected ? "text-primary" : "text-muted-foreground/50"}`}
         title="Фильтр"
       >
         <Filter className="h-3 w-3" />
       </button>
-      {open && (
-        <div className="absolute top-full left-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-lg min-w-[180px] max-h-[280px] overflow-y-auto text-xs">
+      {open && createPortal(
+        <div
+          ref={dropdownRef}
+          className="fixed bg-popover border border-border rounded-md shadow-lg min-w-[180px] max-h-[280px] overflow-y-auto text-xs"
+          style={{ top: pos.top, left: pos.left, zIndex: 9999 }}
+        >
           <button
             className={`w-full text-left px-3 py-1.5 hover:bg-muted/60 ${!selected ? "font-semibold text-primary" : ""}`}
             onClick={() => { onSelect(""); setOpen(false); }}
@@ -203,9 +221,10 @@ function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
               {v}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
 
