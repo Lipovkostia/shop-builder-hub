@@ -430,6 +430,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
   const [activeTab, setActiveTab] = useState("feed");
   const [selectedFeedProducts, setSelectedFeedProducts] = useState<Set<string>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [feedSearchQuery, setFeedSearchQuery] = useState("");
+  const [feedPriceFilter, setFeedPriceFilter] = useState("all");
 
   // AI generation state
   const [aiPromptOpen, setAiPromptOpen] = useState(false);
