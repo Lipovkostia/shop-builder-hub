@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import * as XLSX from "xlsx";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -775,6 +776,27 @@ export default function AdminPanel({
   const [newAccountPassword, setNewAccountPassword] = useState("");
   const [newAccountName, setNewAccountName] = useState("");
   const [showAddAccount, setShowAddAccount] = useState(false);
+
+  const getMoyskladCacheKey = useCallback((accountId: string) => {
+    return `moysklad_catalog_cache:${effectiveStoreId || "no-store"}:${accountId}`;
+  }, [effectiveStoreId]);
+
+  const hydrateMoyskladProductsFromCache = useCallback((account: MoyskladAccount): boolean => {
+    try {
+      const raw = localStorage.getItem(getMoyskladCacheKey(account.id));
+      if (!raw) return false;
+
+      const parsed = JSON.parse(raw) as { products?: MoySkladProduct[]; total?: number; cachedAt?: string };
+      const cachedProducts = Array.isArray(parsed?.products) ? parsed.products : [];
+      if (cachedProducts.length === 0) return false;
+
+      setMoyskladProducts(cachedProducts);
+      setTotalProducts(parsed.total || cachedProducts.length);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [getMoyskladCacheKey]);
 
   // Filters for "All Products" table
   const [allProductsFilters, setAllProductsFilters] = useState({
@@ -2513,29 +2535,33 @@ export default function AdminPanel({
   const selectAccount = async (account: MoyskladAccount) => {
     setCurrentAccount(account);
     setImportView("catalog");
-    await fetchMoySkladProducts(account);
+
+    const hasCachedProducts = hydrateMoyskladProductsFromCache(account);
+    if (!hasCachedProducts) {
+      await fetchMoySkladProducts(account);
+    }
   };
 
   const fetchMoySkladProducts = async (account?: MoyskladAccount) => {
     const acc = account || currentAccount;
     if (!acc) return;
-    
+
     setIsLoading(true);
     try {
-      console.log("Fetching products from MoySklad...");
-      
-      // Fetch ALL products with pagination
       const allProducts: MoySkladProduct[] = [];
       let offset = 0;
       const batchSize = 20;
       let totalSize = 0;
       let hasMore = true;
+      let pageCount = 0;
+      const maxPages = 500;
+      let previousOffset = -1;
 
-      while (hasMore) {
+      while (hasMore && pageCount < maxPages) {
         const { data, error } = await supabase.functions.invoke('moysklad', {
-          body: { 
-            action: 'get_assortment', 
-            limit: batchSize, 
+          body: {
+            action: 'get_assortment',
+            limit: batchSize,
             offset,
             login: acc.login,
             password: acc.password
@@ -2543,54 +2569,72 @@ export default function AdminPanel({
         });
 
         if (error) {
-          console.error("Error fetching products:", error);
           toast({
             title: "Ошибка",
             description: "Не удалось загрузить товары из МойСклад",
             variant: "destructive",
           });
-          return;
+          break;
         }
 
-        if (data.error) {
-          console.error("MoySklad API error:", data.error);
+        if (data?.error) {
           toast({
             title: "Ошибка авторизации",
             description: data.error,
             variant: "destructive",
           });
-          return;
+          break;
         }
 
-        const page = data.products || [];
-        totalSize = data.meta?.size || totalSize || page.length;
-        const effectiveLimit = data.meta?.limit || batchSize;
+        const page = (data?.products || []) as MoySkladProduct[];
+        totalSize = data?.meta?.size || totalSize || page.length;
+        const effectiveLimit = data?.meta?.limit || batchSize;
 
-        if (page.length > 0) {
-          allProducts.push(...page);
-          offset += page.length;
-          hasMore = offset < totalSize && page.length >= effectiveLimit;
-          console.log(`Fetched ${allProducts.length}/${totalSize} products...`);
-        } else {
+        if (page.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        allProducts.push(...page);
+        previousOffset = offset;
+        offset += page.length;
+        pageCount += 1;
+
+        // Защита от зависания на повторяющейся странице
+        if (offset === previousOffset || page.length < effectiveLimit || offset >= totalSize) {
           hasMore = false;
         }
       }
 
-      console.log("Fetched all products:", allProducts.length);
       setMoyskladProducts(allProducts);
-      setTotalProducts(totalSize);
-      
-      // Update account's last sync time
-      setAccounts(prev => prev.map(a => 
-        a.id === acc.id ? { ...a, lastSync: new Date().toISOString() } : a
-      ));
-      
-      toast({
-        title: "Товары загружены",
-        description: `Загружено ${allProducts.length} товаров из ${totalSize}`,
-      });
-    } catch (err) {
-      console.error("Error:", err);
+      setTotalProducts(totalSize || allProducts.length);
+
+      try {
+        localStorage.setItem(
+          getMoyskladCacheKey(acc.id),
+          JSON.stringify({
+            products: allProducts,
+            total: totalSize || allProducts.length,
+            cachedAt: new Date().toISOString(),
+          })
+        );
+      } catch {
+        // ignore cache write errors
+      }
+
+      if (pageCount >= maxPages) {
+        toast({
+          title: "Загрузка частично завершена",
+          description: "Достигнут лимит страниц, обновите список вручную",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Товары загружены",
+          description: `Загружено ${allProducts.length} товаров`,
+        });
+      }
+    } catch {
       toast({
         title: "Ошибка",
         description: "Произошла ошибка при подключении к МойСклад",
@@ -3496,6 +3540,54 @@ export default function AdminPanel({
     });
   }, [moyskladProducts, importFilters]);
 
+  const getPriceByType = useCallback((product: MoySkladProduct, aliases: string[]) => {
+    const normalized = aliases.map((name) => name.toLowerCase());
+    const found = product.salePrices?.find((sp) => normalized.includes((sp.name || "").toLowerCase()));
+    return found?.value ?? null;
+  }, []);
+
+  const getCategoryLabel = useCallback((product: MoySkladProduct) => {
+    if (!product.productFolderName) return "-";
+    const parts = product.productFolderName.split('/').map((x) => x.trim()).filter(Boolean);
+    return parts[parts.length - 1] || product.productFolderName;
+  }, []);
+
+  const exportMoyskladTableToExcel = useCallback(() => {
+    if (filteredMoyskladProducts.length === 0) {
+      toast({ title: "Нет данных", description: "Сначала загрузите товары", variant: "destructive" });
+      return;
+    }
+
+    const rows = filteredMoyskladProducts.map((product) => {
+      const linkedProduct = getLinkedProduct(product.id);
+      const retailPrice = getPriceByType(product, ["Розница", "Розничная", "Цена продажи"]) ?? product.price;
+      const utp1 = getPriceByType(product, ["УТП1", "УТП-1", "Утп 1"]);
+      const utp2 = getPriceByType(product, ["УТП2", "УТП-2", "Утп 2"]);
+
+      return {
+        "Связан": linkedProduct ? "Да" : "Нет",
+        "Автосинхр": linkedProduct?.autoSync ? "Вкл" : "Выкл",
+        "Название": product.name,
+        "Артикул": product.article || "",
+        "Код": product.code || "",
+        "Розница": retailPrice,
+        "УТП 1": utp1,
+        "УТП 2": utp2,
+        "Закупочная": product.buyPrice || null,
+        "Остаток": product.quantity || product.stock || 0,
+        "Ед. изм.": product.uom || "",
+        "Категория": getCategoryLabel(product),
+        "Путь категории": product.productFolderName || "",
+        "Все цены JSON": JSON.stringify(product.salePrices || []),
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "МойСклад");
+    XLSX.writeFile(wb, `moysklad_import_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }, [filteredMoyskladProducts, getCategoryLabel, getLinkedProduct, getPriceByType, toast]);
+
   // Loading state - wait for auth and store context
   // В workspaceMode не показываем спиннер, так как данные магазина уже загружены в SellerWorkspace
   if (!workspaceMode && (authLoading || storeContextLoading)) {
@@ -3949,21 +4041,57 @@ export default function AdminPanel({
                     <>
 
 
-                  {/* Sync Settings Panel */}
-                  <SyncSettingsPanel
-                    settings={syncSettings}
-                    onSettingsChange={handleSyncSettingsChange}
-                    onSyncNow={handleSyncNow}
-                    isSyncing={isSyncing}
-                    syncedProductsCount={importedProducts.filter(p => p.autoSync).length}
-                    syncOrdersEnabled={supabaseSyncSettings?.sync_orders_enabled}
-                    availablePriceTypes={Array.from(new Set(moyskladProducts.flatMap((p) => (p.salePrices || []).map((sp) => sp.name)).filter(Boolean)))}
-                    onNavigateToOrderSettings={() => {
-                      setActiveSection('orders');
-                      setShowOrderNotificationsPanel(true);
-                      setSelectedNotificationChannel('moysklad');
-                    }}
-                  />
+                  <div className="grid gap-2 mb-3">
+                    <div className="rounded-md border border-border bg-card p-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium">1) Разовая загрузка товаров из МойСклад</p>
+                          <p className="text-xs text-muted-foreground">Загружает/обновляет список в этом окне и сохраняет его для следующих входов</p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            onClick={() => fetchMoySkladProducts()}
+                            disabled={isLoading}
+                            variant="outline"
+                            size="sm"
+                            className="h-8"
+                          >
+                            {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+                            Загрузить товары
+                          </Button>
+                          <Button
+                            onClick={exportMoyskladTableToExcel}
+                            disabled={filteredMoyskladProducts.length === 0}
+                            variant="outline"
+                            size="sm"
+                            className="h-8"
+                            title="Скачать текущую таблицу в Excel"
+                          >
+                            <FileSpreadsheet className="h-3.5 w-3.5 mr-1" />
+                            Excel
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border border-border bg-card p-2.5">
+                      <p className="text-sm font-medium mb-2">2) Синхронизация по выбранным полям/столбцам</p>
+                      <SyncSettingsPanel
+                        settings={syncSettings}
+                        onSettingsChange={handleSyncSettingsChange}
+                        onSyncNow={handleSyncNow}
+                        isSyncing={isSyncing}
+                        syncedProductsCount={importedProducts.filter(p => p.autoSync).length}
+                        syncOrdersEnabled={supabaseSyncSettings?.sync_orders_enabled}
+                        availablePriceTypes={Array.from(new Set(moyskladProducts.flatMap((p) => (p.salePrices || []).map((sp) => sp.name)).filter(Boolean)))}
+                        onNavigateToOrderSettings={() => {
+                          setActiveSection('orders');
+                          setShowOrderNotificationsPanel(true);
+                          setSelectedNotificationChannel('moysklad');
+                        }}
+                      />
+                    </div>
+                  </div>
 
                   {isLoading && moyskladProducts.length === 0 ? (
                     <div className="bg-card rounded-lg border border-border p-8 text-center">
@@ -3974,26 +4102,12 @@ export default function AdminPanel({
                     <>
                       <div className="flex items-center justify-between mb-2 px-1">
                         <div className="flex items-center gap-1.5">
-                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                          <div className="w-2 h-2 rounded-full bg-primary" />
                           <span className="text-xs text-muted-foreground font-medium">
                             {filteredMoyskladProducts.length}
                           </span>
                         </div>
                         <div className="flex items-center gap-0.5">
-                          <Button
-                            onClick={() => fetchMoySkladProducts()}
-                            disabled={isLoading}
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            title="Обновить список"
-                          >
-                            {isLoading ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <RefreshCw className="h-3.5 w-3.5" />
-                            )}
-                          </Button>
                           <Button
                             onClick={bulkSyncSelectedProducts}
                             disabled={isSyncing || selectedProducts.size === 0}
@@ -4093,7 +4207,9 @@ export default function AdminPanel({
                                   placeholder="Фильтр..."
                                 />
                               </TableHead>
-                              <TableHead>Цена продажи</TableHead>
+                              <TableHead>Розница</TableHead>
+                              <TableHead>УТП 1</TableHead>
+                              <TableHead>УТП 2</TableHead>
                               <TableHead>Закупочная</TableHead>
                               <TableHead>
                                 Остаток
@@ -4108,6 +4224,7 @@ export default function AdminPanel({
                                 />
                               </TableHead>
                               <TableHead>Ед. изм.</TableHead>
+                              <TableHead>Категория товара</TableHead>
                               <TableHead>Фото</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -4171,7 +4288,19 @@ export default function AdminPanel({
                                       {product.code || "-"}
                                     </TableCell>
                                     <TableCell className="font-medium">
-                                      {product.price > 0 ? formatPrice(product.price) : "-"}
+                                      {(getPriceByType(product, ["Розница", "Розничная", "Цена продажи"]) ?? product.price) > 0
+                                        ? formatPrice(getPriceByType(product, ["Розница", "Розничная", "Цена продажи"]) ?? product.price)
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground">
+                                      {(getPriceByType(product, ["УТП1", "УТП-1", "Утп 1"]) ?? 0) > 0
+                                        ? formatPrice(getPriceByType(product, ["УТП1", "УТП-1", "Утп 1"]) ?? 0)
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground">
+                                      {(getPriceByType(product, ["УТП2", "УТП-2", "Утп 2"]) ?? 0) > 0
+                                        ? formatPrice(getPriceByType(product, ["УТП2", "УТП-2", "Утп 2"]) ?? 0)
+                                        : "-"}
                                     </TableCell>
                                     <TableCell className="text-muted-foreground">
                                       {product.buyPrice > 0 ? formatPrice(product.buyPrice) : "-"}
@@ -4181,7 +4310,7 @@ export default function AdminPanel({
                                         variant={product.quantity > 0 || product.stock > 0 ? "default" : "secondary"}
                                         className={`text-xs ${
                                           product.quantity > 0 || product.stock > 0
-                                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                                            ? "bg-primary/15 text-primary"
                                             : "bg-muted text-muted-foreground"
                                         }`}
                                       >
@@ -4190,6 +4319,9 @@ export default function AdminPanel({
                                     </TableCell>
                                     <TableCell className="text-sm text-muted-foreground">
                                       {product.uom || "-"}
+                                    </TableCell>
+                                    <TableCell className="text-sm text-muted-foreground" title={product.productFolderName || undefined}>
+                                      {getCategoryLabel(product)}
                                     </TableCell>
                                     <TableCell>
                                       {product.imagesCount > 0 ? (
@@ -4221,7 +4353,7 @@ export default function AdminPanel({
                                   {/* Expanded row with images */}
                                   {isExpanded && (
                                     <TableRow className="bg-muted/30 hover:bg-muted/30">
-                                    <TableCell colSpan={10} className="p-4">
+                                    <TableCell colSpan={13} className="p-4">
                                         {isLoadingImages ? (
                                           <div className="flex items-center justify-center py-4">
                                             <Loader2 className="h-6 w-6 animate-spin text-primary" />
