@@ -349,7 +349,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
           const fp = avitoFeed.feedProducts.find(f => f.product_id === pid);
           const currentParams = fp?.avito_params || {};
           if (aiMode === "title") {
-            await avitoFeed.updateProductParams(pid, { ...currentParams, Title: value });
+            await avitoFeed.updateProductParams(pid, { ...currentParams, title: value });
           } else {
             await avitoFeed.updateProductParams(pid, { ...currentParams, description: value });
           }
