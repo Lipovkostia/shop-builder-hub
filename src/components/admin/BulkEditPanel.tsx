@@ -361,7 +361,24 @@ export function BulkEditPanel({
             </>
           )}
 
-          {/* Auto-fill categories from other price lists */}
+          {/* Add to Avito feed */}
+          {onAddToAvitoFeed && (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-8"
+                onClick={async () => {
+                  await onAddToAvitoFeed();
+                }}
+              >
+                <ShoppingCart className="h-4 w-4 mr-1" />
+                В Авито
+              </Button>
+              <div className="w-px h-6 bg-primary-foreground/20 mx-1" />
+            </>
+          )}
+
           {onBulkAutoFillCategories && (
             <>
               <Popover open={isAutoFillPopoverOpen} onOpenChange={setIsAutoFillPopoverOpen}>
