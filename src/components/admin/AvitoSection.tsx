@@ -148,7 +148,7 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 }
 // Avito Feed Table with resizable columns
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
-const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 320, price: 80, address: 120, imgs: 50, actions: 60 };
+const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, category: 130, goodsType: 130, adType: 130, promo: 100, address: 120, imgs: 50, actions: 60 };
 
 function AvitoFeedTable({
   feedProducts, storeProducts, selectedFeedProducts, setSelectedFeedProducts,
