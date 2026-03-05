@@ -167,6 +167,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
 
   // AI generation state
   const [aiPromptOpen, setAiPromptOpen] = useState(false);
+  const [aiMode, setAiMode] = useState<"description" | "title">("description");
   const [aiInstruction, setAiInstruction] = useState("");
   const [aiMaxChars, setAiMaxChars] = useState(500);
   const [aiGenerating, setAiGenerating] = useState(false);
@@ -208,7 +209,13 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
     setAiMaxChars(tpl.maxChars);
   };
 
-  const openAiForProducts = (productIds: string[]) => {
+  const openAiForProducts = (productIds: string[], mode: "description" | "title" = "description") => {
+    setAiMode(mode);
+    if (mode === "title") {
+      setAiMaxChars(50);
+    } else {
+      setAiMaxChars(500);
+    }
     if (productIds.length === 1) {
       setAiSingleProductId(productIds[0]);
     } else {
@@ -312,7 +319,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
     await avitoFeed.updateProductParams(productId, newParams);
   }, [avitoFeed]);
 
-  // === AI DESCRIPTION GENERATION ===
+  // === AI DESCRIPTION/TITLE GENERATION ===
   const handleAiGenerate = async () => {
     if (!avitoFeed) return;
     const targetIds = aiSingleProductId ? [aiSingleProductId] : Array.from(selectedFeedProducts);
@@ -328,7 +335,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
       }).filter(Boolean);
 
       const { data, error } = await supabase.functions.invoke("ai-avito-description", {
-        body: { products: productsToGenerate, instruction: aiInstruction, maxChars: aiMaxChars },
+        body: { products: productsToGenerate, instruction: aiInstruction, maxChars: aiMaxChars, mode: aiMode },
       });
 
       if (error) throw error;
@@ -337,16 +344,20 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
       const descriptions = data?.descriptions || {};
       let updated = 0;
 
-      for (const [pid, desc] of Object.entries(descriptions)) {
-        if (desc && typeof desc === "string") {
+      for (const [pid, value] of Object.entries(descriptions)) {
+        if (value && typeof value === "string") {
           const fp = avitoFeed.feedProducts.find(f => f.product_id === pid);
           const currentParams = fp?.avito_params || {};
-          await avitoFeed.updateProductParams(pid, { ...currentParams, description: desc });
+          if (aiMode === "title") {
+            await avitoFeed.updateProductParams(pid, { ...currentParams, title: value });
+          } else {
+            await avitoFeed.updateProductParams(pid, { ...currentParams, description: value });
+          }
           updated++;
         }
       }
 
-      toast({ title: `Сгенерировано ${updated} описаний` });
+      toast({ title: aiMode === "title" ? `Сокращено ${updated} названий` : `Сгенерировано ${updated} описаний` });
       setAiPromptOpen(false);
       setAiSingleProductId(null);
     } catch (err: any) {
@@ -671,7 +682,10 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
                 <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-1.5 w-full">
                   <span className="text-sm font-medium">Выбрано: {selectedFeedProducts.size}</span>
                   <div className="flex gap-2 ml-auto">
-                     <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => openAiForProducts(Array.from(selectedFeedProducts))}>
+                     <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => openAiForProducts(Array.from(selectedFeedProducts), "title")}>
+                       <Wand2 className="h-3.5 w-3.5" /> AI название
+                     </Button>
+                     <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => openAiForProducts(Array.from(selectedFeedProducts), "description")}>
                        <Sparkles className="h-3.5 w-3.5" /> AI описание
                      </Button>
                     <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={async () => {
@@ -911,13 +925,13 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
         )}
       </Tabs>
 
-      {/* AI Description Generation Sheet */}
+      {/* AI Generation Sheet */}
       <Sheet open={aiPromptOpen} onOpenChange={(open) => { setAiPromptOpen(open); if (!open) setAiSingleProductId(null); }}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="text-base flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              AI-генерация описаний
+              {aiMode === "title" ? <Wand2 className="h-4 w-4 text-primary" /> : <Sparkles className="h-4 w-4 text-primary" />}
+              {aiMode === "title" ? "AI-сокращение названий" : "AI-генерация описаний"}
             </SheetTitle>
           </SheetHeader>
           <div className="space-y-5 mt-4">
@@ -962,20 +976,30 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
 
             {/* Prompt */}
             <div className="space-y-1.5">
-              <Label className="text-xs">Инструкция для AI (промпт)</Label>
+              <Label className="text-xs">
+                {aiMode === "title" ? "Инструкция для сокращения названий" : "Инструкция для AI (промпт)"}
+              </Label>
               <Textarea
                 value={aiInstruction}
                 onChange={(e) => setAiInstruction(e.target.value)}
-                placeholder="Например: Пиши от лица оптового поставщика мясной продукции. Упоминай, что доставка по Москве и МО."
+                placeholder={aiMode === "title" 
+                  ? "Например: Сохраняй бренд и вес. Убирай слова на латинице если есть русский аналог."
+                  : "Например: Пиши от лица оптового поставщика мясной продукции. Упоминай, что доставка по Москве и МО."
+                }
                 className="text-sm min-h-[120px]"
               />
-              <p className="text-[10px] text-muted-foreground">Оставьте пустым для стандартного описания</p>
+              <p className="text-[10px] text-muted-foreground">
+                {aiMode === "title" ? "Оставьте пустым для стандартного сокращения" : "Оставьте пустым для стандартного описания"}
+              </p>
             </div>
 
             {/* Max chars */}
             <div className="space-y-1.5">
-              <Label className="text-xs">Максимум символов</Label>
-              <Input type="number" value={aiMaxChars} onChange={(e) => setAiMaxChars(Number(e.target.value) || 500)} className="h-8 text-sm w-32" min={100} max={2000} />
+              <Label className="text-xs">
+                {aiMode === "title" ? "Максимум символов в названии" : "Максимум символов"}
+              </Label>
+              <Input type="number" value={aiMaxChars} onChange={(e) => setAiMaxChars(Number(e.target.value) || (aiMode === "title" ? 50 : 500))} className="h-8 text-sm w-32" min={10} max={2000} />
+              {aiMode === "title" && <p className="text-[10px] text-muted-foreground">Авито рекомендует до 50 символов</p>}
             </div>
 
             {/* Save template */}
@@ -999,7 +1023,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
             <div className="flex gap-2 pt-2 border-t">
               <Button className="flex-1" onClick={handleAiGenerate} disabled={aiGenerating}>
                 {aiGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Wand2 className="h-3.5 w-3.5 mr-1" />}
-                Сгенерировать
+                {aiMode === "title" ? "Сократить названия" : "Сгенерировать"}
               </Button>
             </div>
           </div>
