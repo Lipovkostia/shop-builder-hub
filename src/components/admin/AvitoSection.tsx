@@ -729,18 +729,22 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
         const description = params.description || product.description || product.name || "";
         const price = params.price || product.pricePerUnit || 0;
 
-        // Download images and add to ZIP
+        // Download images and add to ZIP — skip small/thumbnail images
         const imageNames: string[] = [];
         for (let i = 0; i < images.length; i++) {
           const imgUrl = images[i];
           if (!imgUrl || imgUrl.startsWith("data:")) continue;
+          // Skip thumbnail URLs (common patterns for small sizes)
+          if (/[_\-](thumb|small|xs|50x|100x|150x)/i.test(imgUrl)) continue;
           try {
             const ext = imgUrl.split('.').pop()?.split('?')[0]?.substring(0, 4) || "jpg";
             const fileName = `photo_${imageCounter + 1}.${ext}`;
-            imageCounter++;
             const response = await fetch(imgUrl);
             if (response.ok) {
               const blob = await response.blob();
+              // Skip images smaller than 10KB (likely thumbnails)
+              if (blob.size < 10240) continue;
+              imageCounter++;
               zip.file(fileName, blob);
               imageNames.push(fileName);
             }
