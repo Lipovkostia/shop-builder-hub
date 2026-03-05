@@ -21,13 +21,13 @@ export function useAvitoFeedProducts(storeId: string | null) {
     if (!storeId) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("avito_feed_products")
         .select("*")
         .eq("store_id", storeId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      setFeedProducts(data || []);
+      setFeedProducts((data || []) as AvitoFeedProduct[]);
     } catch (err: any) {
       console.error("Error fetching avito feed products:", err);
     } finally {
@@ -49,7 +49,7 @@ export function useAvitoFeedProducts(storeId: string | null) {
         return true;
       }
       const rows = newIds.map(pid => ({ store_id: storeId, product_id: pid }));
-      const { error } = await supabase.from("avito_feed_products").insert(rows);
+      const { error } = await (supabase as any).from("avito_feed_products").insert(rows);
       if (error) throw error;
       toast({ title: `Добавлено ${newIds.length} товар(ов) в фид Авито` });
       await fetchFeedProducts();
@@ -64,7 +64,7 @@ export function useAvitoFeedProducts(storeId: string | null) {
   const removeProductFromFeed = useCallback(async (productId: string) => {
     if (!storeId) return;
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("avito_feed_products")
         .delete()
         .eq("store_id", storeId)
@@ -79,7 +79,7 @@ export function useAvitoFeedProducts(storeId: string | null) {
   const removeProductsFromFeed = useCallback(async (productIds: string[]) => {
     if (!storeId) return;
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("avito_feed_products")
         .delete()
         .eq("store_id", storeId)
