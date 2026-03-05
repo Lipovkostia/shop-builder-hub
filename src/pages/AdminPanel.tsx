@@ -753,6 +753,7 @@ export default function AdminPanel({
         syncedMoyskladImages: sp.synced_moysklad_images || [],
         status: sp.is_active ? "in_stock" as const : "hidden" as const,
         isFixedPrice: sp.is_fixed_price || false,
+        moyskladPrices: sp.moysklad_prices || null,
       }));
   }, [supabaseProducts]);
   
@@ -954,6 +955,7 @@ export default function AdminPanel({
     groups: true,
     catalogs: true,
     sync: true,
+    msPrices: false,
   });
 
   const columnLabels: Record<string, string> = {
@@ -971,6 +973,7 @@ export default function AdminPanel({
     groups: "Группа",
     catalogs: "Прайс-листы",
     sync: "Синхр.",
+    msPrices: "МС цены",
   };
 
   const toggleColumnVisibility = (columnId: string) => {
