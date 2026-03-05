@@ -380,6 +380,14 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
       { wch: 10 }, { wch: 20 }, { wch: 25 }, { wch: 28 }, { wch: 25 },
       { wch: 14 }, { wch: 40 }, { wch: 14 }, { wch: 25 }, { wch: 22 }, { wch: 25 },
     ];
+    // Enable text wrapping for description cells (column G, index 6) in product rows
+    for (let r = 4; r < wsData.length; r++) {
+      const cellRef = XLSX.utils.encode_cell({ r, c: 6 });
+      if (ws[cellRef]) {
+        if (!ws[cellRef].s) ws[cellRef].s = {};
+        ws[cellRef].s.alignment = { wrapText: true, vertical: "top" };
+      }
+    }
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, (d.goodsSubType || "Товары").substring(0, 31));
     const instrWs = XLSX.utils.aoa_to_sheet([
