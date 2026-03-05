@@ -77,25 +77,34 @@ serve(async (req) => {
       console.log(`Fetched ${data.rows?.length || 0} items from assortment`);
 
       // Transform the data to include only relevant fields
-      const products = data.rows?.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        description: item.description || '',
-        code: item.code || '',
-        article: item.article || '',
-        price: item.salePrices?.[0]?.value ? item.salePrices[0].value / 100 : 0, // Convert from kopeks
-        buyPrice: item.buyPrice?.value ? item.buyPrice.value / 100 : 0,
-        quantity: item.quantity || 0,
-        stock: item.stock || 0,
-        productType: item.meta?.type || 'product',
-        images: item.images?.meta?.href || null,
-        imagesCount: item.images?.meta?.size || 0,
-        meta: item.meta,
-        uom: item.uom?.name || '',
-        weight: item.weight || 0,
-        volume: item.volume || 0,
-        archived: item.archived || false,
-      })) || [];
+      const products = data.rows?.map((item: any) => {
+        // Extract all sale prices with their type names
+        const salePrices = (item.salePrices || []).map((sp: any) => ({
+          name: sp.priceType?.name || 'Цена',
+          value: sp.value ? sp.value / 100 : 0,
+        }));
+
+        return {
+          id: item.id,
+          name: item.name,
+          description: item.description || '',
+          code: item.code || '',
+          article: item.article || '',
+          price: item.salePrices?.[0]?.value ? item.salePrices[0].value / 100 : 0, // Convert from kopeks
+          buyPrice: item.buyPrice?.value ? item.buyPrice.value / 100 : 0,
+          salePrices, // All price types from MoySklad
+          quantity: item.quantity || 0,
+          stock: item.stock || 0,
+          productType: item.meta?.type || 'product',
+          images: item.images?.meta?.href || null,
+          imagesCount: item.images?.meta?.size || 0,
+          meta: item.meta,
+          uom: item.uom?.name || '',
+          weight: item.weight || 0,
+          volume: item.volume || 0,
+          archived: item.archived || false,
+        };
+      }) || [];
 
       return new Response(
         JSON.stringify({ 
