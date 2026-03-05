@@ -69,10 +69,19 @@ export function useAvitoFeedProducts(storeId: string | null) {
     }
   }, [storeId]);
 
-  const saveDefaults = useCallback((newDefaults: AvitoDefaults) => {
+  const saveDefaults = useCallback(async (newDefaults: AvitoDefaults) => {
     setDefaults(newDefaults);
     if (storeId) {
       localStorage.setItem(AVITO_DEFAULTS_KEY + storeId, JSON.stringify(newDefaults));
+      // Also persist to DB for edge function access
+      try {
+        await (supabase as any)
+          .from("avito_accounts")
+          .update({ feed_defaults: newDefaults })
+          .eq("store_id", storeId);
+      } catch (err) {
+        console.error("Error saving feed defaults to DB:", err);
+      }
     }
   }, [storeId]);
 

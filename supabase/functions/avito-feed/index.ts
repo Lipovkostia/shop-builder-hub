@@ -28,29 +28,31 @@ Deno.serve(async (req) => {
       return new Response("Missing store_id", { status: 400, headers: corsHeaders });
     }
 
-    // Store-level defaults from query params
-    const defaultAddress = url.searchParams.get("address") || "";
-    const defaultCategory = url.searchParams.get("category") || "Продукты питания";
-    const defaultGoodsType = url.searchParams.get("goods_type") || "Товар приобретен на продажу";
-    const defaultAdType = url.searchParams.get("ad_type") || "Товар приобретен на продажу";
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get avito account for address default
+    // Get avito account with feed_defaults
     const { data: avitoAccount } = await supabase
       .from("avito_accounts")
       .select("*")
       .eq("store_id", storeId)
       .single();
 
-    // Get store info
-    const { data: store } = await supabase
-      .from("stores")
-      .select("name")
-      .eq("id", storeId)
-      .single();
+    const fd = (avitoAccount?.feed_defaults && typeof avitoAccount.feed_defaults === 'object') ? avitoAccount.feed_defaults as any : {};
+
+    // Defaults from DB (feed_defaults), fallback to query params for backward compat
+    const defaultAddress = fd.address || url.searchParams.get("address") || "";
+    const defaultCategory = fd.category || url.searchParams.get("category") || "Продукты питания";
+    const defaultGoodsType = fd.goodsSubType || url.searchParams.get("goods_type") || "Товар приобретен на продажу";
+    const defaultAdType = fd.goodsType || url.searchParams.get("ad_type") || "Товар приобретен на продажу";
+    const defaultListingFee = fd.listingFee || "Package";
+    const defaultContactMethod = fd.contactMethod || "По телефону и в сообщениях";
+    const defaultContactPhone = fd.contactPhone || "";
+    const defaultManagerName = fd.managerName || "";
+    const defaultEmail = fd.email || "";
+    const defaultCompanyName = fd.companyName || "";
+    const defaultTargetAudience = fd.targetAudience || "";
 
     // Get feed products with product data
     const { data: feedProducts, error } = await supabase
@@ -83,12 +85,15 @@ Deno.serve(async (req) => {
       const address = escapeXml(fp.avito_address || params.address || defaultAddress);
       const adType = escapeXml(params.adType || params.goodsType || defaultAdType);
       const goodsType = escapeXml(params.GoodsType || params.goodsSubType || defaultGoodsType);
+      const listingFee = escapeXml(params.listingFee || defaultListingFee);
+      const contactMethod = escapeXml(params.contactMethod || defaultContactMethod);
+      const contactPhone = escapeXml(params.contactPhone || defaultContactPhone);
+      const managerName = escapeXml(params.managerName || defaultManagerName);
 
       let imagesXml = "";
       if (images.length > 0) {
         imagesXml = "    <Images>\n";
         for (const img of images.slice(0, 10)) {
-          // Skip thumbnail/small image URLs
           if (/[_\-](thumb|small|xs|50x|100x|150x)/i.test(img)) continue;
           imagesXml += `      <Image url="${escapeXml(img)}" />\n`;
         }
@@ -107,6 +112,15 @@ Deno.serve(async (req) => {
       }
       if (goodsType) {
         ads += `    <GoodsType>${goodsType}</GoodsType>\n`;
+      }
+      // Required fields for publishing
+      ads += `    <ListingFee>${listingFee}</ListingFee>\n`;
+      ads += `    <ContactMethod>${contactMethod}</ContactMethod>\n`;
+      if (contactPhone) {
+        ads += `    <ContactPhone>${contactPhone}</ContactPhone>\n`;
+      }
+      if (managerName) {
+        ads += `    <ManagerName>${managerName}</ManagerName>\n`;
       }
       // Promo settings
       const promo = params.promo || '';
