@@ -22,7 +22,7 @@ import {
 import {
   ExternalLink, Loader2, Link2, Unlink, RefreshCw, Check, Package, Search,
   MapPin, Calendar, Eye, Image as ImageIcon, X, Download, Settings, Save, Sparkles, Wand2,
-  Plus, Trash2, BookOpen,
+  Plus, Trash2, BookOpen, Clock,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -152,13 +152,15 @@ const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title
 
 function AvitoFeedTable({
   feedProducts, storeProducts, selectedFeedProducts, setSelectedFeedProducts,
-  aiGeneratingIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
+  aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
 }: {
   feedProducts: AvitoFeedProduct[];
   storeProducts: Product[];
   selectedFeedProducts: Set<string>;
   setSelectedFeedProducts: React.Dispatch<React.SetStateAction<Set<string>>>;
   aiGeneratingIds: Set<string>;
+  aiDoneIds: Set<string>;
+  aiQueuedIds: Set<string>;
   localDefaults: AvitoDefaults;
   handleInlineParamUpdate: (productId: string, key: string, value: string) => void;
   openAiForProducts: (ids: string[], mode?: string) => void;
@@ -247,9 +249,11 @@ function AvitoFeedTable({
               const imageUrl = product.images?.[0] || product.image;
               const params = fp.avito_params || {};
               const isGenerating = aiGeneratingIds.has(fp.product_id);
+              const isDone = aiDoneIds.has(fp.product_id);
+              const isQueued = aiQueuedIds.has(fp.product_id);
 
               return (
-                <div key={fp.id} className="flex border-b text-xs hover:bg-muted/30 items-start">
+                <div key={fp.id} className={`flex border-b text-xs hover:bg-muted/30 items-start transition-colors ${isDone ? 'bg-green-50 dark:bg-green-950/20' : isGenerating ? 'bg-yellow-50 dark:bg-yellow-950/20' : isQueued ? 'bg-muted/20' : ''}`}>
                   <div className="flex-shrink-0 px-2 pt-2.5" style={{ width: colWidths.check }}>
                     <Checkbox
                       checked={selectedFeedProducts.has(fp.product_id)}
@@ -286,7 +290,15 @@ function AvitoFeedTable({
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.desc }}>
                     {isGenerating ? (
                       <div className="flex items-center gap-1.5 py-2 text-xs text-muted-foreground">
-                        <Loader2 className="h-3 w-3 animate-spin" /> Генерация...
+                        <Loader2 className="h-3 w-3 animate-spin text-yellow-500" /> Генерация...
+                      </div>
+                    ) : isDone ? (
+                      <div className="flex items-center gap-1.5 py-2 text-xs text-green-600">
+                        <Check className="h-3 w-3" /> Готово
+                      </div>
+                    ) : isQueued ? (
+                      <div className="flex items-center gap-1.5 py-2 text-xs text-muted-foreground/60">
+                        <Clock className="h-3 w-3" /> В очереди...
                       </div>
                     ) : (
                       <InlineCell
@@ -364,6 +376,9 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
   const [aiMaxChars, setAiMaxChars] = useState(500);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiGeneratingIds, setAiGeneratingIds] = useState<Set<string>>(new Set());
+  const [aiDoneIds, setAiDoneIds] = useState<Set<string>>(new Set());
+  const [aiQueuedIds, setAiQueuedIds] = useState<Set<string>>(new Set());
+  const [aiProgress, setAiProgress] = useState({ done: 0, total: 0 });
   const [aiSingleProductId, setAiSingleProductId] = useState<string | null>(null);
 
   // Saved templates
@@ -518,38 +533,69 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
     if (targetIds.length === 0) return;
 
     setAiGenerating(true);
-    setAiGeneratingIds(new Set(targetIds));
+    setAiDoneIds(new Set());
+    setAiQueuedIds(new Set(targetIds));
+    setAiGeneratingIds(new Set());
+    setAiProgress({ done: 0, total: targetIds.length });
+
+    const batchSize = 10;
+    let totalUpdated = 0;
 
     try {
-      const productsToGenerate = targetIds.map(pid => {
-        const product = storeProducts.find(p => p.id === pid);
-        return product ? { id: pid, name: product.name, description: product.description, price: product.pricePerUnit } : null;
-      }).filter(Boolean);
+      for (let i = 0; i < targetIds.length; i += batchSize) {
+        const batchIds = targetIds.slice(i, i + batchSize);
+        
+        // Mark current batch as generating
+        setAiGeneratingIds(new Set(batchIds));
+        setAiQueuedIds(prev => {
+          const next = new Set(prev);
+          batchIds.forEach(id => next.delete(id));
+          return next;
+        });
 
-      const { data, error } = await supabase.functions.invoke("ai-avito-description", {
-        body: { products: productsToGenerate, instruction: aiInstruction, maxChars: aiMaxChars, mode: aiMode },
-      });
+        const productsToGenerate = batchIds.map(pid => {
+          const product = storeProducts.find(p => p.id === pid);
+          return product ? { id: pid, name: product.name, description: product.description, price: product.pricePerUnit } : null;
+        }).filter(Boolean);
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+        try {
+          const { data, error } = await supabase.functions.invoke("ai-avito-description", {
+            body: { products: productsToGenerate, instruction: aiInstruction, maxChars: aiMaxChars, mode: aiMode },
+          });
 
-      const descriptions = data?.descriptions || {};
-      let updated = 0;
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
 
-      for (const [pid, value] of Object.entries(descriptions)) {
-        if (value && typeof value === "string") {
-          const fp = avitoFeed.feedProducts.find(f => f.product_id === pid);
-          const currentParams = fp?.avito_params || {};
-          if (aiMode === "title") {
-            await avitoFeed.updateProductParams(pid, { ...currentParams, title: value });
-          } else {
-            await avitoFeed.updateProductParams(pid, { ...currentParams, description: value });
+          const descriptions = data?.descriptions || {};
+
+          for (const [pid, value] of Object.entries(descriptions)) {
+            if (value && typeof value === "string") {
+              const fp = avitoFeed.feedProducts.find(f => f.product_id === pid);
+              const currentParams = fp?.avito_params || {};
+              if (aiMode === "title") {
+                await avitoFeed.updateProductParams(pid, { ...currentParams, title: value });
+              } else {
+                await avitoFeed.updateProductParams(pid, { ...currentParams, description: value });
+              }
+              totalUpdated++;
+            }
           }
-          updated++;
+        } catch (batchErr: any) {
+          console.error("AI batch error:", batchErr);
+          // Continue with next batch even if one fails
         }
+
+        // Mark batch as done
+        setAiDoneIds(prev => {
+          const next = new Set(prev);
+          batchIds.forEach(id => next.add(id));
+          return next;
+        });
+        setAiGeneratingIds(new Set());
+        setAiProgress(prev => ({ ...prev, done: Math.min(i + batchSize, targetIds.length) }));
       }
 
-      toast({ title: aiMode === "title" ? `Сокращено ${updated} названий` : `Сгенерировано ${updated} описаний` });
+      toast({ title: aiMode === "title" ? `Сокращено ${totalUpdated} названий` : `Сгенерировано ${totalUpdated} описаний` });
       setAiPromptOpen(false);
       setAiSingleProductId(null);
     } catch (err: any) {
@@ -558,6 +604,9 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
     } finally {
       setAiGenerating(false);
       setAiGeneratingIds(new Set());
+      setAiQueuedIds(new Set());
+      // Keep aiDoneIds visible for a few seconds then clear
+      setTimeout(() => setAiDoneIds(new Set()), 5000);
     }
   };
 
@@ -994,6 +1043,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
               selectedFeedProducts={selectedFeedProducts}
               setSelectedFeedProducts={setSelectedFeedProducts}
               aiGeneratingIds={aiGeneratingIds}
+              aiDoneIds={aiDoneIds}
+              aiQueuedIds={aiQueuedIds}
               localDefaults={localDefaults}
               handleInlineParamUpdate={handleInlineParamUpdate}
               openAiForProducts={openAiForProducts}
@@ -1193,11 +1244,27 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
               </div>
             </div>
 
+            {/* Progress */}
+            {aiGenerating && aiProgress.total > 0 && (
+              <div className="pt-2 border-t space-y-1.5">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Прогресс генерации</span>
+                  <span>{aiProgress.done} / {aiProgress.total}</span>
+                </div>
+                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-500"
+                    style={{ width: `${(aiProgress.done / aiProgress.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex gap-2 pt-2 border-t">
               <Button className="flex-1" onClick={handleAiGenerate} disabled={aiGenerating}>
                 {aiGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Wand2 className="h-3.5 w-3.5 mr-1" />}
-                {aiMode === "title" ? "Сократить названия" : "Сгенерировать"}
+                {aiGenerating ? `${aiProgress.done}/${aiProgress.total}...` : (aiMode === "title" ? "Сократить названия" : "Сгенерировать")}
               </Button>
             </div>
           </div>
