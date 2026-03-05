@@ -68,8 +68,8 @@ Deno.serve(async (req) => {
       if (!product || product.deleted_at) continue;
 
       const id = product.id.substring(0, 8);
-      const title = escapeXml(product.name || "Товар");
-      const description = escapeXml(product.description || product.name || "");
+      const title = escapeXml((fp.avito_params && fp.avito_params.title) ? fp.avito_params.title : (product.name || "Товар"));
+      const description = escapeXml((fp.avito_params && fp.avito_params.description) ? fp.avito_params.description : (product.description || product.name || ""));
       // Use price from avito_params if available (catalog price), otherwise product base price
       const price = (fp.avito_params && fp.avito_params.Price) ? fp.avito_params.Price : (product.price || 0);
       const category = escapeXml(fp.avito_category || "Товары для дома");
