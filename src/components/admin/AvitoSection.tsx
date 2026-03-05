@@ -152,13 +152,15 @@ const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title
 
 function AvitoFeedTable({
   feedProducts, storeProducts, selectedFeedProducts, setSelectedFeedProducts,
-  aiGeneratingIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
+  aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
 }: {
   feedProducts: AvitoFeedProduct[];
   storeProducts: Product[];
   selectedFeedProducts: Set<string>;
   setSelectedFeedProducts: React.Dispatch<React.SetStateAction<Set<string>>>;
   aiGeneratingIds: Set<string>;
+  aiDoneIds: Set<string>;
+  aiQueuedIds: Set<string>;
   localDefaults: AvitoDefaults;
   handleInlineParamUpdate: (productId: string, key: string, value: string) => void;
   openAiForProducts: (ids: string[], mode?: string) => void;
