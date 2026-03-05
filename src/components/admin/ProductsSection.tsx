@@ -39,6 +39,8 @@ interface ProductsSectionProps {
   onAddCustomUnit?: (unit: string) => void;
   onAddCustomPackaging?: (type: string) => void;
   onAddToAvitoFeed?: (productIds: string[]) => Promise<boolean>;
+  avitoFeedProductIds?: Set<string>;
+  onRemoveFromAvitoFeed?: (productIds: string[]) => Promise<void>;
   moyskladLogin?: string;
   moyskladPassword?: string;
 }
