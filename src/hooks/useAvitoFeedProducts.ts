@@ -86,7 +86,7 @@ export function useAvitoFeedProducts(storeId: string | null) {
     fetchFeedProducts();
   }, [fetchFeedProducts]);
 
-  const addProductsToFeed = useCallback(async (productIds: string[]) => {
+  const addProductsToFeed = useCallback(async (productIds: string[], priceMap?: Record<string, number>) => {
     if (!storeId) return false;
     try {
       const existing = new Set(feedProducts.map(fp => fp.product_id));
@@ -95,7 +95,11 @@ export function useAvitoFeedProducts(storeId: string | null) {
         toast({ title: "Все выбранные товары уже в фиде Авито" });
         return true;
       }
-      const rows = newIds.map(pid => ({ store_id: storeId, product_id: pid }));
+      const rows = newIds.map(pid => ({
+        store_id: storeId,
+        product_id: pid,
+        ...(priceMap && priceMap[pid] ? { avito_params: { Price: priceMap[pid] } } : {}),
+      }));
       const { error } = await (supabase as any).from("avito_feed_products").insert(rows);
       if (error) throw error;
       toast({ title: `Добавлено ${newIds.length} товар(ов) в фид Авито` });
