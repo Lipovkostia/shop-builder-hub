@@ -1244,11 +1244,27 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
               </div>
             </div>
 
+            {/* Progress */}
+            {aiGenerating && aiProgress.total > 0 && (
+              <div className="pt-2 border-t space-y-1.5">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Прогресс генерации</span>
+                  <span>{aiProgress.done} / {aiProgress.total}</span>
+                </div>
+                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-500"
+                    style={{ width: `${(aiProgress.done / aiProgress.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex gap-2 pt-2 border-t">
               <Button className="flex-1" onClick={handleAiGenerate} disabled={aiGenerating}>
                 {aiGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Wand2 className="h-3.5 w-3.5 mr-1" />}
-                {aiMode === "title" ? "Сократить названия" : "Сгенерировать"}
+                {aiGenerating ? `${aiProgress.done}/${aiProgress.total}...` : (aiMode === "title" ? "Сократить названия" : "Сгенерировать")}
               </Button>
             </div>
           </div>
