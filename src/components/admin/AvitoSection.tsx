@@ -313,7 +313,7 @@ export function AvitoSection({ storeId }: AvitoSectionProps) {
                 </TableHeader>
                 <TableBody>
                   {filteredItems.map((item) => {
-                    const imageUrl = item.images?.[0]?.640x480 || item.images?.[0]?.url || null;
+                    const imageUrl = item.images?.[0]?.["640x480"] || item.images?.[0]?.url || null;
                     return (
                       <TableRow key={item.id}>
                         <TableCell>
