@@ -24,6 +24,11 @@ export interface AvitoDefaults {
   contactMethod: string;
   listingFee: string;
   targetAudience: string;
+  promo: string;
+  promoRegion: string;
+  promoBudget: string;
+  promoPrice: string;
+  promoLimit: string;
 }
 
 const AVITO_DEFAULTS_KEY = "avito_defaults_";
