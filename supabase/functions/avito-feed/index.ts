@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
         'managerName', 'email', 'companyName', 'avitoStatus', 'dateEnd',
         'goodsType', 'goodsSubType', 'targetAudience', 'includeVAT',
         'adType', 'AdType', 'GoodsType',
-        'promo', 'promoRegion', 'promoBudget', 'promoPrice', 'promoLimit',
+        'promo', 'promoRegion', 'promoBudget', 'promoPrice', 'promoLimit', 'promoManualOptions',
         'cpcBid', 'CompanyName', 'Email', 'AvitoId', 'ManagerName', 'ContactPhone',
       ]);
       for (const [key, value] of Object.entries(params)) {
