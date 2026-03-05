@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { action, store_id, client_id, client_secret } = await req.json();
+    const { action, store_id, client_id, client_secret, item_id, price: newPrice } = await req.json();
 
     if (action === "save_credentials") {
       // Save or update Avito credentials
