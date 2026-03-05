@@ -1235,19 +1235,25 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             </Card>
           </Collapsible>
 
-          {/* Export & Feed URL */}
-          {avitoFeed && avitoFeed.feedProducts.length > 0 && storeId && (
-            <Card className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Download className="h-4 w-4 text-primary" />
-                  <span className="font-medium text-sm">Экспорт для Авито</span>
-                </div>
-                <Button size="sm" onClick={handleExportExcel} disabled={exporting}>
-                  {exporting ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
-                  {exporting ? "Подготовка ZIP..." : "Скачать ZIP с фото"}
-                </Button>
-              </div>
+           {/* Export & Feed URL */}
+           {avitoFeed && avitoFeed.feedProducts.length > 0 && storeId && (
+             <Card className="p-4 space-y-3">
+               <div className="flex items-center justify-between flex-wrap gap-3">
+                 <div className="flex items-center gap-2">
+                   <Download className="h-4 w-4 text-primary" />
+                   <span className="font-medium text-sm">Экспорт для Авито</span>
+                 </div>
+                 <div className="flex items-center gap-2 flex-wrap">
+                   <Button size="sm" onClick={handleExportExcelOnly} disabled={exportingExcel}>
+                     {exportingExcel ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+                     {exportingExcel ? "Подготовка..." : "Скачать Excel"}
+                   </Button>
+                   <Button size="sm" onClick={handleExportExcel} disabled={exporting}>
+                     {exporting ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+                     {exporting ? "Подготовка ZIP..." : "Скачать ZIP с фото"}
+                   </Button>
+                 </div>
+               </div>
               <p className="text-xs text-muted-foreground">
                 Скачайте ZIP-архив (Excel + фотографии) и загрузите его целиком на{" "}
                 <a href="https://www.avito.ru/autoload/settings" target="_blank" rel="noopener noreferrer" className="text-primary underline">
