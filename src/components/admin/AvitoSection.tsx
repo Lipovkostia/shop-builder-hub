@@ -319,7 +319,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
     await avitoFeed.updateProductParams(productId, newParams);
   }, [avitoFeed]);
 
-  // === AI DESCRIPTION GENERATION ===
+  // === AI DESCRIPTION/TITLE GENERATION ===
   const handleAiGenerate = async () => {
     if (!avitoFeed) return;
     const targetIds = aiSingleProductId ? [aiSingleProductId] : Array.from(selectedFeedProducts);
@@ -335,7 +335,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
       }).filter(Boolean);
 
       const { data, error } = await supabase.functions.invoke("ai-avito-description", {
-        body: { products: productsToGenerate, instruction: aiInstruction, maxChars: aiMaxChars },
+        body: { products: productsToGenerate, instruction: aiInstruction, maxChars: aiMaxChars, mode: aiMode },
       });
 
       if (error) throw error;
@@ -344,16 +344,20 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
       const descriptions = data?.descriptions || {};
       let updated = 0;
 
-      for (const [pid, desc] of Object.entries(descriptions)) {
-        if (desc && typeof desc === "string") {
+      for (const [pid, value] of Object.entries(descriptions)) {
+        if (value && typeof value === "string") {
           const fp = avitoFeed.feedProducts.find(f => f.product_id === pid);
           const currentParams = fp?.avito_params || {};
-          await avitoFeed.updateProductParams(pid, { ...currentParams, description: desc });
+          if (aiMode === "title") {
+            await avitoFeed.updateProductParams(pid, { ...currentParams, Title: value });
+          } else {
+            await avitoFeed.updateProductParams(pid, { ...currentParams, description: value });
+          }
           updated++;
         }
       }
 
-      toast({ title: `Сгенерировано ${updated} описаний` });
+      toast({ title: aiMode === "title" ? `Сокращено ${updated} названий` : `Сгенерировано ${updated} описаний` });
       setAiPromptOpen(false);
       setAiSingleProductId(null);
     } catch (err: any) {
