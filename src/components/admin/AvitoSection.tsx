@@ -437,6 +437,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
     category: "Продукты питания", goodsType: "Товар от производителя",
     goodsSubType: "Мясо, птица, субпродукты", contactMethod: "По телефону и в сообщениях",
     listingFee: "Package", targetAudience: "Частные лица и бизнес",
+    promo: "", promoRegion: "", promoBudget: "", promoPrice: "", promoLimit: "",
   });
 
   useEffect(() => {
