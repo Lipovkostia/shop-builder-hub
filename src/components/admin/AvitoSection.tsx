@@ -410,11 +410,79 @@ function AvitoFeedTable({
                       type="number"
                     />
                   </div>
+                  {/* PromoManualOptions - Город|цена|лимит */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.promoManual }}>
+                    <InlineCell
+                      value={(() => {
+                        const region = params.promoRegion || "";
+                        const price = params.promoPrice || "";
+                        const limit = params.promoLimit || "";
+                        if (region || price || limit) return [region, price, limit].filter(Boolean).join("|");
+                        return "";
+                      })()}
+                      onChange={(val) => {
+                        const parts = val.split("|").map(s => s.trim());
+                        handleInlineParamUpdate(fp.product_id, "promoRegion", parts[0] || "");
+                        handleInlineParamUpdate(fp.product_id, "promoPrice", parts[1] || "");
+                        handleInlineParamUpdate(fp.product_id, "promoLimit", parts[2] || "");
+                      }}
+                      placeholder="Город|цена|лимит"
+                    />
+                  </div>
+                  {/* Ставка CPC */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.cpcBid }}>
+                    <InlineCell
+                      value={params.cpcBid || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "cpcBid", val)}
+                      placeholder="—"
+                      type="number"
+                    />
+                  </div>
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.address }}>
                     <InlineCell
                       value={params.address || ""}
                       onChange={(val) => handleInlineParamUpdate(fp.product_id, "address", val)}
                       placeholder={localDefaults.address || "Адрес"}
+                    />
+                  </div>
+                  {/* Номер объявления на Авито */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.avitoNumber }}>
+                    <InlineCell
+                      value={params.avitoNumber || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "avitoNumber", val)}
+                      placeholder="—"
+                    />
+                  </div>
+                  {/* Контактное лицо */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.managerName }}>
+                    <InlineCell
+                      value={params.managerName || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "managerName", val)}
+                      placeholder={localDefaults.managerName || "—"}
+                    />
+                  </div>
+                  {/* Телефон */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.contactPhone }}>
+                    <InlineCell
+                      value={params.contactPhone || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "contactPhone", val)}
+                      placeholder={localDefaults.contactPhone || "—"}
+                    />
+                  </div>
+                  {/* Почта */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.email }}>
+                    <InlineCell
+                      value={params.email || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "email", val)}
+                      placeholder={localDefaults.email || "—"}
+                    />
+                  </div>
+                  {/* Компания */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.companyName }}>
+                    <InlineCell
+                      value={params.companyName || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "companyName", val)}
+                      placeholder={localDefaults.companyName || "—"}
                     />
                   </div>
                   <div className="flex-shrink-0 px-2 pt-2.5 text-muted-foreground" style={{ width: colWidths.imgs }}>
