@@ -65,6 +65,7 @@ interface AvitoAccount {
 interface AvitoSectionProps {
   storeId: string | null;
   products?: Product[];
+  storeCategories?: StoreCategory[];
   avitoFeed?: {
     feedProducts: AvitoFeedProduct[];
     feedProductIds: Set<string>;
