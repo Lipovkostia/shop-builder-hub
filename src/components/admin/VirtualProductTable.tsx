@@ -477,6 +477,12 @@ export function VirtualProductTable({
               <ResizeHandle col="sync" />
             </div>
           )}
+          {visibleColumns.msPrices && (
+            <div className="flex-shrink-0 text-xs font-medium text-muted-foreground relative" style={{ width: widths.msPrices }}>
+              МС цены
+              <ResizeHandle col="msPrices" />
+            </div>
+          )}
         </div>
       </div>
 

@@ -20,6 +20,7 @@ const DEFAULT_WIDTHS: ColumnWidthConfig = {
   msProduct: 100,
   msAccount: 100,
   sync: 48,
+  msPrices: 160,
 };
 
 const MIN_WIDTH = 40;

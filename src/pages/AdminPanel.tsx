@@ -753,6 +753,7 @@ export default function AdminPanel({
         syncedMoyskladImages: sp.synced_moysklad_images || [],
         status: sp.is_active ? "in_stock" as const : "hidden" as const,
         isFixedPrice: sp.is_fixed_price || false,
+        moyskladPrices: sp.moysklad_prices || null,
       }));
   }, [supabaseProducts]);
   
@@ -954,6 +955,7 @@ export default function AdminPanel({
     groups: true,
     catalogs: true,
     sync: true,
+    msPrices: false,
   });
 
   const columnLabels: Record<string, string> = {
@@ -971,6 +973,7 @@ export default function AdminPanel({
     groups: "Группа",
     catalogs: "Прайс-листы",
     sync: "Синхр.",
+    msPrices: "МС цены",
   };
 
   const toggleColumnVisibility = (columnId: string) => {
@@ -1489,7 +1492,8 @@ export default function AdminPanel({
           quantity: msProduct.quantity || msProduct.stock || 0,
           auto_sync: true,
           is_active: true,
-        });
+          ...(msProduct.salePrices?.length ? { moysklad_prices: Object.fromEntries(msProduct.salePrices.map(sp => [sp.name, sp.value])) } : {}),
+        } as any);
         
         toast({
           title: "Товар обновлён",
@@ -1517,7 +1521,8 @@ export default function AdminPanel({
           moysklad_account_id: currentAccount.id,
           auto_sync: true,
           is_active: true,
-        });
+          ...(msProduct.salePrices?.length ? { moysklad_prices: Object.fromEntries(msProduct.salePrices.map(sp => [sp.name, sp.value])) } : {}),
+        } as any);
         
         toast({
           title: "Товар импортирован",
@@ -1643,6 +1648,11 @@ export default function AdminPanel({
               }
               if (mapping.unit && msProduct.uom) {
                 updates.unit = msProduct.uom;
+              }
+              
+              // Always sync all price types
+              if (msProduct.salePrices?.length) {
+                (updates as any).moysklad_prices = Object.fromEntries(msProduct.salePrices.map(sp => [sp.name, sp.value]));
               }
               
               // Only update if there are changes
@@ -3150,6 +3160,7 @@ export default function AdminPanel({
       syncedMoyskladImages: sp.synced_moysklad_images || [],
       status: sp.is_active ? "in_stock" as const : "hidden" as const,
       isFixedPrice: sp.is_fixed_price || false,
+      moyskladPrices: sp.moysklad_prices || null,
     })) as Product[];
   }, [supabaseProducts, accounts]);
 

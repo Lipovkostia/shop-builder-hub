@@ -65,6 +65,7 @@ export interface Product {
   categories?: string[];          // Категории товара (массив ID категорий)
   syncedMoyskladImages?: string[]; // URL изображений из МойСклад которые были синхронизированы
   isFixedPrice?: boolean;           // Фиксированная цена (игнорировать наценку)
+  moyskladPrices?: Record<string, number> | null; // All price types from MoySklad
 }
 
 // Категория товара
@@ -84,6 +85,11 @@ export interface MoySkladImageInfo {
   isSelected?: boolean;
 }
 
+export interface MoySkladSalePrice {
+  name: string;
+  value: number;
+}
+
 export interface MoySkladProduct {
   id: string;
   name: string;
@@ -92,6 +98,7 @@ export interface MoySkladProduct {
   article: string;
   price: number;
   buyPrice: number;
+  salePrices?: MoySkladSalePrice[];
   quantity: number;
   stock: number;
   productType: string;
