@@ -696,16 +696,16 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
                   <Download className="h-4 w-4 text-primary" />
                   <span className="font-medium text-sm">Экспорт для Авито</span>
                 </div>
-                <Button size="sm" onClick={handleExportExcel}>
-                  <Download className="h-3.5 w-3.5 mr-1" />
-                  Скачать Excel
+                <Button size="sm" onClick={handleExportExcel} disabled={exporting}>
+                  {exporting ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+                  {exporting ? "Подготовка ZIP..." : "Скачать ZIP с фото"}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Скачайте файл и загрузите его на{" "}
+                Скачайте ZIP-архив (Excel + фотографии) и загрузите его целиком на{" "}
                 <a href="https://www.avito.ru/autoload/settings" target="_blank" rel="noopener noreferrer" className="text-primary underline">
                   Авито → Автозагрузка
-                </a>{" "}(способ «Вручную»). Также доступна ссылка на XML-фид:
+                </a>{" "}(способ «Загрузка файлом»). Также доступна ссылка на XML-фид:
               </p>
               <div className="flex items-center gap-2">
                 <Input
