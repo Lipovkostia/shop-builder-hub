@@ -90,9 +90,9 @@ serve(async (req) => {
           description: item.description || '',
           code: item.code || '',
           article: item.article || '',
-          price: item.salePrices?.[0]?.value ? item.salePrices[0].value / 100 : 0, // Convert from kopeks
+          price: item.salePrices?.[0]?.value ? item.salePrices[0].value / 100 : 0,
           buyPrice: item.buyPrice?.value ? item.buyPrice.value / 100 : 0,
-          salePrices, // All price types from MoySklad
+          salePrices,
           quantity: item.quantity || 0,
           stock: item.stock || 0,
           productType: item.meta?.type || 'product',
@@ -103,6 +103,11 @@ serve(async (req) => {
           weight: item.weight || 0,
           volume: item.volume || 0,
           archived: item.archived || false,
+          // Product folder (group) info
+          productFolderId: item.productFolder?.meta?.href
+            ? item.productFolder.meta.href.split('/').pop()
+            : null,
+          productFolderName: item.pathName || null,
         };
       }) || [];
 
