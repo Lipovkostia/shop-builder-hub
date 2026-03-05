@@ -875,6 +875,150 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     }
   };
 
+  // === EXCEL EXPORT (Excel only, no images) ===
+  const [exportingExcel, setExportingExcel] = useState(false);
+
+  const handleExportExcelOnly = async () => {
+    if (!avitoFeed || avitoFeed.feedProducts.length === 0) {
+      toast({ title: "Нет товаров для экспорта", variant: "destructive" });
+      return;
+    }
+
+    setExportingExcel(true);
+    try {
+      const d = localDefaults;
+      const categoryLine = `Для дома и дачи - ${d.category} - ${d.goodsSubType}`;
+
+      const row1 = [categoryLine, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""];
+      const row2 = [
+        "Уникальный идентификатор объявления", "Способ размещения", "Номер объявления на Авито",
+        "Контактное лицо", "Номер телефона", "Название объявления", "Описание объявления",
+        "Ссылки на фото", "Названия фото", "Способ связи", "Цена", "Категория",
+        "Вид объявления", "Вид товара", "Целевая аудитория", "Включая НДС", "Адрес",
+        "AvitoStatus", "Почта", "Название компании", "AvitoDateEnd",
+        "Promo", "PromoManualOptions", "PromoAutoOptions",
+      ];
+      const row3 = [
+        "Обязательный", "Необязательный", "Необязательный", "Необязательный", "Необязательный",
+        "Обязательный", "Обязательный", "Необязательный", "Обязательный", "Необязательный",
+        "Необязательный", "Обязательный", "Обязательный", "Обязательный", "Необязательный",
+        "Необязательный", "Обязательный", "", "", "", "",
+        "Необязательный", "Необязательный", "Необязательный",
+      ];
+      const row4 = [
+        "Текст", "Одно значение из выпадающего списка в ячейке", "Текст",
+        "Текст", "Текст", "Текст до 50 символов", "Текст",
+        "Ссылки через |", "Имена через |", "Одно значение из выпадающего списка в ячейке",
+        "Целое число", "Одно значение из выпадающего списка в ячейке",
+        "Одно значение из выпадающего списка в ячейке", "Одно значение из выпадающего списка в ячейке",
+        "Одно значение из выпадающего списка в ячейке", "Одно значение из выпадающего списка в ячейке",
+        "Текст", "", "", "", "",
+        "Одно значение из выпадающего списка в ячейке", "Текст", "Текст",
+      ];
+
+      const productRows: any[][] = [];
+
+      for (const fp of avitoFeed.feedProducts) {
+        const product = storeProducts.find(p => p.id === fp.product_id);
+        if (!product) continue;
+
+        const params = fp.avito_params || {};
+        const title = (params.title || product.name || "").substring(0, 50);
+        const description = params.description || product.description || product.name || "";
+        const price = params.price || product.pricePerUnit || 0;
+
+        productRows.push([
+          params.avitoId || product.id.substring(0, 10),
+          params.listingFee || d.listingFee,
+          params.avitoNumber || "",
+          params.managerName || d.managerName,
+          params.contactPhone || d.contactPhone,
+          title, description,
+          "", // Ссылки на фото
+          "", // Названия фото
+          params.contactMethod || d.contactMethod,
+          Math.round(price),
+          params.category || d.category,
+          params.goodsType || d.goodsType,
+          params.goodsSubType || d.goodsSubType,
+          params.targetAudience || d.targetAudience,
+          params.includeVAT || "",
+          params.address || d.address,
+          params.avitoStatus || "Активно",
+          params.email || d.email,
+          params.companyName || d.companyName,
+          params.dateEnd || "",
+          // Promo columns
+          (() => {
+            const promo = params.promo || d.promo || "";
+            return promo;
+          })(),
+          (() => {
+            const promo = params.promo || d.promo || "";
+            if (promo === "Manual") {
+              const region = params.promoRegion || d.promoRegion || "";
+              const promoPrice = params.promoPrice || d.promoPrice || "";
+              const limit = params.promoLimit || d.promoLimit || "";
+              return [region, promoPrice, limit].filter(Boolean).join(", ");
+            }
+            return "";
+          })(),
+          (() => {
+            const promo = params.promo || d.promo || "";
+            if (promo && promo.startsWith("Auto")) {
+              const region = params.promoRegion || d.promoRegion || "";
+              const budget = params.promoBudget || d.promoBudget || "";
+              return [region, budget].filter(Boolean).join(", ");
+            }
+            return "";
+          })(),
+        ]);
+      }
+
+      const wsData = [row1, row2, row3, row4, ...productRows];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = [
+        { wch: 30 }, { wch: 18 }, { wch: 22 }, { wch: 18 }, { wch: 16 },
+        { wch: 50 }, { wch: 60 }, { wch: 60 }, { wch: 30 }, { wch: 28 },
+        { wch: 10 }, { wch: 20 }, { wch: 25 }, { wch: 28 }, { wch: 25 },
+        { wch: 14 }, { wch: 40 }, { wch: 14 }, { wch: 25 }, { wch: 22 }, { wch: 25 },
+        { wch: 12 }, { wch: 30 }, { wch: 30 },
+      ];
+      for (let r = 4; r < wsData.length; r++) {
+        const cellRef = XLSX.utils.encode_cell({ r, c: 6 });
+        if (ws[cellRef]) {
+          if (!ws[cellRef].s) ws[cellRef].s = {};
+          ws[cellRef].s.alignment = { wrapText: true, vertical: "top" };
+        }
+      }
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, (d.goodsSubType || "Товары").substring(0, 31));
+      const instrWs = XLSX.utils.aoa_to_sheet([
+        ["Инструкция"],
+        ["Этот файл создан для автозагрузки на Авито."],
+        ["Это только таблица данных — фото не включены."],
+        ["Загрузите его в разделе Автозагрузка → Загрузка файлом на avito.ru"],
+        [""], ["Строки 1-4 — служебные, не изменяйте их."], ["Данные о товарах начинаются с 5 строки."],
+      ]);
+      XLSX.utils.book_append_sheet(wb, instrWs, "Инструкция");
+
+      const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const url = URL.createObjectURL(new Blob([new Uint8Array(excelBuffer)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `avito_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast({ title: `Экспортировано ${productRows.length} товар(ов) в Excel` });
+    } catch (err: any) {
+      console.error("Export error:", err);
+      toast({ title: "Ошибка экспорта", description: err.message, variant: "destructive" });
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   const filteredItems = items.filter((item) =>
     !searchQuery || item.title?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -1091,19 +1235,25 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             </Card>
           </Collapsible>
 
-          {/* Export & Feed URL */}
-          {avitoFeed && avitoFeed.feedProducts.length > 0 && storeId && (
-            <Card className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Download className="h-4 w-4 text-primary" />
-                  <span className="font-medium text-sm">Экспорт для Авито</span>
-                </div>
-                <Button size="sm" onClick={handleExportExcel} disabled={exporting}>
-                  {exporting ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
-                  {exporting ? "Подготовка ZIP..." : "Скачать ZIP с фото"}
-                </Button>
-              </div>
+           {/* Export & Feed URL */}
+           {avitoFeed && avitoFeed.feedProducts.length > 0 && storeId && (
+             <Card className="p-4 space-y-3">
+               <div className="flex items-center justify-between flex-wrap gap-3">
+                 <div className="flex items-center gap-2">
+                   <Download className="h-4 w-4 text-primary" />
+                   <span className="font-medium text-sm">Экспорт для Авито</span>
+                 </div>
+                 <div className="flex items-center gap-2 flex-wrap">
+                   <Button size="sm" onClick={handleExportExcelOnly} disabled={exportingExcel}>
+                     {exportingExcel ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+                     {exportingExcel ? "Подготовка..." : "Скачать Excel"}
+                   </Button>
+                   <Button size="sm" onClick={handleExportExcel} disabled={exporting}>
+                     {exporting ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+                     {exporting ? "Подготовка ZIP..." : "Скачать ZIP с фото"}
+                   </Button>
+                 </div>
+               </div>
               <p className="text-xs text-muted-foreground">
                 Скачайте ZIP-архив (Excel + фотографии) и загрузите его целиком на{" "}
                 <a href="https://www.avito.ru/autoload/settings" target="_blank" rel="noopener noreferrer" className="text-primary underline">
