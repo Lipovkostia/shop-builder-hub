@@ -239,6 +239,8 @@ export function VirtualProductTable({
   aiGeneratingProductId,
   moyskladLogin,
   moyskladPassword,
+  avitoFeedProductIds,
+  onToggleAvitoFeed,
 }: VirtualProductTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const { widths, onResizeStart } = useColumnWidths("assortment");
@@ -485,6 +487,12 @@ export function VirtualProductTable({
               <ResizeHandle col="msPrices" />
             </div>
           )}
+          {visibleColumns.avito && (
+            <div className="flex-shrink-0 text-xs font-medium text-muted-foreground relative text-center" style={{ width: widths.avito }}>
+              Авито
+              <ResizeHandle col="avito" />
+            </div>
+          )}
         </div>
       </div>
 
@@ -559,6 +567,8 @@ export function VirtualProductTable({
                   columnWidths={widths}
                   moyskladLogin={moyskladLogin}
                   moyskladPassword={moyskladPassword}
+                  isInAvitoFeed={avitoFeedProductIds?.has(product.id) || false}
+                  onToggleAvitoFeed={onToggleAvitoFeed}
                 />
               </div>
             );
