@@ -70,6 +70,16 @@ interface AvitoAccount {
 
 interface AvitoSectionProps {
   storeId: string | null;
+  products?: Product[];
+  avitoFeed?: {
+    feedProducts: AvitoFeedProduct[];
+    feedProductIds: Set<string>;
+    loading: boolean;
+    addProductsToFeed: (productIds: string[]) => Promise<boolean>;
+    removeProductFromFeed: (productId: string) => Promise<void>;
+    removeProductsFromFeed: (productIds: string[]) => Promise<void>;
+    refetch: () => Promise<void>;
+  };
 }
 
 export function AvitoSection({ storeId }: AvitoSectionProps) {
