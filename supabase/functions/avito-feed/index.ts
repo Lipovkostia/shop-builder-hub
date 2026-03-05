@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
       // Additional params from avito_params
       if (fp.avito_params && typeof fp.avito_params === 'object') {
         for (const [key, value] of Object.entries(fp.avito_params)) {
-          if (value) {
+          if (value && key !== 'Price') {
             ads += `    <${escapeXml(key)}>${escapeXml(String(value))}</${escapeXml(key)}>\n`;
           }
         }
