@@ -1434,7 +1434,7 @@ export default function AdminPanel({
     }
     
     // Create new category
-    const created = await createStoreCategory(leafName);
+    const created = await createCategory(leafName);
     if (created) {
       msfolderCategoryCache.current[leafName] = created.id;
       
