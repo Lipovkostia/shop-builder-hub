@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
         'goodsType', 'goodsSubType', 'targetAudience', 'includeVAT',
         'adType', 'AdType', 'GoodsType',
         'promo', 'promoRegion', 'promoBudget', 'promoPrice', 'promoLimit',
-        'cpcBid',
+        'cpcBid', 'CompanyName', 'Email', 'AvitoId', 'ManagerName', 'ContactPhone',
       ]);
       for (const [key, value] of Object.entries(params)) {
         if (value && !skipKeys.has(key)) {
