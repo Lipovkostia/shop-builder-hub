@@ -330,75 +330,227 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
         </div>
       </Card>
 
-      {/* Items section */}
-      {isConnected && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Package className="h-4 w-4 text-primary" />
-              <span className="font-medium text-sm">
-                Активные объявления
-                {items.length > 0 && (
-                  <span className="text-muted-foreground ml-1">({filteredItems.length})</span>
-                )}
-              </span>
-            </div>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="feed">Товары для Авито ({avitoFeed?.feedProducts.length || 0})</TabsTrigger>
+          {isConnected && <TabsTrigger value="active">Активные объявления</TabsTrigger>}
+        </TabsList>
 
-            <div className="flex items-center gap-2">
-              {items.length > 0 && (
-                <div className="relative">
-                  <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Поиск..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-8 text-xs pl-8 w-48"
-                  />
-                </div>
-              )}
-              <Button size="sm" variant="outline" onClick={handleFetchItems} disabled={fetching}>
-                {fetching ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
-                )}
-                Загрузить объявления
-              </Button>
-            </div>
-          </div>
-
-          {account.last_sync && (
-            <p className="text-xs text-muted-foreground">
-              Последняя синхронизация: {new Date(account.last_sync).toLocaleString("ru")}
-            </p>
+        {/* Feed Products Tab */}
+        <TabsContent value="feed" className="space-y-3">
+          {/* Feed URL */}
+          {avitoFeed && avitoFeed.feedProducts.length > 0 && storeId && (
+            <Card className="p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Link2 className="h-4 w-4 text-primary" />
+                <span className="font-medium text-sm">Ссылка на XML-фид для автозагрузки</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  readOnly
+                  value={`https://${projectId}.supabase.co/functions/v1/avito-feed?store_id=${storeId}`}
+                  className="h-8 text-xs font-mono"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`https://${projectId}.supabase.co/functions/v1/avito-feed?store_id=${storeId}`);
+                    toast({ title: "Ссылка скопирована" });
+                  }}
+                >
+                  Копировать
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Вставьте эту ссылку в настройки автозагрузки Авито (Работа с объявлениями → Автозагрузка → Загрузка по ссылке)
+              </p>
+            </Card>
           )}
 
-          {items.length > 0 ? (
-            <div className="border rounded-lg overflow-hidden">
-              <ScrollArea className="w-full">
-                <div className="min-w-[1100px]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="text-xs">
-                        <TableHead className="w-10 px-2">№</TableHead>
-                        <TableHead className="w-14 px-2">Фото</TableHead>
-                        <TableHead className="min-w-[200px] px-2">Название</TableHead>
-                        <TableHead className="w-24 px-2 text-right">Цена</TableHead>
-                        <TableHead className="w-32 px-2">Категория</TableHead>
-                        <TableHead className="w-40 px-2">Адрес</TableHead>
-                        <TableHead className="w-20 px-2 text-center">Фото</TableHead>
-                        <TableHead className="w-24 px-2">Статус</TableHead>
-                        <TableHead className="w-24 px-2">Создано</TableHead>
-                        <TableHead className="w-16 px-2 text-center">ID</TableHead>
-                        <TableHead className="w-10 px-2"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredItems.map((item, index) => {
-                        const imageUrl = item.images?.[0]?.["640x480"] || item.images?.[0]?.url || item.images?.[0]?.main?.url || null;
-                        const isExpanded = expandedItemId === item.id;
-                        return (
-                          <>
+          {/* Feed Products Table */}
+          {avitoFeed && avitoFeed.feedProducts.length > 0 ? (
+            <>
+              {selectedFeedProducts.size > 0 && (
+                <div className="sticky top-0 z-10 bg-destructive/10 border border-destructive/20 rounded-lg p-2 flex items-center justify-between">
+                  <span className="text-sm font-medium">Выбрано: {selectedFeedProducts.size}</span>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={async () => {
+                        await avitoFeed.removeProductsFromFeed(Array.from(selectedFeedProducts));
+                        setSelectedFeedProducts(new Set());
+                      }}
+                    >
+                      <X className="h-3.5 w-3.5 mr-1" />
+                      Убрать из фида
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedFeedProducts(new Set())}>
+                      Сбросить
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="text-xs">
+                      <TableHead className="w-10 px-2">
+                        <Checkbox
+                          checked={selectedFeedProducts.size === avitoFeed.feedProducts.length && avitoFeed.feedProducts.length > 0}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedFeedProducts(new Set(avitoFeed.feedProducts.map(fp => fp.product_id)));
+                            } else {
+                              setSelectedFeedProducts(new Set());
+                            }
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead className="w-14 px-2">Фото</TableHead>
+                      <TableHead className="min-w-[200px] px-2">Название</TableHead>
+                      <TableHead className="w-24 px-2 text-right">Цена</TableHead>
+                      <TableHead className="w-32 px-2">Описание</TableHead>
+                      <TableHead className="w-24 px-2">Добавлено</TableHead>
+                      <TableHead className="w-10 px-2"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {avitoFeed.feedProducts.map((fp) => {
+                      const product = storeProducts.find(p => p.id === fp.product_id);
+                      if (!product) return null;
+                      const imageUrl = product.images?.[0] || product.image;
+                      return (
+                        <TableRow key={fp.id} className="text-xs">
+                          <TableCell className="px-2">
+                            <Checkbox
+                              checked={selectedFeedProducts.has(fp.product_id)}
+                              onCheckedChange={() => {
+                                setSelectedFeedProducts(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(fp.product_id)) next.delete(fp.product_id);
+                                  else next.add(fp.product_id);
+                                  return next;
+                                });
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell className="px-2">
+                            {imageUrl ? (
+                              <img src={imageUrl} alt="" className="w-10 h-10 rounded object-cover" />
+                            ) : (
+                              <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                                <Package className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="px-2 font-medium">{product.name}</TableCell>
+                          <TableCell className="px-2 text-right">{formatPrice(product.pricePerUnit)}</TableCell>
+                          <TableCell className="px-2 text-muted-foreground line-clamp-2">{product.description || "—"}</TableCell>
+                          <TableCell className="px-2 text-muted-foreground">
+                            {new Date(fp.created_at).toLocaleDateString("ru")}
+                          </TableCell>
+                          <TableCell className="px-2">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={() => avitoFeed.removeProductFromFeed(fp.product_id)}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          ) : (
+            <Card className="p-8 text-center">
+              <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground mb-1">
+                Нет товаров для размещения на Авито
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Перейдите в раздел «Ассортимент», выберите товары и нажмите «В Авито»
+              </p>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Active Items Tab */}
+        {isConnected && (
+          <TabsContent value="active" className="space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-primary" />
+                <span className="font-medium text-sm">
+                  Активные объявления
+                  {items.length > 0 && (
+                    <span className="text-muted-foreground ml-1">({filteredItems.length})</span>
+                  )}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {items.length > 0 && (
+                  <div className="relative">
+                    <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Поиск..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="h-8 text-xs pl-8 w-48"
+                    />
+                  </div>
+                )}
+                <Button size="sm" variant="outline" onClick={handleFetchItems} disabled={fetching}>
+                  {fetching ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                  Загрузить объявления
+                </Button>
+              </div>
+            </div>
+
+            {account?.last_sync && (
+              <p className="text-xs text-muted-foreground">
+                Последняя синхронизация: {new Date(account.last_sync).toLocaleString("ru")}
+              </p>
+            )}
+
+            {items.length > 0 ? (
+              <div className="border rounded-lg overflow-hidden">
+                <ScrollArea className="w-full">
+                  <div className="min-w-[1100px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="text-xs">
+                          <TableHead className="w-10 px-2">№</TableHead>
+                          <TableHead className="w-14 px-2">Фото</TableHead>
+                          <TableHead className="min-w-[200px] px-2">Название</TableHead>
+                          <TableHead className="w-24 px-2 text-right">Цена</TableHead>
+                          <TableHead className="w-32 px-2">Категория</TableHead>
+                          <TableHead className="w-40 px-2">Адрес</TableHead>
+                          <TableHead className="w-20 px-2 text-center">Фото</TableHead>
+                          <TableHead className="w-24 px-2">Статус</TableHead>
+                          <TableHead className="w-24 px-2">Создано</TableHead>
+                          <TableHead className="w-16 px-2 text-center">ID</TableHead>
+                          <TableHead className="w-10 px-2"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredItems.map((item, index) => {
+                          const imageUrl = item.images?.[0]?.["640x480"] || item.images?.[0]?.url || item.images?.[0]?.main?.url || null;
+                          return (
                             <TableRow
                               key={item.id}
                               className="cursor-pointer hover:bg-muted/50"
@@ -407,11 +559,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
                               <TableCell className="px-2 text-xs text-muted-foreground">{index + 1}</TableCell>
                               <TableCell className="px-2">
                                 {imageUrl ? (
-                                  <img
-                                    src={imageUrl}
-                                    alt=""
-                                    className="w-10 h-10 rounded object-cover"
-                                  />
+                                  <img src={imageUrl} alt="" className="w-10 h-10 rounded object-cover" />
                                 ) : (
                                   <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
                                     <Package className="h-4 w-4 text-muted-foreground" />
@@ -419,22 +567,16 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
                                 )}
                               </TableCell>
                               <TableCell className="px-2">
-                                <div className="font-medium text-xs leading-tight line-clamp-2">
-                                  {item.title}
-                                </div>
+                                <div className="font-medium text-xs leading-tight line-clamp-2">{item.title}</div>
                               </TableCell>
                               <TableCell className="px-2 text-right font-medium text-xs">
                                 {formatPrice(item.price)}
                               </TableCell>
                               <TableCell className="px-2">
-                                <span className="text-xs text-muted-foreground line-clamp-1">
-                                  {item.category?.name || "—"}
-                                </span>
+                                <span className="text-xs text-muted-foreground line-clamp-1">{item.category?.name || "—"}</span>
                               </TableCell>
                               <TableCell className="px-2">
-                                <span className="text-xs text-muted-foreground line-clamp-1">
-                                  {getAddress(item)}
-                                </span>
+                                <span className="text-xs text-muted-foreground line-clamp-1">{getAddress(item)}</span>
                               </TableCell>
                               <TableCell className="px-2 text-center">
                                 <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
@@ -453,9 +595,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
                               <TableCell className="px-2 text-xs text-muted-foreground">
                                 {formatDate(item.created)}
                               </TableCell>
-                              <TableCell className="px-2 text-xs text-muted-foreground text-center">
-                                {item.id}
-                              </TableCell>
+                              <TableCell className="px-2 text-xs text-muted-foreground text-center">{item.id}</TableCell>
                               <TableCell className="px-2">
                                 {item.url && (
                                   <a
@@ -469,24 +609,24 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
                                 )}
                               </TableCell>
                             </TableRow>
-                          </>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </ScrollArea>
-            </div>
-          ) : (
-            <Card className="p-8 text-center">
-              <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Нажмите «Загрузить объявления», чтобы импортировать активные объявления с Авито
-              </p>
-            </Card>
-          )}
-        </div>
-      )}
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </ScrollArea>
+              </div>
+            ) : (
+              <Card className="p-8 text-center">
+                <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Нажмите «Загрузить объявления», чтобы импортировать активные объявления с Авито
+                </p>
+              </Card>
+            )}
+          </TabsContent>
+        )}
+      </Tabs>
 
       {/* Item Detail Dialog */}
       <Dialog open={!!detailDialogItem} onOpenChange={(open) => !open && setDetailDialogItem(null)}>
