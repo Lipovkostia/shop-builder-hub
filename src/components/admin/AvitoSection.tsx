@@ -150,7 +150,7 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 }
 // Avito Feed Table with resizable columns
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
-const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, cpcBid: 80, address: 120, imgs: 50, actions: 60 };
+const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, cpcBid: 80, address: 120, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
 
 function AvitoFeedTable({
   feedProducts, storeProducts, storeCategories, selectedFeedProducts, setSelectedFeedProducts,
@@ -248,8 +248,14 @@ function AvitoFeedTable({
     { key: "adType", label: "Вид объявления", resizable: true },
     { key: "goodsType", label: "Вид товара", resizable: true },
     { key: "promo", label: "Promo", resizable: true },
+    { key: "promoManual", label: "PromoManual", resizable: true },
     { key: "cpcBid", label: "Ставка CPC", resizable: true },
     { key: "address", label: "Адрес", resizable: true },
+    { key: "avitoNumber", label: "№ на Авито", resizable: true },
+    { key: "managerName", label: "Контактное лицо", resizable: true },
+    { key: "contactPhone", label: "Телефон", resizable: true },
+    { key: "email", label: "Почта", resizable: true },
+    { key: "companyName", label: "Компания", resizable: true },
     { key: "imgs", label: "📷", resizable: false },
     { key: "actions", label: "", resizable: false },
   ];
@@ -404,11 +410,79 @@ function AvitoFeedTable({
                       type="number"
                     />
                   </div>
+                  {/* PromoManualOptions - Город|цена|лимит */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.promoManual }}>
+                    <InlineCell
+                      value={(() => {
+                        const region = params.promoRegion || "";
+                        const price = params.promoPrice || "";
+                        const limit = params.promoLimit || "";
+                        if (region || price || limit) return [region, price, limit].filter(Boolean).join("|");
+                        return "";
+                      })()}
+                      onChange={(val) => {
+                        const parts = val.split("|").map(s => s.trim());
+                        handleInlineParamUpdate(fp.product_id, "promoRegion", parts[0] || "");
+                        handleInlineParamUpdate(fp.product_id, "promoPrice", parts[1] || "");
+                        handleInlineParamUpdate(fp.product_id, "promoLimit", parts[2] || "");
+                      }}
+                      placeholder="Город|цена|лимит"
+                    />
+                  </div>
+                  {/* Ставка CPC */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.cpcBid }}>
+                    <InlineCell
+                      value={params.cpcBid || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "cpcBid", val)}
+                      placeholder="—"
+                      type="number"
+                    />
+                  </div>
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.address }}>
                     <InlineCell
                       value={params.address || ""}
                       onChange={(val) => handleInlineParamUpdate(fp.product_id, "address", val)}
                       placeholder={localDefaults.address || "Адрес"}
+                    />
+                  </div>
+                  {/* Номер объявления на Авито */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.avitoNumber }}>
+                    <InlineCell
+                      value={params.avitoNumber || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "avitoNumber", val)}
+                      placeholder="—"
+                    />
+                  </div>
+                  {/* Контактное лицо */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.managerName }}>
+                    <InlineCell
+                      value={params.managerName || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "managerName", val)}
+                      placeholder={localDefaults.managerName || "—"}
+                    />
+                  </div>
+                  {/* Телефон */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.contactPhone }}>
+                    <InlineCell
+                      value={params.contactPhone || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "contactPhone", val)}
+                      placeholder={localDefaults.contactPhone || "—"}
+                    />
+                  </div>
+                  {/* Почта */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.email }}>
+                    <InlineCell
+                      value={params.email || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "email", val)}
+                      placeholder={localDefaults.email || "—"}
+                    />
+                  </div>
+                  {/* Компания */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.companyName }}>
+                    <InlineCell
+                      value={params.companyName || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "companyName", val)}
+                      placeholder={localDefaults.companyName || "—"}
                     />
                   </div>
                   <div className="flex-shrink-0 px-2 pt-2.5 text-muted-foreground" style={{ width: colWidths.imgs }}>

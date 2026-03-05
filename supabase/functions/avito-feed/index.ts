@@ -89,6 +89,10 @@ Deno.serve(async (req) => {
       const contactMethod = escapeXml(params.contactMethod || defaultContactMethod);
       const contactPhone = escapeXml(params.contactPhone || defaultContactPhone);
       const managerName = escapeXml(params.managerName || defaultManagerName);
+      const email = escapeXml(params.email || defaultEmail);
+      const companyName = escapeXml(params.companyName || defaultCompanyName);
+      const avitoNumber = params.avitoNumber || '';
+      const avitoStatus = params.avitoStatus || '';
 
       let imagesXml = "";
       if (images.length > 0) {
@@ -122,6 +126,15 @@ Deno.serve(async (req) => {
       if (managerName) {
         ads += `    <ManagerName>${managerName}</ManagerName>\n`;
       }
+      if (email) {
+        ads += `    <Email>${email}</Email>\n`;
+      }
+      if (companyName) {
+        ads += `    <CompanyName>${companyName}</CompanyName>\n`;
+      }
+      if (avitoNumber) {
+        ads += `    <AvitoId>${escapeXml(avitoNumber)}</AvitoId>\n`;
+      }
       // Promo settings
       const promo = params.promo || '';
       if (promo) {
@@ -148,7 +161,7 @@ Deno.serve(async (req) => {
         'goodsType', 'goodsSubType', 'targetAudience', 'includeVAT',
         'adType', 'AdType', 'GoodsType',
         'promo', 'promoRegion', 'promoBudget', 'promoPrice', 'promoLimit',
-        'cpcBid',
+        'cpcBid', 'CompanyName', 'Email', 'AvitoId', 'ManagerName', 'ContactPhone',
       ]);
       for (const [key, value] of Object.entries(params)) {
         if (value && !skipKeys.has(key)) {
