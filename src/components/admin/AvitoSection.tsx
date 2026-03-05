@@ -146,8 +146,199 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
     />
   );
 }
+// Avito Feed Table with resizable columns
+const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
+const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 320, price: 80, address: 120, imgs: 50, actions: 60 };
 
-export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed }: AvitoSectionProps) {
+function AvitoFeedTable({
+  feedProducts, storeProducts, selectedFeedProducts, setSelectedFeedProducts,
+  aiGeneratingIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
+}: {
+  feedProducts: AvitoFeedProduct[];
+  storeProducts: Product[];
+  selectedFeedProducts: Set<string>;
+  setSelectedFeedProducts: React.Dispatch<React.SetStateAction<Set<string>>>;
+  aiGeneratingIds: Set<string>;
+  localDefaults: AvitoDefaults;
+  handleInlineParamUpdate: (productId: string, key: string, value: string) => void;
+  openAiForProducts: (ids: string[], mode?: string) => void;
+  removeProductFromFeed: (id: string) => Promise<void>;
+}) {
+  const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem(AVITO_COL_STORAGE_KEY);
+      return saved ? { ...DEFAULT_COL_WIDTHS, ...JSON.parse(saved) } : { ...DEFAULT_COL_WIDTHS };
+    } catch { return { ...DEFAULT_COL_WIDTHS }; }
+  });
+  const resizingRef = useRef<{ col: string; startX: number; startW: number } | null>(null);
+
+  const onMouseDown = (col: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    resizingRef.current = { col, startX: e.clientX, startW: colWidths[col] };
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!resizingRef.current) return;
+      const delta = ev.clientX - resizingRef.current.startX;
+      const newW = Math.max(30, resizingRef.current.startW + delta);
+      setColWidths((prev) => {
+        const next = { ...prev, [resizingRef.current!.col]: newW };
+        localStorage.setItem(AVITO_COL_STORAGE_KEY, JSON.stringify(next));
+        return next;
+      });
+    };
+    const onMouseUp = () => {
+      resizingRef.current = null;
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
+
+  const ResizeHandle = ({ col }: { col: string }) => (
+    <div
+      className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/30 z-10"
+      onMouseDown={(e) => onMouseDown(col, e)}
+    />
+  );
+
+  const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
+
+  const cols = [
+    { key: "check", label: "", resizable: false },
+    { key: "photo", label: "Фото", resizable: false },
+    { key: "title", label: "Название", resizable: true },
+    { key: "desc", label: "Описание", resizable: true },
+    { key: "price", label: "Цена", resizable: true },
+    { key: "address", label: "Адрес", resizable: true },
+    { key: "imgs", label: "📷", resizable: false },
+    { key: "actions", label: "", resizable: false },
+  ];
+
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <div className="overflow-x-auto">
+        <div style={{ minWidth: totalWidth }}>
+          {/* Header */}
+          <div className="flex bg-muted/50 border-b text-xs font-medium text-muted-foreground select-none">
+            {cols.map((col) => (
+              <div
+                key={col.key}
+                className="relative px-2 py-2 flex-shrink-0 truncate"
+                style={{ width: colWidths[col.key] }}
+              >
+                {col.key === "check" ? (
+                  <Checkbox
+                    checked={selectedFeedProducts.size === feedProducts.length && feedProducts.length > 0}
+                    onCheckedChange={(checked) => {
+                      if (checked) setSelectedFeedProducts(new Set(feedProducts.map(fp => fp.product_id)));
+                      else setSelectedFeedProducts(new Set());
+                    }}
+                  />
+                ) : col.label}
+                {col.resizable && <ResizeHandle col={col.key} />}
+              </div>
+            ))}
+          </div>
+          {/* Body */}
+          <div>
+            {feedProducts.map((fp) => {
+              const product = storeProducts.find(p => p.id === fp.product_id);
+              if (!product) return null;
+              const imageUrl = product.images?.[0] || product.image;
+              const params = fp.avito_params || {};
+              const isGenerating = aiGeneratingIds.has(fp.product_id);
+
+              return (
+                <div key={fp.id} className="flex border-b text-xs hover:bg-muted/30 items-start">
+                  <div className="flex-shrink-0 px-2 pt-2.5" style={{ width: colWidths.check }}>
+                    <Checkbox
+                      checked={selectedFeedProducts.has(fp.product_id)}
+                      onCheckedChange={() => {
+                        setSelectedFeedProducts(prev => {
+                          const next = new Set(prev);
+                          if (next.has(fp.product_id)) next.delete(fp.product_id);
+                          else next.add(fp.product_id);
+                          return next;
+                        });
+                      }}
+                    />
+                  </div>
+                  <div className="flex-shrink-0 px-1 py-1" style={{ width: colWidths.photo }}>
+                    {imageUrl ? (
+                      <img src={imageUrl} alt="" className="w-9 h-9 rounded object-cover" />
+                    ) : (
+                      <div className="w-9 h-9 rounded bg-muted flex items-center justify-center">
+                        <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.title }}>
+                    <InlineCell
+                      value={params.title || product.name}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "title", val)}
+                      placeholder={product.name}
+                      maxLength={50}
+                    />
+                    <span className="text-[10px] text-muted-foreground/50 px-1.5">
+                      {(params.title || product.name || "").length}/50
+                    </span>
+                  </div>
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.desc }}>
+                    {isGenerating ? (
+                      <div className="flex items-center gap-1.5 py-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Генерация...
+                      </div>
+                    ) : (
+                      <InlineCell
+                        value={params.description || product.description || ""}
+                        onChange={(val) => handleInlineParamUpdate(fp.product_id, "description", val)}
+                        placeholder="Описание для Авито"
+                        type="textarea"
+                      />
+                    )}
+                  </div>
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.price }}>
+                    <InlineCell
+                      value={String(params.price || params.Price || product.pricePerUnit || 0)}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "price", val)}
+                      placeholder="0"
+                      type="number"
+                    />
+                  </div>
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.address }}>
+                    <InlineCell
+                      value={params.address || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "address", val)}
+                      placeholder={localDefaults.address || "Адрес"}
+                    />
+                  </div>
+                  <div className="flex-shrink-0 px-2 pt-2.5 text-muted-foreground" style={{ width: colWidths.imgs }}>
+                    <div className="flex items-center gap-0.5">
+                      <ImageIcon className="h-3 w-3" />
+                      {(product.images || []).length}
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 px-1 pt-1.5" style={{ width: colWidths.actions }}>
+                    <div className="flex items-center gap-0">
+                      <Button size="icon" variant="ghost" className="h-6 w-6" title="AI описание" onClick={() => openAiForProducts([fp.product_id])}>
+                        <Wand2 className="h-3.5 w-3.5 text-primary" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeProductFromFeed(fp.product_id)}>
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
   const { toast } = useToast();
   const [account, setAccount] = useState<AvitoAccount | null>(null);
   const [loading, setLoading] = useState(true);
