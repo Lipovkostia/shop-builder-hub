@@ -131,6 +131,8 @@ function ProductRowComponent({
   columnWidths,
   moyskladLogin,
   moyskladPassword,
+  isInAvitoFeed,
+  onToggleAvitoFeed,
 }: MemoizedProductRowProps) {
   const { toast } = useToast();
   
@@ -586,6 +588,16 @@ function ProductRowComponent({
             ) : (
               <span className="text-[10px] text-muted-foreground/40">—</span>
             )}
+          </div>
+        )}
+
+        {visibleColumns.avito && (
+          <div className="flex-shrink-0 overflow-hidden flex items-center justify-center" style={{ width: columnWidths?.avito || 48 }}>
+            <Checkbox
+              checked={isInAvitoFeed || false}
+              onCheckedChange={() => onToggleAvitoFeed?.(product.id)}
+              className="h-3.5 w-3.5"
+            />
           </div>
         )}
       </div>
