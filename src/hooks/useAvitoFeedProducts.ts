@@ -12,10 +12,57 @@ export interface AvitoFeedProduct {
   created_at: string;
 }
 
+export interface AvitoDefaults {
+  managerName: string;
+  contactPhone: string;
+  email: string;
+  companyName: string;
+  address: string;
+  category: string;
+  goodsType: string;
+  goodsSubType: string;
+  contactMethod: string;
+  listingFee: string;
+  targetAudience: string;
+}
+
+const AVITO_DEFAULTS_KEY = "avito_defaults_";
+
 export function useAvitoFeedProducts(storeId: string | null) {
   const { toast } = useToast();
   const [feedProducts, setFeedProducts] = useState<AvitoFeedProduct[]>([]);
   const [loading, setLoading] = useState(false);
+  const [defaults, setDefaults] = useState<AvitoDefaults>({
+    managerName: "",
+    contactPhone: "",
+    email: "",
+    companyName: "",
+    address: "",
+    category: "Продукты питания",
+    goodsType: "Товар от производителя",
+    goodsSubType: "Мясо, птица, субпродукты",
+    contactMethod: "По телефону и в сообщениях",
+    listingFee: "Package",
+    targetAudience: "Частные лица и бизнес",
+  });
+
+  // Load defaults from localStorage
+  useEffect(() => {
+    if (!storeId) return;
+    const saved = localStorage.getItem(AVITO_DEFAULTS_KEY + storeId);
+    if (saved) {
+      try {
+        setDefaults(prev => ({ ...prev, ...JSON.parse(saved) }));
+      } catch {}
+    }
+  }, [storeId]);
+
+  const saveDefaults = useCallback((newDefaults: AvitoDefaults) => {
+    setDefaults(newDefaults);
+    if (storeId) {
+      localStorage.setItem(AVITO_DEFAULTS_KEY + storeId, JSON.stringify(newDefaults));
+    }
+  }, [storeId]);
 
   const fetchFeedProducts = useCallback(async () => {
     if (!storeId) return;
@@ -92,15 +139,35 @@ export function useAvitoFeedProducts(storeId: string | null) {
     }
   }, [storeId, toast]);
 
+  const updateProductParams = useCallback(async (productId: string, params: any) => {
+    if (!storeId) return;
+    try {
+      const { error } = await (supabase as any)
+        .from("avito_feed_products")
+        .update({ avito_params: params })
+        .eq("store_id", storeId)
+        .eq("product_id", productId);
+      if (error) throw error;
+      setFeedProducts(prev => prev.map(fp => 
+        fp.product_id === productId ? { ...fp, avito_params: params } : fp
+      ));
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  }, [storeId, toast]);
+
   const feedProductIds = new Set(feedProducts.map(fp => fp.product_id));
 
   return {
     feedProducts,
     feedProductIds,
     loading,
+    defaults,
+    saveDefaults,
     addProductsToFeed,
     removeProductFromFeed,
     removeProductsFromFeed,
+    updateProductParams,
     refetch: fetchFeedProducts,
   };
 }
