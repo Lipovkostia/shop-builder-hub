@@ -777,6 +777,27 @@ export default function AdminPanel({
   const [newAccountName, setNewAccountName] = useState("");
   const [showAddAccount, setShowAddAccount] = useState(false);
 
+  const getMoyskladCacheKey = useCallback((accountId: string) => {
+    return `moysklad_catalog_cache:${effectiveStoreId || "no-store"}:${accountId}`;
+  }, [effectiveStoreId]);
+
+  const hydrateMoyskladProductsFromCache = useCallback((account: MoyskladAccount): boolean => {
+    try {
+      const raw = localStorage.getItem(getMoyskladCacheKey(account.id));
+      if (!raw) return false;
+
+      const parsed = JSON.parse(raw) as { products?: MoySkladProduct[]; total?: number; cachedAt?: string };
+      const cachedProducts = Array.isArray(parsed?.products) ? parsed.products : [];
+      if (cachedProducts.length === 0) return false;
+
+      setMoyskladProducts(cachedProducts);
+      setTotalProducts(parsed.total || cachedProducts.length);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [getMoyskladCacheKey]);
+
   // Filters for "All Products" table
   const [allProductsFilters, setAllProductsFilters] = useState({
     name: "",
