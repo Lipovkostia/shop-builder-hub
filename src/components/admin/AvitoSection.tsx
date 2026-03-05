@@ -30,6 +30,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Product } from "./types";
 import { AvitoFeedProduct, AvitoDefaults } from "@/hooks/useAvitoFeedProducts";
 import * as XLSX from "xlsx";
+import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AvitoItem {
