@@ -1023,7 +1023,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
             <div className="flex gap-2 pt-2 border-t">
               <Button className="flex-1" onClick={handleAiGenerate} disabled={aiGenerating}>
                 {aiGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Wand2 className="h-3.5 w-3.5 mr-1" />}
-                Сгенерировать
+                {aiMode === "title" ? "Сократить названия" : "Сгенерировать"}
               </Button>
             </div>
           </div>
