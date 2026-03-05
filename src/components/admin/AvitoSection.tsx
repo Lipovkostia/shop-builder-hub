@@ -150,7 +150,7 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 }
 // Avito Feed Table with resizable columns
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
-const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, cpcBid: 80, address: 120, imgs: 50, actions: 60 };
+const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, cpcBid: 80, address: 120, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
 
 function AvitoFeedTable({
   feedProducts, storeProducts, storeCategories, selectedFeedProducts, setSelectedFeedProducts,
@@ -248,8 +248,14 @@ function AvitoFeedTable({
     { key: "adType", label: "Вид объявления", resizable: true },
     { key: "goodsType", label: "Вид товара", resizable: true },
     { key: "promo", label: "Promo", resizable: true },
+    { key: "promoManual", label: "PromoManual", resizable: true },
     { key: "cpcBid", label: "Ставка CPC", resizable: true },
     { key: "address", label: "Адрес", resizable: true },
+    { key: "avitoNumber", label: "№ на Авито", resizable: true },
+    { key: "managerName", label: "Контактное лицо", resizable: true },
+    { key: "contactPhone", label: "Телефон", resizable: true },
+    { key: "email", label: "Почта", resizable: true },
+    { key: "companyName", label: "Компания", resizable: true },
     { key: "imgs", label: "📷", resizable: false },
     { key: "actions", label: "", resizable: false },
   ];
