@@ -82,7 +82,7 @@ interface AvitoSectionProps {
   };
 }
 
-export function AvitoSection({ storeId }: AvitoSectionProps) {
+export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed }: AvitoSectionProps) {
   const { toast } = useToast();
   const [account, setAccount] = useState<AvitoAccount | null>(null);
   const [loading, setLoading] = useState(true);
