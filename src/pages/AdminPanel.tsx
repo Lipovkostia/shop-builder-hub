@@ -126,6 +126,7 @@ import { ExchangeSection } from "@/components/admin/ExchangeSection";
 import { OrdersSection } from "@/components/admin/OrdersSection";
 import { MoyskladCounterpartiesSection } from "@/components/admin/MoyskladCounterpartiesSection";
 import { AvitoSection } from "@/components/admin/AvitoSection";
+import { useAvitoFeedProducts } from "@/hooks/useAvitoFeedProducts";
 
 // Removed localStorage keys - now using Supabase
 
@@ -3541,6 +3542,7 @@ export default function AdminPanel({
                 onAddProductsFromMegacatalog={handleAddProductsFromMegacatalog}
                 moyskladLogin={firstMoyskladAccount?.login}
                 moyskladPassword={firstMoyskladAccount?.password}
+                onAddToAvitoFeed={avitoFeed.addProductsToFeed}
               />
 
               {/* Product Pricing Dialog */}
@@ -6766,7 +6768,11 @@ export default function AdminPanel({
           )}
 
           {activeSection === "avito" && (
-            <AvitoSection storeId={effectiveStoreId} />
+            <AvitoSection 
+              storeId={effectiveStoreId} 
+              products={allProducts}
+              avitoFeed={avitoFeed}
+            />
           )}
         </main>
 
