@@ -3160,6 +3160,7 @@ export default function AdminPanel({
       syncedMoyskladImages: sp.synced_moysklad_images || [],
       status: sp.is_active ? "in_stock" as const : "hidden" as const,
       isFixedPrice: sp.is_fixed_price || false,
+      moyskladPrices: sp.moysklad_prices || null,
     })) as Product[];
   }, [supabaseProducts, accounts]);
 
