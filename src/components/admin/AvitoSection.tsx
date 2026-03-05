@@ -153,6 +153,7 @@ const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title
 function AvitoFeedTable({
   feedProducts, storeProducts, selectedFeedProducts, setSelectedFeedProducts,
   aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
+  feedSearchQuery, feedPriceFilter,
 }: {
   feedProducts: AvitoFeedProduct[];
   storeProducts: Product[];
@@ -165,6 +166,8 @@ function AvitoFeedTable({
   handleInlineParamUpdate: (productId: string, key: string, value: string) => void;
   openAiForProducts: (ids: string[], mode?: string) => void;
   removeProductFromFeed: (id: string) => Promise<void>;
+  feedSearchQuery: string;
+  feedPriceFilter: string;
 }) {
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
     try {
@@ -203,6 +206,29 @@ function AvitoFeedTable({
     />
   );
 
+  // Filter feed products
+  const filteredFeedProducts = feedProducts.filter((fp) => {
+    const product = storeProducts.find(p => p.id === fp.product_id);
+    if (!product) return false;
+    const params = fp.avito_params || {};
+    const price = Number(params.price || params.Price || product.pricePerUnit || 0);
+    
+    // Price filter
+    if (feedPriceFilter === "zero" && price !== 0) return false;
+    if (feedPriceFilter === "nonzero" && price === 0) return false;
+    
+    // Search filter
+    if (feedSearchQuery) {
+      const q = feedSearchQuery.toLowerCase();
+      const title = (params.title || product.name || "").toLowerCase();
+      const desc = (params.description || product.description || "").toLowerCase();
+      const sku = (product.sku || "").toLowerCase();
+      if (!title.includes(q) && !desc.includes(q) && !sku.includes(q)) return false;
+    }
+    
+    return true;
+  });
+
   const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
 
   const cols = [
@@ -211,6 +237,10 @@ function AvitoFeedTable({
     { key: "title", label: "Название", resizable: true },
     { key: "desc", label: "Описание", resizable: true },
     { key: "price", label: "Цена", resizable: true },
+    { key: "category", label: "Категория", resizable: true },
+    { key: "adType", label: "Вид объявления", resizable: true },
+    { key: "goodsType", label: "Вид товара", resizable: true },
+    { key: "promo", label: "Promo", resizable: true },
     { key: "address", label: "Адрес", resizable: true },
     { key: "imgs", label: "📷", resizable: false },
     { key: "actions", label: "", resizable: false },
