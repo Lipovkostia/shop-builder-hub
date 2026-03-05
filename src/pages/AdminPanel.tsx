@@ -4207,7 +4207,9 @@ export default function AdminPanel({
                                   placeholder="Фильтр..."
                                 />
                               </TableHead>
-                              <TableHead>Цена продажи</TableHead>
+                              <TableHead>Розница</TableHead>
+                              <TableHead>УТП 1</TableHead>
+                              <TableHead>УТП 2</TableHead>
                               <TableHead>Закупочная</TableHead>
                               <TableHead>
                                 Остаток
@@ -4222,6 +4224,7 @@ export default function AdminPanel({
                                 />
                               </TableHead>
                               <TableHead>Ед. изм.</TableHead>
+                              <TableHead>Категория товара</TableHead>
                               <TableHead>Фото</TableHead>
                             </TableRow>
                           </TableHeader>
