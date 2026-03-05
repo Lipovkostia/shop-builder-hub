@@ -729,18 +729,22 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
         const description = params.description || product.description || product.name || "";
         const price = params.price || product.pricePerUnit || 0;
 
-        // Download images and add to ZIP
+        // Download images and add to ZIP — skip small/thumbnail images
         const imageNames: string[] = [];
         for (let i = 0; i < images.length; i++) {
           const imgUrl = images[i];
           if (!imgUrl || imgUrl.startsWith("data:")) continue;
+          // Skip thumbnail URLs (common patterns for small sizes)
+          if (/[_\-](thumb|small|xs|50x|100x|150x)/i.test(imgUrl)) continue;
           try {
             const ext = imgUrl.split('.').pop()?.split('?')[0]?.substring(0, 4) || "jpg";
             const fileName = `photo_${imageCounter + 1}.${ext}`;
-            imageCounter++;
             const response = await fetch(imgUrl);
             if (response.ok) {
               const blob = await response.blob();
+              // Skip images smaller than 10KB (likely thumbnails)
+              if (blob.size < 10240) continue;
+              imageCounter++;
               zip.file(fileName, blob);
               imageNames.push(fileName);
             }
@@ -1111,34 +1115,158 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
             </Card>
           )}
 
-          {/* Quick address fill */}
+          {/* Quick bulk-apply fields */}
           {avitoFeed && avitoFeed.feedProducts.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              <Input
-                value={localDefaults.address}
-                onChange={(e) => setLocalDefaults(prev => ({ ...prev, address: e.target.value }))}
-                onBlur={() => avitoFeed.saveDefaults(localDefaults)}
-                placeholder="Адрес для всех товаров, напр. Тамбовская область, Моршанск, Лесная улица, 7"
-                className="h-8 text-xs flex-1 min-w-[200px]"
-              />
-              <Button size="sm" variant="outline" className="h-8 text-xs whitespace-nowrap" onClick={async () => {
-                if (!localDefaults.address) {
-                  toast({ title: "Введите адрес", variant: "destructive" }); return;
-                }
-                const targets = selectedFeedProducts.size > 0 
-                  ? avitoFeed.feedProducts.filter(fp => selectedFeedProducts.has(fp.product_id))
-                  : avitoFeed.feedProducts;
-                for (const fp of targets) {
-                  const params = { ...(fp.avito_params || {}), address: localDefaults.address };
-                  await avitoFeed.updateProductParams(fp.product_id, params);
-                }
-                toast({ title: `Адрес проставлен для ${targets.length} товар(ов)` });
-              }}>
-                <Check className="h-3.5 w-3.5 mr-1" />
-                {selectedFeedProducts.size > 0 ? `Применить к ${selectedFeedProducts.size} выбранным` : "Применить ко всем"}
-              </Button>
-            </div>
+            <Card className="p-3 space-y-2.5">
+              <p className="text-xs font-medium text-muted-foreground">Массовая простановка значений</p>
+              
+              {/* Address row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <Input
+                  value={localDefaults.address}
+                  onChange={(e) => setLocalDefaults(prev => ({ ...prev, address: e.target.value }))}
+                  onBlur={() => avitoFeed.saveDefaults(localDefaults)}
+                  placeholder="Адрес для всех товаров"
+                  className="h-8 text-xs flex-1 min-w-[200px]"
+                />
+                <Button size="sm" variant="outline" className="h-8 text-xs whitespace-nowrap" onClick={async () => {
+                  if (!localDefaults.address) { toast({ title: "Введите адрес", variant: "destructive" }); return; }
+                  const targets = selectedFeedProducts.size > 0 
+                    ? avitoFeed.feedProducts.filter(fp => selectedFeedProducts.has(fp.product_id))
+                    : avitoFeed.feedProducts;
+                  for (const fp of targets) {
+                    const params = { ...(fp.avito_params || {}), address: localDefaults.address };
+                    await avitoFeed.updateProductParams(fp.product_id, params);
+                  }
+                  toast({ title: `Адрес проставлен для ${targets.length} товар(ов)` });
+                }}>
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  {selectedFeedProducts.size > 0 ? `К ${selectedFeedProducts.size} выбранным` : "Ко всем"}
+                </Button>
+              </div>
+
+              {/* Category row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Категория</span>
+                <Input
+                  value={localDefaults.category}
+                  onChange={(e) => setLocalDefaults(prev => ({ ...prev, category: e.target.value }))}
+                  onBlur={() => avitoFeed.saveDefaults(localDefaults)}
+                  placeholder="Продукты питания"
+                  className="h-8 text-xs flex-1 min-w-[180px]"
+                />
+                <Button size="sm" variant="outline" className="h-8 text-xs whitespace-nowrap" onClick={async () => {
+                  if (!localDefaults.category) { toast({ title: "Введите категорию", variant: "destructive" }); return; }
+                  const targets = selectedFeedProducts.size > 0 
+                    ? avitoFeed.feedProducts.filter(fp => selectedFeedProducts.has(fp.product_id))
+                    : avitoFeed.feedProducts;
+                  for (const fp of targets) {
+                    const params = { ...(fp.avito_params || {}), category: localDefaults.category };
+                    await avitoFeed.updateProductParams(fp.product_id, params);
+                  }
+                  toast({ title: `Категория проставлена для ${targets.length} товар(ов)` });
+                }}>
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  {selectedFeedProducts.size > 0 ? `К ${selectedFeedProducts.size} выбранным` : "Ко всем"}
+                </Button>
+              </div>
+
+              {/* Ad type (goodsType) row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Вид объявл.</span>
+                <Select value={localDefaults.goodsType} onValueChange={(v) => { setLocalDefaults(prev => ({ ...prev, goodsType: v })); }}>
+                  <SelectTrigger className="h-8 text-xs flex-1 min-w-[180px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Товар от производителя">Товар от производителя</SelectItem>
+                    <SelectItem value="Товар приобретен на продажу">Товар приобретен на продажу</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button size="sm" variant="outline" className="h-8 text-xs whitespace-nowrap" onClick={async () => {
+                  const targets = selectedFeedProducts.size > 0 
+                    ? avitoFeed.feedProducts.filter(fp => selectedFeedProducts.has(fp.product_id))
+                    : avitoFeed.feedProducts;
+                  for (const fp of targets) {
+                    const params = { ...(fp.avito_params || {}), goodsType: localDefaults.goodsType };
+                    await avitoFeed.updateProductParams(fp.product_id, params);
+                  }
+                  avitoFeed.saveDefaults(localDefaults);
+                  toast({ title: `Вид объявления проставлен для ${targets.length} товар(ов)` });
+                }}>
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  {selectedFeedProducts.size > 0 ? `К ${selectedFeedProducts.size} выбранным` : "Ко всем"}
+                </Button>
+              </div>
+
+              {/* Goods sub-type row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Вид товара</span>
+                <Input
+                  value={localDefaults.goodsSubType}
+                  onChange={(e) => setLocalDefaults(prev => ({ ...prev, goodsSubType: e.target.value }))}
+                  onBlur={() => avitoFeed.saveDefaults(localDefaults)}
+                  placeholder="Мясо, птица, субпродукты"
+                  className="h-8 text-xs flex-1 min-w-[180px]"
+                />
+                <Button size="sm" variant="outline" className="h-8 text-xs whitespace-nowrap" onClick={async () => {
+                  if (!localDefaults.goodsSubType) { toast({ title: "Введите вид товара", variant: "destructive" }); return; }
+                  const targets = selectedFeedProducts.size > 0 
+                    ? avitoFeed.feedProducts.filter(fp => selectedFeedProducts.has(fp.product_id))
+                    : avitoFeed.feedProducts;
+                  for (const fp of targets) {
+                    const params = { ...(fp.avito_params || {}), goodsSubType: localDefaults.goodsSubType };
+                    await avitoFeed.updateProductParams(fp.product_id, params);
+                  }
+                  toast({ title: `Вид товара проставлен для ${targets.length} товар(ов)` });
+                }}>
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  {selectedFeedProducts.size > 0 ? `К ${selectedFeedProducts.size} выбранным` : "Ко всем"}
+                </Button>
+              </div>
+
+              {/* Promo row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Promo</span>
+                <Select value={localDefaults.promo} onValueChange={(v) => { setLocalDefaults(prev => ({ ...prev, promo: v })); }}>
+                  <SelectTrigger className="h-8 text-xs flex-1 min-w-[180px]"><SelectValue placeholder="Не использовать" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Не использовать</SelectItem>
+                    <SelectItem value="Manual">Manual — ручной</SelectItem>
+                    <SelectItem value="Auto_1">Auto_1 — 1 день</SelectItem>
+                    <SelectItem value="Auto_7">Auto_7 — 7 дней</SelectItem>
+                    <SelectItem value="Auto_30">Auto_30 — 30 дней</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button size="sm" variant="outline" className="h-8 text-xs whitespace-nowrap" onClick={async () => {
+                  const promoVal = localDefaults.promo === "none" ? "" : localDefaults.promo;
+                  const targets = selectedFeedProducts.size > 0 
+                    ? avitoFeed.feedProducts.filter(fp => selectedFeedProducts.has(fp.product_id))
+                    : avitoFeed.feedProducts;
+                  for (const fp of targets) {
+                    const params = { ...(fp.avito_params || {}) };
+                    if (promoVal) {
+                      params.promo = promoVal;
+                      if (localDefaults.promoRegion) params.promoRegion = localDefaults.promoRegion;
+                      if (localDefaults.promoBudget) params.promoBudget = localDefaults.promoBudget;
+                      if (localDefaults.promoPrice) params.promoPrice = localDefaults.promoPrice;
+                      if (localDefaults.promoLimit) params.promoLimit = localDefaults.promoLimit;
+                    } else {
+                      delete params.promo;
+                      delete params.promoRegion;
+                      delete params.promoBudget;
+                      delete params.promoPrice;
+                      delete params.promoLimit;
+                    }
+                    await avitoFeed.updateProductParams(fp.product_id, params);
+                  }
+                  avitoFeed.saveDefaults(localDefaults);
+                  toast({ title: promoVal ? `Promo проставлен для ${targets.length} товар(ов)` : `Promo убран у ${targets.length} товар(ов)` });
+                }}>
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  {selectedFeedProducts.size > 0 ? `К ${selectedFeedProducts.size} выбранным` : "Ко всем"}
+                </Button>
+              </div>
+            </Card>
           )}
 
           {/* Filter bar */}
