@@ -227,7 +227,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
       const imageUrls = images.join(" | ");
       const title = (params.title || product.name || "").substring(0, 50);
       const description = params.description || product.description || product.name || "";
-      const price = params.price || product.pricePerUnit || product.price || 0;
+      const price = params.price || product.pricePerUnit || 0;
 
       productRows.push([
         params.avitoId || product.id.substring(0, 10),  // Id
@@ -751,7 +751,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label className="text-xs">Цена</Label>
-                      <Input type="number" value={editParams.price || ""} onChange={(e) => setEditParams((p: any) => ({ ...p, price: e.target.value ? Number(e.target.value) : undefined }))} placeholder={String(product.pricePerUnit || product.price || 0)} className="h-8 text-sm" />
+                      <Input type="number" value={editParams.price || ""} onChange={(e) => setEditParams((p: any) => ({ ...p, price: e.target.value ? Number(e.target.value) : undefined }))} placeholder={String(product.pricePerUnit || 0)} className="h-8 text-sm" />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Адрес</Label>
