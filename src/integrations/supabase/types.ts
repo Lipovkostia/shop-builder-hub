@@ -58,6 +58,51 @@ export type Database = {
           },
         ]
       }
+      avito_feed_products: {
+        Row: {
+          avito_address: string | null
+          avito_category: string | null
+          avito_params: Json | null
+          created_at: string | null
+          id: string
+          product_id: string
+          store_id: string
+        }
+        Insert: {
+          avito_address?: string | null
+          avito_category?: string | null
+          avito_params?: Json | null
+          created_at?: string | null
+          id?: string
+          product_id: string
+          store_id: string
+        }
+        Update: {
+          avito_address?: string | null
+          avito_category?: string | null
+          avito_params?: Json | null
+          created_at?: string | null
+          id?: string
+          product_id?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avito_feed_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avito_feed_products_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       canonical_products: {
         Row: {
           canonical_name: string
