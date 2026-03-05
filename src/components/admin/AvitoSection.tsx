@@ -98,6 +98,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
   const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
   const [detailDialogItem, setDetailDialogItem] = useState<AvitoItem | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [activeTab, setActiveTab] = useState("feed");
+  const [selectedFeedProducts, setSelectedFeedProducts] = useState<Set<string>>(new Set());
 
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
