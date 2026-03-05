@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
+import { ShoppingCart as AvitoIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { VirtualProductTable, AllProductsFilters } from "./VirtualProductTable";
 import { VisibleColumns } from "./MemoizedProductRow";
@@ -37,6 +38,7 @@ interface ProductsSectionProps {
   customPackagingTypes?: string[];
   onAddCustomUnit?: (unit: string) => void;
   onAddCustomPackaging?: (type: string) => void;
+  onAddToAvitoFeed?: (productIds: string[]) => Promise<boolean>;
   moyskladLogin?: string;
   moyskladPassword?: string;
 }
@@ -96,6 +98,7 @@ export function ProductsSection({
   customPackagingTypes = [],
   onAddCustomUnit,
   onAddCustomPackaging,
+  onAddToAvitoFeed,
   moyskladLogin,
   moyskladPassword,
 }: ProductsSectionProps) {
@@ -541,7 +544,7 @@ export function ProductsSection({
             onAddToCatalog={handleAddToCatalog}
             onCreateCatalogAndAdd={handleCreateCatalogAndAdd}
           />
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               variant="outline"
               size="sm"
@@ -555,6 +558,20 @@ export function ProductsSection({
               )}
               AI Описание ({selectedBulkProducts.size})
             </Button>
+            {onAddToAvitoFeed && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  const ids = Array.from(selectedBulkProducts);
+                  const ok = await onAddToAvitoFeed(ids);
+                  if (ok) setSelectedBulkProducts(new Set());
+                }}
+              >
+                <AvitoIcon className="h-4 w-4 mr-1" />
+                В Авито ({selectedBulkProducts.size})
+              </Button>
+            )}
             <span className="text-xs text-muted-foreground self-center">до 200 символов</span>
           </div>
         </div>

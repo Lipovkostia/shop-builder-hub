@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.avito-api]
 verify_jwt = false
+
+[functions.avito-feed]
+verify_jwt = false
