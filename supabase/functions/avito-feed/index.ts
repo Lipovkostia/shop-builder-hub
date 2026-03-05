@@ -120,6 +120,11 @@ Deno.serve(async (req) => {
           if (autoOpts) ads += `    <PromoAutoOptions>${escapeXml(autoOpts)}</PromoAutoOptions>\n`;
         }
       }
+      // CPC bid
+      const cpcBid = params.cpcBid || '';
+      if (cpcBid) {
+        ads += `    <CPC>${escapeXml(String(cpcBid))}</CPC>\n`;
+      }
       ads += imagesXml;
       // Additional params — skip keys already handled above
       const skipKeys = new Set([
@@ -129,6 +134,7 @@ Deno.serve(async (req) => {
         'goodsType', 'goodsSubType', 'targetAudience', 'includeVAT',
         'adType', 'AdType', 'GoodsType',
         'promo', 'promoRegion', 'promoBudget', 'promoPrice', 'promoLimit',
+        'cpcBid',
       ]);
       for (const [key, value] of Object.entries(params)) {
         if (value && !skipKeys.has(key)) {

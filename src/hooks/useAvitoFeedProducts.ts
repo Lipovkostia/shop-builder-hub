@@ -29,6 +29,7 @@ export interface AvitoDefaults {
   promoBudget: string;
   promoPrice: string;
   promoLimit: string;
+  cpcBid: string;
 }
 
 const AVITO_DEFAULTS_KEY = "avito_defaults_";
@@ -54,6 +55,7 @@ export function useAvitoFeedProducts(storeId: string | null) {
     promoBudget: "",
     promoPrice: "",
     promoLimit: "",
+    cpcBid: "",
   });
 
   // Load defaults from localStorage

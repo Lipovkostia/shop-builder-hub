@@ -148,7 +148,7 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 }
 // Avito Feed Table with resizable columns
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
-const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, category: 130, goodsType: 130, adType: 130, promo: 100, address: 120, imgs: 50, actions: 60 };
+const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, category: 130, goodsType: 130, adType: 130, promo: 100, cpcBid: 80, address: 120, imgs: 50, actions: 60 };
 
 function AvitoFeedTable({
   feedProducts, storeProducts, selectedFeedProducts, setSelectedFeedProducts,
@@ -241,6 +241,7 @@ function AvitoFeedTable({
     { key: "adType", label: "Вид объявления", resizable: true },
     { key: "goodsType", label: "Вид товара", resizable: true },
     { key: "promo", label: "Promo", resizable: true },
+    { key: "cpcBid", label: "Ставка CPC", resizable: true },
     { key: "address", label: "Адрес", resizable: true },
     { key: "imgs", label: "📷", resizable: false },
     { key: "actions", label: "", resizable: false },
@@ -379,6 +380,15 @@ function AvitoFeedTable({
                       placeholder={localDefaults.promo || "—"}
                     />
                   </div>
+                  {/* Ставка CPC */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.cpcBid }}>
+                    <InlineCell
+                      value={params.cpcBid || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "cpcBid", val)}
+                      placeholder="—"
+                      type="number"
+                    />
+                  </div>
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.address }}>
                     <InlineCell
                       value={params.address || ""}
@@ -501,7 +511,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
     category: "Продукты питания", goodsType: "Товар от производителя",
     goodsSubType: "Мясо, птица, субпродукты", contactMethod: "По телефону и в сообщениях",
     listingFee: "Package", targetAudience: "Частные лица и бизнес",
-    promo: "", promoRegion: "", promoBudget: "", promoPrice: "", promoLimit: "",
+    promo: "", promoRegion: "", promoBudget: "", promoPrice: "", promoLimit: "", cpcBid: "",
   });
 
   useEffect(() => {
@@ -1261,6 +1271,40 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
                   }
                   avitoFeed.saveDefaults(localDefaults);
                   toast({ title: promoVal ? `Promo проставлен для ${targets.length} товар(ов)` : `Promo убран у ${targets.length} товар(ов)` });
+                }}>
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  {selectedFeedProducts.size > 0 ? `К ${selectedFeedProducts.size} выбранным` : "Ко всем"}
+                </Button>
+              </div>
+
+              {/* CPC Bid row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Ставка CPC</span>
+                <Input
+                  className="h-8 text-xs flex-1 min-w-[120px] max-w-[200px]"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  placeholder="Ставка за клик (₽)"
+                  value={localDefaults.cpcBid || ""}
+                  onChange={(e) => setLocalDefaults(prev => ({ ...prev, cpcBid: e.target.value }))}
+                />
+                <Button size="sm" variant="outline" className="h-8 text-xs whitespace-nowrap" onClick={async () => {
+                  const val = localDefaults.cpcBid || "";
+                  const targets = selectedFeedProducts.size > 0 
+                    ? avitoFeed.feedProducts.filter(fp => selectedFeedProducts.has(fp.product_id))
+                    : avitoFeed.feedProducts;
+                  for (const fp of targets) {
+                    const params = { ...(fp.avito_params || {}) };
+                    if (val) {
+                      params.cpcBid = val;
+                    } else {
+                      delete params.cpcBid;
+                    }
+                    await avitoFeed.updateProductParams(fp.product_id, params);
+                  }
+                  avitoFeed.saveDefaults(localDefaults);
+                  toast({ title: val ? `Ставка CPC ${val}₽ проставлена для ${targets.length} товар(ов)` : `Ставка CPC убрана у ${targets.length} товар(ов)` });
                 }}>
                   <Check className="h-3.5 w-3.5 mr-1" />
                   {selectedFeedProducts.size > 0 ? `К ${selectedFeedProducts.size} выбранным` : "Ко всем"}
