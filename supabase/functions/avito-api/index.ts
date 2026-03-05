@@ -160,8 +160,6 @@ Deno.serve(async (req) => {
       if (accErr || !account) throw new Error("Avito аккаунт не найден.");
 
       const token = await getAvitoToken(account.client_id, account.client_secret);
-      const { item_id } = await req.json().catch(() => ({}));
-      const itemIdFromBody = item_id || (await req.json().catch(() => ({}))).item_id;
 
       const url = `${AVITO_API_BASE}/core/v1/accounts/${account.avito_user_id}/items/${item_id}`;
       const itemRes = await fetch(url, {
