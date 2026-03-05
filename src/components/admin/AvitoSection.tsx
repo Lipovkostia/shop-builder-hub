@@ -1112,13 +1112,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
               </p>
               <div className="flex items-center gap-2">
                 {(() => {
-                  const feedUrl = new URL(`https://${projectId}.supabase.co/functions/v1/avito-feed`);
-                  feedUrl.searchParams.set("store_id", storeId!);
-                  if (localDefaults.address) feedUrl.searchParams.set("address", localDefaults.address);
-                  if (localDefaults.category) feedUrl.searchParams.set("category", localDefaults.category);
-                  if (localDefaults.goodsType) feedUrl.searchParams.set("ad_type", localDefaults.goodsType);
-                  if (localDefaults.goodsSubType) feedUrl.searchParams.set("goods_type", localDefaults.goodsSubType);
-                  const urlStr = feedUrl.toString();
+                  const urlStr = `https://${projectId}.supabase.co/functions/v1/avito-feed?store_id=${storeId}`;
                   return (
                     <>
                       <Input
@@ -1137,6 +1131,9 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                   );
                 })()}
               </div>
+              <p className="text-xs text-muted-foreground">
+                Настройки (адрес, категория, контакты) берутся автоматически из сохранённых параметров выше.
+              </p>
             </Card>
           )}
 
