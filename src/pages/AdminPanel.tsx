@@ -3945,6 +3945,7 @@ export default function AdminPanel({
                     isSyncing={isSyncing}
                     syncedProductsCount={importedProducts.filter(p => p.autoSync).length}
                     syncOrdersEnabled={supabaseSyncSettings?.sync_orders_enabled}
+                    availablePriceTypes={Array.from(new Set(moyskladProducts.flatMap((p) => (p.salePrices || []).map((sp) => sp.name)).filter(Boolean)))}
                     onNavigateToOrderSettings={() => {
                       setActiveSection('orders');
                       setShowOrderNotificationsPanel(true);
