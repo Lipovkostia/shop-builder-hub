@@ -859,16 +859,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             const promo = params.promo || d.promo || "";
             return promo;
           })(),
-          (() => {
-            const promo = params.promo || d.promo || "";
-            if (promo === "Manual") {
-              const region = params.promoRegion || d.promoRegion || "";
-              const promoPrice = params.promoPrice || d.promoPrice || "";
-              const limit = params.promoLimit || d.promoLimit || "";
-              return [region, promoPrice, limit].filter(Boolean).join(", ");
-            }
-            return "";
-          })(),
+          // PromoManualOptions - use stored multi-line value
+          params.promoManualOptions || "",
           (() => {
             const promo = params.promo || d.promo || "";
             if (promo && promo.startsWith("Auto")) {
@@ -1008,16 +1000,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             const promo = params.promo || d.promo || "";
             return promo;
           })(),
-          (() => {
-            const promo = params.promo || d.promo || "";
-            if (promo === "Manual") {
-              const region = params.promoRegion || d.promoRegion || "";
-              const promoPrice = params.promoPrice || d.promoPrice || "";
-              const limit = params.promoLimit || d.promoLimit || "";
-              return [region, promoPrice, limit].filter(Boolean).join(", ");
-            }
-            return "";
-          })(),
+          // PromoManualOptions - use stored multi-line value
+          params.promoManualOptions || "",
           (() => {
             const promo = params.promo || d.promo || "";
             if (promo && promo.startsWith("Auto")) {
@@ -1170,12 +1154,9 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         setIfPresent(idxTargetAudience, "targetAudience");
         setIfPresent(idxAvitoNumber, "avitoNumber");
         setIfPresent(idxPromo, "promo");
-        // Parse PromoManualOptions: "Город, цена, лимит"
+        // Parse PromoManualOptions: store as-is (multi-line format City|Price|Limit)
         if (idxPromoManual >= 0 && row[idxPromoManual]) {
-          const parts = String(row[idxPromoManual]).split(/[,|]/).map(s => s.trim());
-          if (parts[0]) params.promoRegion = parts[0];
-          if (parts[1]) params.promoPrice = parts[1];
-          if (parts[2]) params.promoLimit = parts[2];
+          params.promoManualOptions = String(row[idxPromoManual]).trim();
         }
 
         await avitoFeed.updateProductParams(fp.product_id, params);
