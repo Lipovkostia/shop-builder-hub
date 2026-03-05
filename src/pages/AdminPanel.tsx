@@ -893,6 +893,23 @@ export default function AdminPanel({
   // Track deleted MoySklad product IDs to allow re-import
   const [deletedMoyskladIds, setDeletedMoyskladIds] = useState<Set<string>>(new Set());
 
+  // Hydrate sync settings from backend settings table
+  useEffect(() => {
+    if (!supabaseSyncSettings) return;
+
+    setSyncSettings((prev) => ({
+      ...prev,
+      enabled: supabaseSyncSettings.enabled,
+      intervalMinutes: supabaseSyncSettings.interval_minutes,
+      lastSyncTime: supabaseSyncSettings.last_sync_time || undefined,
+      nextSyncTime: supabaseSyncSettings.next_sync_time || undefined,
+      fieldMapping: {
+        ...prev.fieldMapping,
+        ...supabaseSyncSettings.field_mapping,
+      },
+    }));
+  }, [supabaseSyncSettings]);
+
   // Expanded product images state for assortment section
   const [expandedAssortmentImages, setExpandedAssortmentImages] = useState<string | null>(null);
   const [deletingImageProductId, setDeletingImageProductId] = useState<string | null>(null);
