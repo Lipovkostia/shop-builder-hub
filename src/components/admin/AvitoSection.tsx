@@ -523,38 +523,69 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
     if (targetIds.length === 0) return;
 
     setAiGenerating(true);
-    setAiGeneratingIds(new Set(targetIds));
+    setAiDoneIds(new Set());
+    setAiQueuedIds(new Set(targetIds));
+    setAiGeneratingIds(new Set());
+    setAiProgress({ done: 0, total: targetIds.length });
+
+    const batchSize = 10;
+    let totalUpdated = 0;
 
     try {
-      const productsToGenerate = targetIds.map(pid => {
-        const product = storeProducts.find(p => p.id === pid);
-        return product ? { id: pid, name: product.name, description: product.description, price: product.pricePerUnit } : null;
-      }).filter(Boolean);
+      for (let i = 0; i < targetIds.length; i += batchSize) {
+        const batchIds = targetIds.slice(i, i + batchSize);
+        
+        // Mark current batch as generating
+        setAiGeneratingIds(new Set(batchIds));
+        setAiQueuedIds(prev => {
+          const next = new Set(prev);
+          batchIds.forEach(id => next.delete(id));
+          return next;
+        });
 
-      const { data, error } = await supabase.functions.invoke("ai-avito-description", {
-        body: { products: productsToGenerate, instruction: aiInstruction, maxChars: aiMaxChars, mode: aiMode },
-      });
+        const productsToGenerate = batchIds.map(pid => {
+          const product = storeProducts.find(p => p.id === pid);
+          return product ? { id: pid, name: product.name, description: product.description, price: product.pricePerUnit } : null;
+        }).filter(Boolean);
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+        try {
+          const { data, error } = await supabase.functions.invoke("ai-avito-description", {
+            body: { products: productsToGenerate, instruction: aiInstruction, maxChars: aiMaxChars, mode: aiMode },
+          });
 
-      const descriptions = data?.descriptions || {};
-      let updated = 0;
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
 
-      for (const [pid, value] of Object.entries(descriptions)) {
-        if (value && typeof value === "string") {
-          const fp = avitoFeed.feedProducts.find(f => f.product_id === pid);
-          const currentParams = fp?.avito_params || {};
-          if (aiMode === "title") {
-            await avitoFeed.updateProductParams(pid, { ...currentParams, title: value });
-          } else {
-            await avitoFeed.updateProductParams(pid, { ...currentParams, description: value });
+          const descriptions = data?.descriptions || {};
+
+          for (const [pid, value] of Object.entries(descriptions)) {
+            if (value && typeof value === "string") {
+              const fp = avitoFeed.feedProducts.find(f => f.product_id === pid);
+              const currentParams = fp?.avito_params || {};
+              if (aiMode === "title") {
+                await avitoFeed.updateProductParams(pid, { ...currentParams, title: value });
+              } else {
+                await avitoFeed.updateProductParams(pid, { ...currentParams, description: value });
+              }
+              totalUpdated++;
+            }
           }
-          updated++;
+        } catch (batchErr: any) {
+          console.error("AI batch error:", batchErr);
+          // Continue with next batch even if one fails
         }
+
+        // Mark batch as done
+        setAiDoneIds(prev => {
+          const next = new Set(prev);
+          batchIds.forEach(id => next.add(id));
+          return next;
+        });
+        setAiGeneratingIds(new Set());
+        setAiProgress(prev => ({ ...prev, done: Math.min(i + batchSize, targetIds.length) }));
       }
 
-      toast({ title: aiMode === "title" ? `Сокращено ${updated} названий` : `Сгенерировано ${updated} описаний` });
+      toast({ title: aiMode === "title" ? `Сокращено ${totalUpdated} названий` : `Сгенерировано ${totalUpdated} описаний` });
       setAiPromptOpen(false);
       setAiSingleProductId(null);
     } catch (err: any) {
@@ -563,6 +594,9 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
     } finally {
       setAiGenerating(false);
       setAiGeneratingIds(new Set());
+      setAiQueuedIds(new Set());
+      // Keep aiDoneIds visible for a few seconds then clear
+      setTimeout(() => setAiDoneIds(new Set()), 5000);
     }
   };
 
