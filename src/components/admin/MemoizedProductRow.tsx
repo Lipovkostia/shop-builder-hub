@@ -45,6 +45,7 @@ export interface VisibleColumns {
   msProduct: boolean;
   msAccount: boolean;
   sync: boolean;
+  msPrices: boolean;
 }
 
 export interface ProductRowData {
