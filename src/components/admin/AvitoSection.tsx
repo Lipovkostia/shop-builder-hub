@@ -1544,6 +1544,117 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                   }, onlySelected);
                 }} />
               </div>
+
+              {/* Contact person row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Конт. лицо</span>
+                <Input
+                  className="h-8 text-xs flex-1 min-w-[180px]"
+                  placeholder="Имя менеджера"
+                  value={localDefaults.managerName || ""}
+                  onChange={(e) => setLocalDefaults(prev => ({ ...prev, managerName: e.target.value }))}
+                />
+                <BulkButtons onApply={async (onlySelected) => {
+                  if (!localDefaults.managerName) { toast({ title: "Введите контактное лицо", variant: "destructive" }); return; }
+                  await applyToTargets(async (targets) => {
+                    for (const fp of targets) {
+                      const params = { ...(fp.avito_params || {}), managerName: localDefaults.managerName };
+                      await avitoFeed.updateProductParams(fp.product_id, params);
+                    }
+                    avitoFeed.saveDefaults(localDefaults);
+                    toast({ title: `Контактное лицо проставлено для ${targets.length} товар(ов)` });
+                  }, onlySelected);
+                }} />
+              </div>
+
+              {/* Phone row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Телефон</span>
+                <Input
+                  className="h-8 text-xs flex-1 min-w-[180px]"
+                  placeholder="79001234567"
+                  value={localDefaults.contactPhone || ""}
+                  onChange={(e) => setLocalDefaults(prev => ({ ...prev, contactPhone: e.target.value }))}
+                />
+                <BulkButtons onApply={async (onlySelected) => {
+                  if (!localDefaults.contactPhone) { toast({ title: "Введите телефон", variant: "destructive" }); return; }
+                  await applyToTargets(async (targets) => {
+                    for (const fp of targets) {
+                      const params = { ...(fp.avito_params || {}), contactPhone: localDefaults.contactPhone };
+                      await avitoFeed.updateProductParams(fp.product_id, params);
+                    }
+                    avitoFeed.saveDefaults(localDefaults);
+                    toast({ title: `Телефон проставлен для ${targets.length} товар(ов)` });
+                  }, onlySelected);
+                }} />
+              </div>
+
+              {/* Email row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Почта</span>
+                <Input
+                  className="h-8 text-xs flex-1 min-w-[180px]"
+                  placeholder="email@example.com"
+                  value={localDefaults.email || ""}
+                  onChange={(e) => setLocalDefaults(prev => ({ ...prev, email: e.target.value }))}
+                />
+                <BulkButtons onApply={async (onlySelected) => {
+                  if (!localDefaults.email) { toast({ title: "Введите email", variant: "destructive" }); return; }
+                  await applyToTargets(async (targets) => {
+                    for (const fp of targets) {
+                      const params = { ...(fp.avito_params || {}), email: localDefaults.email };
+                      await avitoFeed.updateProductParams(fp.product_id, params);
+                    }
+                    avitoFeed.saveDefaults(localDefaults);
+                    toast({ title: `Почта проставлена для ${targets.length} товар(ов)` });
+                  }, onlySelected);
+                }} />
+              </div>
+
+              {/* Company name row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Компания</span>
+                <Input
+                  className="h-8 text-xs flex-1 min-w-[180px]"
+                  placeholder="ООО Компания"
+                  value={localDefaults.companyName || ""}
+                  onChange={(e) => setLocalDefaults(prev => ({ ...prev, companyName: e.target.value }))}
+                />
+                <BulkButtons onApply={async (onlySelected) => {
+                  if (!localDefaults.companyName) { toast({ title: "Введите название компании", variant: "destructive" }); return; }
+                  await applyToTargets(async (targets) => {
+                    for (const fp of targets) {
+                      const params = { ...(fp.avito_params || {}), companyName: localDefaults.companyName };
+                      await avitoFeed.updateProductParams(fp.product_id, params);
+                    }
+                    avitoFeed.saveDefaults(localDefaults);
+                    toast({ title: `Компания проставлена для ${targets.length} товар(ов)` });
+                  }, onlySelected);
+                }} />
+              </div>
+
+              {/* Target audience row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground w-[80px] flex-shrink-0">Аудитория</span>
+                <Select value={localDefaults.targetAudience} onValueChange={(v) => { setLocalDefaults(prev => ({ ...prev, targetAudience: v })); }}>
+                  <SelectTrigger className="h-8 text-xs flex-1 min-w-[180px]"><SelectValue placeholder="Частные лица и бизнес" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Частные лица и бизнес">Частные лица и бизнес</SelectItem>
+                    <SelectItem value="Частные лица">Частные лица</SelectItem>
+                    <SelectItem value="Бизнес">Бизнес</SelectItem>
+                  </SelectContent>
+                </Select>
+                <BulkButtons onApply={async (onlySelected) => {
+                  await applyToTargets(async (targets) => {
+                    for (const fp of targets) {
+                      const params = { ...(fp.avito_params || {}), targetAudience: localDefaults.targetAudience };
+                      await avitoFeed.updateProductParams(fp.product_id, params);
+                    }
+                    avitoFeed.saveDefaults(localDefaults);
+                    toast({ title: `Аудитория проставлена для ${targets.length} товар(ов)` });
+                  }, onlySelected);
+                }} />
+              </div>
             </Card>
             );
           })()}
