@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Clock, Settings, RefreshCw, Check, X, Loader2, Play, Pause, ShoppingCart } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Clock, Settings, RefreshCw, Check, X, Loader2, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -11,13 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
   Collapsible,
   CollapsibleContent,
@@ -26,14 +20,15 @@ import {
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 export interface SyncFieldMapping {
-  buyPrice: boolean;      // Закупочная цена
-  price: boolean;         // Цена продажи
-  quantity: boolean;      // Остаток
-  name: boolean;          // Название
-  description: boolean;   // Описание
-  images: boolean;        // Фотографии
-  article: boolean;       // Артикул
-  unit: boolean;          // Единица измерения
+  buyPrice: boolean;
+  price: boolean;
+  quantity: boolean;
+  name: boolean;
+  description: boolean;
+  images: boolean;
+  article: boolean;
+  unit: boolean;
+  priceTypeName?: string | null;
 }
 
 export interface SyncSettings {
@@ -52,6 +47,7 @@ interface SyncSettingsPanelProps {
   syncedProductsCount: number;
   syncOrdersEnabled?: boolean;
   onNavigateToOrderSettings?: () => void;
+  availablePriceTypes?: string[];
 }
 
 const intervalOptions = [
@@ -65,38 +61,38 @@ const intervalOptions = [
   { value: 1440, label: "Раз в сутки" },
 ];
 
-const fieldLabels: Record<keyof SyncFieldMapping, { label: string; description: string }> = {
-  buyPrice: { 
-    label: "Закупочная цена", 
-    description: "Себестоимость товара из МойСклад" 
+const fieldLabels: Record<Exclude<keyof SyncFieldMapping, "priceTypeName">, { label: string; description: string }> = {
+  buyPrice: {
+    label: "Закупочная цена",
+    description: "Себестоимость товара из МойСклад",
   },
-  price: { 
-    label: "Цена продажи", 
-    description: "Розничная цена из МойСклад" 
+  price: {
+    label: "Цена продажи",
+    description: "Цена из выбранного типа в МойСклад",
   },
-  quantity: { 
-    label: "Остаток", 
-    description: "Количество на складе" 
+  quantity: {
+    label: "Остаток",
+    description: "Количество на складе",
   },
-  name: { 
-    label: "Название", 
-    description: "Наименование товара" 
+  name: {
+    label: "Название",
+    description: "Наименование товара",
   },
-  description: { 
-    label: "Описание", 
-    description: "Описание товара" 
+  description: {
+    label: "Описание",
+    description: "Описание товара",
   },
-  images: { 
-    label: "Фотографии", 
-    description: "Изображения товара (может занять время)" 
+  images: {
+    label: "Фотографии",
+    description: "Изображения товара (может занять время)",
   },
-  article: { 
-    label: "Артикул", 
-    description: "Артикул / SKU товара" 
+  article: {
+    label: "Артикул",
+    description: "Артикул / SKU товара",
   },
-  unit: { 
-    label: "Единица измерения", 
-    description: "Ед. изм. (кг, шт, л и т.д.)" 
+  unit: {
+    label: "Единица измерения",
+    description: "Ед. изм. (кг, шт, л и т.д.)",
   },
 };
 
@@ -108,11 +104,11 @@ export function SyncSettingsPanel({
   syncedProductsCount,
   syncOrdersEnabled,
   onNavigateToOrderSettings,
+  availablePriceTypes = [],
 }: SyncSettingsPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [countdown, setCountdown] = useState<string>("");
 
-  // Calculate countdown to next sync
   useEffect(() => {
     if (!settings.enabled || !settings.nextSyncTime) {
       setCountdown("");
@@ -132,11 +128,7 @@ export function SyncSettingsPanel({
       const minutes = Math.floor(diff / 60000);
       const seconds = Math.floor((diff % 60000) / 1000);
 
-      if (minutes > 0) {
-        setCountdown(`${minutes} мин ${seconds} сек`);
-      } else {
-        setCountdown(`${seconds} сек`);
-      }
+      setCountdown(minutes > 0 ? `${minutes} мин ${seconds} сек` : `${seconds} сек`);
     };
 
     updateCountdown();
@@ -144,7 +136,7 @@ export function SyncSettingsPanel({
     return () => clearInterval(interval);
   }, [settings.enabled, settings.nextSyncTime]);
 
-  const toggleField = (field: keyof SyncFieldMapping) => {
+  const toggleField = (field: Exclude<keyof SyncFieldMapping, "priceTypeName">) => {
     onSettingsChange({
       ...settings,
       fieldMapping: {
@@ -157,7 +149,7 @@ export function SyncSettingsPanel({
   const toggleEnabled = (enabled: boolean) => {
     const now = new Date();
     const nextSync = new Date(now.getTime() + settings.intervalMinutes * 60000);
-    
+
     onSettingsChange({
       ...settings,
       enabled,
@@ -168,7 +160,7 @@ export function SyncSettingsPanel({
   const handleIntervalChange = (minutes: number) => {
     const now = new Date();
     const nextSync = new Date(now.getTime() + minutes * 60000);
-    
+
     onSettingsChange({
       ...settings,
       intervalMinutes: minutes,
@@ -176,7 +168,7 @@ export function SyncSettingsPanel({
     });
   };
 
-  const enabledFieldsCount = Object.values(settings.fieldMapping).filter(Boolean).length;
+  const enabledFieldsCount = Object.entries(settings.fieldMapping).filter(([key, value]) => key !== "priceTypeName" && Boolean(value)).length;
 
   return (
     <Card className="mb-2">
@@ -196,7 +188,6 @@ export function SyncSettingsPanel({
                   {syncedProductsCount}
                 </Badge>
               )}
-              {/* Order sync indicator button */}
               {onNavigateToOrderSettings && (
                 <button
                   onClick={(e) => {
@@ -205,13 +196,13 @@ export function SyncSettingsPanel({
                   }}
                   className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors ${
                     syncOrdersEnabled
-                      ? 'bg-green-500/10 text-green-600 hover:bg-green-500/20'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      ? "bg-green-500/10 text-green-600 hover:bg-green-500/20"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
                   }`}
-                  title={syncOrdersEnabled ? 'Заказы → МойСклад: ВКЛ' : 'Заказы → МойСклад: ВЫКЛ'}
+                  title={syncOrdersEnabled ? "Заказы → МойСклад: ВКЛ" : "Заказы → МойСклад: ВЫКЛ"}
                 >
                   <ShoppingCart className="h-3 w-3" />
-                  {syncOrdersEnabled ? 'ВКЛ' : 'ВЫКЛ'}
+                  {syncOrdersEnabled ? "ВКЛ" : "ВЫКЛ"}
                 </button>
               )}
             </div>
@@ -230,7 +221,6 @@ export function SyncSettingsPanel({
 
         <CollapsibleContent>
           <div className="px-3 pb-3 space-y-3">
-            {/* Enable/Disable and Interval */}
             <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-border">
               <div className="flex items-center gap-1.5">
                 <Switch
@@ -277,20 +267,17 @@ export function SyncSettingsPanel({
               </Button>
             </div>
 
-            {/* Field Mapping */}
             <div>
               <div className="flex items-center gap-1.5 mb-2">
                 <Settings className="h-3 w-3 text-muted-foreground" />
-                <Label className="text-xs font-medium">
-                  Поля
-                </Label>
+                <Label className="text-xs font-medium">Поля</Label>
                 <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
-                  {enabledFieldsCount}/{Object.keys(settings.fieldMapping).length}
+                  {enabledFieldsCount}/{Object.keys(fieldLabels).length}
                 </Badge>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                {(Object.keys(fieldLabels) as Array<keyof SyncFieldMapping>).map((field) => {
+                {(Object.keys(fieldLabels) as Array<Exclude<keyof SyncFieldMapping, "priceTypeName">>).map((field) => {
                   const { label } = fieldLabels[field];
                   const isEnabled = settings.fieldMapping[field];
 
@@ -298,25 +285,17 @@ export function SyncSettingsPanel({
                     <div
                       key={field}
                       className={`px-2 py-1 rounded border transition-colors cursor-pointer flex items-center justify-between gap-1 ${
-                        isEnabled
-                          ? "bg-primary/10 border-primary/30"
-                          : "bg-muted/30 border-border"
+                        isEnabled ? "bg-primary/10 border-primary/30" : "bg-muted/30 border-border"
                       }`}
                       onClick={() => toggleField(field)}
                     >
                       <span className="text-[10px] truncate">{label}</span>
                       <div
                         className={`w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          isEnabled
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground"
+                          isEnabled ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                         }`}
                       >
-                        {isEnabled ? (
-                          <Check className="h-2 w-2" />
-                        ) : (
-                          <X className="h-2 w-2" />
-                        )}
+                        {isEnabled ? <Check className="h-2 w-2" /> : <X className="h-2 w-2" />}
                       </div>
                     </div>
                   );
@@ -324,7 +303,36 @@ export function SyncSettingsPanel({
               </div>
             </div>
 
-            {/* Quick presets */}
+            {settings.fieldMapping.price && availablePriceTypes.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Источник цены</Label>
+                <Select
+                  value={settings.fieldMapping.priceTypeName || "__base__"}
+                  onValueChange={(value) => {
+                    onSettingsChange({
+                      ...settings,
+                      fieldMapping: {
+                        ...settings.fieldMapping,
+                        priceTypeName: value === "__base__" ? null : value,
+                      },
+                    });
+                  }}
+                >
+                  <SelectTrigger className="h-7 text-xs">
+                    <SelectValue placeholder="Выберите тип цены" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__base__">Базовая цена продажи</SelectItem>
+                    {availablePriceTypes.map((priceType) => (
+                      <SelectItem key={priceType} value={priceType}>
+                        {priceType}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-1 pt-1">
               <Button
                 variant="ghost"
@@ -334,6 +342,7 @@ export function SyncSettingsPanel({
                   onSettingsChange({
                     ...settings,
                     fieldMapping: {
+                      ...settings.fieldMapping,
                       buyPrice: true,
                       price: false,
                       quantity: true,
@@ -356,6 +365,7 @@ export function SyncSettingsPanel({
                   onSettingsChange({
                     ...settings,
                     fieldMapping: {
+                      ...settings.fieldMapping,
                       buyPrice: true,
                       price: true,
                       quantity: true,
@@ -378,6 +388,7 @@ export function SyncSettingsPanel({
                   onSettingsChange({
                     ...settings,
                     fieldMapping: {
+                      ...settings.fieldMapping,
                       buyPrice: true,
                       price: true,
                       quantity: true,
@@ -394,7 +405,6 @@ export function SyncSettingsPanel({
               </Button>
             </div>
 
-            {/* Last sync info */}
             {settings.lastSyncTime && (
               <div className="text-[10px] text-muted-foreground pt-1.5 border-t border-border">
                 Синхр.: {new Date(settings.lastSyncTime).toLocaleString("ru-RU")}
@@ -419,5 +429,6 @@ export const defaultSyncSettings: SyncSettings = {
     images: false,
     article: false,
     unit: false,
+    priceTypeName: null,
   },
 };
