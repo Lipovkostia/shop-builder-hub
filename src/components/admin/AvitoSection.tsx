@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -354,9 +354,6 @@ function AvitoFeedTable({
     return true;
   });
   const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
-
-  // Build category name map
-  const categoryMap = new Map(storeCategories.map(c => [c.id, c.name]));
 
   const cols = [
     { key: "check", label: "", resizable: false },
