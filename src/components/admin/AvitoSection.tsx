@@ -401,32 +401,13 @@ function AvitoFeedTable({
                       placeholder={localDefaults.promo || "—"}
                     />
                   </div>
-                  {/* Ставка CPC */}
-                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.cpcBid }}>
-                    <InlineCell
-                      value={params.cpcBid || ""}
-                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "cpcBid", val)}
-                      placeholder="—"
-                      type="number"
-                    />
-                  </div>
-                  {/* PromoManualOptions - Город|цена|лимит */}
+                   {/* PromoManualOptions - Город|цена|лимит (многострочное) */}
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.promoManual }}>
                     <InlineCell
-                      value={(() => {
-                        const region = params.promoRegion || "";
-                        const price = params.promoPrice || "";
-                        const limit = params.promoLimit || "";
-                        if (region || price || limit) return [region, price, limit].filter(Boolean).join("|");
-                        return "";
-                      })()}
-                      onChange={(val) => {
-                        const parts = val.split("|").map(s => s.trim());
-                        handleInlineParamUpdate(fp.product_id, "promoRegion", parts[0] || "");
-                        handleInlineParamUpdate(fp.product_id, "promoPrice", parts[1] || "");
-                        handleInlineParamUpdate(fp.product_id, "promoLimit", parts[2] || "");
-                      }}
+                      value={params.promoManualOptions || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "promoManualOptions", val)}
                       placeholder="Город|цена|лимит"
+                      type="textarea"
                     />
                   </div>
                   {/* Ставка CPC */}
