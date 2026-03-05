@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.avito-feed]
 verify_jwt = false
+
+[functions.ai-avito-description]
+verify_jwt = false

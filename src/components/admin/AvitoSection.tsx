@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import {
   ExternalLink, Loader2, Link2, Unlink, RefreshCw, Check, Package, Search,
-  MapPin, Calendar, Eye, Image as ImageIcon, X, Download, Settings, Save,
+  MapPin, Calendar, Eye, Image as ImageIcon, X, Download, Settings, Save, Sparkles, Wand2,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,6 +26,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Product } from "./types";
 import { AvitoFeedProduct, AvitoDefaults } from "@/hooks/useAvitoFeedProducts";
 import * as XLSX from "xlsx";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AvitoItem {
   id: number;
@@ -72,6 +73,75 @@ interface AvitoSectionProps {
   };
 }
 
+// Inline editable cell component
+function InlineCell({ value, onChange, placeholder, maxLength, className = "", type = "text" }: {
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+  maxLength?: number;
+  className?: string;
+  type?: "text" | "number" | "textarea";
+}) {
+  const [editing, setEditing] = useState(false);
+  const [localValue, setLocalValue] = useState(value);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+  useEffect(() => { setLocalValue(value); }, [value]);
+
+  useEffect(() => {
+    if (editing && inputRef.current) inputRef.current.focus();
+  }, [editing]);
+
+  const save = () => {
+    setEditing(false);
+    if (localValue !== value) onChange(localValue);
+  };
+
+  if (!editing) {
+    return (
+      <div
+        className={`cursor-text px-1.5 py-1 rounded hover:bg-muted/60 min-h-[28px] text-xs leading-tight ${className}`}
+        onClick={() => setEditing(true)}
+        title="Нажмите для редактирования"
+      >
+        {value || <span className="text-muted-foreground/50">{placeholder || "—"}</span>}
+      </div>
+    );
+  }
+
+  if (type === "textarea") {
+    return (
+      <textarea
+        ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => { if (e.key === "Escape") { setLocalValue(value); setEditing(false); } }}
+        placeholder={placeholder}
+        maxLength={maxLength}
+        className="w-full text-xs border border-primary/30 rounded px-1.5 py-1 bg-background resize-none min-h-[60px] focus:outline-none focus:ring-1 focus:ring-primary/50"
+      />
+    );
+  }
+
+  return (
+    <input
+      ref={inputRef as React.RefObject<HTMLInputElement>}
+      type={type}
+      value={localValue}
+      onChange={(e) => setLocalValue(e.target.value)}
+      onBlur={save}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") save();
+        if (e.key === "Escape") { setLocalValue(value); setEditing(false); }
+      }}
+      placeholder={placeholder}
+      maxLength={maxLength}
+      className="w-full text-xs border border-primary/30 rounded px-1.5 py-1 h-7 bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
+    />
+  );
+}
+
 export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed }: AvitoSectionProps) {
   const { toast } = useToast();
   const [account, setAccount] = useState<AvitoAccount | null>(null);
@@ -90,8 +160,13 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
   const [activeTab, setActiveTab] = useState("feed");
   const [selectedFeedProducts, setSelectedFeedProducts] = useState<Set<string>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<string | null>(null);
-  const [editParams, setEditParams] = useState<any>({});
+
+  // AI generation state
+  const [aiPromptOpen, setAiPromptOpen] = useState(false);
+  const [aiInstruction, setAiInstruction] = useState("");
+  const [aiMaxChars, setAiMaxChars] = useState(500);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiGeneratingIds, setAiGeneratingIds] = useState<Set<string>>(new Set());
 
   // Local defaults form state
   const [localDefaults, setLocalDefaults] = useState<AvitoDefaults>(avitoFeed?.defaults || {
@@ -102,9 +177,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
   });
 
   useEffect(() => {
-    if (avitoFeed?.defaults) {
-      setLocalDefaults(avitoFeed.defaults);
-    }
+    if (avitoFeed?.defaults) setLocalDefaults(avitoFeed.defaults);
   }, [avitoFeed?.defaults]);
 
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -179,6 +252,59 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
     } catch {} finally { setLoadingDetail(false); }
   };
 
+  // === INLINE PARAM UPDATE ===
+  const handleInlineParamUpdate = useCallback(async (productId: string, key: string, value: string) => {
+    if (!avitoFeed) return;
+    const fp = avitoFeed.feedProducts.find(f => f.product_id === productId);
+    const currentParams = fp?.avito_params || {};
+    const newParams = { ...currentParams, [key]: value || undefined };
+    // Clean empty values
+    Object.keys(newParams).forEach(k => { if (!newParams[k]) delete newParams[k]; });
+    await avitoFeed.updateProductParams(productId, newParams);
+  }, [avitoFeed]);
+
+  // === AI DESCRIPTION GENERATION ===
+  const handleAiGenerate = async () => {
+    if (!avitoFeed || selectedFeedProducts.size === 0) return;
+    setAiGenerating(true);
+    setAiGeneratingIds(new Set(selectedFeedProducts));
+
+    try {
+      const productsToGenerate = Array.from(selectedFeedProducts).map(pid => {
+        const product = storeProducts.find(p => p.id === pid);
+        return product ? { id: pid, name: product.name, description: product.description, price: product.pricePerUnit } : null;
+      }).filter(Boolean);
+
+      const { data, error } = await supabase.functions.invoke("ai-avito-description", {
+        body: { products: productsToGenerate, instruction: aiInstruction, maxChars: aiMaxChars },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const descriptions = data?.descriptions || {};
+      let updated = 0;
+
+      for (const [pid, desc] of Object.entries(descriptions)) {
+        if (desc && typeof desc === "string") {
+          const fp = avitoFeed.feedProducts.find(f => f.product_id === pid);
+          const currentParams = fp?.avito_params || {};
+          await avitoFeed.updateProductParams(pid, { ...currentParams, description: desc });
+          updated++;
+        }
+      }
+
+      toast({ title: `Сгенерировано ${updated} описаний` });
+      setAiPromptOpen(false);
+    } catch (err: any) {
+      console.error("AI generation error:", err);
+      toast({ title: "Ошибка генерации", description: err.message, variant: "destructive" });
+    } finally {
+      setAiGenerating(false);
+      setAiGeneratingIds(new Set());
+    }
+  };
+
   // === EXCEL EXPORT ===
   const handleExportExcel = () => {
     if (!avitoFeed || avitoFeed.feedProducts.length === 0) {
@@ -188,9 +314,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
     const d = localDefaults;
     const categoryLine = `Для дома и дачи - ${d.category} - ${d.goodsSubType}`;
 
-    // Row 1: Category header (merged conceptually)
-    const row1 = [categoryLine, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""];
-    // Row 2: Column headers
+    const row1 = [categoryLine, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""];
     const row2 = [
       "Уникальный идентификатор объявления", "Способ размещения", "Номер объявления на Авито",
       "Контактное лицо", "Номер телефона", "Название объявления", "Описание объявления",
@@ -198,14 +322,12 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
       "Вид объявления", "Вид товара", "Целевая аудитория", "Включая НДС", "Адрес",
       "AvitoStatus", "Почта", "Название компании", "AvitoDateEnd",
     ];
-    // Row 3: Required markers
     const row3 = [
       "Обязательный", "Необязательный", "Необязательный", "Необязательный", "Необязательный",
       "Обязательный", "Обязательный", "Обязательный", "Обязательный", "Необязательный",
       "Необязательный", "Обязательный", "Обязательный", "Обязательный", "Необязательный",
       "Необязательный", "Обязательный", "", "", "", "",
     ];
-    // Row 4: Format description
     const row4 = [
       "Текст", "Одно значение из выпадающего списка в ячейке", "Текст",
       "Текст", "Текст", "Текст до 50 символов", "Текст",
@@ -216,7 +338,6 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
       "Текст", "", "", "", "",
     ];
 
-    // Product rows
     const productRows: any[][] = [];
     for (const fp of avitoFeed.feedProducts) {
       const product = storeProducts.find(p => p.id === fp.product_id);
@@ -230,65 +351,45 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
       const price = params.price || product.pricePerUnit || 0;
 
       productRows.push([
-        params.avitoId || product.id.substring(0, 10),  // Id
-        params.listingFee || d.listingFee,              // ListingFee
-        params.avitoNumber || "",                        // AvitoId (номер на Авито)
-        params.managerName || d.managerName,            // ManagerName
-        params.contactPhone || d.contactPhone,          // ContactPhone
-        title,                                           // Title
-        description,                                     // Description
-        imageUrls,                                       // ImageUrls
-        "",                                              // ImageNames
-        params.contactMethod || d.contactMethod,        // ContactMethod
-        Math.round(price),                               // Price
-        params.category || d.category,                  // Category
-        params.goodsType || d.goodsType,                // GoodsType
-        params.goodsSubType || d.goodsSubType,          // GoodsSubType
-        params.targetAudience || d.targetAudience,      // TargetAudience
-        params.includeVAT || "",                         // IncludeVAT
-        params.address || d.address,                    // Address
-        params.avitoStatus || "Активно",                // AvitoStatus
-        params.email || d.email,                        // Email
-        params.companyName || d.companyName,             // CompanyName
-        params.dateEnd || "",                            // AvitoDateEnd
+        params.avitoId || product.id.substring(0, 10),
+        params.listingFee || d.listingFee,
+        params.avitoNumber || "",
+        params.managerName || d.managerName,
+        params.contactPhone || d.contactPhone,
+        title, description, imageUrls, "",
+        params.contactMethod || d.contactMethod,
+        Math.round(price),
+        params.category || d.category,
+        params.goodsType || d.goodsType,
+        params.goodsSubType || d.goodsSubType,
+        params.targetAudience || d.targetAudience,
+        params.includeVAT || "",
+        params.address || d.address,
+        params.avitoStatus || "Активно",
+        params.email || d.email,
+        params.companyName || d.companyName,
+        params.dateEnd || "",
       ]);
     }
 
     const wsData = [row1, row2, row3, row4, ...productRows];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-    // Set column widths
     ws['!cols'] = [
       { wch: 30 }, { wch: 18 }, { wch: 22 }, { wch: 18 }, { wch: 16 },
       { wch: 50 }, { wch: 60 }, { wch: 60 }, { wch: 20 }, { wch: 28 },
       { wch: 10 }, { wch: 20 }, { wch: 25 }, { wch: 28 }, { wch: 25 },
       { wch: 14 }, { wch: 40 }, { wch: 14 }, { wch: 25 }, { wch: 22 }, { wch: 25 },
     ];
-
     const wb = XLSX.utils.book_new();
-    const sheetName = (d.goodsSubType || "Товары").substring(0, 31);
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
-
-    // Add instruction sheet
+    XLSX.utils.book_append_sheet(wb, ws, (d.goodsSubType || "Товары").substring(0, 31));
     const instrWs = XLSX.utils.aoa_to_sheet([
-      ["Инструкция"],
-      ["Этот файл создан для автозагрузки на Авито."],
+      ["Инструкция"], ["Этот файл создан для автозагрузки на Авито."],
       ["Загрузите его в разделе Автозагрузка → Загрузка файлом на avito.ru"],
-      [""],
-      ["Строки 1-4 — служебные, не изменяйте их."],
-      ["Данные о товарах начинаются с 5 строки."],
+      [""], ["Строки 1-4 — служебные, не изменяйте их."], ["Данные о товарах начинаются с 5 строки."],
     ]);
     XLSX.utils.book_append_sheet(wb, instrWs, "Инструкция");
-
     XLSX.writeFile(wb, `avito_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
     toast({ title: `Экспортировано ${productRows.length} товар(ов)` });
-  };
-
-  const handleSaveProductParams = async (productId: string) => {
-    if (!avitoFeed) return;
-    await avitoFeed.updateProductParams(productId, editParams);
-    setEditingProduct(null);
-    toast({ title: "Параметры сохранены" });
   };
 
   const filteredItems = items.filter((item) =>
@@ -476,15 +577,14 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
                 </div>
                 <Button size="sm" onClick={handleExportExcel}>
                   <Download className="h-3.5 w-3.5 mr-1" />
-                  Скачать Excel для Авито
+                  Скачать Excel
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
                 Скачайте файл и загрузите его на{" "}
                 <a href="https://www.avito.ru/autoload/settings" target="_blank" rel="noopener noreferrer" className="text-primary underline">
                   Авито → Автозагрузка
-                </a>{" "}
-                (способ «Вручную»). Также доступна ссылка на XML-фид для автоматической загрузки:
+                </a>{" "}(способ «Вручную»). Также доступна ссылка на XML-фид:
               </p>
               <div className="flex items-center gap-2">
                 <Input
@@ -503,122 +603,148 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
             </Card>
           )}
 
-          {/* Feed Products Table */}
-          {avitoFeed && avitoFeed.feedProducts.length > 0 ? (
-            <>
-              {selectedFeedProducts.size > 0 && (
-                <div className="sticky top-0 z-10 bg-destructive/10 border border-destructive/20 rounded-lg p-2 flex items-center justify-between">
+          {/* Bulk actions bar */}
+          {avitoFeed && avitoFeed.feedProducts.length > 0 && (
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              {selectedFeedProducts.size > 0 ? (
+                <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-1.5 w-full">
                   <span className="text-sm font-medium">Выбрано: {selectedFeedProducts.size}</span>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="destructive" onClick={async () => {
+                  <div className="flex gap-2 ml-auto">
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAiPromptOpen(true)}>
+                      <Sparkles className="h-3.5 w-3.5" /> AI описание
+                    </Button>
+                    <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={async () => {
                       await avitoFeed.removeProductsFromFeed(Array.from(selectedFeedProducts));
                       setSelectedFeedProducts(new Set());
                     }}>
                       <X className="h-3.5 w-3.5 mr-1" /> Убрать из фида
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setSelectedFeedProducts(new Set())}>Сбросить</Button>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelectedFeedProducts(new Set())}>Сбросить</Button>
                   </div>
                 </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Нажмите на текст в ячейке, чтобы редактировать. Выберите товары для AI-генерации описаний.</p>
               )}
+            </div>
+          )}
 
-              <div className="border rounded-lg overflow-hidden">
-                <ScrollArea className="w-full">
-                  <div className="min-w-[900px]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="text-xs">
-                          <TableHead className="w-10 px-2">
-                            <Checkbox
-                              checked={selectedFeedProducts.size === avitoFeed.feedProducts.length && avitoFeed.feedProducts.length > 0}
-                              onCheckedChange={(checked) => {
-                                if (checked) setSelectedFeedProducts(new Set(avitoFeed.feedProducts.map(fp => fp.product_id)));
-                                else setSelectedFeedProducts(new Set());
-                              }}
-                            />
-                          </TableHead>
-                          <TableHead className="w-14 px-2">Фото</TableHead>
-                          <TableHead className="min-w-[180px] px-2">Название</TableHead>
-                          <TableHead className="w-24 px-2 text-right">Цена</TableHead>
-                          <TableHead className="w-32 px-2">Описание</TableHead>
-                          <TableHead className="w-20 px-2">Фото</TableHead>
-                          <TableHead className="w-28 px-2">Адрес</TableHead>
-                          <TableHead className="w-20 px-2">Добавлено</TableHead>
-                          <TableHead className="w-20 px-2"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {avitoFeed.feedProducts.map((fp) => {
-                          const product = storeProducts.find(p => p.id === fp.product_id);
-                          if (!product) return null;
-                          const imageUrl = product.images?.[0] || product.image;
-                          const params = fp.avito_params || {};
-                          const isEditing = editingProduct === fp.product_id;
+          {/* Feed Products Inline Table */}
+          {avitoFeed && avitoFeed.feedProducts.length > 0 ? (
+            <div className="border rounded-lg overflow-hidden">
+              <ScrollArea className="w-full">
+                <div className="min-w-[1100px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs">
+                        <TableHead className="w-10 px-2">
+                          <Checkbox
+                            checked={selectedFeedProducts.size === avitoFeed.feedProducts.length && avitoFeed.feedProducts.length > 0}
+                            onCheckedChange={(checked) => {
+                              if (checked) setSelectedFeedProducts(new Set(avitoFeed.feedProducts.map(fp => fp.product_id)));
+                              else setSelectedFeedProducts(new Set());
+                            }}
+                          />
+                        </TableHead>
+                        <TableHead className="w-12 px-2">Фото</TableHead>
+                        <TableHead className="min-w-[160px] px-2">Название для Авито</TableHead>
+                        <TableHead className="min-w-[250px] px-2">Описание</TableHead>
+                        <TableHead className="w-20 px-2">Цена</TableHead>
+                        <TableHead className="w-28 px-2">Адрес</TableHead>
+                        <TableHead className="w-14 px-2">Фото</TableHead>
+                        <TableHead className="w-8 px-2"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {avitoFeed.feedProducts.map((fp) => {
+                        const product = storeProducts.find(p => p.id === fp.product_id);
+                        if (!product) return null;
+                        const imageUrl = product.images?.[0] || product.image;
+                        const params = fp.avito_params || {};
+                        const isGenerating = aiGeneratingIds.has(fp.product_id);
 
-                          return (
-                            <TableRow key={fp.id} className="text-xs">
-                              <TableCell className="px-2">
-                                <Checkbox
-                                  checked={selectedFeedProducts.has(fp.product_id)}
-                                  onCheckedChange={() => {
-                                    setSelectedFeedProducts(prev => {
-                                      const next = new Set(prev);
-                                      if (next.has(fp.product_id)) next.delete(fp.product_id);
-                                      else next.add(fp.product_id);
-                                      return next;
-                                    });
-                                  }}
+                        return (
+                          <TableRow key={fp.id} className="text-xs align-top">
+                            <TableCell className="px-2 pt-3">
+                              <Checkbox
+                                checked={selectedFeedProducts.has(fp.product_id)}
+                                onCheckedChange={() => {
+                                  setSelectedFeedProducts(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(fp.product_id)) next.delete(fp.product_id);
+                                    else next.add(fp.product_id);
+                                    return next;
+                                  });
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell className="px-2 pt-2">
+                              {imageUrl ? (
+                                <img src={imageUrl} alt="" className="w-10 h-10 rounded object-cover" />
+                              ) : (
+                                <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                                  <Package className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="px-2">
+                              <InlineCell
+                                value={params.title || product.name}
+                                onChange={(val) => handleInlineParamUpdate(fp.product_id, "title", val)}
+                                placeholder={product.name}
+                                maxLength={50}
+                              />
+                              <span className="text-[10px] text-muted-foreground/50 px-1.5">
+                                {(params.title || product.name || "").length}/50
+                              </span>
+                            </TableCell>
+                            <TableCell className="px-2">
+                              {isGenerating ? (
+                                <div className="flex items-center gap-1.5 py-2 text-xs text-muted-foreground">
+                                  <Loader2 className="h-3 w-3 animate-spin" /> Генерация...
+                                </div>
+                              ) : (
+                                <InlineCell
+                                  value={params.description || product.description || ""}
+                                  onChange={(val) => handleInlineParamUpdate(fp.product_id, "description", val)}
+                                  placeholder="Описание для Авито"
+                                  type="textarea"
                                 />
-                              </TableCell>
-                              <TableCell className="px-2">
-                                {imageUrl ? (
-                                  <img src={imageUrl} alt="" className="w-10 h-10 rounded object-cover" />
-                                ) : (
-                                  <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
-                                    <Package className="h-4 w-4 text-muted-foreground" />
-                                  </div>
-                                )}
-                              </TableCell>
-                              <TableCell className="px-2 font-medium">
-                                {params.title || product.name}
-                              </TableCell>
-                              <TableCell className="px-2 text-right">{formatPrice(params.price || product.pricePerUnit)}</TableCell>
-                              <TableCell className="px-2 text-muted-foreground line-clamp-2 max-w-[200px]">
-                                {(params.description || product.description || "—").substring(0, 80)}
-                              </TableCell>
-                              <TableCell className="px-2 text-muted-foreground">
-                                <div className="flex items-center gap-1">
-                                  <ImageIcon className="h-3 w-3" />
-                                  {(product.images || []).length}
-                                </div>
-                              </TableCell>
-                              <TableCell className="px-2 text-muted-foreground line-clamp-1">
-                                {params.address || localDefaults.address || "—"}
-                              </TableCell>
-                              <TableCell className="px-2 text-muted-foreground">
-                                {new Date(fp.created_at).toLocaleDateString("ru")}
-                              </TableCell>
-                              <TableCell className="px-2">
-                                <div className="flex items-center gap-1">
-                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
-                                    setEditingProduct(fp.product_id);
-                                    setEditParams(fp.avito_params || {});
-                                  }}>
-                                    <Settings className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => avitoFeed.removeProductFromFeed(fp.product_id)}>
-                                    <X className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </ScrollArea>
-              </div>
-            </>
+                              )}
+                            </TableCell>
+                            <TableCell className="px-2">
+                              <InlineCell
+                                value={String(params.price || product.pricePerUnit || 0)}
+                                onChange={(val) => handleInlineParamUpdate(fp.product_id, "price", val)}
+                                placeholder="0"
+                                type="number"
+                              />
+                            </TableCell>
+                            <TableCell className="px-2">
+                              <InlineCell
+                                value={params.address || ""}
+                                onChange={(val) => handleInlineParamUpdate(fp.product_id, "address", val)}
+                                placeholder={localDefaults.address || "Адрес"}
+                              />
+                            </TableCell>
+                            <TableCell className="px-2 pt-3 text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <ImageIcon className="h-3 w-3" />
+                                {(product.images || []).length}
+                              </div>
+                            </TableCell>
+                            <TableCell className="px-2 pt-2">
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => avitoFeed.removeProductFromFeed(fp.product_id)}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </ScrollArea>
+            </div>
           ) : (
             <Card className="p-8 text-center">
               <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
@@ -719,75 +845,41 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
         )}
       </Tabs>
 
-      {/* Product Edit Dialog */}
-      <Dialog open={!!editingProduct} onOpenChange={(open) => !open && setEditingProduct(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      {/* AI Description Generation Dialog */}
+      <Dialog open={aiPromptOpen} onOpenChange={setAiPromptOpen}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-base">Настройки товара для Авито</DialogTitle>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              AI-генерация описаний для Авито
+            </DialogTitle>
           </DialogHeader>
-          {editingProduct && (() => {
-            const product = storeProducts.find(p => p.id === editingProduct);
-            if (!product) return null;
-            return (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg">
-                  {(product.images?.[0] || product.image) && <img src={product.images?.[0] || product.image} alt="" className="w-10 h-10 rounded object-cover" />}
-                  <div>
-                    <p className="text-sm font-medium">{product.name}</p>
-                    <p className="text-xs text-muted-foreground">{formatPrice(product.pricePerUnit)}</p>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">Оставьте поля пустыми, чтобы использовать значения по умолчанию или данные товара.</p>
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Название (до 50 символов)</Label>
-                    <Input value={editParams.title || ""} onChange={(e) => setEditParams((p: any) => ({ ...p, title: e.target.value }))} placeholder={product.name} className="h-8 text-sm" maxLength={50} />
-                    <p className="text-[10px] text-muted-foreground">{(editParams.title || "").length}/50</p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Описание</Label>
-                    <Textarea value={editParams.description || ""} onChange={(e) => setEditParams((p: any) => ({ ...p, description: e.target.value }))} placeholder={product.description || "Описание товара"} className="text-sm min-h-[100px]" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Цена</Label>
-                      <Input type="number" value={editParams.price || ""} onChange={(e) => setEditParams((p: any) => ({ ...p, price: e.target.value ? Number(e.target.value) : undefined }))} placeholder={String(product.pricePerUnit || 0)} className="h-8 text-sm" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Адрес</Label>
-                      <Input value={editParams.address || ""} onChange={(e) => setEditParams((p: any) => ({ ...p, address: e.target.value }))} placeholder={localDefaults.address || "Из настроек"} className="h-8 text-sm" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Категория</Label>
-                      <Input value={editParams.category || ""} onChange={(e) => setEditParams((p: any) => ({ ...p, category: e.target.value }))} placeholder={localDefaults.category || "Из настроек"} className="h-8 text-sm" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Вид товара</Label>
-                      <Input value={editParams.goodsSubType || ""} onChange={(e) => setEditParams((p: any) => ({ ...p, goodsSubType: e.target.value }))} placeholder={localDefaults.goodsSubType || "Из настроек"} className="h-8 text-sm" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Контактное лицо</Label>
-                      <Input value={editParams.managerName || ""} onChange={(e) => setEditParams((p: any) => ({ ...p, managerName: e.target.value }))} placeholder={localDefaults.managerName || "Из настроек"} className="h-8 text-sm" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Телефон</Label>
-                      <Input value={editParams.contactPhone || ""} onChange={(e) => setEditParams((p: any) => ({ ...p, contactPhone: e.target.value }))} placeholder={localDefaults.contactPhone || "Из настроек"} className="h-8 text-sm" />
-                    </div>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button size="sm" variant="outline" onClick={() => setEditingProduct(null)}>Отмена</Button>
-                  <Button size="sm" onClick={() => handleSaveProductParams(editingProduct)}>
-                    <Save className="h-3.5 w-3.5 mr-1" /> Сохранить
-                  </Button>
-                </div>
-              </div>
-            );
-          })()}
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Будет сгенерировано описание для {selectedFeedProducts.size} выбранных товаров. Опишите инструкцию — как именно AI должен писать описания.
+            </p>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Инструкция для AI (промпт)</Label>
+              <Textarea
+                value={aiInstruction}
+                onChange={(e) => setAiInstruction(e.target.value)}
+                placeholder="Например: Пиши от лица оптового поставщика мясной продукции. Упоминай, что доставка по Москве и МО. В конце добавь: «Свежая продукция каждый день»."
+                className="text-sm min-h-[120px]"
+              />
+              <p className="text-[10px] text-muted-foreground">Оставьте пустым для стандартного описания</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Максимум символов</Label>
+              <Input type="number" value={aiMaxChars} onChange={(e) => setAiMaxChars(Number(e.target.value) || 500)} className="h-8 text-sm w-32" min={100} max={2000} />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="outline" onClick={() => setAiPromptOpen(false)}>Отмена</Button>
+              <Button size="sm" onClick={handleAiGenerate} disabled={aiGenerating}>
+                {aiGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Wand2 className="h-3.5 w-3.5 mr-1" />}
+                Сгенерировать
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
