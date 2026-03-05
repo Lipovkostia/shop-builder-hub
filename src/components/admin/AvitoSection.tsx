@@ -171,6 +171,51 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
   const [aiMaxChars, setAiMaxChars] = useState(500);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiGeneratingIds, setAiGeneratingIds] = useState<Set<string>>(new Set());
+  const [aiSingleProductId, setAiSingleProductId] = useState<string | null>(null);
+
+  // Saved templates
+  interface AiTemplate { id: string; name: string; instruction: string; maxChars: number; }
+  const TEMPLATES_KEY = `avito_ai_templates_${storeId}`;
+  const [savedTemplates, setSavedTemplates] = useState<AiTemplate[]>([]);
+  const [newTemplateName, setNewTemplateName] = useState("");
+
+  useEffect(() => {
+    if (!storeId) return;
+    try {
+      const saved = localStorage.getItem(TEMPLATES_KEY);
+      if (saved) setSavedTemplates(JSON.parse(saved));
+    } catch {}
+  }, [storeId]);
+
+  const saveTemplate = () => {
+    if (!newTemplateName.trim()) { toast({ title: "Введите название шаблона", variant: "destructive" }); return; }
+    const tpl: AiTemplate = { id: Date.now().toString(), name: newTemplateName.trim(), instruction: aiInstruction, maxChars: aiMaxChars };
+    const updated = [...savedTemplates, tpl];
+    setSavedTemplates(updated);
+    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
+    setNewTemplateName("");
+    toast({ title: "Шаблон сохранён" });
+  };
+
+  const deleteTemplate = (id: string) => {
+    const updated = savedTemplates.filter(t => t.id !== id);
+    setSavedTemplates(updated);
+    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
+  };
+
+  const loadTemplate = (tpl: AiTemplate) => {
+    setAiInstruction(tpl.instruction);
+    setAiMaxChars(tpl.maxChars);
+  };
+
+  const openAiForProducts = (productIds: string[]) => {
+    if (productIds.length === 1) {
+      setAiSingleProductId(productIds[0]);
+    } else {
+      setAiSingleProductId(null);
+    }
+    setAiPromptOpen(true);
+  };
 
   // Local defaults form state
   const [localDefaults, setLocalDefaults] = useState<AvitoDefaults>(avitoFeed?.defaults || {
