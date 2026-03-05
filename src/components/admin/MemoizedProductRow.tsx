@@ -569,6 +569,22 @@ function ProductRowComponent({
             )}
           </div>
         )}
+
+        {visibleColumns.msPrices && (
+          <div className="flex-shrink-0 overflow-hidden" style={{ width: columnWidths?.msPrices || 160 }}>
+            {product.moyskladPrices && Object.keys(product.moyskladPrices).length > 0 ? (
+              <div className="flex flex-col gap-0">
+                {Object.entries(product.moyskladPrices).map(([name, value]) => (
+                  <span key={name} className="text-[9px] text-muted-foreground truncate leading-tight" title={`${name}: ${value.toLocaleString("ru-RU")} ₽`}>
+                    {name}: <span className="font-medium text-foreground">{value.toLocaleString("ru-RU")}</span>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="text-[10px] text-muted-foreground/40">—</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Expanded images row */}
