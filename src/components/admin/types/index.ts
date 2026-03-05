@@ -108,6 +108,8 @@ export interface MoySkladProduct {
   weight: number;
   volume: number;
   archived: boolean;
+  productFolderId?: string | null;
+  productFolderName?: string | null;
 }
 
 export interface MoySkladAccount {

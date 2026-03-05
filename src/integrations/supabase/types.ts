@@ -1401,6 +1401,7 @@ export type Database = {
           markup_value: number | null
           moysklad_account_id: string | null
           moysklad_id: string | null
+          moysklad_prices: Json | null
           name: string
           packaging_type: string | null
           portion_weight: number | null
@@ -1444,6 +1445,7 @@ export type Database = {
           markup_value?: number | null
           moysklad_account_id?: string | null
           moysklad_id?: string | null
+          moysklad_prices?: Json | null
           name: string
           packaging_type?: string | null
           portion_weight?: number | null
@@ -1487,6 +1489,7 @@ export type Database = {
           markup_value?: number | null
           moysklad_account_id?: string | null
           moysklad_id?: string | null
+          moysklad_prices?: Json | null
           name?: string
           packaging_type?: string | null
           portion_weight?: number | null

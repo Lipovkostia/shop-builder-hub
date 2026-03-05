@@ -90,9 +90,9 @@ serve(async (req) => {
           description: item.description || '',
           code: item.code || '',
           article: item.article || '',
-          price: item.salePrices?.[0]?.value ? item.salePrices[0].value / 100 : 0, // Convert from kopeks
+          price: item.salePrices?.[0]?.value ? item.salePrices[0].value / 100 : 0,
           buyPrice: item.buyPrice?.value ? item.buyPrice.value / 100 : 0,
-          salePrices, // All price types from MoySklad
+          salePrices,
           quantity: item.quantity || 0,
           stock: item.stock || 0,
           productType: item.meta?.type || 'product',
@@ -103,6 +103,11 @@ serve(async (req) => {
           weight: item.weight || 0,
           volume: item.volume || 0,
           archived: item.archived || false,
+          // Product folder (group) info
+          productFolderId: item.productFolder?.meta?.href
+            ? item.productFolder.meta.href.split('/').pop()
+            : null,
+          productFolderName: item.pathName || null,
         };
       }) || [];
 
@@ -115,6 +120,61 @@ serve(async (req) => {
             offset: data.meta?.offset || safeOffset,
           }
         }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'get_product_folders') {
+      // Fetch all product folders (groups/categories) with hierarchy
+      console.log('Fetching product folders from MoySklad...');
+      
+      const allFolders: any[] = [];
+      let folderOffset = 0;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const response = await fetch(
+          `${MOYSKLAD_API_URL}/entity/productfolder?limit=1000&offset=${folderOffset}`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': authHeader,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('MoySklad folders API error:', response.status, errorText);
+          return new Response(
+            JSON.stringify({ error: `MoySklad API error: ${response.status}` }),
+            { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        const data = await response.json();
+        const rows = data.rows || [];
+        
+        const folders = rows.map((f: any) => ({
+          id: f.id,
+          name: f.name,
+          pathName: f.pathName || '',
+          parentId: f.productFolder?.meta?.href
+            ? f.productFolder.meta.href.split('/').pop()
+            : null,
+          archived: f.archived || false,
+        }));
+        
+        allFolders.push(...folders);
+        folderOffset += rows.length;
+        hasMore = folderOffset < (data.meta?.size || 0) && rows.length >= 1000;
+      }
+      
+      console.log(`Fetched ${allFolders.length} product folders`);
+      
+      return new Response(
+        JSON.stringify({ folders: allFolders }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -644,7 +704,7 @@ serve(async (req) => {
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error: unknown) {
+  } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error in moysklad function:', error);
     return new Response(

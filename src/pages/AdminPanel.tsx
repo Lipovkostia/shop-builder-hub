@@ -1408,6 +1408,53 @@ export default function AdminPanel({
     }
   };
 
+  // Helper: resolve or create a category from MoySklad folder path
+  // pathName format: "Parent/Child/SubChild" or just "CategoryName"
+  const msfolderCategoryCache = useRef<Record<string, string>>({});
+  
+  const resolveOrCreateCategory = async (productFolderName: string | null | undefined): Promise<string | null> => {
+    if (!productFolderName || !effectiveStoreId) return null;
+    
+    // Use the leaf folder name (last segment of path)
+    const segments = productFolderName.split('/').map(s => s.trim()).filter(Boolean);
+    if (segments.length === 0) return null;
+    
+    const leafName = segments[segments.length - 1];
+    
+    // Check cache first
+    if (msfolderCategoryCache.current[leafName]) {
+      return msfolderCategoryCache.current[leafName];
+    }
+    
+    // Check existing categories by name
+    const existingCat = storeCategories.find(c => c.name === leafName);
+    if (existingCat) {
+      msfolderCategoryCache.current[leafName] = existingCat.id;
+      return existingCat.id;
+    }
+    
+    // Create new category
+    const created = await createCategory(leafName);
+    if (created) {
+      msfolderCategoryCache.current[leafName] = created.id;
+      
+      // If has parent segments, try to set parent
+      if (segments.length > 1) {
+        const parentName = segments[segments.length - 2];
+        const parentId = await resolveOrCreateCategory(segments.slice(0, -1).join('/'));
+        if (parentId && parentId !== created.id) {
+          await supabase
+            .from('categories')
+            .update({ parent_id: parentId })
+            .eq('id', created.id);
+        }
+      }
+      
+      return created.id;
+    }
+    return null;
+  };
+
   // Import a single product and enable auto-sync
   const importAndLinkProduct = async (msProductId: string) => {
     if (!currentAccount) return;
@@ -1481,6 +1528,9 @@ export default function AdminPanel({
       // Check if product already exists in Supabase with same moysklad_id
       const existingSupabaseProduct = supabaseProducts.find(p => p.moysklad_id === msProduct.id);
       
+      // Resolve category from MoySklad folder
+      const categoryId = await resolveOrCreateCategory(msProduct.productFolderName);
+      
       if (existingSupabaseProduct) {
         // Update existing product
         await updateSupabaseProduct(existingSupabaseProduct.id, {
@@ -1492,6 +1542,7 @@ export default function AdminPanel({
           quantity: msProduct.quantity || msProduct.stock || 0,
           auto_sync: true,
           is_active: true,
+          ...(categoryId ? { category_id: categoryId } : {}),
           ...(msProduct.salePrices?.length ? { moysklad_prices: Object.fromEntries(msProduct.salePrices.map(sp => [sp.name, sp.value])) } : {}),
         } as any);
         
@@ -1521,6 +1572,7 @@ export default function AdminPanel({
           moysklad_account_id: currentAccount.id,
           auto_sync: true,
           is_active: true,
+          ...(categoryId ? { category_id: categoryId } : {}),
           ...(msProduct.salePrices?.length ? { moysklad_prices: Object.fromEntries(msProduct.salePrices.map(sp => [sp.name, sp.value])) } : {}),
         } as any);
         
@@ -3069,11 +3121,13 @@ export default function AdminPanel({
     // Save products to Supabase
     let savedCount = 0;
     for (const product of newProducts) {
-      // Check if product already exists in Supabase by moysklad_id
+      const msProduct = moyskladProducts.find(p => p.id === product.moyskladId);
+      const categoryId = msProduct ? await resolveOrCreateCategory(msProduct.productFolderName) : null;
+      const msPrices = msProduct?.salePrices?.length ? Object.fromEntries(msProduct.salePrices.map(sp => [sp.name, sp.value])) : undefined;
+      
       const existingSupabaseProduct = supabaseProducts.find(sp => sp.moysklad_id === product.moyskladId);
       
       if (existingSupabaseProduct) {
-        // Update existing product
         await updateSupabaseProduct(existingSupabaseProduct.id, {
           name: product.name,
           description: product.description || null,
@@ -3088,10 +3142,11 @@ export default function AdminPanel({
           moysklad_account_id: currentAccount.id,
           auto_sync: product.autoSync || false,
           synced_moysklad_images: product.syncedMoyskladImages || null,
-        });
+          ...(categoryId ? { category_id: categoryId } : {}),
+          ...(msPrices ? { moysklad_prices: msPrices } : {}),
+        } as any);
         savedCount++;
       } else {
-        // Create new product in Supabase
         const slug = product.name
           .toLowerCase()
           .replace(/[^a-zа-яё0-9\s]/gi, '')
@@ -3114,7 +3169,9 @@ export default function AdminPanel({
           synced_moysklad_images: product.syncedMoyskladImages || null,
           slug,
           store_id: effectiveStoreId!,
-        });
+          ...(categoryId ? { category_id: categoryId } : {}),
+          ...(msPrices ? { moysklad_prices: msPrices } : {}),
+        } as any);
         savedCount++;
       }
     }
