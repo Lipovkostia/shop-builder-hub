@@ -4288,7 +4288,19 @@ export default function AdminPanel({
                                       {product.code || "-"}
                                     </TableCell>
                                     <TableCell className="font-medium">
-                                      {product.price > 0 ? formatPrice(product.price) : "-"}
+                                      {(getPriceByType(product, ["Розница", "Розничная", "Цена продажи"]) ?? product.price) > 0
+                                        ? formatPrice(getPriceByType(product, ["Розница", "Розничная", "Цена продажи"]) ?? product.price)
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground">
+                                      {(getPriceByType(product, ["УТП1", "УТП-1", "Утп 1"]) ?? 0) > 0
+                                        ? formatPrice(getPriceByType(product, ["УТП1", "УТП-1", "Утп 1"]) ?? 0)
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground">
+                                      {(getPriceByType(product, ["УТП2", "УТП-2", "Утп 2"]) ?? 0) > 0
+                                        ? formatPrice(getPriceByType(product, ["УТП2", "УТП-2", "Утп 2"]) ?? 0)
+                                        : "-"}
                                     </TableCell>
                                     <TableCell className="text-muted-foreground">
                                       {product.buyPrice > 0 ? formatPrice(product.buyPrice) : "-"}
@@ -4298,7 +4310,7 @@ export default function AdminPanel({
                                         variant={product.quantity > 0 || product.stock > 0 ? "default" : "secondary"}
                                         className={`text-xs ${
                                           product.quantity > 0 || product.stock > 0
-                                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                                            ? "bg-primary/15 text-primary"
                                             : "bg-muted text-muted-foreground"
                                         }`}
                                       >
@@ -4307,6 +4319,9 @@ export default function AdminPanel({
                                     </TableCell>
                                     <TableCell className="text-sm text-muted-foreground">
                                       {product.uom || "-"}
+                                    </TableCell>
+                                    <TableCell className="text-sm text-muted-foreground" title={product.productFolderName || undefined}>
+                                      {getCategoryLabel(product)}
                                     </TableCell>
                                     <TableCell>
                                       {product.imagesCount > 0 ? (
