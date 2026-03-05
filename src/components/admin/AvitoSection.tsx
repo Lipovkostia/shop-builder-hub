@@ -209,7 +209,13 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
     setAiMaxChars(tpl.maxChars);
   };
 
-  const openAiForProducts = (productIds: string[]) => {
+  const openAiForProducts = (productIds: string[], mode: "description" | "title" = "description") => {
+    setAiMode(mode);
+    if (mode === "title") {
+      setAiMaxChars(50);
+    } else {
+      setAiMaxChars(500);
+    }
     if (productIds.length === 1) {
       setAiSingleProductId(productIds[0]);
     } else {
