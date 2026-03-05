@@ -20,7 +20,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  ExternalLink, Loader2, Link2, Unlink, RefreshCw, Check, Package, Search,
+  ExternalLink, Loader2, Link2, Unlink, RefreshCw, Check, Package, Search, Filter,
   MapPin, Calendar, Eye, Image as ImageIcon, X, Download, Settings, Save, Sparkles, Wand2,
   Plus, Trash2, BookOpen, Clock,
 } from "lucide-react";
@@ -148,11 +148,12 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 }
 // Avito Feed Table with resizable columns
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
-const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 320, price: 80, address: 120, imgs: 50, actions: 60 };
+const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, category: 130, goodsType: 130, adType: 130, promo: 100, address: 120, imgs: 50, actions: 60 };
 
 function AvitoFeedTable({
   feedProducts, storeProducts, selectedFeedProducts, setSelectedFeedProducts,
   aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
+  feedSearchQuery, feedPriceFilter,
 }: {
   feedProducts: AvitoFeedProduct[];
   storeProducts: Product[];
@@ -165,6 +166,8 @@ function AvitoFeedTable({
   handleInlineParamUpdate: (productId: string, key: string, value: string) => void;
   openAiForProducts: (ids: string[], mode?: string) => void;
   removeProductFromFeed: (id: string) => Promise<void>;
+  feedSearchQuery: string;
+  feedPriceFilter: string;
 }) {
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
     try {
@@ -203,6 +206,29 @@ function AvitoFeedTable({
     />
   );
 
+  // Filter feed products
+  const filteredFeedProducts = feedProducts.filter((fp) => {
+    const product = storeProducts.find(p => p.id === fp.product_id);
+    if (!product) return false;
+    const params = fp.avito_params || {};
+    const price = Number(params.price || params.Price || product.pricePerUnit || 0);
+    
+    // Price filter
+    if (feedPriceFilter === "zero" && price !== 0) return false;
+    if (feedPriceFilter === "nonzero" && price === 0) return false;
+    
+    // Search filter
+    if (feedSearchQuery) {
+      const q = feedSearchQuery.toLowerCase();
+      const title = (params.title || product.name || "").toLowerCase();
+      const desc = (params.description || product.description || "").toLowerCase();
+      const sku = (product.sku || "").toLowerCase();
+      if (!title.includes(q) && !desc.includes(q) && !sku.includes(q)) return false;
+    }
+    
+    return true;
+  });
+
   const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
 
   const cols = [
@@ -211,6 +237,10 @@ function AvitoFeedTable({
     { key: "title", label: "Название", resizable: true },
     { key: "desc", label: "Описание", resizable: true },
     { key: "price", label: "Цена", resizable: true },
+    { key: "category", label: "Категория", resizable: true },
+    { key: "adType", label: "Вид объявления", resizable: true },
+    { key: "goodsType", label: "Вид товара", resizable: true },
+    { key: "promo", label: "Promo", resizable: true },
     { key: "address", label: "Адрес", resizable: true },
     { key: "imgs", label: "📷", resizable: false },
     { key: "actions", label: "", resizable: false },
@@ -230,9 +260,9 @@ function AvitoFeedTable({
               >
                 {col.key === "check" ? (
                   <Checkbox
-                    checked={selectedFeedProducts.size === feedProducts.length && feedProducts.length > 0}
+                    checked={selectedFeedProducts.size === filteredFeedProducts.length && filteredFeedProducts.length > 0}
                     onCheckedChange={(checked) => {
-                      if (checked) setSelectedFeedProducts(new Set(feedProducts.map(fp => fp.product_id)));
+                      if (checked) setSelectedFeedProducts(new Set(filteredFeedProducts.map(fp => fp.product_id)));
                       else setSelectedFeedProducts(new Set());
                     }}
                   />
@@ -243,7 +273,7 @@ function AvitoFeedTable({
           </div>
           {/* Body */}
           <div>
-            {feedProducts.map((fp) => {
+            {filteredFeedProducts.map((fp) => {
               const product = storeProducts.find(p => p.id === fp.product_id);
               if (!product) return null;
               const imageUrl = product.images?.[0] || product.image;
@@ -317,6 +347,38 @@ function AvitoFeedTable({
                       type="number"
                     />
                   </div>
+                  {/* Категория */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.category }}>
+                    <InlineCell
+                      value={params.category || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "category", val)}
+                      placeholder={localDefaults.category || "Категория"}
+                    />
+                  </div>
+                  {/* Вид объявления (AdType/goodsType) */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.adType }}>
+                    <InlineCell
+                      value={params.goodsType || params.adType || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "goodsType", val)}
+                      placeholder={localDefaults.goodsType || "Вид объявления"}
+                    />
+                  </div>
+                  {/* Вид товара (GoodsType/goodsSubType) */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.goodsType }}>
+                    <InlineCell
+                      value={params.goodsSubType || params.GoodsType || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "goodsSubType", val)}
+                      placeholder={localDefaults.goodsSubType || "Вид товара"}
+                    />
+                  </div>
+                  {/* Promo */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.promo }}>
+                    <InlineCell
+                      value={params.promo || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "promo", val)}
+                      placeholder={localDefaults.promo || "—"}
+                    />
+                  </div>
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.address }}>
                     <InlineCell
                       value={params.address || ""}
@@ -368,6 +430,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
   const [activeTab, setActiveTab] = useState("feed");
   const [selectedFeedProducts, setSelectedFeedProducts] = useState<Set<string>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [feedSearchQuery, setFeedSearchQuery] = useState("");
+  const [feedPriceFilter, setFeedPriceFilter] = useState("all");
 
   // AI generation state
   const [aiPromptOpen, setAiPromptOpen] = useState(false);
@@ -1077,6 +1141,36 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
             </div>
           )}
 
+          {/* Filter bar */}
+          {avitoFeed && avitoFeed.feedProducts.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative flex-1 min-w-[180px] max-w-xs">
+                <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Поиск по названию, описанию, артикулу..."
+                  value={feedSearchQuery}
+                  onChange={(e) => setFeedSearchQuery(e.target.value)}
+                  className="h-8 text-xs pl-8"
+                />
+              </div>
+              <Select value={feedPriceFilter} onValueChange={setFeedPriceFilter}>
+                <SelectTrigger className="h-8 text-xs w-[160px]">
+                  <SelectValue placeholder="Цена" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все цены</SelectItem>
+                  <SelectItem value="zero">Цена = 0</SelectItem>
+                  <SelectItem value="nonzero">Цена &gt; 0</SelectItem>
+                </SelectContent>
+              </Select>
+              {(feedSearchQuery || feedPriceFilter !== "all") && (
+                <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setFeedSearchQuery(""); setFeedPriceFilter("all"); }}>
+                  <X className="h-3.5 w-3.5 mr-1" /> Сбросить фильтры
+                </Button>
+              )}
+            </div>
+          )}
+
           {/* Bulk actions bar */}
           {avitoFeed && avitoFeed.feedProducts.length > 0 && (
             <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -1119,6 +1213,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
               handleInlineParamUpdate={handleInlineParamUpdate}
               openAiForProducts={openAiForProducts}
               removeProductFromFeed={avitoFeed.removeProductFromFeed}
+              feedSearchQuery={feedSearchQuery}
+              feedPriceFilter={feedPriceFilter}
             />
           ) : (
             <Card className="p-8 text-center">
