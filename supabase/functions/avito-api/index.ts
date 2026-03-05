@@ -189,11 +189,10 @@ Deno.serve(async (req) => {
       if (accErr || !account) throw new Error("Avito аккаунт не найден.");
 
       const token = await getAvitoToken(account.client_id, account.client_secret);
-      const { item_id: updateItemId, price: newPrice } = await req.json().catch(() => ({}));
 
       // Avito supports updating price via PUT /core/v1/accounts/{user_id}/items/{item_id}
       // but the actual update is limited. We'll try the available endpoint.
-      const url = `${AVITO_API_BASE}/core/v1/accounts/${account.avito_user_id}/items/${updateItemId}`;
+      const url = `${AVITO_API_BASE}/core/v1/accounts/${account.avito_user_id}/items/${item_id}`;
       // Note: Avito may not support all field updates via API
       
       return new Response(
