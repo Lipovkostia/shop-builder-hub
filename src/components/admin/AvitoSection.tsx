@@ -793,11 +793,16 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
                                 {(product.images || []).length}
                               </div>
                             </TableCell>
-                            <TableCell className="px-2 pt-2">
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => avitoFeed.removeProductFromFeed(fp.product_id)}>
-                                <X className="h-3.5 w-3.5" />
-                              </Button>
-                            </TableCell>
+                             <TableCell className="px-2 pt-2">
+                               <div className="flex items-center gap-0.5">
+                                 <Button size="icon" variant="ghost" className="h-6 w-6" title="AI описание" onClick={() => openAiForProducts([fp.product_id])}>
+                                   <Wand2 className="h-3.5 w-3.5 text-primary" />
+                                 </Button>
+                                 <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => avitoFeed.removeProductFromFeed(fp.product_id)}>
+                                   <X className="h-3.5 w-3.5" />
+                                 </Button>
+                               </div>
+                             </TableCell>
                           </TableRow>
                         );
                       })}
