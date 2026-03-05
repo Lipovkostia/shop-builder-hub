@@ -30,6 +30,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Product } from "./types";
 import { AvitoFeedProduct, AvitoDefaults } from "@/hooks/useAvitoFeedProducts";
 import * as XLSX from "xlsx";
+import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AvitoItem {
@@ -369,99 +370,147 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
     }
   };
 
-  // === EXCEL EXPORT ===
-  const handleExportExcel = () => {
+  // === EXCEL EXPORT (ZIP with images) ===
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportExcel = async () => {
     if (!avitoFeed || avitoFeed.feedProducts.length === 0) {
       toast({ title: "Нет товаров для экспорта", variant: "destructive" }); return;
     }
 
-    const d = localDefaults;
-    const categoryLine = `Для дома и дачи - ${d.category} - ${d.goodsSubType}`;
+    setExporting(true);
+    try {
+      const d = localDefaults;
+      const categoryLine = `Для дома и дачи - ${d.category} - ${d.goodsSubType}`;
 
-    const row1 = [categoryLine, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""];
-    const row2 = [
-      "Уникальный идентификатор объявления", "Способ размещения", "Номер объявления на Авито",
-      "Контактное лицо", "Номер телефона", "Название объявления", "Описание объявления",
-      "Ссылки на фото", "Названия фото", "Способ связи", "Цена", "Категория",
-      "Вид объявления", "Вид товара", "Целевая аудитория", "Включая НДС", "Адрес",
-      "AvitoStatus", "Почта", "Название компании", "AvitoDateEnd",
-    ];
-    const row3 = [
-      "Обязательный", "Необязательный", "Необязательный", "Необязательный", "Необязательный",
-      "Обязательный", "Обязательный", "Обязательный", "Обязательный", "Необязательный",
-      "Необязательный", "Обязательный", "Обязательный", "Обязательный", "Необязательный",
-      "Необязательный", "Обязательный", "", "", "", "",
-    ];
-    const row4 = [
-      "Текст", "Одно значение из выпадающего списка в ячейке", "Текст",
-      "Текст", "Текст", "Текст до 50 символов", "Текст",
-      "Ссылки через |", "Имена через |", "Одно значение из выпадающего списка в ячейке",
-      "Целое число", "Одно значение из выпадающего списка в ячейке",
-      "Одно значение из выпадающего списка в ячейке", "Одно значение из выпадающего списка в ячейке",
-      "Одно значение из выпадающего списка в ячейке", "Одно значение из выпадающего списка в ячейке",
-      "Текст", "", "", "", "",
-    ];
+      const row1 = [categoryLine, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""];
+      const row2 = [
+        "Уникальный идентификатор объявления", "Способ размещения", "Номер объявления на Авито",
+        "Контактное лицо", "Номер телефона", "Название объявления", "Описание объявления",
+        "Ссылки на фото", "Названия фото", "Способ связи", "Цена", "Категория",
+        "Вид объявления", "Вид товара", "Целевая аудитория", "Включая НДС", "Адрес",
+        "AvitoStatus", "Почта", "Название компании", "AvitoDateEnd",
+      ];
+      const row3 = [
+        "Обязательный", "Необязательный", "Необязательный", "Необязательный", "Необязательный",
+        "Обязательный", "Обязательный", "Необязательный", "Обязательный", "Необязательный",
+        "Необязательный", "Обязательный", "Обязательный", "Обязательный", "Необязательный",
+        "Необязательный", "Обязательный", "", "", "", "",
+      ];
+      const row4 = [
+        "Текст", "Одно значение из выпадающего списка в ячейке", "Текст",
+        "Текст", "Текст", "Текст до 50 символов", "Текст",
+        "Ссылки через |", "Имена через |", "Одно значение из выпадающего списка в ячейке",
+        "Целое число", "Одно значение из выпадающего списка в ячейке",
+        "Одно значение из выпадающего списка в ячейке", "Одно значение из выпадающего списка в ячейке",
+        "Одно значение из выпадающего списка в ячейке", "Одно значение из выпадающего списка в ячейке",
+        "Текст", "", "", "", "",
+      ];
 
-    const productRows: any[][] = [];
-    for (const fp of avitoFeed.feedProducts) {
-      const product = storeProducts.find(p => p.id === fp.product_id);
-      if (!product) continue;
+      const zip = new JSZip();
+      const productRows: any[][] = [];
+      let imageCounter = 0;
 
-      const params = fp.avito_params || {};
-      const images = product.images || [];
-      const imageUrls = images.join(" | ");
-      const title = (params.title || product.name || "").substring(0, 50);
-      const description = params.description || product.description || product.name || "";
-      const price = params.price || product.pricePerUnit || 0;
+      for (const fp of avitoFeed.feedProducts) {
+        const product = storeProducts.find(p => p.id === fp.product_id);
+        if (!product) continue;
 
-      productRows.push([
-        params.avitoId || product.id.substring(0, 10),
-        params.listingFee || d.listingFee,
-        params.avitoNumber || "",
-        params.managerName || d.managerName,
-        params.contactPhone || d.contactPhone,
-        title, description, imageUrls, "",
-        params.contactMethod || d.contactMethod,
-        Math.round(price),
-        params.category || d.category,
-        params.goodsType || d.goodsType,
-        params.goodsSubType || d.goodsSubType,
-        params.targetAudience || d.targetAudience,
-        params.includeVAT || "",
-        params.address || d.address,
-        params.avitoStatus || "Активно",
-        params.email || d.email,
-        params.companyName || d.companyName,
-        params.dateEnd || "",
-      ]);
-    }
+        const params = fp.avito_params || {};
+        const images = product.images || [];
+        const title = (params.title || product.name || "").substring(0, 50);
+        const description = params.description || product.description || product.name || "";
+        const price = params.price || product.pricePerUnit || 0;
 
-    const wsData = [row1, row2, row3, row4, ...productRows];
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws['!cols'] = [
-      { wch: 30 }, { wch: 18 }, { wch: 22 }, { wch: 18 }, { wch: 16 },
-      { wch: 50 }, { wch: 60 }, { wch: 60 }, { wch: 20 }, { wch: 28 },
-      { wch: 10 }, { wch: 20 }, { wch: 25 }, { wch: 28 }, { wch: 25 },
-      { wch: 14 }, { wch: 40 }, { wch: 14 }, { wch: 25 }, { wch: 22 }, { wch: 25 },
-    ];
-    // Enable text wrapping for description cells (column G, index 6) in product rows
-    for (let r = 4; r < wsData.length; r++) {
-      const cellRef = XLSX.utils.encode_cell({ r, c: 6 });
-      if (ws[cellRef]) {
-        if (!ws[cellRef].s) ws[cellRef].s = {};
-        ws[cellRef].s.alignment = { wrapText: true, vertical: "top" };
+        // Download images and add to ZIP
+        const imageNames: string[] = [];
+        for (let i = 0; i < images.length; i++) {
+          const imgUrl = images[i];
+          if (!imgUrl || imgUrl.startsWith("data:")) continue;
+          try {
+            const ext = imgUrl.split('.').pop()?.split('?')[0]?.substring(0, 4) || "jpg";
+            const fileName = `photo_${imageCounter + 1}.${ext}`;
+            imageCounter++;
+            const response = await fetch(imgUrl);
+            if (response.ok) {
+              const blob = await response.blob();
+              zip.file(fileName, blob);
+              imageNames.push(fileName);
+            }
+          } catch (e) {
+            console.warn("Failed to download image:", imgUrl, e);
+          }
+        }
+
+        productRows.push([
+          params.avitoId || product.id.substring(0, 10),
+          params.listingFee || d.listingFee,
+          params.avitoNumber || "",
+          params.managerName || d.managerName,
+          params.contactPhone || d.contactPhone,
+          title, description,
+          "", // Ссылки на фото — пустые, т.к. загружаем файлом
+          imageNames.join(" | "), // Названия фото
+          params.contactMethod || d.contactMethod,
+          Math.round(price),
+          params.category || d.category,
+          params.goodsType || d.goodsType,
+          params.goodsSubType || d.goodsSubType,
+          params.targetAudience || d.targetAudience,
+          params.includeVAT || "",
+          params.address || d.address,
+          params.avitoStatus || "Активно",
+          params.email || d.email,
+          params.companyName || d.companyName,
+          params.dateEnd || "",
+        ]);
       }
+
+      const wsData = [row1, row2, row3, row4, ...productRows];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = [
+        { wch: 30 }, { wch: 18 }, { wch: 22 }, { wch: 18 }, { wch: 16 },
+        { wch: 50 }, { wch: 60 }, { wch: 60 }, { wch: 30 }, { wch: 28 },
+        { wch: 10 }, { wch: 20 }, { wch: 25 }, { wch: 28 }, { wch: 25 },
+        { wch: 14 }, { wch: 40 }, { wch: 14 }, { wch: 25 }, { wch: 22 }, { wch: 25 },
+      ];
+      for (let r = 4; r < wsData.length; r++) {
+        const cellRef = XLSX.utils.encode_cell({ r, c: 6 });
+        if (ws[cellRef]) {
+          if (!ws[cellRef].s) ws[cellRef].s = {};
+          ws[cellRef].s.alignment = { wrapText: true, vertical: "top" };
+        }
+      }
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, (d.goodsSubType || "Товары").substring(0, 31));
+      const instrWs = XLSX.utils.aoa_to_sheet([
+        ["Инструкция"],
+        ["Этот файл создан для автозагрузки на Авито."],
+        ["Фотографии находятся в этом же архиве — загрузите весь ZIP целиком."],
+        ["Загрузите его в разделе Автозагрузка → Загрузка файлом на avito.ru"],
+        [""], ["Строки 1-4 — служебные, не изменяйте их."], ["Данные о товарах начинаются с 5 строки."],
+      ]);
+      XLSX.utils.book_append_sheet(wb, instrWs, "Инструкция");
+
+      // Add Excel to ZIP
+      const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      zip.file(`avito_export.xlsx`, new Uint8Array(excelBuffer));
+
+      // Generate and download ZIP
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `avito_export_${new Date().toISOString().slice(0, 10)}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast({ title: `Экспортировано ${productRows.length} товар(ов) с ${imageCounter} фото в ZIP-архив` });
+    } catch (err: any) {
+      console.error("Export error:", err);
+      toast({ title: "Ошибка экспорта", description: err.message, variant: "destructive" });
+    } finally {
+      setExporting(false);
     }
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, (d.goodsSubType || "Товары").substring(0, 31));
-    const instrWs = XLSX.utils.aoa_to_sheet([
-      ["Инструкция"], ["Этот файл создан для автозагрузки на Авито."],
-      ["Загрузите его в разделе Автозагрузка → Загрузка файлом на avito.ru"],
-      [""], ["Строки 1-4 — служебные, не изменяйте их."], ["Данные о товарах начинаются с 5 строки."],
-    ]);
-    XLSX.utils.book_append_sheet(wb, instrWs, "Инструкция");
-    XLSX.writeFile(wb, `avito_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    toast({ title: `Экспортировано ${productRows.length} товар(ов)` });
   };
 
   const filteredItems = items.filter((item) =>
@@ -647,16 +696,16 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
                   <Download className="h-4 w-4 text-primary" />
                   <span className="font-medium text-sm">Экспорт для Авито</span>
                 </div>
-                <Button size="sm" onClick={handleExportExcel}>
-                  <Download className="h-3.5 w-3.5 mr-1" />
-                  Скачать Excel
+                <Button size="sm" onClick={handleExportExcel} disabled={exporting}>
+                  {exporting ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+                  {exporting ? "Подготовка ZIP..." : "Скачать ZIP с фото"}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Скачайте файл и загрузите его на{" "}
+                Скачайте ZIP-архив (Excel + фотографии) и загрузите его целиком на{" "}
                 <a href="https://www.avito.ru/autoload/settings" target="_blank" rel="noopener noreferrer" className="text-primary underline">
                   Авито → Автозагрузка
-                </a>{" "}(способ «Вручную»). Также доступна ссылка на XML-фид:
+                </a>{" "}(способ «Загрузка файлом»). Также доступна ссылка на XML-фид:
               </p>
               <div className="flex items-center gap-2">
                 <Input
