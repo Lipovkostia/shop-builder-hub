@@ -44,6 +44,7 @@ interface ProductsSectionProps {
   onRemoveFromAvitoFeed?: (productIds: string[]) => Promise<void>;
   moyskladLogin?: string;
   moyskladPassword?: string;
+  storeCategories?: StoreCategory[];
 }
 
 const defaultVisibleColumns: VisibleColumns = {
