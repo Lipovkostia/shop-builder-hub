@@ -754,126 +754,17 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
 
           {/* Feed Products Inline Table */}
           {avitoFeed && avitoFeed.feedProducts.length > 0 ? (
-            <div className="border rounded-lg overflow-hidden">
-              <ScrollArea className="w-full">
-                <div className="min-w-[1100px]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="text-xs">
-                        <TableHead className="w-10 px-2">
-                          <Checkbox
-                            checked={selectedFeedProducts.size === avitoFeed.feedProducts.length && avitoFeed.feedProducts.length > 0}
-                            onCheckedChange={(checked) => {
-                              if (checked) setSelectedFeedProducts(new Set(avitoFeed.feedProducts.map(fp => fp.product_id)));
-                              else setSelectedFeedProducts(new Set());
-                            }}
-                          />
-                        </TableHead>
-                        <TableHead className="w-12 px-2">Фото</TableHead>
-                        <TableHead className="min-w-[160px] px-2">Название для Авито</TableHead>
-                        <TableHead className="min-w-[250px] px-2">Описание</TableHead>
-                        <TableHead className="w-20 px-2">Цена</TableHead>
-                        <TableHead className="w-28 px-2">Адрес</TableHead>
-                        <TableHead className="w-14 px-2">Фото</TableHead>
-                        <TableHead className="w-8 px-2"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {avitoFeed.feedProducts.map((fp) => {
-                        const product = storeProducts.find(p => p.id === fp.product_id);
-                        if (!product) return null;
-                        const imageUrl = product.images?.[0] || product.image;
-                        const params = fp.avito_params || {};
-                        const isGenerating = aiGeneratingIds.has(fp.product_id);
-
-                        return (
-                          <TableRow key={fp.id} className="text-xs align-top">
-                            <TableCell className="px-2 pt-3">
-                              <Checkbox
-                                checked={selectedFeedProducts.has(fp.product_id)}
-                                onCheckedChange={() => {
-                                  setSelectedFeedProducts(prev => {
-                                    const next = new Set(prev);
-                                    if (next.has(fp.product_id)) next.delete(fp.product_id);
-                                    else next.add(fp.product_id);
-                                    return next;
-                                  });
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell className="px-2 pt-2">
-                              {imageUrl ? (
-                                <img src={imageUrl} alt="" className="w-10 h-10 rounded object-cover" />
-                              ) : (
-                                <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
-                                  <Package className="h-4 w-4 text-muted-foreground" />
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="px-2">
-                              <InlineCell
-                                value={params.title || product.name}
-                                onChange={(val) => handleInlineParamUpdate(fp.product_id, "title", val)}
-                                placeholder={product.name}
-                                maxLength={50}
-                              />
-                              <span className="text-[10px] text-muted-foreground/50 px-1.5">
-                                {(params.title || product.name || "").length}/50
-                              </span>
-                            </TableCell>
-                            <TableCell className="px-2">
-                              {isGenerating ? (
-                                <div className="flex items-center gap-1.5 py-2 text-xs text-muted-foreground">
-                                  <Loader2 className="h-3 w-3 animate-spin" /> Генерация...
-                                </div>
-                              ) : (
-                                <InlineCell
-                                  value={params.description || product.description || ""}
-                                  onChange={(val) => handleInlineParamUpdate(fp.product_id, "description", val)}
-                                  placeholder="Описание для Авито"
-                                  type="textarea"
-                                />
-                              )}
-                            </TableCell>
-                            <TableCell className="px-2">
-                              <InlineCell
-                                value={String(params.price || product.pricePerUnit || 0)}
-                                onChange={(val) => handleInlineParamUpdate(fp.product_id, "price", val)}
-                                placeholder="0"
-                                type="number"
-                              />
-                            </TableCell>
-                            <TableCell className="px-2">
-                              <InlineCell
-                                value={params.address || ""}
-                                onChange={(val) => handleInlineParamUpdate(fp.product_id, "address", val)}
-                                placeholder={localDefaults.address || "Адрес"}
-                              />
-                            </TableCell>
-                            <TableCell className="px-2 pt-3 text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <ImageIcon className="h-3 w-3" />
-                                {(product.images || []).length}
-                              </div>
-                            </TableCell>
-                             <TableCell className="px-2 pt-2">
-                               <div className="flex items-center gap-0.5">
-                                 <Button size="icon" variant="ghost" className="h-6 w-6" title="AI описание" onClick={() => openAiForProducts([fp.product_id])}>
-                                   <Wand2 className="h-3.5 w-3.5 text-primary" />
-                                 </Button>
-                                 <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => avitoFeed.removeProductFromFeed(fp.product_id)}>
-                                   <X className="h-3.5 w-3.5" />
-                                 </Button>
-                               </div>
-                             </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </ScrollArea>
-            </div>
+            <AvitoFeedTable
+              feedProducts={avitoFeed.feedProducts}
+              storeProducts={storeProducts}
+              selectedFeedProducts={selectedFeedProducts}
+              setSelectedFeedProducts={setSelectedFeedProducts}
+              aiGeneratingIds={aiGeneratingIds}
+              localDefaults={localDefaults}
+              handleInlineParamUpdate={handleInlineParamUpdate}
+              openAiForProducts={openAiForProducts}
+              removeProductFromFeed={avitoFeed.removeProductFromFeed}
+            />
           ) : (
             <Card className="p-8 text-center">
               <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
