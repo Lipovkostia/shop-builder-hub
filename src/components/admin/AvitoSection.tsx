@@ -437,6 +437,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
     category: "Продукты питания", goodsType: "Товар от производителя",
     goodsSubType: "Мясо, птица, субпродукты", contactMethod: "По телефону и в сообщениях",
     listingFee: "Package", targetAudience: "Частные лица и бизнес",
+    promo: "", promoRegion: "", promoBudget: "", promoPrice: "", promoLimit: "",
   });
 
   useEffect(() => {
@@ -623,19 +624,21 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
       const d = localDefaults;
       const categoryLine = `Для дома и дачи - ${d.category} - ${d.goodsSubType}`;
 
-      const row1 = [categoryLine, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""];
+      const row1 = [categoryLine, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""];
       const row2 = [
         "Уникальный идентификатор объявления", "Способ размещения", "Номер объявления на Авито",
         "Контактное лицо", "Номер телефона", "Название объявления", "Описание объявления",
         "Ссылки на фото", "Названия фото", "Способ связи", "Цена", "Категория",
         "Вид объявления", "Вид товара", "Целевая аудитория", "Включая НДС", "Адрес",
         "AvitoStatus", "Почта", "Название компании", "AvitoDateEnd",
+        "Promo", "PromoManualOptions", "PromoAutoOptions",
       ];
       const row3 = [
         "Обязательный", "Необязательный", "Необязательный", "Необязательный", "Необязательный",
         "Обязательный", "Обязательный", "Необязательный", "Обязательный", "Необязательный",
         "Необязательный", "Обязательный", "Обязательный", "Обязательный", "Необязательный",
         "Необязательный", "Обязательный", "", "", "", "",
+        "Необязательный", "Необязательный", "Необязательный",
       ];
       const row4 = [
         "Текст", "Одно значение из выпадающего списка в ячейке", "Текст",
@@ -645,6 +648,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
         "Одно значение из выпадающего списка в ячейке", "Одно значение из выпадающего списка в ячейке",
         "Одно значение из выпадающего списка в ячейке", "Одно значение из выпадающего списка в ячейке",
         "Текст", "", "", "", "",
+        "Одно значение из выпадающего списка в ячейке", "Текст", "Текст",
       ];
 
       const zip = new JSZip();
@@ -702,6 +706,30 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
           params.email || d.email,
           params.companyName || d.companyName,
           params.dateEnd || "",
+          // Promo columns
+          (() => {
+            const promo = params.promo || d.promo || "";
+            return promo;
+          })(),
+          (() => {
+            const promo = params.promo || d.promo || "";
+            if (promo === "Manual") {
+              const region = params.promoRegion || d.promoRegion || "";
+              const promoPrice = params.promoPrice || d.promoPrice || "";
+              const limit = params.promoLimit || d.promoLimit || "";
+              return [region, promoPrice, limit].filter(Boolean).join(", ");
+            }
+            return "";
+          })(),
+          (() => {
+            const promo = params.promo || d.promo || "";
+            if (promo && promo.startsWith("Auto")) {
+              const region = params.promoRegion || d.promoRegion || "";
+              const budget = params.promoBudget || d.promoBudget || "";
+              return [region, budget].filter(Boolean).join(", ");
+            }
+            return "";
+          })(),
         ]);
       }
 
@@ -712,6 +740,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
         { wch: 50 }, { wch: 60 }, { wch: 60 }, { wch: 30 }, { wch: 28 },
         { wch: 10 }, { wch: 20 }, { wch: 25 }, { wch: 28 }, { wch: 25 },
         { wch: 14 }, { wch: 40 }, { wch: 14 }, { wch: 25 }, { wch: 22 }, { wch: 25 },
+        { wch: 12 }, { wch: 30 }, { wch: 30 },
       ];
       for (let r = 4; r < wsData.length; r++) {
         const cellRef = XLSX.utils.encode_cell({ r, c: 6 });
@@ -919,7 +948,48 @@ export function AvitoSection({ storeId, products: storeProducts = [], avitoFeed 
                         <SelectItem value="Бизнес">Бизнес</SelectItem>
                       </SelectContent>
                     </Select>
+                </div>
+
+                {/* Promo settings */}
+                <div className="pt-3 border-t space-y-3">
+                  <Label className="text-xs font-medium">Настройка цены целевого действия (Promo)</Label>
+                  <p className="text-[11px] text-muted-foreground">Оставьте пустым, если продвижение не нужно. Выберите режим и заполните параметры.</p>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Режим продвижения (Promo)</Label>
+                      <Select value={localDefaults.promo} onValueChange={(v) => setLocalDefaults(p => ({ ...p, promo: v }))}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Не использовать" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Не использовать</SelectItem>
+                          <SelectItem value="Manual">Manual — ручной режим</SelectItem>
+                          <SelectItem value="Auto_1">Auto_1 — авто, бюджет на 1 день</SelectItem>
+                          <SelectItem value="Auto_7">Auto_7 — авто, бюджет на 7 дней</SelectItem>
+                          <SelectItem value="Auto_30">Auto_30 — авто, бюджет на 30 дней</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Регион</Label>
+                      <Input value={localDefaults.promoRegion} onChange={(e) => setLocalDefaults(p => ({ ...p, promoRegion: e.target.value }))} placeholder="Москва" className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Бюджет (₽)</Label>
+                      <Input value={localDefaults.promoBudget} onChange={(e) => setLocalDefaults(p => ({ ...p, promoBudget: e.target.value }))} placeholder="1000" className="h-8 text-sm" type="number" />
+                    </div>
+                    {localDefaults.promo === "Manual" && (
+                      <>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Цена целевого действия (₽)</Label>
+                          <Input value={localDefaults.promoPrice} onChange={(e) => setLocalDefaults(p => ({ ...p, promoPrice: e.target.value }))} placeholder="50" className="h-8 text-sm" type="number" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Лимит в день (₽)</Label>
+                          <Input value={localDefaults.promoLimit} onChange={(e) => setLocalDefaults(p => ({ ...p, promoLimit: e.target.value }))} placeholder="500" className="h-8 text-sm" type="number" />
+                        </div>
+                      </>
+                    )}
                   </div>
+                </div>
                 </div>
                 <Button size="sm" onClick={() => { avitoFeed?.saveDefaults(localDefaults); toast({ title: "Настройки сохранены" }); }}>
                   <Save className="h-3.5 w-3.5 mr-1" /> Сохранить настройки

@@ -24,6 +24,11 @@ export interface AvitoDefaults {
   contactMethod: string;
   listingFee: string;
   targetAudience: string;
+  promo: string;
+  promoRegion: string;
+  promoBudget: string;
+  promoPrice: string;
+  promoLimit: string;
 }
 
 const AVITO_DEFAULTS_KEY = "avito_defaults_";
@@ -44,6 +49,11 @@ export function useAvitoFeedProducts(storeId: string | null) {
     contactMethod: "По телефону и в сообщениях",
     listingFee: "Package",
     targetAudience: "Частные лица и бизнес",
+    promo: "",
+    promoRegion: "",
+    promoBudget: "",
+    promoPrice: "",
+    promoLimit: "",
   });
 
   // Load defaults from localStorage

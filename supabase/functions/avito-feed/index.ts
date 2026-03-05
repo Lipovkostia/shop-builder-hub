@@ -106,6 +106,18 @@ Deno.serve(async (req) => {
       if (goodsType) {
         ads += `    <GoodsType>${goodsType}</GoodsType>\n`;
       }
+      // Promo settings
+      const promo = params.promo || '';
+      if (promo) {
+        ads += `    <Promo>${escapeXml(promo)}</Promo>\n`;
+        if (promo === 'Manual') {
+          const manualOpts = [params.promoRegion, params.promoPrice, params.promoLimit].filter(Boolean).join(', ');
+          if (manualOpts) ads += `    <PromoManualOptions>${escapeXml(manualOpts)}</PromoManualOptions>\n`;
+        } else if (promo.startsWith('Auto')) {
+          const autoOpts = [params.promoRegion, params.promoBudget].filter(Boolean).join(', ');
+          if (autoOpts) ads += `    <PromoAutoOptions>${escapeXml(autoOpts)}</PromoAutoOptions>\n`;
+        }
+      }
       ads += imagesXml;
       // Additional params — skip keys already handled above
       const skipKeys = new Set([
@@ -114,6 +126,7 @@ Deno.serve(async (req) => {
         'managerName', 'email', 'companyName', 'avitoStatus', 'dateEnd',
         'goodsType', 'goodsSubType', 'targetAudience', 'includeVAT',
         'adType', 'AdType', 'GoodsType',
+        'promo', 'promoRegion', 'promoBudget', 'promoPrice', 'promoLimit',
       ]);
       for (const [key, value] of Object.entries(params)) {
         if (value && !skipKeys.has(key)) {
