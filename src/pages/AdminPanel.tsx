@@ -125,6 +125,7 @@ import { MegacatalogSection } from "@/components/admin/MegacatalogSection";
 import { ExchangeSection } from "@/components/admin/ExchangeSection";
 import { OrdersSection } from "@/components/admin/OrdersSection";
 import { MoyskladCounterpartiesSection } from "@/components/admin/MoyskladCounterpartiesSection";
+import { AvitoSection } from "@/components/admin/AvitoSection";
 
 // Removed localStorage keys - now using Supabase
 
@@ -308,7 +309,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings" | "exchange";
+type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings" | "exchange" | "avito";
 type ImportView = "accounts" | "catalog" | "counterparties";
 type ImportSource = "select" | "moysklad" | "excel" | "google-sheets";
 type CatalogView = "list" | "detail";
@@ -694,7 +695,7 @@ export default function AdminPanel({
     }
     
     const section = searchParams.get('section');
-    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients' || section === 'help' || section === 'category-settings' || section === 'profile' || section === 'history' || section === 'trash' || section === 'retail' || section === 'wholesale') {
+    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients' || section === 'help' || section === 'category-settings' || section === 'profile' || section === 'history' || section === 'trash' || section === 'retail' || section === 'wholesale' || section === 'avito') {
       setActiveSection(section);
     }
   }, [searchParams, workspaceMode, initialSection]);
@@ -6762,6 +6763,10 @@ export default function AdminPanel({
 
           {activeSection === "exchange" && (
             <ExchangeSection storeId={effectiveStoreId} />
+          )}
+
+          {activeSection === "avito" && (
+            <AvitoSection storeId={effectiveStoreId} />
           )}
         </main>
 
