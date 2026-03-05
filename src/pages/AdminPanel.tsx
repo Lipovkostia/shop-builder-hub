@@ -695,7 +695,7 @@ export default function AdminPanel({
     }
     
     const section = searchParams.get('section');
-    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients' || section === 'help' || section === 'category-settings' || section === 'profile' || section === 'history' || section === 'trash' || section === 'retail' || section === 'wholesale' || section === 'avito') {
+    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients' || section === 'help' || section === 'category-settings' || section === 'profile' || section === 'history' || section === 'trash' || section === 'retail' || section === 'wholesale' || section === 'avito' || section === 'showcase' || section === 'megacatalog' || section === 'exchange') {
       setActiveSection(section);
     }
   }, [searchParams, workspaceMode, initialSection]);
