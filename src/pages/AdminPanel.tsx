@@ -3207,39 +3207,49 @@ export default function AdminPanel({
 
   // Use Supabase products - convert to legacy format for compatibility
   const allProducts = useMemo(() => {
-    return supabaseProducts.map(sp => ({
-      id: sp.id,
-      name: sp.name,
-      sku: sp.sku || undefined,
-      description: sp.description || "",
-      pricePerUnit: sp.price,
-      buyPrice: sp.buy_price || undefined,
-      markup: sp.markup_type && sp.markup_value ? { 
-        type: (sp.markup_type === "fixed" ? "rubles" : sp.markup_type) as "percent" | "rubles", 
-        value: sp.markup_value 
-      } : undefined,
-      unit: sp.unit || "кг",
-      image: sp.images?.[0] || "",
-      imageFull: sp.images?.[0] || "",
-      images: sp.images || [],
-      productType: sp.unit === "шт" ? "piece" as const : "weight" as const,
-      packagingType: (sp.packaging_type || "piece") as PackagingType,
-      unitWeight: sp.unit_weight || undefined,
-      inStock: (sp.quantity || 0) > 0,
-      isHit: false,
-      source: (sp.source || "manual") as "moysklad" | undefined,
-      moyskladId: sp.moysklad_id || undefined,
-      autoSync: sp.auto_sync || false,
-      accountId: sp.moysklad_account_id || undefined,
-      moyskladAccountName: sp.moysklad_account_id 
-        ? accounts.find(a => a.id === sp.moysklad_account_id)?.name || undefined
-        : undefined,
-      syncedMoyskladImages: sp.synced_moysklad_images || [],
-      status: sp.is_active ? "in_stock" as const : "hidden" as const,
-      isFixedPrice: sp.is_fixed_price || false,
-      moyskladPrices: sp.moysklad_prices || null,
-    })) as Product[];
-  }, [supabaseProducts, accounts]);
+    return supabaseProducts.map(sp => {
+      // Get category assignments for this product
+      const assignedCategoryIds = getProductCategoryIds(sp.id);
+      // Build categories array: use assignments first, fallback to category_id
+      const categories = assignedCategoryIds.length > 0
+        ? assignedCategoryIds
+        : sp.category_id ? [sp.category_id] : [];
+      
+      return {
+        id: sp.id,
+        name: sp.name,
+        sku: sp.sku || undefined,
+        description: sp.description || "",
+        pricePerUnit: sp.price,
+        buyPrice: sp.buy_price || undefined,
+        markup: sp.markup_type && sp.markup_value ? { 
+          type: (sp.markup_type === "fixed" ? "rubles" : sp.markup_type) as "percent" | "rubles", 
+          value: sp.markup_value 
+        } : undefined,
+        unit: sp.unit || "кг",
+        image: sp.images?.[0] || "",
+        imageFull: sp.images?.[0] || "",
+        images: sp.images || [],
+        productType: sp.unit === "шт" ? "piece" as const : "weight" as const,
+        packagingType: (sp.packaging_type || "piece") as PackagingType,
+        unitWeight: sp.unit_weight || undefined,
+        inStock: (sp.quantity || 0) > 0,
+        isHit: false,
+        source: (sp.source || "manual") as "moysklad" | undefined,
+        moyskladId: sp.moysklad_id || undefined,
+        autoSync: sp.auto_sync || false,
+        accountId: sp.moysklad_account_id || undefined,
+        moyskladAccountName: sp.moysklad_account_id 
+          ? accounts.find(a => a.id === sp.moysklad_account_id)?.name || undefined
+          : undefined,
+        syncedMoyskladImages: sp.synced_moysklad_images || [],
+        status: sp.is_active ? "in_stock" as const : "hidden" as const,
+        isFixedPrice: sp.is_fixed_price || false,
+        moyskladPrices: sp.moysklad_prices || null,
+        categories,
+      };
+    }) as Product[];
+  }, [supabaseProducts, accounts, getProductCategoryIds]);
 
   // Update product via Supabase
   const updateProduct = async (updatedProduct: Product) => {
