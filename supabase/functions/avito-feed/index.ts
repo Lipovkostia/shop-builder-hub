@@ -28,6 +28,12 @@ Deno.serve(async (req) => {
       return new Response("Missing store_id", { status: 400, headers: corsHeaders });
     }
 
+    // Store-level defaults from query params
+    const defaultAddress = url.searchParams.get("address") || "";
+    const defaultCategory = url.searchParams.get("category") || "Продукты питания";
+    const defaultGoodsType = url.searchParams.get("goods_type") || "Товар приобретен на продажу";
+    const defaultAdType = url.searchParams.get("ad_type") || "Товар приобретен на продажу";
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
