@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Trash2, Package, Tag, Check, FolderPlus, FolderMinus, Wand2, ImagePlus, Loader2 } from "lucide-react";
+import { X, Trash2, Package, Tag, Check, FolderPlus, FolderMinus, Wand2, ImagePlus, Loader2, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +62,8 @@ interface BulkEditPanelProps {
   onBulkSetPrice?: (price: number) => void;
   // Bulk best photo
   onBulkBestPhoto?: () => Promise<void>;
+  // Add to Avito feed
+  onAddToAvitoFeed?: () => Promise<boolean>;
 }
 
 export function BulkEditPanel({
@@ -83,6 +85,7 @@ export function BulkEditPanel({
   onBulkAutoFillCategories,
   onBulkSetPrice,
   onBulkBestPhoto,
+  onAddToAvitoFeed,
 }: BulkEditPanelProps) {
   const [editField, setEditField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
