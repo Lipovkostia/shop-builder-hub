@@ -2535,29 +2535,33 @@ export default function AdminPanel({
   const selectAccount = async (account: MoyskladAccount) => {
     setCurrentAccount(account);
     setImportView("catalog");
-    await fetchMoySkladProducts(account);
+
+    const hasCachedProducts = hydrateMoyskladProductsFromCache(account);
+    if (!hasCachedProducts) {
+      await fetchMoySkladProducts(account);
+    }
   };
 
   const fetchMoySkladProducts = async (account?: MoyskladAccount) => {
     const acc = account || currentAccount;
     if (!acc) return;
-    
+
     setIsLoading(true);
     try {
-      console.log("Fetching products from MoySklad...");
-      
-      // Fetch ALL products with pagination
       const allProducts: MoySkladProduct[] = [];
       let offset = 0;
       const batchSize = 20;
       let totalSize = 0;
       let hasMore = true;
+      let pageCount = 0;
+      const maxPages = 500;
+      let previousOffset = -1;
 
-      while (hasMore) {
+      while (hasMore && pageCount < maxPages) {
         const { data, error } = await supabase.functions.invoke('moysklad', {
-          body: { 
-            action: 'get_assortment', 
-            limit: batchSize, 
+          body: {
+            action: 'get_assortment',
+            limit: batchSize,
             offset,
             login: acc.login,
             password: acc.password
@@ -2565,54 +2569,72 @@ export default function AdminPanel({
         });
 
         if (error) {
-          console.error("Error fetching products:", error);
           toast({
             title: "Ошибка",
             description: "Не удалось загрузить товары из МойСклад",
             variant: "destructive",
           });
-          return;
+          break;
         }
 
-        if (data.error) {
-          console.error("MoySklad API error:", data.error);
+        if (data?.error) {
           toast({
             title: "Ошибка авторизации",
             description: data.error,
             variant: "destructive",
           });
-          return;
+          break;
         }
 
-        const page = data.products || [];
-        totalSize = data.meta?.size || totalSize || page.length;
-        const effectiveLimit = data.meta?.limit || batchSize;
+        const page = (data?.products || []) as MoySkladProduct[];
+        totalSize = data?.meta?.size || totalSize || page.length;
+        const effectiveLimit = data?.meta?.limit || batchSize;
 
-        if (page.length > 0) {
-          allProducts.push(...page);
-          offset += page.length;
-          hasMore = offset < totalSize && page.length >= effectiveLimit;
-          console.log(`Fetched ${allProducts.length}/${totalSize} products...`);
-        } else {
+        if (page.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        allProducts.push(...page);
+        previousOffset = offset;
+        offset += page.length;
+        pageCount += 1;
+
+        // Защита от зависания на повторяющейся странице
+        if (offset === previousOffset || page.length < effectiveLimit || offset >= totalSize) {
           hasMore = false;
         }
       }
 
-      console.log("Fetched all products:", allProducts.length);
       setMoyskladProducts(allProducts);
-      setTotalProducts(totalSize);
-      
-      // Update account's last sync time
-      setAccounts(prev => prev.map(a => 
-        a.id === acc.id ? { ...a, lastSync: new Date().toISOString() } : a
-      ));
-      
-      toast({
-        title: "Товары загружены",
-        description: `Загружено ${allProducts.length} товаров из ${totalSize}`,
-      });
-    } catch (err) {
-      console.error("Error:", err);
+      setTotalProducts(totalSize || allProducts.length);
+
+      try {
+        localStorage.setItem(
+          getMoyskladCacheKey(acc.id),
+          JSON.stringify({
+            products: allProducts,
+            total: totalSize || allProducts.length,
+            cachedAt: new Date().toISOString(),
+          })
+        );
+      } catch {
+        // ignore cache write errors
+      }
+
+      if (pageCount >= maxPages) {
+        toast({
+          title: "Загрузка частично завершена",
+          description: "Достигнут лимит страниц, обновите список вручную",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Товары загружены",
+          description: `Загружено ${allProducts.length} товаров`,
+        });
+      }
+    } catch {
       toast({
         title: "Ошибка",
         description: "Произошла ошибка при подключении к МойСклад",
