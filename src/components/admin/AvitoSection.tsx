@@ -151,7 +151,7 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 }
 // Avito Feed Table with resizable columns
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
-const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, cpcBid: 80, address: 120, avitoId: 110, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
+const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, promoAuto: 140, cpcBid: 80, address: 120, avitoId: 110, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
 
 // Column filter dropdown component - uses fixed positioning to escape overflow containers
 function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
@@ -312,6 +312,7 @@ function AvitoFeedTable({
       case "adType": return params.goodsType || params.adType || "";
       case "goodsType": return params.goodsSubType || params.GoodsType || "";
       case "promo": return params.promo || "";
+      case "promoAuto": return params.promoAutoOptions || "";
       case "address": return params.address || "";
       case "avitoId": return params.avitoId || product.id.substring(0, 10);
       case "managerName": return params.managerName || "";
@@ -387,6 +388,7 @@ function AvitoFeedTable({
     { key: "goodsType", label: "Вид товара", resizable: true },
     { key: "promo", label: "Promo", resizable: true },
     { key: "promoManual", label: "PromoManual", resizable: true },
+    { key: "promoAuto", label: "PromoAuto", resizable: true },
     { key: "cpcBid", label: "Ставка CPC", resizable: true },
     { key: "address", label: "Адрес", resizable: true },
     { key: "avitoId", label: "ID из файла", resizable: true },
@@ -580,8 +582,17 @@ function AvitoFeedTable({
                       placeholder="Город|цена|лимит"
                       type="textarea"
                     />
+                   </div>
+                   {/* PromoAutoOptions - Город|Бюджет (многострочное) */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.promoAuto }}>
+                    <InlineCell
+                      value={params.promoAutoOptions || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "promoAutoOptions", val)}
+                      placeholder="Город|Бюджет"
+                      type="textarea"
+                    />
                   </div>
-                  {/* Ставка CPC */}
+                   {/* Ставка CPC */}
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.cpcBid }}>
                     <InlineCell
                       value={params.cpcBid || ""}
