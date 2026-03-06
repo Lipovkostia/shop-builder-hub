@@ -163,21 +163,24 @@ export function BulkEditPanel({
 
   const handleAddToCatalog = () => {
     if (isCreatingNew && newCatalogName.trim()) {
-      onCreateCatalogAndAdd?.(newCatalogName.trim());
+      onCreateCatalogAndAdd?.(newCatalogName.trim(), newCatalogPriceSource || undefined);
       setShowAddToCatalogDialog(false);
       setSelectedCatalogId("");
       setNewCatalogName("");
+      setNewCatalogPriceSource("");
       setIsCreatingNew(false);
     } else if (!isCreatingNew && selectedCatalogId) {
       onAddToCatalog?.(selectedCatalogId);
       setShowAddToCatalogDialog(false);
       setSelectedCatalogId("");
       setNewCatalogName("");
+      setNewCatalogPriceSource("");
       setIsCreatingNew(false);
     } else if (catalogs.length === 0 && newCatalogName.trim()) {
-      onCreateCatalogAndAdd?.(newCatalogName.trim());
+      onCreateCatalogAndAdd?.(newCatalogName.trim(), newCatalogPriceSource || undefined);
       setShowAddToCatalogDialog(false);
       setNewCatalogName("");
+      setNewCatalogPriceSource("");
     }
   };
 
