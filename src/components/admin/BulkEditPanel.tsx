@@ -713,6 +713,7 @@ export function BulkEditPanel({
               setShowAddToCatalogDialog(false);
               setSelectedCatalogId("");
               setNewCatalogName("");
+              setNewCatalogPriceSource("");
               setIsCreatingNew(false);
             }}>
               Отмена
