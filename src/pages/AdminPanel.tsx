@@ -3715,8 +3715,8 @@ export default function AdminPanel({
                   const group = await createProductGroup(name);
                   return group ? { id: group.id, name: group.name, storeId: effectiveStoreId || '' } : null;
                 }}
-                onCreateCatalog={async (name) => {
-                  const catalog = await createSupabaseCatalog(name);
+                onCreateCatalog={async (name, priceSource) => {
+                  const catalog = await createSupabaseCatalog(name, undefined, priceSource);
                   return catalog ? { 
                     id: catalog.id, 
                     name: catalog.name, 
