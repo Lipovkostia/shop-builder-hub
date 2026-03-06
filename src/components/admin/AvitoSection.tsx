@@ -1335,8 +1335,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         if (idxPromoManual >= 0 && row[idxPromoManual]) {
           params.promoManualOptions = String(row[idxPromoManual]).trim();
         }
+        // Parse PromoAutoOptions: store as-is (multi-line format City|Budget)
+        if (idxPromoAuto >= 0 && row[idxPromoAuto]) {
+          params.promoAutoOptions = String(row[idxPromoAuto]).trim();
+        }
 
-        await avitoFeed.updateProductParams(fp.product_id, params);
         updated++;
       }
 
