@@ -27,7 +27,7 @@ interface ProductsSectionProps {
   onToggleCatalogVisibility: (productId: string, catalogId: string) => void;
   onSetProductGroupAssignments: (productId: string, groupIds: string[]) => void;
   onCreateProductGroup: (name: string) => Promise<ProductGroup | null>;
-  onCreateCatalog: (name: string) => Promise<Catalog | null>;
+  onCreateCatalog: (name: string, priceSource?: string) => Promise<Catalog | null>;
   onUpdateProduct: (product: Product) => Promise<void>;
   onDeleteProducts: (productIds: string[]) => Promise<void>;
   onToggleAutoSync: (productId: string) => void;
@@ -45,6 +45,7 @@ interface ProductsSectionProps {
   moyskladLogin?: string;
   moyskladPassword?: string;
   storeCategories?: StoreCategory[];
+  availablePriceTypes?: string[];
 }
 
 const defaultVisibleColumns: VisibleColumns = {
