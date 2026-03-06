@@ -99,6 +99,7 @@ export function BulkEditPanel({
   const [selectedCatalogId, setSelectedCatalogId] = useState<string>("");
   const [newCatalogName, setNewCatalogName] = useState("");
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newCatalogPriceSource, setNewCatalogPriceSource] = useState("");
   // Category bulk editing state
   const [selectedBulkCategories, setSelectedBulkCategories] = useState<string[]>([]);
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
