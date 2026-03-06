@@ -1051,15 +1051,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
           })(),
           // PromoManualOptions - use stored multi-line value
           params.promoManualOptions || "",
-          (() => {
-            const promo = params.promo || d.promo || "";
-            if (promo && promo.startsWith("Auto")) {
-              const region = params.promoRegion || d.promoRegion || "";
-              const budget = params.promoBudget || d.promoBudget || "";
-              return [region, budget].filter(Boolean).join(", ");
-            }
-            return "";
-          })(),
+          // PromoAutoOptions - use stored multi-line value
+          params.promoAutoOptions || "",
         ]);
       }
 
@@ -1192,15 +1185,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
           })(),
           // PromoManualOptions - use stored multi-line value
           params.promoManualOptions || "",
-          (() => {
-            const promo = params.promo || d.promo || "";
-            if (promo && promo.startsWith("Auto")) {
-              const region = params.promoRegion || d.promoRegion || "";
-              const budget = params.promoBudget || d.promoBudget || "";
-              return [region, budget].filter(Boolean).join(", ");
-            }
-            return "";
-          })(),
+          // PromoAutoOptions - use stored multi-line value
+          params.promoAutoOptions || "",
         ]);
       }
 
