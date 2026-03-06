@@ -4546,6 +4546,25 @@ export default function AdminPanel({
                             onChange={(e) => setNewCatalogName(e.target.value)}
                           />
                         </div>
+                        {availableMoyskladPriceTypes.length > 0 && (
+                          <div className="space-y-2">
+                            <Label htmlFor="catalog-price-source">Источник цены (из МойСклад)</Label>
+                            <Select value={newCatalogPriceSource} onValueChange={setNewCatalogPriceSource}>
+                              <SelectTrigger className="h-9">
+                                <SelectValue placeholder="Цена товара (по умолчанию)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="default">Цена товара (по умолчанию)</SelectItem>
+                                {availableMoyskladPriceTypes.map(pt => (
+                                  <SelectItem key={pt} value={pt}>{pt}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                              Выберите тип цены из МойСклад для отображения в прайс-листе
+                            </p>
+                          </div>
+                        )}
                         <div className="flex gap-2">
                           <Button
                             onClick={createCatalog}
