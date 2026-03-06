@@ -2287,11 +2287,12 @@ export default function AdminPanel({
       return;
     }
 
-    const created = await createSupabaseCatalog(newCatalogName.trim(), newCatalogDescription.trim() || undefined);
+    const created = await createSupabaseCatalog(newCatalogName.trim(), newCatalogDescription.trim() || undefined, newCatalogPriceSource || undefined);
     
     if (created) {
       setNewCatalogName("");
       setNewCatalogDescription("");
+      setNewCatalogPriceSource("");
       setNewCatalogCategories(new Set());
       setShowAddCatalog(false);
     }
