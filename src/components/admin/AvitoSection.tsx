@@ -313,7 +313,7 @@ function AvitoFeedTable({
       case "goodsType": return params.goodsSubType || params.GoodsType || "";
       case "promo": return params.promo || "";
       case "address": return params.address || "";
-      case "avitoId": return params.avitoId || "";
+      case "avitoId": return params.avitoId || product.id.substring(0, 10);
       case "managerName": return params.managerName || "";
       case "contactPhone": return params.contactPhone || "";
       case "email": return params.email || "";
@@ -600,7 +600,7 @@ function AvitoFeedTable({
                    {/* ID из файла */}
                    <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.avitoId }}>
                      <InlineCell
-                       value={params.avitoId || ""}
+                       value={params.avitoId || product.id.substring(0, 10)}
                        onChange={(val) => handleInlineParamUpdate(fp.product_id, "avitoId", val)}
                        placeholder="—"
                      />
