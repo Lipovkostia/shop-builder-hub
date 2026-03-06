@@ -1890,7 +1890,7 @@ export default function AdminPanel({
           const catalogPricing = getCatalogProductPricing(currentCatalog.id, product.id);
           
           // Calculate effective price using same logic as table display
-          const price = getCatalogSalePrice(product, catalogPricing);
+          const price = getCatalogSalePrice(product, catalogPricing, currentCatalog.id);
           const buyPrice = product.buyPrice || 0;
           const markup = catalogPricing?.markup !== undefined ? catalogPricing.markup : product.markup;
           
@@ -1970,7 +1970,7 @@ export default function AdminPanel({
         .filter(p => selectedCatalogProducts.has(p.id))
         .map(product => {
           const catalogPricing = getCatalogProductPricing(currentCatalog.id, product.id);
-          const price = getCatalogSalePrice(product, catalogPricing);
+          const price = getCatalogSalePrice(product, catalogPricing, currentCatalog.id);
           const buyPrice = product.buyPrice || 0;
           const markup = catalogPricing?.markup !== undefined ? catalogPricing.markup : product.markup;
           const packagingPrices = calculatePackagingPrices(
@@ -5423,7 +5423,7 @@ export default function AdminPanel({
                         const product = allProducts.find(p => p.id === productId);
                         if (product) {
                           const cp = getCatalogProductPricing(currentCatalog.id, productId);
-                          const price = getCatalogSalePrice(product, cp);
+                          const price = getCatalogSalePrice(product, cp, currentCatalog.id);
                           if (price > 0) priceMap[productId] = price;
                         }
                       });
@@ -5464,7 +5464,7 @@ export default function AdminPanel({
                           }
                           if (catalogFilterPrice !== "all") {
                             const cp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, p.id) : undefined;
-                            const price = getCatalogSalePrice(p, cp);
+                            const price = getCatalogSalePrice(p, cp, currentCatalog?.id);
                             if (catalogFilterPrice === "with_price" && (!price || price <= 0)) return false;
                             if (catalogFilterPrice === "no_price" && price > 0) return false;
                           }
@@ -5611,7 +5611,7 @@ export default function AdminPanel({
                             }
                             if (catalogFilterPrice !== "all") {
                               const cp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, p.id) : undefined;
-                              const price = getCatalogSalePrice(p, cp);
+                              const price = getCatalogSalePrice(p, cp, currentCatalog?.id);
                               if (catalogFilterPrice === "with_price" && (!price || price <= 0)) return false;
                               if (catalogFilterPrice === "no_price" && price > 0) return false;
                             }
@@ -5641,7 +5641,7 @@ export default function AdminPanel({
                             if (catalogSortColumn === "price") {
                               const aCp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, a.id) : undefined;
                               const bCp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, b.id) : undefined;
-                              return (getCatalogSalePrice(a, aCp) - getCatalogSalePrice(b, bCp)) * dir;
+                              return (getCatalogSalePrice(a, aCp, currentCatalog?.id) - getCatalogSalePrice(b, bCp, currentCatalog?.id)) * dir;
                             }
                             if (catalogSortColumn === "unit") return (a.unit || "").localeCompare(b.unit || "", 'ru') * dir;
                             if (catalogSortColumn === "type") return (a.packagingType || "").localeCompare(b.packagingType || "", 'ru') * dir;
@@ -5671,7 +5671,7 @@ export default function AdminPanel({
                             const effectiveStatus = getCatalogProductStatus(product, catalogPricing);
                             
                             // Calculate prices using catalog-specific markup but base product unitWeight
-                            const salePrice = getCatalogSalePrice(product, catalogPricing);
+                            const salePrice = getCatalogSalePrice(product, catalogPricing, currentCatalog?.id);
                             const packagingPrices = calculatePackagingPrices(
                               salePrice,
                               baseUnitWeight,
@@ -5707,7 +5707,7 @@ export default function AdminPanel({
                                             }
                                             if (catalogFilterPrice !== "all") {
                                               const cp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, p.id) : undefined;
-                                              const price = getCatalogSalePrice(p, cp);
+                                              const price = getCatalogSalePrice(p, cp, currentCatalog?.id);
                                               if (catalogFilterPrice === "with_price" && (!price || price <= 0)) return false;
                                               if (catalogFilterPrice === "no_price" && price > 0) return false;
                                             }
