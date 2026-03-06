@@ -3764,6 +3764,7 @@ export default function AdminPanel({
                 avitoFeedProductIds={avitoFeed.feedProductIds}
                 onRemoveFromAvitoFeed={avitoFeed.removeProductsFromFeed}
                 storeCategories={storeCategories}
+                availablePriceTypes={availableMoyskladPriceTypes}
               />
 
               {/* Product Pricing Dialog */}
