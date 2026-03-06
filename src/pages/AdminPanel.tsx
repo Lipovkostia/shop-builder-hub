@@ -1068,6 +1068,7 @@ export default function AdminPanel({
     buyPrice: "Себест-ть",
     markup: "Наценка",
     price: "Цена",
+    msPrice: "МС цена",
     priceFull: "Целая",
     priceHalf: "½",
     priceQuarter: "¼",
