@@ -434,8 +434,8 @@ export function ProductsSection({
 
   // Create new catalog and add selected products
   const handleCreateCatalogAndAdd = useCallback(
-    async (catalogName: string) => {
-      const newCatalog = await onCreateCatalog(catalogName);
+    async (catalogName: string, priceSource?: string) => {
+      const newCatalog = await onCreateCatalog(catalogName, priceSource);
       if (newCatalog) {
         const selectedIds = Array.from(selectedBulkProducts);
         for (const productId of selectedIds) {
