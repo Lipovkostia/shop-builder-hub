@@ -2446,7 +2446,7 @@ export default function AdminPanel({
   }, [updateCatalogProductSettingsInDB, user, toast]);
 
   // Get effective sale price for catalog (using catalog markup or falling back to base product)
-  const getCatalogSalePrice = (product: Product, catalogPricing?: CatalogProductPricing): number => {
+  const getCatalogSalePrice = (product: Product, catalogPricing?: CatalogProductPricing, catalogId?: string): number => {
     // Приоритет 1: Фиксированная цена каталога
     if (catalogPricing?.isFixedPrice && catalogPricing?.fixedPrice != null) {
       return catalogPricing.fixedPrice;
@@ -2455,7 +2455,17 @@ export default function AdminPanel({
     if (product.isFixedPrice) {
       return product.pricePerUnit || 0;
     }
-    // Приоритет 3: Расчёт по наценке
+    // Приоритет 3: Цена из МойСклад по типу price_source каталога
+    if (catalogId) {
+      const catalog = supabaseCatalogs.find(c => c.id === catalogId);
+      if (catalog?.price_source && product.moyskladPrices) {
+        const msPrice = (product.moyskladPrices as Record<string, number>)[catalog.price_source];
+        if (msPrice !== undefined && msPrice > 0) {
+          return msPrice;
+        }
+      }
+    }
+    // Приоритет 4: Расчёт по наценке
     const buyPrice = product.buyPrice || 0;
     const markup = catalogPricing?.markup !== undefined ? catalogPricing.markup : product.markup;
     return calculateSalePrice(buyPrice, markup);
