@@ -1621,7 +1621,32 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                           </div>
                         )}
 
-                        {/* CPC Bid */}
+                        {/* PromoAuto details */}
+                        {(localDefaults.promo === "Auto_1" || localDefaults.promo === "Auto_7" || localDefaults.promo === "Auto_30") && (
+                          <div className="space-y-1.5 border-t border-dashed pt-2">
+                            <p className="text-[9px] text-muted-foreground">Формат: Город|Бюджет</p>
+                            <p className="text-[9px] text-muted-foreground">Несколько городов — каждый с новой строки. Бюджет в рублях.</p>
+                            <div className="space-y-1">
+                              <Input className="h-7 text-xs" placeholder="Город/Регион" value={localDefaults.promoRegion || ""} onChange={(e) => setLocalDefaults(prev => ({ ...prev, promoRegion: e.target.value }))} />
+                              <Input className="h-7 text-xs" placeholder="Бюджет (₽)" type="number" value={localDefaults.promoBudget || ""} onChange={(e) => setLocalDefaults(prev => ({ ...prev, promoBudget: e.target.value }))} />
+                            </div>
+                            <p className="text-[9px] text-muted-foreground">
+                              Результат: <code className="bg-muted px-1 rounded text-foreground">{(() => { const r = localDefaults.promoRegion || ""; const b = localDefaults.promoBudget || ""; if (!b) return "—"; return `${r}|${b}`; })()}</code>
+                            </p>
+                            <BulkButtons onApply={async (onlySelected) => {
+                              const budget = localDefaults.promoBudget || "";
+                              if (!budget) { toast({ title: "Укажите бюджет", variant: "destructive" }); return; }
+                              const line = `${localDefaults.promoRegion || ""}|${budget}`;
+                              await applyToTargets(async (targets) => {
+                                for (const fp of targets) { await avitoFeed.updateProductParams(fp.product_id, { ...(fp.avito_params || {}), promoAutoOptions: line }); }
+                                avitoFeed.saveDefaults(localDefaults);
+                                toast({ title: `PromoAuto проставлен для ${targets.length} товар(ов)` });
+                              }, onlySelected);
+                            }} />
+                          </div>
+                        )}
+
+
                         <div className="space-y-1">
                           <Label className="text-[10px] text-muted-foreground">Ставка CPC</Label>
                           <div className="flex gap-1">
