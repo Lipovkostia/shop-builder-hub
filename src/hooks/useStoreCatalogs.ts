@@ -87,18 +87,22 @@ export function useStoreCatalogs(storeId: string | null) {
   }, [storeId]);
 
   // Create a new catalog
-  const createCatalog = useCallback(async (name: string, description?: string) => {
+  const createCatalog = useCallback(async (name: string, description?: string, priceSource?: string) => {
     if (!storeId) return null;
 
     try {
+      const insertData: any = {
+        store_id: storeId,
+        name,
+        description: description || null,
+        sort_order: catalogs.length,
+      };
+      if (priceSource) {
+        insertData.price_source = priceSource;
+      }
       const { data, error } = await supabase
         .from("catalogs")
-        .insert({
-          store_id: storeId,
-          name,
-          description: description || null,
-          sort_order: catalogs.length,
-        })
+        .insert(insertData)
         .select()
         .single();
 
