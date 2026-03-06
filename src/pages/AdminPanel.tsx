@@ -4579,6 +4579,7 @@ export default function AdminPanel({
                               setShowAddCatalog(false);
                               setNewCatalogName("");
                               setNewCatalogDescription("");
+                              setNewCatalogPriceSource("");
                               setNewCatalogCategories(new Set());
                             }}
                             variant="outline"
