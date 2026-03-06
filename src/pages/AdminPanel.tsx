@@ -4840,6 +4840,12 @@ export default function AdminPanel({
                     >
                       <span className="text-xs text-muted-foreground whitespace-nowrap block">
                         {currentCatalog.name}
+                        {(() => {
+                          const sc = supabaseCatalogs.find(c => c.id === currentCatalog.id);
+                          return sc?.price_source ? (
+                            <Badge variant="secondary" className="ml-2 text-[10px]">{sc.price_source}</Badge>
+                          ) : null;
+                        })()}
                       </span>
                     </div>
                     
