@@ -63,7 +63,7 @@ const defaultVisibleColumns: VisibleColumns = {
   msProduct: false,
   msAccount: true,
   sync: true,
-  msPrices: false,
+  msPrices: true,
   avito: false,
 };
 
