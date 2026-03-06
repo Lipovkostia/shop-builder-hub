@@ -1047,6 +1047,7 @@ export default function AdminPanel({
     buyPrice: true,
     markup: true,
     price: true,
+    msPrice: false,
     priceFull: true,
     priceHalf: true,
     priceQuarter: true,
@@ -1067,6 +1068,7 @@ export default function AdminPanel({
     buyPrice: "Себест-ть",
     markup: "Наценка",
     price: "Цена",
+    msPrice: "МС цена",
     priceFull: "Целая",
     priceHalf: "½",
     priceQuarter: "¼",
@@ -2324,6 +2326,10 @@ export default function AdminPanel({
       setCurrentCatalog(legacyCatalog);
       setSelectedCatalogProducts(new Set(legacyCatalog.productIds));
       setCatalogView("detail");
+      // Auto-enable msPrice column if catalog has a price_source
+      if (freshCatalog.price_source) {
+        setCatalogVisibleColumns(prev => ({ ...prev, msPrice: true }));
+      }
     }
   };
 
@@ -3715,8 +3721,8 @@ export default function AdminPanel({
                   const group = await createProductGroup(name);
                   return group ? { id: group.id, name: group.name, storeId: effectiveStoreId || '' } : null;
                 }}
-                onCreateCatalog={async (name) => {
-                  const catalog = await createSupabaseCatalog(name);
+                onCreateCatalog={async (name, priceSource) => {
+                  const catalog = await createSupabaseCatalog(name, undefined, priceSource);
                   return catalog ? { 
                     id: catalog.id, 
                     name: catalog.name, 
@@ -3764,6 +3770,7 @@ export default function AdminPanel({
                 avitoFeedProductIds={avitoFeed.feedProductIds}
                 onRemoveFromAvitoFeed={avitoFeed.removeProductsFromFeed}
                 storeCategories={storeCategories}
+                availablePriceTypes={availableMoyskladPriceTypes}
               />
 
               {/* Product Pricing Dialog */}
@@ -4833,6 +4840,12 @@ export default function AdminPanel({
                     >
                       <span className="text-xs text-muted-foreground whitespace-nowrap block">
                         {currentCatalog.name}
+                        {(() => {
+                          const sc = supabaseCatalogs.find(c => c.id === currentCatalog.id);
+                          return sc?.price_source ? (
+                            <Badge variant="secondary" className="ml-2 text-[10px]">{sc.price_source}</Badge>
+                          ) : null;
+                        })()}
                       </span>
                     </div>
                     
@@ -4936,10 +4949,45 @@ export default function AdminPanel({
                     </div>
                   </div>
 
-                  <div className="flex items-center mb-4">
+                  <div className="flex items-center gap-3 mb-4 flex-wrap">
                     <Badge variant="outline">
                       Выбрано: {selectedCatalogProducts.size} из {allProducts.length}
                     </Badge>
+                    {/* Price source selector with toggle */}
+                    {availableMoyskladPriceTypes.length > 0 && (
+                      <div className="flex items-center gap-2 ml-auto">
+                        <Label className="text-xs text-muted-foreground whitespace-nowrap">Источник цены:</Label>
+                        <Select 
+                          value={(supabaseCatalogs.find(c => c.id === currentCatalog.id) as any)?.price_source || "default"} 
+                          onValueChange={(val) => {
+                            const priceSource = val === "default" ? null : val;
+                            updateSupabaseCatalog(currentCatalog.id, { price_source: priceSource } as any);
+                            // Auto-toggle msPrice column visibility
+                            setCatalogVisibleColumns(prev => ({ ...prev, msPrice: !!priceSource }));
+                          }}
+                        >
+                          <SelectTrigger className="h-7 text-xs w-[160px]">
+                            <SelectValue placeholder="По умолчанию" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="default">По умолчанию</SelectItem>
+                            {availableMoyskladPriceTypes.map(pt => (
+                              <SelectItem key={pt} value={pt}>{pt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {(supabaseCatalogs.find(c => c.id === currentCatalog.id) as any)?.price_source && (
+                          <div className="flex items-center gap-1">
+                            <Switch
+                              checked={catalogVisibleColumns.msPrice}
+                              onCheckedChange={(checked) => setCatalogVisibleColumns(prev => ({ ...prev, msPrice: checked }))}
+                              className="h-4 w-7"
+                            />
+                            <span className="text-[10px] text-muted-foreground">Показать</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Onboarding Step 4: Set cost price - show only when no buyPrice set yet for products in this catalog */}
@@ -5508,6 +5556,7 @@ export default function AdminPanel({
                         ...(catalogVisibleColumns.buyPrice ? [{ id: "buyPrice", minWidth: 70, defaultWidth: 90 }] : []),
                         ...(catalogVisibleColumns.markup ? [{ id: "markup", minWidth: 110, defaultWidth: 120 }] : []),
                         ...(catalogVisibleColumns.price ? [{ id: "price", minWidth: 80, defaultWidth: 100 }] : []),
+                        ...(catalogVisibleColumns.msPrice ? [{ id: "msPrice", minWidth: 80, defaultWidth: 100 }] : []),
                         ...(catalogVisibleColumns.priceFull ? [{ id: "priceFull", minWidth: 70, defaultWidth: 90 }] : []),
                         ...(catalogVisibleColumns.priceHalf ? [{ id: "priceHalf", minWidth: 70, defaultWidth: 90 }] : []),
                         ...(catalogVisibleColumns.priceQuarter ? [{ id: "priceQuarter", minWidth: 70, defaultWidth: 90 }] : []),
@@ -5584,6 +5633,14 @@ export default function AdminPanel({
                               <button className="flex items-center gap-1 hover:text-foreground" onClick={() => { setCatalogSortColumn("price"); setCatalogSortDirection(catalogSortColumn === "price" && catalogSortDirection === "asc" ? "desc" : "asc"); }}>
                                 Цена {catalogSortColumn === "price" && (catalogSortDirection === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                               </button>
+                            </ResizableTableHead>
+                          )}
+                          {catalogVisibleColumns.msPrice && (
+                            <ResizableTableHead columnId="msPrice">
+                              <span className="text-xs">МС цена{currentCatalog && (() => {
+                                const sc = supabaseCatalogs.find(c => c.id === currentCatalog.id);
+                                return sc?.price_source ? ` (${sc.price_source})` : '';
+                              })()}</span>
                             </ResizableTableHead>
                           )}
                           {catalogVisibleColumns.priceFull && <ResizableTableHead columnId="priceFull">Целая</ResizableTableHead>}
@@ -5955,6 +6012,16 @@ export default function AdminPanel({
                                         suffix={`₽/${baseUnit}`}
                                       />
                                     </div>
+                                  </ResizableTableCell>
+                                )}
+                                {catalogVisibleColumns.msPrice && (
+                                  <ResizableTableCell columnId="msPrice">
+                                    {(() => {
+                                      const sc = currentCatalog ? supabaseCatalogs.find(c => c.id === currentCatalog.id) : null;
+                                      if (!sc?.price_source || !product.moyskladPrices) return <span className="text-xs text-muted-foreground">—</span>;
+                                      const msPrice = (product.moyskladPrices as Record<string, number>)[sc.price_source];
+                                      return msPrice ? <span className="text-xs font-medium">{formatPrice(msPrice)}</span> : <span className="text-xs text-muted-foreground">—</span>;
+                                    })()}
                                   </ResizableTableCell>
                                 )}
                                 {catalogVisibleColumns.priceFull && (

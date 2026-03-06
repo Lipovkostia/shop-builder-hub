@@ -31,6 +31,7 @@ import { ChevronDown, Layers } from "lucide-react";
 interface Catalog {
   id: string;
   name: string;
+  price_source?: string | null;
 }
 
 interface Category {
@@ -49,7 +50,8 @@ interface BulkEditPanelProps {
   showDelete?: boolean;
   catalogs?: Catalog[];
   onAddToCatalog?: (catalogId: string) => void;
-  onCreateCatalogAndAdd?: (catalogName: string) => void;
+  onCreateCatalogAndAdd?: (catalogName: string, priceSource?: string) => void;
+  availablePriceTypes?: string[];
   onRemoveFromCatalog?: () => void;
   currentCatalogName?: string;
   // New props for bulk category editing
@@ -77,6 +79,7 @@ export function BulkEditPanel({
   catalogs = [],
   onAddToCatalog,
   onCreateCatalogAndAdd,
+  availablePriceTypes = [],
   onRemoveFromCatalog,
   currentCatalogName,
   categories = [],
@@ -96,6 +99,7 @@ export function BulkEditPanel({
   const [selectedCatalogId, setSelectedCatalogId] = useState<string>("");
   const [newCatalogName, setNewCatalogName] = useState("");
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newCatalogPriceSource, setNewCatalogPriceSource] = useState("");
   // Category bulk editing state
   const [selectedBulkCategories, setSelectedBulkCategories] = useState<string[]>([]);
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
@@ -159,21 +163,24 @@ export function BulkEditPanel({
 
   const handleAddToCatalog = () => {
     if (isCreatingNew && newCatalogName.trim()) {
-      onCreateCatalogAndAdd?.(newCatalogName.trim());
+      onCreateCatalogAndAdd?.(newCatalogName.trim(), newCatalogPriceSource || undefined);
       setShowAddToCatalogDialog(false);
       setSelectedCatalogId("");
       setNewCatalogName("");
+      setNewCatalogPriceSource("");
       setIsCreatingNew(false);
     } else if (!isCreatingNew && selectedCatalogId) {
       onAddToCatalog?.(selectedCatalogId);
       setShowAddToCatalogDialog(false);
       setSelectedCatalogId("");
       setNewCatalogName("");
+      setNewCatalogPriceSource("");
       setIsCreatingNew(false);
     } else if (catalogs.length === 0 && newCatalogName.trim()) {
-      onCreateCatalogAndAdd?.(newCatalogName.trim());
+      onCreateCatalogAndAdd?.(newCatalogName.trim(), newCatalogPriceSource || undefined);
       setShowAddToCatalogDialog(false);
       setNewCatalogName("");
+      setNewCatalogPriceSource("");
     }
   };
 
@@ -655,6 +662,22 @@ export function BulkEditPanel({
                     }
                   }}
                 />
+                {availablePriceTypes.length > 0 && (
+                  <div className="space-y-1 pt-2">
+                    <Label className="text-xs text-muted-foreground">Источник цены (МойСклад)</Label>
+                    <Select value={newCatalogPriceSource} onValueChange={setNewCatalogPriceSource}>
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Цена товара (по умолчанию)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">Цена товара (по умолчанию)</SelectItem>
+                        {availablePriceTypes.map(pt => (
+                          <SelectItem key={pt} value={pt}>{pt}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 {catalogs.length > 0 && (
                   <Button
                     variant="ghost"
@@ -662,6 +685,7 @@ export function BulkEditPanel({
                     onClick={() => {
                       setIsCreatingNew(false);
                       setNewCatalogName("");
+                      setNewCatalogPriceSource("");
                     }}
                     className="text-xs text-muted-foreground"
                   >
@@ -689,6 +713,7 @@ export function BulkEditPanel({
               setShowAddToCatalogDialog(false);
               setSelectedCatalogId("");
               setNewCatalogName("");
+              setNewCatalogPriceSource("");
               setIsCreatingNew(false);
             }}>
               Отмена

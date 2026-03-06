@@ -27,7 +27,7 @@ interface ProductsSectionProps {
   onToggleCatalogVisibility: (productId: string, catalogId: string) => void;
   onSetProductGroupAssignments: (productId: string, groupIds: string[]) => void;
   onCreateProductGroup: (name: string) => Promise<ProductGroup | null>;
-  onCreateCatalog: (name: string) => Promise<Catalog | null>;
+  onCreateCatalog: (name: string, priceSource?: string) => Promise<Catalog | null>;
   onUpdateProduct: (product: Product) => Promise<void>;
   onDeleteProducts: (productIds: string[]) => Promise<void>;
   onToggleAutoSync: (productId: string) => void;
@@ -45,6 +45,7 @@ interface ProductsSectionProps {
   moyskladLogin?: string;
   moyskladPassword?: string;
   storeCategories?: StoreCategory[];
+  availablePriceTypes?: string[];
 }
 
 const defaultVisibleColumns: VisibleColumns = {
@@ -110,6 +111,7 @@ export function ProductsSection({
   moyskladLogin,
   moyskladPassword,
   storeCategories = [],
+  availablePriceTypes = [],
 }: ProductsSectionProps) {
   const { toast } = useToast();
   
@@ -432,8 +434,8 @@ export function ProductsSection({
 
   // Create new catalog and add selected products
   const handleCreateCatalogAndAdd = useCallback(
-    async (catalogName: string) => {
-      const newCatalog = await onCreateCatalog(catalogName);
+    async (catalogName: string, priceSource?: string) => {
+      const newCatalog = await onCreateCatalog(catalogName, priceSource);
       if (newCatalog) {
         const selectedIds = Array.from(selectedBulkProducts);
         for (const productId of selectedIds) {
@@ -588,6 +590,7 @@ export function ProductsSection({
             catalogs={catalogs}
             onAddToCatalog={handleAddToCatalog}
             onCreateCatalogAndAdd={handleCreateCatalogAndAdd}
+            availablePriceTypes={availablePriceTypes}
             categories={storeCategories.map(c => ({ id: c.id, name: c.name, sort_order: c.sort_order }))}
             onBulkSetCategories={handleBulkSetCategories}
             onBulkClearCategories={handleBulkClearCategories}
