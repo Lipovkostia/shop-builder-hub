@@ -846,6 +846,7 @@ export default function AdminPanel({
   const [currentCatalog, setCurrentCatalog] = useState<Catalog | null>(null);
   const [newCatalogName, setNewCatalogName] = useState("");
   const [newCatalogDescription, setNewCatalogDescription] = useState("");
+  const [newCatalogPriceSource, setNewCatalogPriceSource] = useState<string>("");
   const [newCatalogCategories, setNewCatalogCategories] = useState<Set<string>>(new Set());
   const [showAddCatalog, setShowAddCatalog] = useState(false);
   const [catalogProductSearch, setCatalogProductSearch] = useState("");
