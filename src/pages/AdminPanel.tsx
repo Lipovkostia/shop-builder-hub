@@ -757,6 +757,19 @@ export default function AdminPanel({
         moyskladPrices: sp.moysklad_prices || null,
       }));
   }, [supabaseProducts]);
+
+  // Collect all available MoySklad price types from products
+  const availableMoyskladPriceTypes = useMemo(() => {
+    const types = new Set<string>();
+    importedProducts.forEach(p => {
+      if (p.moyskladPrices && typeof p.moyskladPrices === 'object') {
+        Object.keys(p.moyskladPrices).forEach(k => {
+          if (k && k !== '0') types.add(k);
+        });
+      }
+    });
+    return Array.from(types).sort();
+  }, [importedProducts]);
   
   // Wrapper to update products in Supabase
   const setImportedProducts = useCallback((updater: React.SetStateAction<Product[]>) => {
