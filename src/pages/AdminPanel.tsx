@@ -4949,10 +4949,45 @@ export default function AdminPanel({
                     </div>
                   </div>
 
-                  <div className="flex items-center mb-4">
+                  <div className="flex items-center gap-3 mb-4 flex-wrap">
                     <Badge variant="outline">
                       Выбрано: {selectedCatalogProducts.size} из {allProducts.length}
                     </Badge>
+                    {/* Price source selector with toggle */}
+                    {availableMoyskladPriceTypes.length > 0 && (
+                      <div className="flex items-center gap-2 ml-auto">
+                        <Label className="text-xs text-muted-foreground whitespace-nowrap">Источник цены:</Label>
+                        <Select 
+                          value={(supabaseCatalogs.find(c => c.id === currentCatalog.id) as any)?.price_source || "default"} 
+                          onValueChange={(val) => {
+                            const priceSource = val === "default" ? null : val;
+                            updateSupabaseCatalog(currentCatalog.id, { price_source: priceSource } as any);
+                            // Auto-toggle msPrice column visibility
+                            setCatalogVisibleColumns(prev => ({ ...prev, msPrice: !!priceSource }));
+                          }}
+                        >
+                          <SelectTrigger className="h-7 text-xs w-[160px]">
+                            <SelectValue placeholder="По умолчанию" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="default">По умолчанию</SelectItem>
+                            {availableMoyskladPriceTypes.map(pt => (
+                              <SelectItem key={pt} value={pt}>{pt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {(supabaseCatalogs.find(c => c.id === currentCatalog.id) as any)?.price_source && (
+                          <div className="flex items-center gap-1">
+                            <Switch
+                              checked={catalogVisibleColumns.msPrice}
+                              onCheckedChange={(checked) => setCatalogVisibleColumns(prev => ({ ...prev, msPrice: checked }))}
+                              className="h-4 w-7"
+                            />
+                            <span className="text-[10px] text-muted-foreground">Показать</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Onboarding Step 4: Set cost price - show only when no buyPrice set yet for products in this catalog */}
