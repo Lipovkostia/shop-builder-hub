@@ -43,7 +43,7 @@ export function useStoreCatalogs(storeId: string | null) {
         .order("sort_order", { ascending: true });
 
       if (error) throw error;
-      setCatalogs(data || []);
+      setCatalogs((data || []).map((d: any) => ({ ...d, price_source: d.price_source || null })) as Catalog[]);
     } catch (error: any) {
       console.error("Error fetching catalogs:", error);
       toast({
