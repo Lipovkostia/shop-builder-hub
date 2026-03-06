@@ -281,6 +281,7 @@ export type Database = {
           id: string
           is_default: boolean
           name: string
+          price_source: string | null
           sort_order: number | null
           store_id: string
           updated_at: string
@@ -292,6 +293,7 @@ export type Database = {
           id?: string
           is_default?: boolean
           name: string
+          price_source?: string | null
           sort_order?: number | null
           store_id: string
           updated_at?: string
@@ -303,6 +305,7 @@ export type Database = {
           id?: string
           is_default?: boolean
           name?: string
+          price_source?: string | null
           sort_order?: number | null
           store_id?: string
           updated_at?: string
