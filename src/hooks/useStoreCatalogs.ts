@@ -104,7 +104,7 @@ export function useStoreCatalogs(storeId: string | null) {
 
       if (error) throw error;
       
-      setCatalogs(prev => [...prev, data]);
+      setCatalogs(prev => [...prev, { ...data, price_source: (data as any).price_source || null } as Catalog]);
       
       // Log activity
       logActivity({
@@ -144,7 +144,7 @@ export function useStoreCatalogs(storeId: string | null) {
 
       if (error) throw error;
       
-      setCatalogs(prev => prev.map(c => c.id === catalogId ? data : c));
+      setCatalogs(prev => prev.map(c => c.id === catalogId ? { ...data, price_source: (data as any).price_source || null } as Catalog : c));
       
       // Log activity for name changes
       if (storeId && updates.name && catalog?.name !== updates.name) {
