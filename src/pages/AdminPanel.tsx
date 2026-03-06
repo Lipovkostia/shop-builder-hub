@@ -4738,9 +4738,36 @@ export default function AdminPanel({
                                         <Edit2 className="h-3 w-3 text-muted-foreground" />
                                       </button>
                                     )}
-                                  </div>
-                                  
-                                  {/* Delete */}
+                                   </div>
+
+                                   {/* Price source */}
+                                   {availableMoyskladPriceTypes.length > 0 && (
+                                     <div className="space-y-2">
+                                       <Label className="text-xs text-muted-foreground">Источник цены (МойСклад)</Label>
+                                       <Select 
+                                         value={(supabaseCatalogs.find(c => c.id === catalog.id) as any)?.price_source || "default"} 
+                                         onValueChange={(val) => {
+                                           const priceSource = val === "default" ? null : val;
+                                           updateSupabaseCatalog(catalog.id, { price_source: priceSource } as any);
+                                         }}
+                                       >
+                                         <SelectTrigger className="h-8 text-sm">
+                                           <SelectValue placeholder="Цена товара" />
+                                         </SelectTrigger>
+                                         <SelectContent>
+                                           <SelectItem value="default">Цена товара (по умолчанию)</SelectItem>
+                                           {availableMoyskladPriceTypes.map(pt => (
+                                             <SelectItem key={pt} value={pt}>{pt}</SelectItem>
+                                           ))}
+                                         </SelectContent>
+                                       </Select>
+                                       <p className="text-[10px] text-muted-foreground">
+                                         Цена из МойСклад, которая будет использоваться в этом прайс-листе
+                                       </p>
+                                     </div>
+                                   )}
+                                   
+                                   {/* Delete */}
                                   <div className="pt-2 border-t border-border">
                                     <Button
                                       variant="ghost"
