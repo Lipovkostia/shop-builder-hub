@@ -151,7 +151,7 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 }
 // Avito Feed Table with resizable columns
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
-const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, cpcBid: 80, address: 120, avitoId: 110, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
+const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, promoAuto: 140, cpcBid: 80, address: 120, avitoId: 110, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
 
 // Column filter dropdown component - uses fixed positioning to escape overflow containers
 function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
@@ -312,6 +312,7 @@ function AvitoFeedTable({
       case "adType": return params.goodsType || params.adType || "";
       case "goodsType": return params.goodsSubType || params.GoodsType || "";
       case "promo": return params.promo || "";
+      case "promoAuto": return params.promoAutoOptions || "";
       case "address": return params.address || "";
       case "avitoId": return params.avitoId || product.id.substring(0, 10);
       case "managerName": return params.managerName || "";
@@ -387,6 +388,7 @@ function AvitoFeedTable({
     { key: "goodsType", label: "Вид товара", resizable: true },
     { key: "promo", label: "Promo", resizable: true },
     { key: "promoManual", label: "PromoManual", resizable: true },
+    { key: "promoAuto", label: "PromoAuto", resizable: true },
     { key: "cpcBid", label: "Ставка CPC", resizable: true },
     { key: "address", label: "Адрес", resizable: true },
     { key: "avitoId", label: "ID из файла", resizable: true },
@@ -580,8 +582,17 @@ function AvitoFeedTable({
                       placeholder="Город|цена|лимит"
                       type="textarea"
                     />
+                   </div>
+                   {/* PromoAutoOptions - Город|Бюджет (многострочное) */}
+                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.promoAuto }}>
+                    <InlineCell
+                      value={params.promoAutoOptions || ""}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "promoAutoOptions", val)}
+                      placeholder="Город|Бюджет"
+                      type="textarea"
+                    />
                   </div>
-                  {/* Ставка CPC */}
+                   {/* Ставка CPC */}
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.cpcBid }}>
                     <InlineCell
                       value={params.cpcBid || ""}
@@ -1040,15 +1051,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
           })(),
           // PromoManualOptions - use stored multi-line value
           params.promoManualOptions || "",
-          (() => {
-            const promo = params.promo || d.promo || "";
-            if (promo && promo.startsWith("Auto")) {
-              const region = params.promoRegion || d.promoRegion || "";
-              const budget = params.promoBudget || d.promoBudget || "";
-              return [region, budget].filter(Boolean).join(", ");
-            }
-            return "";
-          })(),
+          // PromoAutoOptions - use stored multi-line value
+          params.promoAutoOptions || "",
         ]);
       }
 
@@ -1181,15 +1185,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
           })(),
           // PromoManualOptions - use stored multi-line value
           params.promoManualOptions || "",
-          (() => {
-            const promo = params.promo || d.promo || "";
-            if (promo && promo.startsWith("Auto")) {
-              const region = params.promoRegion || d.promoRegion || "";
-              const budget = params.promoBudget || d.promoBudget || "";
-              return [region, budget].filter(Boolean).join(", ");
-            }
-            return "";
-          })(),
+          // PromoAutoOptions - use stored multi-line value
+          params.promoAutoOptions || "",
         ]);
       }
 
@@ -1284,6 +1281,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       const idxCompany = colIdx("Название компании");
       const idxPromo = colIdx("Promo");
       const idxPromoManual = colIdx("PromoManualOptions");
+      const idxPromoAuto = colIdx("PromoAutoOptions");
 
       // Data starts after headerRowIdx + 2 rows (required/type rows)
       const dataStartIdx = headerRowIdx + 3; // skip header, required, type rows
@@ -1337,8 +1335,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         if (idxPromoManual >= 0 && row[idxPromoManual]) {
           params.promoManualOptions = String(row[idxPromoManual]).trim();
         }
+        // Parse PromoAutoOptions: store as-is (multi-line format City|Budget)
+        if (idxPromoAuto >= 0 && row[idxPromoAuto]) {
+          params.promoAutoOptions = String(row[idxPromoAuto]).trim();
+        }
 
-        await avitoFeed.updateProductParams(fp.product_id, params);
         updated++;
       }
 
@@ -1620,7 +1621,32 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                           </div>
                         )}
 
-                        {/* CPC Bid */}
+                        {/* PromoAuto details */}
+                        {(localDefaults.promo === "Auto_1" || localDefaults.promo === "Auto_7" || localDefaults.promo === "Auto_30") && (
+                          <div className="space-y-1.5 border-t border-dashed pt-2">
+                            <p className="text-[9px] text-muted-foreground">Формат: Город|Бюджет</p>
+                            <p className="text-[9px] text-muted-foreground">Несколько городов — каждый с новой строки. Бюджет в рублях.</p>
+                            <div className="space-y-1">
+                              <Input className="h-7 text-xs" placeholder="Город/Регион" value={localDefaults.promoRegion || ""} onChange={(e) => setLocalDefaults(prev => ({ ...prev, promoRegion: e.target.value }))} />
+                              <Input className="h-7 text-xs" placeholder="Бюджет (₽)" type="number" value={localDefaults.promoBudget || ""} onChange={(e) => setLocalDefaults(prev => ({ ...prev, promoBudget: e.target.value }))} />
+                            </div>
+                            <p className="text-[9px] text-muted-foreground">
+                              Результат: <code className="bg-muted px-1 rounded text-foreground">{(() => { const r = localDefaults.promoRegion || ""; const b = localDefaults.promoBudget || ""; if (!b) return "—"; return `${r}|${b}`; })()}</code>
+                            </p>
+                            <BulkButtons onApply={async (onlySelected) => {
+                              const budget = localDefaults.promoBudget || "";
+                              if (!budget) { toast({ title: "Укажите бюджет", variant: "destructive" }); return; }
+                              const line = `${localDefaults.promoRegion || ""}|${budget}`;
+                              await applyToTargets(async (targets) => {
+                                for (const fp of targets) { await avitoFeed.updateProductParams(fp.product_id, { ...(fp.avito_params || {}), promoAutoOptions: line }); }
+                                avitoFeed.saveDefaults(localDefaults);
+                                toast({ title: `PromoAuto проставлен для ${targets.length} товар(ов)` });
+                              }, onlySelected);
+                            }} />
+                          </div>
+                        )}
+
+
                         <div className="space-y-1">
                           <Label className="text-[10px] text-muted-foreground">Ставка CPC</Label>
                           <div className="flex gap-1">
