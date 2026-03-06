@@ -14,6 +14,7 @@ export interface Catalog {
   access_code: string;
   created_at: string;
   updated_at: string;
+  price_source: string | null;
 }
 
 export interface ProductCatalogVisibility {
@@ -42,7 +43,7 @@ export function useStoreCatalogs(storeId: string | null) {
         .order("sort_order", { ascending: true });
 
       if (error) throw error;
-      setCatalogs(data || []);
+      setCatalogs((data || []).map((d: any) => ({ ...d, price_source: d.price_source || null })) as Catalog[]);
     } catch (error: any) {
       console.error("Error fetching catalogs:", error);
       toast({
@@ -86,24 +87,28 @@ export function useStoreCatalogs(storeId: string | null) {
   }, [storeId]);
 
   // Create a new catalog
-  const createCatalog = useCallback(async (name: string, description?: string) => {
+  const createCatalog = useCallback(async (name: string, description?: string, priceSource?: string) => {
     if (!storeId) return null;
 
     try {
+      const insertData: any = {
+        store_id: storeId,
+        name,
+        description: description || null,
+        sort_order: catalogs.length,
+      };
+      if (priceSource) {
+        insertData.price_source = priceSource;
+      }
       const { data, error } = await supabase
         .from("catalogs")
-        .insert({
-          store_id: storeId,
-          name,
-          description: description || null,
-          sort_order: catalogs.length,
-        })
+        .insert(insertData)
         .select()
         .single();
 
       if (error) throw error;
       
-      setCatalogs(prev => [...prev, data]);
+      setCatalogs(prev => [...prev, { ...data, price_source: (data as any).price_source || null } as Catalog]);
       
       // Log activity
       logActivity({
@@ -143,7 +148,7 @@ export function useStoreCatalogs(storeId: string | null) {
 
       if (error) throw error;
       
-      setCatalogs(prev => prev.map(c => c.id === catalogId ? data : c));
+      setCatalogs(prev => prev.map(c => c.id === catalogId ? { ...data, price_source: (data as any).price_source || null } as Catalog : c));
       
       // Log activity for name changes
       if (storeId && updates.name && catalog?.name !== updates.name) {

@@ -757,6 +757,19 @@ export default function AdminPanel({
         moyskladPrices: sp.moysklad_prices || null,
       }));
   }, [supabaseProducts]);
+
+  // Collect all available MoySklad price types from products
+  const availableMoyskladPriceTypes = useMemo(() => {
+    const types = new Set<string>();
+    importedProducts.forEach(p => {
+      if (p.moyskladPrices && typeof p.moyskladPrices === 'object') {
+        Object.keys(p.moyskladPrices).forEach(k => {
+          if (k && k !== '0') types.add(k);
+        });
+      }
+    });
+    return Array.from(types).sort();
+  }, [importedProducts]);
   
   // Wrapper to update products in Supabase
   const setImportedProducts = useCallback((updater: React.SetStateAction<Product[]>) => {
@@ -846,6 +859,7 @@ export default function AdminPanel({
   const [currentCatalog, setCurrentCatalog] = useState<Catalog | null>(null);
   const [newCatalogName, setNewCatalogName] = useState("");
   const [newCatalogDescription, setNewCatalogDescription] = useState("");
+  const [newCatalogPriceSource, setNewCatalogPriceSource] = useState<string>("");
   const [newCatalogCategories, setNewCatalogCategories] = useState<Set<string>>(new Set());
   const [showAddCatalog, setShowAddCatalog] = useState(false);
   const [catalogProductSearch, setCatalogProductSearch] = useState("");
@@ -1876,7 +1890,7 @@ export default function AdminPanel({
           const catalogPricing = getCatalogProductPricing(currentCatalog.id, product.id);
           
           // Calculate effective price using same logic as table display
-          const price = getCatalogSalePrice(product, catalogPricing);
+          const price = getCatalogSalePrice(product, catalogPricing, currentCatalog.id);
           const buyPrice = product.buyPrice || 0;
           const markup = catalogPricing?.markup !== undefined ? catalogPricing.markup : product.markup;
           
@@ -1956,7 +1970,7 @@ export default function AdminPanel({
         .filter(p => selectedCatalogProducts.has(p.id))
         .map(product => {
           const catalogPricing = getCatalogProductPricing(currentCatalog.id, product.id);
-          const price = getCatalogSalePrice(product, catalogPricing);
+          const price = getCatalogSalePrice(product, catalogPricing, currentCatalog.id);
           const buyPrice = product.buyPrice || 0;
           const markup = catalogPricing?.markup !== undefined ? catalogPricing.markup : product.markup;
           const packagingPrices = calculatePackagingPrices(
@@ -2273,11 +2287,12 @@ export default function AdminPanel({
       return;
     }
 
-    const created = await createSupabaseCatalog(newCatalogName.trim(), newCatalogDescription.trim() || undefined);
+    const created = await createSupabaseCatalog(newCatalogName.trim(), newCatalogDescription.trim() || undefined, newCatalogPriceSource || undefined);
     
     if (created) {
       setNewCatalogName("");
       setNewCatalogDescription("");
+      setNewCatalogPriceSource("");
       setNewCatalogCategories(new Set());
       setShowAddCatalog(false);
     }
@@ -2431,7 +2446,7 @@ export default function AdminPanel({
   }, [updateCatalogProductSettingsInDB, user, toast]);
 
   // Get effective sale price for catalog (using catalog markup or falling back to base product)
-  const getCatalogSalePrice = (product: Product, catalogPricing?: CatalogProductPricing): number => {
+  const getCatalogSalePrice = (product: Product, catalogPricing?: CatalogProductPricing, catalogId?: string): number => {
     // Приоритет 1: Фиксированная цена каталога
     if (catalogPricing?.isFixedPrice && catalogPricing?.fixedPrice != null) {
       return catalogPricing.fixedPrice;
@@ -2440,7 +2455,17 @@ export default function AdminPanel({
     if (product.isFixedPrice) {
       return product.pricePerUnit || 0;
     }
-    // Приоритет 3: Расчёт по наценке
+    // Приоритет 3: Цена из МойСклад по типу price_source каталога
+    if (catalogId) {
+      const catalog = supabaseCatalogs.find(c => c.id === catalogId);
+      if (catalog?.price_source && product.moyskladPrices) {
+        const msPrice = (product.moyskladPrices as Record<string, number>)[catalog.price_source];
+        if (msPrice !== undefined && msPrice > 0) {
+          return msPrice;
+        }
+      }
+    }
+    // Приоритет 4: Расчёт по наценке
     const buyPrice = product.buyPrice || 0;
     const markup = catalogPricing?.markup !== undefined ? catalogPricing.markup : product.markup;
     return calculateSalePrice(buyPrice, markup);
@@ -4531,6 +4556,25 @@ export default function AdminPanel({
                             onChange={(e) => setNewCatalogName(e.target.value)}
                           />
                         </div>
+                        {availableMoyskladPriceTypes.length > 0 && (
+                          <div className="space-y-2">
+                            <Label htmlFor="catalog-price-source">Источник цены (из МойСклад)</Label>
+                            <Select value={newCatalogPriceSource} onValueChange={setNewCatalogPriceSource}>
+                              <SelectTrigger className="h-9">
+                                <SelectValue placeholder="Цена товара (по умолчанию)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="default">Цена товара (по умолчанию)</SelectItem>
+                                {availableMoyskladPriceTypes.map(pt => (
+                                  <SelectItem key={pt} value={pt}>{pt}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                              Выберите тип цены из МойСклад для отображения в прайс-листе
+                            </p>
+                          </div>
+                        )}
                         <div className="flex gap-2">
                           <Button
                             onClick={createCatalog}
@@ -4545,6 +4589,7 @@ export default function AdminPanel({
                               setShowAddCatalog(false);
                               setNewCatalogName("");
                               setNewCatalogDescription("");
+                              setNewCatalogPriceSource("");
                               setNewCatalogCategories(new Set());
                             }}
                             variant="outline"
@@ -4585,6 +4630,11 @@ export default function AdminPanel({
                                   {catalogProducts.length}
                                 </Badge>
                                 <span className="font-medium text-foreground truncate">{catalog.name}</span>
+                                {(supabaseCatalogs.find(c => c.id === catalog.id) as any)?.price_source && (
+                                  <Badge variant="secondary" className="text-[10px] flex-shrink-0">
+                                    {(supabaseCatalogs.find(c => c.id === catalog.id) as any)?.price_source}
+                                  </Badge>
+                                )}
                               </button>
                               
                               <div className="flex items-center gap-1 flex-shrink-0">
@@ -4704,9 +4754,36 @@ export default function AdminPanel({
                                         <Edit2 className="h-3 w-3 text-muted-foreground" />
                                       </button>
                                     )}
-                                  </div>
-                                  
-                                  {/* Delete */}
+                                   </div>
+
+                                   {/* Price source */}
+                                   {availableMoyskladPriceTypes.length > 0 && (
+                                     <div className="space-y-2">
+                                       <Label className="text-xs text-muted-foreground">Источник цены (МойСклад)</Label>
+                                       <Select 
+                                         value={(supabaseCatalogs.find(c => c.id === catalog.id) as any)?.price_source || "default"} 
+                                         onValueChange={(val) => {
+                                           const priceSource = val === "default" ? null : val;
+                                           updateSupabaseCatalog(catalog.id, { price_source: priceSource } as any);
+                                         }}
+                                       >
+                                         <SelectTrigger className="h-8 text-sm">
+                                           <SelectValue placeholder="Цена товара" />
+                                         </SelectTrigger>
+                                         <SelectContent>
+                                           <SelectItem value="default">Цена товара (по умолчанию)</SelectItem>
+                                           {availableMoyskladPriceTypes.map(pt => (
+                                             <SelectItem key={pt} value={pt}>{pt}</SelectItem>
+                                           ))}
+                                         </SelectContent>
+                                       </Select>
+                                       <p className="text-[10px] text-muted-foreground">
+                                         Цена из МойСклад, которая будет использоваться в этом прайс-листе
+                                       </p>
+                                     </div>
+                                   )}
+                                   
+                                   {/* Delete */}
                                   <div className="pt-2 border-t border-border">
                                     <Button
                                       variant="ghost"
@@ -5351,7 +5428,7 @@ export default function AdminPanel({
                         const product = allProducts.find(p => p.id === productId);
                         if (product) {
                           const cp = getCatalogProductPricing(currentCatalog.id, productId);
-                          const price = getCatalogSalePrice(product, cp);
+                          const price = getCatalogSalePrice(product, cp, currentCatalog.id);
                           if (price > 0) priceMap[productId] = price;
                         }
                       });
@@ -5392,7 +5469,7 @@ export default function AdminPanel({
                           }
                           if (catalogFilterPrice !== "all") {
                             const cp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, p.id) : undefined;
-                            const price = getCatalogSalePrice(p, cp);
+                            const price = getCatalogSalePrice(p, cp, currentCatalog?.id);
                             if (catalogFilterPrice === "with_price" && (!price || price <= 0)) return false;
                             if (catalogFilterPrice === "no_price" && price > 0) return false;
                           }
@@ -5539,7 +5616,7 @@ export default function AdminPanel({
                             }
                             if (catalogFilterPrice !== "all") {
                               const cp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, p.id) : undefined;
-                              const price = getCatalogSalePrice(p, cp);
+                              const price = getCatalogSalePrice(p, cp, currentCatalog?.id);
                               if (catalogFilterPrice === "with_price" && (!price || price <= 0)) return false;
                               if (catalogFilterPrice === "no_price" && price > 0) return false;
                             }
@@ -5569,7 +5646,7 @@ export default function AdminPanel({
                             if (catalogSortColumn === "price") {
                               const aCp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, a.id) : undefined;
                               const bCp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, b.id) : undefined;
-                              return (getCatalogSalePrice(a, aCp) - getCatalogSalePrice(b, bCp)) * dir;
+                              return (getCatalogSalePrice(a, aCp, currentCatalog?.id) - getCatalogSalePrice(b, bCp, currentCatalog?.id)) * dir;
                             }
                             if (catalogSortColumn === "unit") return (a.unit || "").localeCompare(b.unit || "", 'ru') * dir;
                             if (catalogSortColumn === "type") return (a.packagingType || "").localeCompare(b.packagingType || "", 'ru') * dir;
@@ -5599,7 +5676,7 @@ export default function AdminPanel({
                             const effectiveStatus = getCatalogProductStatus(product, catalogPricing);
                             
                             // Calculate prices using catalog-specific markup but base product unitWeight
-                            const salePrice = getCatalogSalePrice(product, catalogPricing);
+                            const salePrice = getCatalogSalePrice(product, catalogPricing, currentCatalog?.id);
                             const packagingPrices = calculatePackagingPrices(
                               salePrice,
                               baseUnitWeight,
@@ -5635,7 +5712,7 @@ export default function AdminPanel({
                                             }
                                             if (catalogFilterPrice !== "all") {
                                               const cp = currentCatalog ? getCatalogProductPricing(currentCatalog.id, p.id) : undefined;
-                                              const price = getCatalogSalePrice(p, cp);
+                                              const price = getCatalogSalePrice(p, cp, currentCatalog?.id);
                                               if (catalogFilterPrice === "with_price" && (!price || price <= 0)) return false;
                                               if (catalogFilterPrice === "no_price" && price > 0) return false;
                                             }
