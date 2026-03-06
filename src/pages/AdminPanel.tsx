@@ -1047,6 +1047,7 @@ export default function AdminPanel({
     buyPrice: true,
     markup: true,
     price: true,
+    msPrice: false,
     priceFull: true,
     priceHalf: true,
     priceQuarter: true,
