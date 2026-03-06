@@ -5969,6 +5969,16 @@ export default function AdminPanel({
                                     </div>
                                   </ResizableTableCell>
                                 )}
+                                {catalogVisibleColumns.msPrice && (
+                                  <ResizableTableCell columnId="msPrice">
+                                    {(() => {
+                                      const sc = currentCatalog ? supabaseCatalogs.find(c => c.id === currentCatalog.id) : null;
+                                      if (!sc?.price_source || !product.moyskladPrices) return <span className="text-xs text-muted-foreground">—</span>;
+                                      const msPrice = (product.moyskladPrices as Record<string, number>)[sc.price_source];
+                                      return msPrice ? <span className="text-xs font-medium">{formatPrice(msPrice)}</span> : <span className="text-xs text-muted-foreground">—</span>;
+                                    })()}
+                                  </ResizableTableCell>
+                                )}
                                 {catalogVisibleColumns.priceFull && (
                                   <ResizableTableCell columnId="priceFull">
                                     {packagingPrices ? (
