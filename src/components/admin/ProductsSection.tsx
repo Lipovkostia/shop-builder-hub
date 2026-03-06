@@ -590,6 +590,7 @@ export function ProductsSection({
             catalogs={catalogs}
             onAddToCatalog={handleAddToCatalog}
             onCreateCatalogAndAdd={handleCreateCatalogAndAdd}
+            availablePriceTypes={availablePriceTypes}
             categories={storeCategories.map(c => ({ id: c.id, name: c.name, sort_order: c.sort_order }))}
             onBulkSetCategories={handleBulkSetCategories}
             onBulkClearCategories={handleBulkClearCategories}
