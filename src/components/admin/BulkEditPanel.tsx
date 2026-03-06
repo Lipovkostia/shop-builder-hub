@@ -31,6 +31,7 @@ import { ChevronDown, Layers } from "lucide-react";
 interface Catalog {
   id: string;
   name: string;
+  price_source?: string | null;
 }
 
 interface Category {
