@@ -662,6 +662,22 @@ export function BulkEditPanel({
                     }
                   }}
                 />
+                {availablePriceTypes.length > 0 && (
+                  <div className="space-y-1 pt-2">
+                    <Label className="text-xs text-muted-foreground">Источник цены (МойСклад)</Label>
+                    <Select value={newCatalogPriceSource} onValueChange={setNewCatalogPriceSource}>
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Цена товара (по умолчанию)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">Цена товара (по умолчанию)</SelectItem>
+                        {availablePriceTypes.map(pt => (
+                          <SelectItem key={pt} value={pt}>{pt}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 {catalogs.length > 0 && (
                   <Button
                     variant="ghost"
@@ -669,6 +685,7 @@ export function BulkEditPanel({
                     onClick={() => {
                       setIsCreatingNew(false);
                       setNewCatalogName("");
+                      setNewCatalogPriceSource("");
                     }}
                     className="text-xs text-muted-foreground"
                   >
