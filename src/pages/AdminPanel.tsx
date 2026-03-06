@@ -5590,6 +5590,14 @@ export default function AdminPanel({
                               </button>
                             </ResizableTableHead>
                           )}
+                          {catalogVisibleColumns.msPrice && (
+                            <ResizableTableHead columnId="msPrice">
+                              <span className="text-xs">МС цена{currentCatalog && (() => {
+                                const sc = supabaseCatalogs.find(c => c.id === currentCatalog.id);
+                                return sc?.price_source ? ` (${sc.price_source})` : '';
+                              })()}</span>
+                            </ResizableTableHead>
+                          )}
                           {catalogVisibleColumns.priceFull && <ResizableTableHead columnId="priceFull">Целая</ResizableTableHead>}
                           {catalogVisibleColumns.priceHalf && <ResizableTableHead columnId="priceHalf">½</ResizableTableHead>}
                           {catalogVisibleColumns.priceQuarter && <ResizableTableHead columnId="priceQuarter">¼</ResizableTableHead>}
