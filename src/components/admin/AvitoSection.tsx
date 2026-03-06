@@ -151,7 +151,7 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 }
 // Avito Feed Table with resizable columns
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
-const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, cpcBid: 80, address: 120, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
+const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, cpcBid: 80, address: 120, avitoId: 110, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
 
 // Column filter dropdown component - uses fixed positioning to escape overflow containers
 function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
@@ -313,6 +313,7 @@ function AvitoFeedTable({
       case "goodsType": return params.goodsSubType || params.GoodsType || "";
       case "promo": return params.promo || "";
       case "address": return params.address || "";
+      case "avitoId": return params.avitoId || "";
       case "managerName": return params.managerName || "";
       case "contactPhone": return params.contactPhone || "";
       case "email": return params.email || "";
@@ -388,6 +389,7 @@ function AvitoFeedTable({
     { key: "promoManual", label: "PromoManual", resizable: true },
     { key: "cpcBid", label: "Ставка CPC", resizable: true },
     { key: "address", label: "Адрес", resizable: true },
+    { key: "avitoId", label: "ID из файла", resizable: true },
     { key: "avitoNumber", label: "№ на Авито", resizable: true },
     { key: "managerName", label: "Контактное лицо", resizable: true },
     { key: "contactPhone", label: "Телефон", resizable: true },
@@ -594,15 +596,23 @@ function AvitoFeedTable({
                       onChange={(val) => handleInlineParamUpdate(fp.product_id, "address", val)}
                       placeholder={localDefaults.address || "Адрес"}
                     />
-                  </div>
-                  {/* Номер объявления на Авито */}
-                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.avitoNumber }}>
-                    <InlineCell
-                      value={params.avitoNumber || ""}
-                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "avitoNumber", val)}
-                      placeholder="—"
-                    />
-                  </div>
+                   </div>
+                   {/* ID из файла */}
+                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.avitoId }}>
+                     <InlineCell
+                       value={params.avitoId || ""}
+                       onChange={(val) => handleInlineParamUpdate(fp.product_id, "avitoId", val)}
+                       placeholder="—"
+                     />
+                   </div>
+                   {/* Номер объявления на Авито */}
+                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.avitoNumber }}>
+                     <InlineCell
+                       value={params.avitoNumber || ""}
+                       onChange={(val) => handleInlineParamUpdate(fp.product_id, "avitoNumber", val)}
+                       placeholder="—"
+                     />
+                   </div>
                   {/* Контактное лицо */}
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.managerName }}>
                     <InlineCell
