@@ -1281,6 +1281,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       const idxCompany = colIdx("Название компании");
       const idxPromo = colIdx("Promo");
       const idxPromoManual = colIdx("PromoManualOptions");
+      const idxPromoAuto = colIdx("PromoAutoOptions");
 
       // Data starts after headerRowIdx + 2 rows (required/type rows)
       const dataStartIdx = headerRowIdx + 3; // skip header, required, type rows
