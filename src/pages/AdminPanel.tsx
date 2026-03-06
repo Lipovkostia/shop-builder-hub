@@ -4630,6 +4630,11 @@ export default function AdminPanel({
                                   {catalogProducts.length}
                                 </Badge>
                                 <span className="font-medium text-foreground truncate">{catalog.name}</span>
+                                {(supabaseCatalogs.find(c => c.id === catalog.id) as any)?.price_source && (
+                                  <Badge variant="secondary" className="text-[10px] flex-shrink-0">
+                                    {(supabaseCatalogs.find(c => c.id === catalog.id) as any)?.price_source}
+                                  </Badge>
+                                )}
                               </button>
                               
                               <div className="flex items-center gap-1 flex-shrink-0">
