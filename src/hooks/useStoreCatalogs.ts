@@ -14,6 +14,7 @@ export interface Catalog {
   access_code: string;
   created_at: string;
   updated_at: string;
+  price_source: string | null;
 }
 
 export interface ProductCatalogVisibility {
