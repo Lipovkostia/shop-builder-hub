@@ -2326,6 +2326,10 @@ export default function AdminPanel({
       setCurrentCatalog(legacyCatalog);
       setSelectedCatalogProducts(new Set(legacyCatalog.productIds));
       setCatalogView("detail");
+      // Auto-enable msPrice column if catalog has a price_source
+      if (freshCatalog.price_source) {
+        setCatalogVisibleColumns(prev => ({ ...prev, msPrice: true }));
+      }
     }
   };
 
