@@ -79,6 +79,7 @@ export function BulkEditPanel({
   catalogs = [],
   onAddToCatalog,
   onCreateCatalogAndAdd,
+  availablePriceTypes = [],
   onRemoveFromCatalog,
   currentCatalogName,
   categories = [],
