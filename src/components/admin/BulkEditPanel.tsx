@@ -50,7 +50,8 @@ interface BulkEditPanelProps {
   showDelete?: boolean;
   catalogs?: Catalog[];
   onAddToCatalog?: (catalogId: string) => void;
-  onCreateCatalogAndAdd?: (catalogName: string) => void;
+  onCreateCatalogAndAdd?: (catalogName: string, priceSource?: string) => void;
+  availablePriceTypes?: string[];
   onRemoveFromCatalog?: () => void;
   currentCatalogName?: string;
   // New props for bulk category editing
