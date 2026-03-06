@@ -111,6 +111,7 @@ export function ProductsSection({
   moyskladLogin,
   moyskladPassword,
   storeCategories = [],
+  availablePriceTypes = [],
 }: ProductsSectionProps) {
   const { toast } = useToast();
   
