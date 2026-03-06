@@ -56,25 +56,41 @@ export function useStoreCatalogs(storeId: string | null) {
     }
   }, [storeId, toast]);
 
-  // Fetch product visibility for all catalogs
+  // Fetch product visibility for all catalogs (batched to support >1000 rows)
   const fetchProductVisibility = useCallback(async () => {
     if (!storeId) return;
 
     try {
-      const { data, error } = await supabase
-        .from("product_catalog_visibility")
-        .select(`
-          id,
-          product_id,
-          catalog_id,
-          catalogs!inner(store_id)
-        `)
-        .eq("catalogs.store_id", storeId);
+      const BATCH_SIZE = 1000;
+      let allData: any[] = [];
+      let from = 0;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("product_catalog_visibility")
+          .select(`
+            id,
+            product_id,
+            catalog_id,
+            catalogs!inner(store_id)
+          `)
+          .eq("catalogs.store_id", storeId)
+          .range(from, from + BATCH_SIZE - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allData = allData.concat(data);
+          from += BATCH_SIZE;
+          hasMore = data.length === BATCH_SIZE;
+        } else {
+          hasMore = false;
+        }
+      }
 
       const visibility: Record<string, Set<string>> = {};
-      (data || []).forEach((row: any) => {
+      allData.forEach((row: any) => {
         if (!visibility[row.product_id]) {
           visibility[row.product_id] = new Set();
         }
