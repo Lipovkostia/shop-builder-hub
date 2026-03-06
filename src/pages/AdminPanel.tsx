@@ -5511,6 +5511,7 @@ export default function AdminPanel({
                         ...(catalogVisibleColumns.buyPrice ? [{ id: "buyPrice", minWidth: 70, defaultWidth: 90 }] : []),
                         ...(catalogVisibleColumns.markup ? [{ id: "markup", minWidth: 110, defaultWidth: 120 }] : []),
                         ...(catalogVisibleColumns.price ? [{ id: "price", minWidth: 80, defaultWidth: 100 }] : []),
+                        ...(catalogVisibleColumns.msPrice ? [{ id: "msPrice", minWidth: 80, defaultWidth: 100 }] : []),
                         ...(catalogVisibleColumns.priceFull ? [{ id: "priceFull", minWidth: 70, defaultWidth: 90 }] : []),
                         ...(catalogVisibleColumns.priceHalf ? [{ id: "priceHalf", minWidth: 70, defaultWidth: 90 }] : []),
                         ...(catalogVisibleColumns.priceQuarter ? [{ id: "priceQuarter", minWidth: 70, defaultWidth: 90 }] : []),
