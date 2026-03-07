@@ -13,6 +13,7 @@ import StoreFront from "./pages/StoreFront";
 import SellerWorkspace from "./pages/SellerWorkspace";
 import NotFound from "./pages/NotFound";
 import RetailStore from "./pages/RetailStore";
+import RetailProductPage from "./pages/RetailProductPage";
 import RetailCheckout from "./pages/RetailCheckout";
 import WholesaleStore from "./pages/WholesaleStore";
 import WholesaleProduct from "./pages/WholesaleProduct";
@@ -121,6 +122,7 @@ const App = () => {
               <Route path="/store/:subdomain/admin" element={<StoreAdminWrapper />} />
               {/* Retail store routes */}
               <Route path="/retail/:subdomain" element={<RetailStore />} />
+              <Route path="/retail/:subdomain/p/:slug" element={<RetailProductPage />} />
               <Route path="/retail/:subdomain/product/:productId" element={<RetailStore />} />
               <Route path="/retail/:subdomain/checkout" element={<RetailCheckout />} />
               <Route path="/retail/:subdomain/account" element={<RetailCustomerDashboard />} />

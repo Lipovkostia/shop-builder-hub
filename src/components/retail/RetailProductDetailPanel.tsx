@@ -156,8 +156,19 @@ export function RetailProductDetailPanel({
             </div>
           )}
 
-          {/* Name */}
-          <h2 className="text-base font-semibold text-foreground leading-snug">{product.name}</h2>
+          {/* Name - clickable link to product page */}
+          <h2 className="text-base font-semibold text-foreground leading-snug">
+            <a
+              href={`/retail/${(window.location.pathname.split('/retail/')[1] || '').split('/')[0]}/p/${product.slug}`}
+              className="hover:text-primary hover:underline transition-colors cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                window.open(e.currentTarget.href, "_blank");
+              }}
+            >
+              {product.name}
+            </a>
+          </h2>
 
           {/* Unit */}
           {product.unit && <p className="text-xs text-muted-foreground">{product.unit}</p>}

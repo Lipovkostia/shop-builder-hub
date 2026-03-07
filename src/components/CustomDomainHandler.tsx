@@ -3,6 +3,7 @@ import { useCustomDomainStore } from "@/hooks/useCustomDomainStore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package } from "lucide-react";
 import RetailStore from "@/pages/RetailStore";
+import RetailProductPage from "@/pages/RetailProductPage";
 import RetailCheckout from "@/pages/RetailCheckout";
 import WholesaleStore from "@/pages/WholesaleStore";
 import WholesaleProduct from "@/pages/WholesaleProduct";
@@ -55,6 +56,7 @@ export function CustomDomainHandler({ hostname }: CustomDomainHandlerProps) {
         {storeType === "retail" && (
           <>
             <Route path="/" element={<RetailStore subdomain={subdomain} />} />
+            <Route path="/p/:slug" element={<RetailProductPage subdomain={subdomain} />} />
             <Route path="/product/:productId" element={<RetailStore subdomain={subdomain} />} />
             <Route path="/checkout" element={<RetailCheckout subdomain={subdomain} />} />
           </>

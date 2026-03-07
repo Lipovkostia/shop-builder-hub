@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { TelegramIcon } from "@/components/icons/TelegramIcon";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { ReviewsManagementSection } from "./ReviewsManagementSection";
+import { RetailSeoProductsTab } from "./RetailSeoProductsTab";
 
 interface RetailSettingsSectionProps {
   storeId: string | null;
@@ -238,10 +239,14 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-5 mb-6">
+        <TabsList className="w-full grid grid-cols-6 mb-6">
           <TabsTrigger value="general" className="gap-1.5">
             <Store className="h-4 w-4" />
             <span className="hidden sm:inline">Общее</span>
+          </TabsTrigger>
+          <TabsTrigger value="products-seo" className="gap-1.5">
+            <Package className="h-4 w-4" />
+            <span className="hidden sm:inline">Товары SEO</span>
           </TabsTrigger>
           <TabsTrigger value="design" className="gap-1.5">
             <Palette className="h-4 w-4" />
@@ -260,6 +265,16 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
             <span className="hidden sm:inline">Домен</span>
           </TabsTrigger>
         </TabsList>
+
+        {/* Products SEO Tab */}
+        <TabsContent value="products-seo">
+          <RetailSeoProductsTab
+            storeId={storeId}
+            storeName={settings.retail_name || settings.name}
+            subdomain={settings.subdomain}
+            retailCatalogId={settings.retail_catalog_id}
+          />
+        </TabsContent>
 
         {/* General Tab */}
         <TabsContent value="general" className="space-y-6">
