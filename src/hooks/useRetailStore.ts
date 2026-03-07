@@ -87,6 +87,13 @@ export interface RetailProduct {
   category_name?: string;
   is_active: boolean;
   catalog_status: string | null; // Status from catalog_product_settings
+  // SEO fields
+  seo_title?: string | null;
+  seo_description?: string | null;
+  seo_keywords?: string[] | null;
+  seo_schema?: object | null;
+  seo_noindex?: boolean;
+  seo_generated_at?: string | null;
 }
 
 export interface RetailCategory {
@@ -178,6 +185,12 @@ export function useRetailStore(subdomain: string | undefined) {
         category_name: p.category_name,
         is_active: true,
         catalog_status: p.catalog_status,
+        seo_title: p.seo_title || null,
+        seo_description: p.seo_description || null,
+        seo_keywords: p.seo_keywords || null,
+        seo_schema: p.seo_schema || null,
+        seo_noindex: p.seo_noindex || false,
+        seo_generated_at: p.seo_generated_at || null,
       }));
 
       setProducts(formattedProducts);
