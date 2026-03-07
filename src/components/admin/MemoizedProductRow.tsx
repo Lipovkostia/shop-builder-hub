@@ -47,6 +47,8 @@ export interface VisibleColumns {
   sync: boolean;
   msPrices: boolean;
   avito: boolean;
+  msPriceTypes?: string[];
+}
 }
 
 export interface ProductRowData {
