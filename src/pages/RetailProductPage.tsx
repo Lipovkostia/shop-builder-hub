@@ -58,11 +58,11 @@ export default function RetailProductPage({ subdomain: propSubdomain }: RetailPr
   }, [productSlug]);
 
   // SEO data
-  const seoTitle = (product as any)?.seo_title || product?.name || "";
-  const seoDescription = (product as any)?.seo_description || product?.description || "";
-  const seoKeywords = (product as any)?.seo_keywords || [];
-  const seoSchema = (product as any)?.seo_schema || null;
-  const seoNoindex = (product as any)?.seo_noindex || false;
+  const seoTitle = product?.seo_title || product?.name || "";
+  const seoDescription = product?.seo_description || product?.description || "";
+  const seoKeywords = product?.seo_keywords || [];
+  const seoSchema = product?.seo_schema || null;
+  const seoNoindex = product?.seo_noindex || false;
 
   const storeBaseUrl = subdomain ? `/retail/${subdomain}` : "/";
   const canonicalUrl = typeof window !== "undefined" ? `${window.location.origin}${storeBaseUrl}/p/${productSlug}` : "";
