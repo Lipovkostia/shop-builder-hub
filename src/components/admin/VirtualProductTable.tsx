@@ -483,12 +483,19 @@ export function VirtualProductTable({
               <ResizeHandle col="sync" />
             </div>
           )}
-          {visibleColumns.msPrices && (
+          {visibleColumns.msPrices && availablePriceTypes.length > 0 ? (
+            availablePriceTypes.map((pt) => (
+              <div key={`ms-${pt}`} className="flex-shrink-0 text-xs font-medium text-muted-foreground relative text-right px-1" style={{ width: widths[`ms_${pt}`] || 80 }}>
+                {pt}
+                <ResizeHandle col={`ms_${pt}`} />
+              </div>
+            ))
+          ) : visibleColumns.msPrices ? (
             <div className="flex-shrink-0 text-xs font-medium text-muted-foreground relative" style={{ width: widths.msPrices }}>
               МС цены
               <ResizeHandle col="msPrices" />
             </div>
-          )}
+          ) : null}
           {visibleColumns.avito && (
             <div className="flex-shrink-0 text-xs font-medium text-muted-foreground relative text-center" style={{ width: widths.avito }}>
               Авито
