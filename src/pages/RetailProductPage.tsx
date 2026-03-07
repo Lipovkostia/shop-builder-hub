@@ -401,6 +401,7 @@ export default function RetailProductPage({ subdomain: propSubdomain }: RetailPr
         <FullscreenImageViewer
           images={images}
           currentIndex={currentImageIndex}
+          isOpen={fullscreenOpen}
           onClose={() => setFullscreenOpen(false)}
         />
       )}
