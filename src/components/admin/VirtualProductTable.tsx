@@ -197,6 +197,7 @@ interface VirtualProductTableProps {
   moyskladPassword?: string;
   avitoFeedProductIds?: Set<string>;
   onToggleAvitoFeed?: (productId: string) => Promise<void>;
+  availablePriceTypes?: string[];
 }
 
 const ROW_HEIGHT = 28;
@@ -241,6 +242,7 @@ export function VirtualProductTable({
   moyskladPassword,
   avitoFeedProductIds,
   onToggleAvitoFeed,
+  availablePriceTypes = [],
 }: VirtualProductTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const { widths, onResizeStart } = useColumnWidths("assortment");
@@ -481,12 +483,19 @@ export function VirtualProductTable({
               <ResizeHandle col="sync" />
             </div>
           )}
-          {visibleColumns.msPrices && (
+          {visibleColumns.msPrices && availablePriceTypes.length > 0 ? (
+            availablePriceTypes.map((pt) => (
+              <div key={`ms-${pt}`} className="flex-shrink-0 text-xs font-medium text-muted-foreground relative text-right px-1" style={{ width: widths[`ms_${pt}`] || 80 }}>
+                {pt}
+                <ResizeHandle col={`ms_${pt}`} />
+              </div>
+            ))
+          ) : visibleColumns.msPrices ? (
             <div className="flex-shrink-0 text-xs font-medium text-muted-foreground relative" style={{ width: widths.msPrices }}>
               МС цены
               <ResizeHandle col="msPrices" />
             </div>
-          )}
+          ) : null}
           {visibleColumns.avito && (
             <div className="flex-shrink-0 text-xs font-medium text-muted-foreground relative text-center" style={{ width: widths.avito }}>
               Авито
@@ -538,7 +547,7 @@ export function VirtualProductTable({
                   isSelected={selectedBulkProducts.has(product.id)}
                   onToggleSelection={onToggleBulkSelection}
                   onUpdateProduct={handleUpdateProduct}
-                  visibleColumns={visibleColumns}
+                  visibleColumns={{ ...visibleColumns, msPriceTypes: availablePriceTypes }}
                   catalogs={catalogs}
                   productGroups={productGroups}
                   catalogVisibility={productCatalogVisibility[product.id] || new Set()}

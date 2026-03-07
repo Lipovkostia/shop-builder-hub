@@ -673,6 +673,7 @@ export function ProductsSection({
             await onAddToAvitoFeed([productId]);
           }
         } : undefined}
+        availablePriceTypes={availablePriceTypes}
       />
     </div>
   );
