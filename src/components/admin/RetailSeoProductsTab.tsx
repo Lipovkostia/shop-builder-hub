@@ -25,7 +25,7 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
 
   // Filter products that are in the retail catalog
   const retailProducts = useMemo(() => {
-    return products.filter(p => !p.deleted_at);
+    return products;
   }, [products]);
 
   const filteredProducts = useMemo(() => {

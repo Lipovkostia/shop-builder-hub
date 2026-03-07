@@ -295,9 +295,8 @@ export default function RetailProductPage({ subdomain: propSubdomain }: RetailPr
                       productId: product.id,
                       name: product.name,
                       price: product.price,
-                      image: images[0] || null,
+                      image: images[0] || undefined,
                       unit: product.unit,
-                      quantity: 1,
                     })}
                     disabled={product.quantity <= 0}
                   >
@@ -401,7 +400,7 @@ export default function RetailProductPage({ subdomain: propSubdomain }: RetailPr
       {fullscreenOpen && images.length > 0 && (
         <FullscreenImageViewer
           images={images}
-          initialIndex={currentImageIndex}
+          currentIndex={currentImageIndex}
           onClose={() => setFullscreenOpen(false)}
         />
       )}
