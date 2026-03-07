@@ -576,13 +576,26 @@ function ProductRowComponent({
           </div>
         )}
 
-        {visibleColumns.msPrices && (
+        {/* Individual MS price type columns */}
+        {visibleColumns.msPrices && visibleColumns.msPriceTypes && visibleColumns.msPriceTypes.length > 0 ? (
+          visibleColumns.msPriceTypes.map((priceType) => (
+            <div key={`ms-${priceType}`} className="flex-shrink-0 overflow-hidden text-right px-1" style={{ width: columnWidths?.[`ms_${priceType}`] || 80 }}>
+              {product.moyskladPrices && (product.moyskladPrices as Record<string, number>)[priceType] ? (
+                <span className="text-[10px] font-medium tabular-nums">
+                  {(product.moyskladPrices as Record<string, number>)[priceType].toLocaleString("ru-RU")}
+                </span>
+              ) : (
+                <span className="text-[10px] text-muted-foreground/40">—</span>
+              )}
+            </div>
+          ))
+        ) : visibleColumns.msPrices ? (
           <div className="flex-shrink-0 overflow-hidden" style={{ width: columnWidths?.msPrices || 160 }}>
             {product.moyskladPrices && Object.keys(product.moyskladPrices).length > 0 ? (
               <div className="flex flex-col gap-0">
                 {Object.entries(product.moyskladPrices).map(([name, value]) => (
-                  <span key={name} className="text-[9px] text-muted-foreground truncate leading-tight" title={`${name}: ${value.toLocaleString("ru-RU")} ₽`}>
-                    {name}: <span className="font-medium text-foreground">{value.toLocaleString("ru-RU")}</span>
+                  <span key={name} className="text-[9px] text-muted-foreground truncate leading-tight" title={`${name}: ${(value as number).toLocaleString("ru-RU")} ₽`}>
+                    {name}: <span className="font-medium text-foreground">{(value as number).toLocaleString("ru-RU")}</span>
                   </span>
                 ))}
               </div>
@@ -590,7 +603,7 @@ function ProductRowComponent({
               <span className="text-[10px] text-muted-foreground/40">—</span>
             )}
           </div>
-        )}
+        ) : null}
 
         {visibleColumns.avito && (
           <div className="flex-shrink-0 overflow-hidden flex items-center justify-center" style={{ width: columnWidths?.avito || 48 }}>
