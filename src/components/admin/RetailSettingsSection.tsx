@@ -270,7 +270,7 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
         <TabsContent value="products-seo">
           <RetailSeoProductsTab
             storeId={storeId}
-            storeName={settings.retail_name || settings.name}
+            storeName={settings.retail_name || "Магазин"}
             subdomain={settings.subdomain}
             retailCatalogId={settings.retail_catalog_id}
           />
