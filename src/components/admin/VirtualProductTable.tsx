@@ -197,6 +197,7 @@ interface VirtualProductTableProps {
   moyskladPassword?: string;
   avitoFeedProductIds?: Set<string>;
   onToggleAvitoFeed?: (productId: string) => Promise<void>;
+  availablePriceTypes?: string[];
 }
 
 const ROW_HEIGHT = 28;
@@ -241,6 +242,7 @@ export function VirtualProductTable({
   moyskladPassword,
   avitoFeedProductIds,
   onToggleAvitoFeed,
+  availablePriceTypes = [],
 }: VirtualProductTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const { widths, onResizeStart } = useColumnWidths("assortment");
