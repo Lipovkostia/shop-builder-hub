@@ -547,7 +547,7 @@ export function VirtualProductTable({
                   isSelected={selectedBulkProducts.has(product.id)}
                   onToggleSelection={onToggleBulkSelection}
                   onUpdateProduct={handleUpdateProduct}
-                  visibleColumns={visibleColumns}
+                  visibleColumns={{ ...visibleColumns, msPriceTypes: availablePriceTypes }}
                   catalogs={catalogs}
                   productGroups={productGroups}
                   catalogVisibility={productCatalogVisibility[product.id] || new Set()}
