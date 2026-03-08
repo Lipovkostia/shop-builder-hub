@@ -264,16 +264,32 @@ export function useRetailStore(subdomain: string | undefined) {
     }
   }, [store?.id, store?.retail_catalog_id, products]);
 
+  const [storeLoaded, setStoreLoaded] = useState(false);
+  const [productsLoaded, setProductsLoaded] = useState(false);
+
   useEffect(() => {
     setLoading(true);
-    fetchStore().finally(() => setLoading(false));
+    setStoreLoaded(false);
+    setProductsLoaded(false);
+    fetchStore().finally(() => setStoreLoaded(true));
   }, [fetchStore]);
 
   useEffect(() => {
-    if (store?.id) {
-      fetchProducts();
+    if (storeLoaded && store?.id) {
+      setProductsLoaded(false);
+      fetchProducts().finally(() => setProductsLoaded(true));
+    } else if (storeLoaded && !store) {
+      // No store found, nothing to load
+      setProductsLoaded(true);
     }
-  }, [store?.id, fetchProducts]);
+  }, [storeLoaded, store?.id, fetchProducts]);
+
+  // Loading completes when both store and products are loaded
+  useEffect(() => {
+    if (storeLoaded && productsLoaded) {
+      setLoading(false);
+    }
+  }, [storeLoaded, productsLoaded]);
 
   useEffect(() => {
     if (store?.id) {
