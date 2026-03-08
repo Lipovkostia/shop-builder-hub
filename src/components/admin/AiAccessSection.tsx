@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { useStoreAiAccess } from "@/hooks/useStoreAiAccess";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useStoreAiAccess, AI_MODELS } from "@/hooks/useStoreAiAccess";
 import { useToast } from "@/hooks/use-toast";
 
 interface AiAccessSectionProps {
@@ -15,6 +16,7 @@ interface AiAccessSectionProps {
 const AI_FEATURES = [
   {
     key: "seo_enabled",
+    modelKey: "seo_model",
     feature: "seo",
     label: "SEO-генерация",
     description: "Генерация мета-тегов, описаний и ключевых слов для товаров",
@@ -22,6 +24,7 @@ const AI_FEATURES = [
   },
   {
     key: "avito_descriptions_enabled",
+    modelKey: "avito_descriptions_model",
     feature: "avito_descriptions",
     label: "Описания для Авито",
     description: "Генерация заголовков и описаний товаров для Авито",
@@ -29,6 +32,7 @@ const AI_FEATURES = [
   },
   {
     key: "avito_bot_enabled",
+    modelKey: "avito_bot_model",
     feature: "avito_bot",
     label: "Авито-бот",
     description: "AI-чатбот для автоматических ответов на Авито",
@@ -36,6 +40,7 @@ const AI_FEATURES = [
   },
   {
     key: "ai_assistant_enabled",
+    modelKey: "ai_assistant_model",
     feature: "ai_assistant",
     label: "ИИ-помощник",
     description: "Голосовой и текстовый ассистент в админ-панели",
@@ -43,6 +48,7 @@ const AI_FEATURES = [
   },
   {
     key: "product_descriptions_enabled",
+    modelKey: "product_descriptions_model",
     feature: "product_descriptions",
     label: "Описания товаров",
     description: "Генерация описаний товаров с помощью ИИ",
@@ -51,7 +57,7 @@ const AI_FEATURES = [
 ];
 
 export function AiAccessSection({ storeId }: AiAccessSectionProps) {
-  const { access, loading, verifying, verifyPassword, updateFeature, disableAi } = useStoreAiAccess(storeId);
+  const { access, loading, verifying, verifyPassword, updateFeature, updateModel, disableAi } = useStoreAiAccess(storeId);
   const [password, setPassword] = useState("");
   const { toast } = useToast();
 
@@ -129,28 +135,50 @@ export function AiAccessSection({ storeId }: AiAccessSectionProps) {
       ) : (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Выберите, какие ИИ-функции вы хотите использовать:
+            Выберите, какие ИИ-функции вы хотите использовать и какую модель применять для каждой:
           </p>
           {AI_FEATURES.map((feat) => {
             const Icon = feat.icon;
             const enabled = (access as any)?.[feat.key] ?? true;
+            const currentModel = (access as any)?.[feat.modelKey] || "openai/gpt-4.1-mini";
             return (
               <div
                 key={feat.key}
-                className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/30 border border-border/50"
+                className="py-3 px-3 rounded-md bg-muted/30 border border-border/50 space-y-2"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{feat.label}</p>
-                    <p className="text-xs text-muted-foreground truncate">{feat.description}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{feat.label}</p>
+                      <p className="text-xs text-muted-foreground truncate">{feat.description}</p>
+                    </div>
                   </div>
+                  <Switch
+                    checked={enabled}
+                    onCheckedChange={(checked) => updateFeature(feat.key, checked)}
+                    className="shrink-0 ml-2"
+                  />
                 </div>
-                <Switch
-                  checked={enabled}
-                  onCheckedChange={(checked) => updateFeature(feat.key, checked)}
-                  className="shrink-0 ml-2"
-                />
+                {enabled && (
+                  <div className="pl-6">
+                    <Select
+                      value={currentModel}
+                      onValueChange={(value) => updateModel(feat.modelKey, value)}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Выберите модель" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {AI_MODELS.map((model) => (
+                          <SelectItem key={model.value} value={model.value} className="text-xs">
+                            {model.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             );
           })}
