@@ -79,11 +79,11 @@ serve(async (req) => {
 
     // Check AI access for this store and get model
     let aiModel = "openai/gpt-4.1-mini";
-    if (storeId) {
+    if (effectiveStoreId) {
       const { data: aiAccess } = await sb
         .from("store_ai_access")
         .select("is_unlocked, product_descriptions_enabled, product_descriptions_model")
-        .eq("store_id", storeId)
+        .eq("store_id", effectiveStoreId)
         .maybeSingle();
 
       if (!aiAccess?.is_unlocked || !aiAccess?.product_descriptions_enabled) {
