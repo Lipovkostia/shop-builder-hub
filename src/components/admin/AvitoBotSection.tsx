@@ -689,8 +689,10 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
 
   // Scroll to bottom of debug chat
   useEffect(() => {
-    debugEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [debugMessages]);
+    setTimeout(() => {
+      debugEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 100);
+  }, [debugMessages, debugLoading]);
 
   // Load debug sessions
   const loadDebugSessions = useCallback(async () => {
@@ -1330,7 +1332,7 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col p-0">
-                    <ScrollArea className="flex-1 p-4 max-h-[350px]">
+                    <ScrollArea className="flex-1 p-4" style={{ maxHeight: "calc(100vh - 400px)", minHeight: "300px" }}>
                       {debugMessages.length === 0 ? (
                         <div className="text-center text-muted-foreground text-sm py-8">
                           Начните диалог, отправив сообщение ниже
