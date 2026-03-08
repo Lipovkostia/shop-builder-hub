@@ -752,6 +752,9 @@ function BotsListView({ bots, accounts, showNewBot, setShowNewBot, newBotName, s
                     </div>
                   </div>
                   <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Дублировать" onClick={() => onDuplicate(bot.id)}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
                     <Switch checked={bot.is_active} onCheckedChange={active => onToggle(bot.id, active)} />
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
