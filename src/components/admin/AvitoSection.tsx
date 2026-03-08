@@ -34,6 +34,7 @@ import { StoreCategory } from "@/hooks/useStoreCategories";
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
+import AvitoImageEditor from "./AvitoImageEditor";
 
 interface AvitoItem {
   id: number;
@@ -257,6 +258,9 @@ function AvitoFeedTable({
   const resizingRef = useRef<{ col: string; startX: number; startW: number } | null>(null);
 
   // Column filters state
+  // Image editor state
+  const [imageEditorOpen, setImageEditorOpen] = useState(false);
+  const [imageEditorProduct, setImageEditorProduct] = useState<{ id: string; name: string; images: string[]; storeId: string } | null>(null);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
 
   const setFilter = (col: string, val: string) => {
@@ -402,6 +406,7 @@ function AvitoFeedTable({
   ];
 
   return (
+    <>
     <div className="border rounded-lg overflow-hidden">
       {/* Active filters bar */}
       {activeFilterCount > 0 && (
@@ -484,11 +489,20 @@ function AvitoFeedTable({
                       }}
                     />
                   </div>
-                  <div className="flex-shrink-0 px-1 py-1" style={{ width: colWidths.photo }}>
+                  <div className="flex-shrink-0 px-1 py-1 cursor-pointer" style={{ width: colWidths.photo }} onClick={() => {
+                    const fp2 = feedProducts.find(f => f.product_id === fp.product_id);
+                    setImageEditorProduct({
+                      id: product.id,
+                      name: product.name,
+                      images: product.images || [],
+                      storeId: fp2?.store_id || "",
+                    });
+                    setImageEditorOpen(true);
+                  }}>
                     {imageUrl ? (
-                      <img src={imageUrl} alt="" className="w-9 h-9 rounded object-cover" />
+                      <img src={imageUrl} alt="" className="w-9 h-9 rounded object-cover hover:ring-2 hover:ring-primary transition-all" />
                     ) : (
-                      <div className="w-9 h-9 rounded bg-muted flex items-center justify-center">
+                      <div className="w-9 h-9 rounded bg-muted flex items-center justify-center hover:ring-2 hover:ring-primary transition-all">
                         <Package className="h-3.5 w-3.5 text-muted-foreground" />
                       </div>
                     )}
@@ -679,6 +693,26 @@ function AvitoFeedTable({
         </div>
       </div>
     </div>
+
+    {/* Image Editor */}
+    {imageEditorProduct && (
+      <AvitoImageEditor
+        open={imageEditorOpen}
+        onOpenChange={setImageEditorOpen}
+        images={imageEditorProduct.images}
+        productName={imageEditorProduct.name}
+        productId={imageEditorProduct.id}
+        storeId={imageEditorProduct.storeId}
+        onImagesUpdate={(newImages) => {
+          // Update avito_params with processed images
+          const fp = feedProducts.find(f => f.product_id === imageEditorProduct.id);
+          if (fp) {
+            handleInlineParamUpdate(imageEditorProduct.id, "processedImages", JSON.stringify(newImages));
+          }
+        }}
+      />
+    )}
+    </>
   );
 }
 
