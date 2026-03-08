@@ -715,7 +715,7 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
         .from("avito_bot_chats")
         .insert({
           store_id: sid,
-          avito_chat_id: `debug_${bot.id}`,
+          avito_chat_id: `debug_${bot.id}_${Date.now()}`,
           avito_user_id: "debug",
           avito_user_name: `Отладка ${new Date().toLocaleString("ru-RU")}`,
           status: "active",
@@ -816,7 +816,7 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
           .from("avito_bot_chats")
           .insert({
             store_id: sid,
-            avito_chat_id: `debug_${bot.id}`,
+            avito_chat_id: `debug_${bot.id}_${Date.now()}`,
             avito_user_id: "debug",
             avito_user_name: `Отладка ${new Date().toLocaleString("ru-RU")}`,
             status: "active",
