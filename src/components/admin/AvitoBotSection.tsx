@@ -2658,6 +2658,283 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
   );
 }
 
+// ===== AI SETTINGS PANEL =====
+interface AISettingsMessage {
+  role: "user" | "assistant";
+  content: string;
+  proposal?: { explanation: string; changes: { field: string; old_value: string; new_value: string }[] } | null;
+}
+
+const SETTINGS_LABELS: Record<string, string> = {
+  name: "Имя бота",
+  mode: "Режим",
+  system_prompt: "Системный промпт",
+  ai_model: "Модель ИИ",
+  response_delay_seconds: "Задержка ответа (сек)",
+  max_responses: "Макс. ответов на чат",
+  max_response_chars: "Макс. символов в ответе",
+  schedule_mode: "Режим расписания",
+  pro_seller_mode: "Про-режим продавца",
+  upgrade_after_messages: "Сообщений до смены модели",
+  upgrade_model: "Модель для апгрейда",
+  seller_stop_command: "Стоп-команда",
+  personality_config: "Личность бота",
+  instructions_config: "Инструкции",
+  lead_conditions: "Условия лида",
+  escalation_rules: "Правила эскалации",
+  completion_rules: "Правила завершения",
+  reactivation_messages: "Реактивация",
+  rules_list: "Правила",
+  handoff_rules: "Правила переключения",
+  telegram_notification_format: "Формат уведомлений",
+  allowed_item_ids: "Фильтр объявлений",
+};
+
+function AISettingsPanel({ botForm, setBotForm, onSave, storeId }: {
+  botForm: any;
+  setBotForm: React.Dispatch<React.SetStateAction<any>>;
+  onSave: () => void;
+  storeId: string | null;
+}) {
+  const { toast } = useToast();
+  const [messages, setMessages] = useState<AISettingsMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [changedFields, setChangedFields] = useState<Set<string>>(new Set());
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+  }, [messages, loading]);
+
+  const getSettingsSnapshot = () => {
+    const keys = Object.keys(SETTINGS_LABELS);
+    const snapshot: Record<string, any> = {};
+    for (const key of keys) {
+      snapshot[key] = botForm[key] ?? null;
+    }
+    return snapshot;
+  };
+
+  const formatValue = (val: any): string => {
+    if (val === null || val === undefined || val === "") return "(пусто)";
+    if (typeof val === "boolean") return val ? "Да" : "Нет";
+    if (typeof val === "object") return JSON.stringify(val, null, 2);
+    return String(val);
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || loading) return;
+    const userMsg = input.trim();
+    setInput("");
+    const newMessages: AISettingsMessage[] = [...messages, { role: "user", content: userMsg }];
+    setMessages(newMessages);
+    setLoading(true);
+
+    try {
+      const apiMessages = newMessages.map(m => ({ role: m.role, content: m.content }));
+      const { data, error } = await supabase.functions.invoke("ai-bot-settings", {
+        body: { messages: apiMessages, bot_settings: getSettingsSnapshot() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data.type === "proposal") {
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: data.explanation || data.raw_message || "Предлагаю следующие изменения:",
+          proposal: { explanation: data.explanation, changes: data.changes || [] },
+        }]);
+      } else {
+        setMessages(prev => [...prev, { role: "assistant", content: data.content || "..." }]);
+      }
+    } catch (err: any) {
+      toast({ title: "Ошибка AI", description: err.message, variant: "destructive" });
+      setMessages(prev => [...prev, { role: "assistant", content: `Ошибка: ${err.message}` }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applyChanges = async (changes: { field: string; old_value: string; new_value: string }[]) => {
+    const updates: Record<string, any> = {};
+    for (const change of changes) {
+      let newVal: any = change.new_value;
+      // Try to parse JSON for objects/arrays
+      try {
+        const parsed = JSON.parse(newVal);
+        if (typeof parsed === "object") newVal = parsed;
+      } catch {}
+      // Handle booleans
+      if (newVal === "true") newVal = true;
+      if (newVal === "false") newVal = false;
+      // Handle null
+      if (newVal === "null" || newVal === "(пусто)") newVal = null;
+      // Handle numbers
+      if (typeof newVal === "string" && /^\d+$/.test(newVal)) newVal = parseInt(newVal);
+
+      updates[change.field] = newVal;
+    }
+    setBotForm((prev: any) => ({ ...prev, ...updates }));
+    setChangedFields(prev => {
+      const next = new Set(prev);
+      changes.forEach(c => next.add(c.field));
+      return next;
+    });
+
+    // Auto-save
+    setTimeout(async () => {
+      await onSave();
+      toast({ title: "Настройки обновлены ✨", description: `Изменено полей: ${changes.length}` });
+    }, 100);
+
+    setMessages(prev => [...prev, { role: "assistant", content: "✅ Изменения применены и сохранены!" }]);
+  };
+
+  const settingsKeys = Object.keys(SETTINGS_LABELS);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-5 w-5 text-primary" />
+        <h2 className="text-lg font-semibold">AI корректировка настроек</h2>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Опишите что хотите изменить в настройках бота. AI проанализирует текущие настройки и предложит конкретные правки.
+      </p>
+
+      <div className="flex gap-4" style={{ height: "calc(100vh - 360px)" }}>
+        {/* Chat panel */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          <Card className="flex-1 flex flex-col min-h-0">
+            <CardHeader className="pb-2 border-b flex-shrink-0">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Bot className="h-4 w-4" /> Чат с AI
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col p-0 min-h-0">
+              <ScrollArea className="flex-1 p-4" style={{ maxHeight: "calc(100vh - 500px)" }}>
+                {messages.length === 0 ? (
+                  <div className="text-center text-muted-foreground text-sm py-8">
+                    <Sparkles className="h-8 w-8 mx-auto mb-3 opacity-30" />
+                    <p>Напишите что хотите изменить</p>
+                    <p className="text-xs mt-2 max-w-xs mx-auto">
+                      Например: «Отвечай короче, максимум 200 символов» или «Будь более дружелюбным»
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {messages.map((msg, i) => (
+                      <div key={i}>
+                        <div className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
+                          <div className={cn(
+                            "max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
+                            msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+                          )}>
+                            {msg.content}
+                          </div>
+                        </div>
+                        {msg.proposal && msg.proposal.changes.length > 0 && (
+                          <div className="mt-2 ml-0 max-w-[85%]">
+                            <Card className="border-primary/30 bg-primary/5">
+                              <CardContent className="py-3 px-3 space-y-2">
+                                <p className="text-xs font-semibold text-primary">Предлагаемые изменения:</p>
+                                {msg.proposal.changes.map((change, ci) => (
+                                  <div key={ci} className="text-xs space-y-0.5 border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                                    <div className="font-medium">{SETTINGS_LABELS[change.field] || change.field}</div>
+                                    <div className="text-destructive line-through truncate">
+                                      {change.old_value?.substring(0, 100) || "(пусто)"}
+                                      {(change.old_value?.length || 0) > 100 && "..."}
+                                    </div>
+                                    <div className="text-green-700 dark:text-green-400 truncate">
+                                      {change.new_value?.substring(0, 100) || "(пусто)"}
+                                      {(change.new_value?.length || 0) > 100 && "..."}
+                                    </div>
+                                  </div>
+                                ))}
+                                <div className="flex gap-2 pt-1">
+                                  <Button size="sm" className="h-7 text-xs" onClick={() => applyChanges(msg.proposal!.changes)}>
+                                    <CheckCircle2 className="h-3 w-3 mr-1" /> Подтвердить
+                                  </Button>
+                                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => {
+                                    setMessages(prev => [...prev, { role: "assistant", content: "Отменено. Что хотите изменить?" }]);
+                                  }}>
+                                    <XCircle className="h-3 w-3 mr-1" /> Отмена
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {loading && (
+                      <div className="flex justify-start">
+                        <div className="bg-muted rounded-lg px-3 py-2 text-sm flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Анализирую...
+                        </div>
+                      </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
+                )}
+              </ScrollArea>
+              <div className="p-3 border-t flex gap-2 flex-shrink-0">
+                <Input
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  placeholder="Опишите что изменить..."
+                  onKeyDown={e => e.key === "Enter" && handleSend()}
+                  disabled={loading}
+                />
+                <Button onClick={handleSend} disabled={!input.trim() || loading}>
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Settings panel */}
+        <div className="w-72 flex-shrink-0">
+          <Card className="h-full flex flex-col">
+            <CardHeader className="pb-2 border-b flex-shrink-0">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Settings className="h-4 w-4" /> Текущие настройки
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 flex-1 min-h-0">
+              <ScrollArea className="h-full" style={{ maxHeight: "calc(100vh - 500px)" }}>
+                <div className="divide-y divide-border">
+                  {settingsKeys.map(key => {
+                    const isChanged = changedFields.has(key);
+                    return (
+                      <div key={key} className={cn(
+                        "px-3 py-2 transition-colors",
+                        isChanged && "bg-green-50 dark:bg-green-950/20"
+                      )}>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                            {SETTINGS_LABELS[key]}
+                          </span>
+                          {isChanged && <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />}
+                        </div>
+                        <div className="text-xs mt-0.5 text-foreground break-all max-h-20 overflow-hidden">
+                          {formatValue(botForm[key])}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ===== Reusable List Editor =====
 function ListEditor({ title, desc, items, onAdd, onUpdate, onRemove, placeholder, onAiFill, aiFillingField }: {
   title: string; desc: string; items: string[];
