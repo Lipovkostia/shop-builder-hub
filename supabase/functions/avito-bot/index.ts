@@ -1357,7 +1357,31 @@ Deno.serve(async (req) => {
             })
             .eq("id", dbChat.id);
 
-          if (bot.telegram_bot_token && bot.telegram_chat_id) {
+          // ===== LEAD DETECTION =====
+          try {
+            // Gather all user messages from this conversation for lead detection
+            const { data: allChatMsgs } = await supabase
+              .from("avito_bot_messages")
+              .select("role, content")
+              .eq("chat_id", dbChat.id)
+              .order("created_at", { ascending: true });
+            
+            const msgsForDetection = (allChatMsgs || []).map((m: any) => ({ role: m.role, content: m.content }));
+            // Also include the current message
+            msgsForDetection.push({ role: "user", content: lastMsg.content?.text || lastMsg.text || "" });
+            
+            const leadConditions = Array.isArray(bot.lead_conditions) ? bot.lead_conditions : [];
+            const detection = detectLeadFromMessages(msgsForDetection, leadConditions as string[]);
+            
+            if (detection.isLead) {
+              const chatUserName = chat.users?.[0]?.name || "Клиент";
+              await updateLeadStatus(supabase, dbChat.id, detection, bot, chatUserName);
+              console.log(`Chat ${chatId}: lead detected! Contacts: ${detection.contacts.map(c => c.value).join(", ")}`);
+            }
+          } catch (leadErr) {
+            console.error("Lead detection error:", leadErr);
+          }
+
             const userName = chat.users?.[0]?.name || "Пользователь";
             const userMsg = lastMsg.content?.text || lastMsg.text || "";
             const itemId = chat.context?.value?.id;
