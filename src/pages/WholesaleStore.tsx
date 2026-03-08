@@ -21,6 +21,7 @@ import { WholesaleCartDrawer } from "@/components/wholesale/WholesaleCartDrawer"
 import { WholesaleCategorySidebar } from "@/components/wholesale/WholesaleCategorySidebar";
 import { WholesaleProductTable } from "@/components/wholesale/WholesaleProductTable";
 import { WholesaleProductDetailPanel } from "@/components/wholesale/WholesaleProductDetailPanel";
+import { StorefrontChatWidget } from "@/components/retail/StorefrontChatWidget";
 
 interface WholesaleStoreProps {
   subdomain?: string;
