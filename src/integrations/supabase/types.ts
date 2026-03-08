@@ -230,6 +230,70 @@ export type Database = {
           },
         ]
       }
+      avito_bot_usage_logs: {
+        Row: {
+          action_type: string
+          bot_id: string | null
+          chat_id: string | null
+          completion_tokens: number
+          cost: number
+          created_at: string
+          id: string
+          model: string
+          prompt_tokens: number
+          store_id: string
+          total_tokens: number
+        }
+        Insert: {
+          action_type?: string
+          bot_id?: string | null
+          chat_id?: string | null
+          completion_tokens?: number
+          cost?: number
+          created_at?: string
+          id?: string
+          model: string
+          prompt_tokens?: number
+          store_id: string
+          total_tokens?: number
+        }
+        Update: {
+          action_type?: string
+          bot_id?: string | null
+          chat_id?: string | null
+          completion_tokens?: number
+          cost?: number
+          created_at?: string
+          id?: string
+          model?: string
+          prompt_tokens?: number
+          store_id?: string
+          total_tokens?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avito_bot_usage_logs_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "avito_bots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avito_bot_usage_logs_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "avito_bot_chats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avito_bot_usage_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avito_bots: {
         Row: {
           ai_model: string

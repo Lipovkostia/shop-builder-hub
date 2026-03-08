@@ -75,7 +75,13 @@ function findRelevantProducts(allProducts: any[], query: string, maxResults = 30
 function buildCatalogContext(products: any[], totalCount: number): string {
   if (!products.length) return "";
   const productLines = products.map((p: any, i: number) => {
-    const price = p.price || p.buy_price || 0;
+    let price = p.price || 0;
+    if ((!price || price <= 0) && p.buy_price && p.buy_price > 0) {
+      const bp = Number(p.buy_price);
+      const mt = p.markup_type || "percent";
+      const mv = Number(p.markup_value || 0);
+      price = mt === "percent" ? Math.round(bp * (1 + mv / 100)) : Math.round(bp + mv);
+    }
     return `${i + 1}. ${p.name} — ${price}₽${p.unit ? ` (${p.unit})` : ""}${p.sku ? ` [${p.sku}]` : ""}`;
   }).join("\n");
   return `\n\n--- КАТАЛОГ ТОВАРОВ (показано ${products.length} из ${totalCount}) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\nВАЖНО: Ищи ПОХОЖИЕ названия (частичное совпадение, сокращения). НИКОГДА не говори «нет в каталоге» если есть хоть частичное совпадение. Называй точные цены.\n`;
@@ -220,7 +226,7 @@ async function getLocalListingInfo(
   try {
     const { data, error } = await supabase
       .from("avito_feed_products")
-      .select("product_id, avito_category, avito_params, products(name, description, price)")
+      .select("product_id, avito_category, avito_params, products(name, description, price, buy_price, markup_type, markup_value, is_fixed_price)")
       .eq("store_id", storeId)
       .limit(1000);
 
@@ -245,10 +251,28 @@ async function getLocalListingInfo(
 
       const title = String(params.title || product.name || "").trim();
       const description = String(params.description || product.description || "").trim();
-      const rawPrice = params.Price ?? params.price ?? product.price ?? 0;
+      
+      // Calculate effective price: params price > fixed price > calculated price > buy_price
+      let rawPrice = params.Price ?? params.price ?? null;
+      if (rawPrice == null || rawPrice === 0 || rawPrice === "0") {
+        if (product.is_fixed_price && product.price > 0) {
+          rawPrice = product.price;
+        } else if (product.buy_price && product.buy_price > 0) {
+          const bp = Number(product.buy_price);
+          const mt = product.markup_type || "percent";
+          const mv = Number(product.markup_value || 0);
+          if (mt === "percent") {
+            rawPrice = bp * (1 + mv / 100);
+          } else {
+            rawPrice = bp + mv;
+          }
+        } else {
+          rawPrice = product.price || 0;
+        }
+      }
       const price = typeof rawPrice === "string"
         ? parseInt(rawPrice.replace(/\D/g, ""), 10) || 0
-        : Number(rawPrice) || 0;
+        : Math.round(Number(rawPrice) || 0);
       const category = String(row.avito_category || params.category || "").trim();
 
       const avitoIdCandidates = [
@@ -746,7 +770,7 @@ Deno.serve(async (req) => {
       // Build product catalog context — only relevant products to save tokens
       let catalogContext = "";
       try {
-        const allProducts = await fetchAllProducts(supabase, bot.store_id, "name, description, price, buy_price, unit, sku");
+        const allProducts = await fetchAllProducts(supabase, bot.store_id, "name, description, price, buy_price, markup_type, markup_value, is_fixed_price, unit, sku");
         const relevantProducts = findRelevantProducts(allProducts, message, 30);
         catalogContext = buildCatalogContext(relevantProducts, allProducts.length);
       } catch (e) {
@@ -897,7 +921,7 @@ Deno.serve(async (req) => {
       // Load all products once — we'll filter per-chat for relevant ones
       let allProducts: any[] = [];
       try {
-        allProducts = await fetchAllProducts(supabase, store_id, "name, price, buy_price, unit, sku");
+        allProducts = await fetchAllProducts(supabase, store_id, "name, price, buy_price, markup_type, markup_value, is_fixed_price, unit, sku");
       } catch (e) {
         console.error("Failed to fetch product catalog:", e);
       }
