@@ -2733,10 +2733,19 @@ function AISettingsPanel({ botForm, setBotForm, onSave, storeId }: {
 
     try {
       const apiMessages = newMessages.map(m => ({ role: m.role, content: m.content }));
-      const { data, error } = await supabase.functions.invoke("ai-bot-settings", {
-        body: { messages: apiMessages, bot_settings: getSettingsSnapshot() },
-      });
-      if (error) throw error;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-bot-settings`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ messages: apiMessages, bot_settings: getSettingsSnapshot() }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || `Ошибка ${response.status}`);
       if (data?.error) throw new Error(data.error);
 
       if (data.type === "proposal") {
