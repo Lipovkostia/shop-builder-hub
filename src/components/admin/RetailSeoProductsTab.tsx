@@ -142,25 +142,6 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
               />
             </div>
           )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleBulkGenerate}
-              disabled={generating || filteredProducts.length === 0}
-            >
-              {generating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                  {progress ? `${progress.current}/${progress.total}` : "..."}
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-1" />
-                  SEO для всех
-                </>
-              )}
-            </Button>
-          </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
