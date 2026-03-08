@@ -2665,6 +2665,20 @@ interface AISettingsMessage {
   proposal?: { explanation: string; changes: { field: string; old_value: string; new_value: string }[] } | null;
 }
 
+const AGENT_MODELS = [
+  { id: "openai/gpt-4.1-nano", label: "GPT 4.1 Nano", desc: "Самая дешёвая и быстрая" },
+  { id: "openai/gpt-4.1-mini", label: "GPT 4.1 Mini", desc: "Лучшее соотношение цены/качества" },
+  { id: "openai/gpt-4.1", label: "GPT 4.1", desc: "Мощная модель" },
+  { id: "openai/gpt-4o-mini", label: "GPT 4o Mini", desc: "Быстрая мультимодальная" },
+  { id: "openai/o4-mini", label: "GPT o4 Mini", desc: "С цепочкой рассуждений" },
+  { id: "google/gemini-2.5-flash", label: "Gemini Flash 2.5", desc: "Баланс скорости и качества" },
+  { id: "google/gemini-2.5-pro", label: "Gemini PRO 2.5", desc: "Мощная для сложных задач" },
+  { id: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6", desc: "Сильная от Anthropic" },
+  { id: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5", desc: "Быстрая от Anthropic" },
+  { id: "deepseek/deepseek-r1", label: "DeepSeek R1", desc: "С рассуждениями" },
+  { id: "deepseek/deepseek-v3", label: "DeepSeek V3", desc: "Универсальная" },
+];
+
 const SETTINGS_LABELS: Record<string, string> = {
   name: "Имя бота",
   mode: "Режим",
@@ -2701,6 +2715,7 @@ function AISettingsPanel({ botForm, setBotForm, onSave, storeId }: {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [changedFields, setChangedFields] = useState<Set<string>>(new Set());
+  const [agentModel, setAgentModel] = useState("openai/gpt-4.1-mini");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -2741,7 +2756,7 @@ function AISettingsPanel({ botForm, setBotForm, onSave, storeId }: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ messages: apiMessages, bot_settings: getSettingsSnapshot() }),
+          body: JSON.stringify({ messages: apiMessages, bot_settings: getSettingsSnapshot(), agent_model: agentModel }),
         }
       );
       const data = await response.json();
@@ -2804,13 +2819,29 @@ function AISettingsPanel({ botForm, setBotForm, onSave, storeId }: {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Sparkles className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-semibold">AI корректировка настроек</h2>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">AI-агент настроек</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            Агент анализирует настройки робота и вносит правки по вашему запросу через VseGPT.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-muted-foreground whitespace-nowrap">Модель агента:</label>
+          <select
+            value={agentModel}
+            onChange={e => setAgentModel(e.target.value)}
+            className="text-xs border border-border rounded-md px-2 py-1.5 bg-background text-foreground max-w-[200px]"
+          >
+            {AGENT_MODELS.map(m => (
+              <option key={m.id} value={m.id}>{m.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Опишите что хотите изменить в настройках бота. AI проанализирует текущие настройки и предложит конкретные правки.
-      </p>
 
       <div className="flex gap-4" style={{ height: "calc(100vh - 360px)" }}>
         {/* Chat panel */}
