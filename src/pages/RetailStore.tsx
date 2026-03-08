@@ -26,6 +26,7 @@ import { RetailFavoritesDrawer } from "@/components/retail/RetailFavoritesDrawer
 import { CategoryProductsSection } from "@/components/retail/CategoryProductsSection";
 import { FlyToCartAnimation, triggerFlyToCart } from "@/components/retail/FlyToCartAnimation";
 import { useProductReviews } from "@/hooks/useProductReviews";
+import { StorefrontChatWidget } from "@/components/retail/StorefrontChatWidget";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 
