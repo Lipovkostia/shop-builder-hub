@@ -469,7 +469,7 @@ Deno.serve(async (req) => {
           const msgsData = await msgsRes.json();
           const avitoMessages = (msgsData.messages || []).reverse();
 
-          const basePrompt = bot.system_prompt || "Ты — помощник продавца на Авито. Отвечай вежливо и помогай с вопросами о товарах.";
+          const basePrompt = getEffectiveSystemPrompt(bot);
           const proSuffix = bot.pro_seller_mode
             ? "\n\nВеди себя как профессиональный продавец. Используй техники продаж, задавай уточняющие вопросы."
             : "";
