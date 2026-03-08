@@ -2225,14 +2225,6 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
       }
 
       case "usage_stats": {
-        const [usageLogs, setUsageLogs] = React.useState<UsageLog[]>([]);
-        const [usageLoading, setUsageLoading] = React.useState(false);
-        React.useEffect(() => {
-          setUsageLoading(true);
-          supabase.functions.invoke("avito-bot", { body: { action: "usage_stats", store_id: storeId || bot.store_id, bot_id: bot.id } })
-            .then(({ data }) => { if (data?.logs) setUsageLogs(data.logs); })
-            .finally(() => setUsageLoading(false));
-        }, []);
         const totalCost = usageLogs.reduce((s, l) => s + Number(l.cost || 0), 0);
         const totalTokens = usageLogs.reduce((s, l) => s + (l.total_tokens || 0), 0);
         const avgCost = usageLogs.length > 0 ? totalCost / usageLogs.length : 0;
