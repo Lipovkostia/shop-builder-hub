@@ -767,6 +767,12 @@ Deno.serve(async (req) => {
               .eq("id", dbChat.id);
             skippedStopCommand++;
             console.log(`Chat ${chatId}: seller stop command detected, marking as escalated`);
+            // Debug notification for stop command
+            if (bot.telegram_debug_notifications && bot.telegram_bot_token && bot.telegram_chat_id) {
+              const scUserName = chat.users?.[0]?.name || "—";
+              await sendTelegramNotification(bot.telegram_bot_token, bot.telegram_chat_id,
+                `🛠 <b>Отладка — стоп-команда</b>\n\n🛑 Бот остановлен в чате с ${scUserName}\nКоманда: <code>${stopCommand}</code>`);
+            }
             continue;
           }
 
