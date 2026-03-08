@@ -342,6 +342,7 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
   if (editingBotId && editingBot) {
     return <BotEditor
       bot={editingBot}
+      bots={bots}
       botForm={botForm}
       setBotForm={setBotForm}
       botSection={botSection}
