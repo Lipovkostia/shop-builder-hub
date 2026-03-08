@@ -486,13 +486,13 @@ export function AvitoImageEditor({
                             className="w-full h-full object-cover"
                           />
                           {is43(img.width, img.height) && (
-                            <Badge className="absolute top-2 right-2 bg-green-500/80 text-xs">4:3</Badge>
+                            <Badge className="absolute top-2 right-2 bg-primary/80 text-xs">4:3</Badge>
                           )}
                           <span className="absolute bottom-1 right-1 text-[10px] bg-background/80 px-1.5 py-0.5 rounded text-muted-foreground">
                             {img.width}×{img.height}
                           </span>
                         </div>
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-lg transition-opacity flex items-center justify-center gap-1">
+                        <div className="absolute inset-0 bg-foreground/20 opacity-0 group-hover:opacity-100 rounded-lg transition-opacity flex items-center justify-center gap-1">
                           <Button
                             size="sm"
                             variant="secondary"
