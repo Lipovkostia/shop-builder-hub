@@ -608,16 +608,30 @@ export function AvitoImageEditor({
                             {img.width}×{img.height}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1 mt-1.5">
+                        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                           {hasTemplate && (
                             <Button
-                              size="sm" variant="outline" className="h-7 text-xs flex-1"
+                              size="sm" variant="outline" className="h-7 text-xs flex-1 min-w-[60px]"
                               onClick={() => handleApplyTemplate(img.url)}
                               disabled={processing.has(`tpl_${img.url}`)}
                             >
                               {processing.has(`tpl_${img.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Layers className="h-3 w-3 mr-1" />Шаблон</>}
                             </Button>
                           )}
+                          <Button
+                            size="sm" variant="outline" className="h-7 text-xs min-w-[60px]"
+                            onClick={() => handleAiAction(img.url, "ai_remove_background", "Фон удалён")}
+                            disabled={processing.has(`ai_remove_background_${img.url}`)}
+                          >
+                            {processing.has(`ai_remove_background_${img.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Eraser className="h-3 w-3 mr-1" />Фон</>}
+                          </Button>
+                          <Button
+                            size="sm" variant="outline" className="h-7 text-xs min-w-[60px]"
+                            onClick={() => handleAiAction(img.url, "ai_enhance", "Качество улучшено")}
+                            disabled={processing.has(`ai_enhance_${img.url}`)}
+                          >
+                            {processing.has(`ai_enhance_${img.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Sparkles className="h-3 w-3 mr-1" />Качество</>}
+                          </Button>
                           <Button size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={() => handleRemoveGenerated(img.url)}>
                             <X className="h-3 w-3 mr-1" />Удалить
                           </Button>
