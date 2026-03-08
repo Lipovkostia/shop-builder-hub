@@ -692,6 +692,26 @@ function AvitoFeedTable({
         </div>
       </div>
     </div>
+
+    {/* Image Editor */}
+    {imageEditorProduct && (
+      <AvitoImageEditor
+        open={imageEditorOpen}
+        onOpenChange={setImageEditorOpen}
+        images={imageEditorProduct.images}
+        productName={imageEditorProduct.name}
+        productId={imageEditorProduct.id}
+        storeId={imageEditorProduct.storeId}
+        onImagesUpdate={(newImages) => {
+          // Update avito_params with processed images
+          const fp = feedProducts.find(f => f.product_id === imageEditorProduct.id);
+          if (fp) {
+            handleInlineParamUpdate(imageEditorProduct.id, "processedImages", JSON.stringify(newImages));
+          }
+        }}
+      />
+    )}
+    </>
   );
 }
 
