@@ -1402,6 +1402,7 @@ Deno.serve(async (req) => {
             console.error("Lead detection error:", leadErr);
           }
 
+          if (bot.telegram_bot_token && bot.telegram_chat_id) {
             const userName = chat.users?.[0]?.name || "Пользователь";
             const userMsg = lastMsg.content?.text || lastMsg.text || "";
             const itemId = chat.context?.value?.id;
