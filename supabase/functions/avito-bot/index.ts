@@ -66,27 +66,31 @@ Deno.serve(async (req) => {
     if (!lovableApiKey) throw new Error("LOVABLE_API_KEY is not configured");
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const { action, store_id } = await req.json();
+    const { action, store_id, bot_id } = await req.json();
 
     if (action === "process_messages") {
       // 1. Get bot config
-      const { data: bot, error: botErr } = await supabase
-        .from("avito_bots")
-        .select("*")
-        .eq("store_id", store_id)
-        .single();
+      let botQuery = supabase.from("avito_bots").select("*");
+      if (bot_id) {
+        botQuery = botQuery.eq("id", bot_id);
+      } else {
+        botQuery = botQuery.eq("store_id", store_id);
+      }
+      const { data: bot, error: botErr } = await botQuery.single();
 
       if (botErr || !bot) throw new Error("Бот не найден. Сначала создайте и сохраните настройки бота.");
       if (!bot.is_active) throw new Error("Бот выключен. Включите бота в настройках.");
 
-      // 2. Get Avito credentials
-      const { data: account, error: accErr } = await supabase
-        .from("avito_accounts")
-        .select("*")
-        .eq("store_id", store_id)
-        .single();
+      // 2. Get Avito credentials - prefer bot's linked account, fallback to store account
+      let accQuery = supabase.from("avito_accounts").select("*");
+      if (bot.avito_account_id) {
+        accQuery = accQuery.eq("id", bot.avito_account_id);
+      } else {
+        accQuery = accQuery.eq("store_id", store_id);
+      }
+      const { data: account, error: accErr } = await accQuery.single();
 
-      if (accErr || !account) throw new Error("Авито аккаунт не подключён. Подключите аккаунт во вкладке Авито.");
+      if (accErr || !account) throw new Error("Авито аккаунт не подключён. Привяжите аккаунт к роботу.");
 
       const token = await getAvitoToken(account.client_id, account.client_secret);
       const userId = account.avito_user_id;
