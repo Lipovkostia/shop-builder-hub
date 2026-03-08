@@ -770,7 +770,7 @@ Deno.serve(async (req) => {
       // Build product catalog context — only relevant products to save tokens
       let catalogContext = "";
       try {
-        const allProducts = await fetchAllProducts(supabase, bot.store_id, "name, description, price, buy_price, unit, sku");
+        const allProducts = await fetchAllProducts(supabase, bot.store_id, "name, description, price, buy_price, markup_type, markup_value, is_fixed_price, unit, sku");
         const relevantProducts = findRelevantProducts(allProducts, message, 30);
         catalogContext = buildCatalogContext(relevantProducts, allProducts.length);
       } catch (e) {
