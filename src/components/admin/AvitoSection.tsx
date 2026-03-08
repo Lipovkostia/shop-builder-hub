@@ -1715,6 +1715,39 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     );
                   })()}
 
+                  {/* API Connection - collapsible */}
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full py-1">
+                      <div className="flex items-center gap-1.5">
+                        <Link2 className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">API подключение</span>
+                      </div>
+                      <Badge variant="secondary" className="text-[9px] py-0">▼</Badge>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 space-y-2">
+                      <p className="text-[9px] text-muted-foreground">
+                        Client ID и Secret с{" "}
+                        <a href="https://www.avito.ru/professionals/api" target="_blank" rel="noopener noreferrer" className="text-primary underline">avito.ru/professionals/api</a>
+                      </p>
+                      <div className="space-y-1.5">
+                        <Input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="Client ID" className="h-7 text-xs" />
+                        <Input type="password" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder="Client Secret" className="h-7 text-xs" />
+                      </div>
+                      <div className="flex gap-1.5">
+                        <Button size="sm" className="h-7 text-xs flex-1" onClick={handleConnect} disabled={connecting || !clientId.trim() || !clientSecret.trim()}>
+                          {connecting && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                          {isConnected ? "Переподключить" : "Подключить"}
+                        </Button>
+                        {isConnected && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={handleDisconnect} disabled={disconnecting}>
+                            {disconnecting && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                            <Unlink className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+
                   {/* Settings Defaults */}
                   <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
                     <CollapsibleTrigger className="flex items-center justify-between w-full py-1">
