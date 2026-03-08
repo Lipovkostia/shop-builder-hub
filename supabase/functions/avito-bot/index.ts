@@ -704,9 +704,11 @@ Deno.serve(async (req) => {
           .from("avito_bot_messages")
           .select("*")
           .eq("chat_id", debug_session_id)
-          .order("created_at", { ascending: true });
+          .order("created_at", { ascending: false })
+          .limit(20);
         if (prevMsgs) {
-          for (const m of prevMsgs) {
+          // Reverse to chronological order, take last 20 messages
+          for (const m of prevMsgs.reverse()) {
             conversationMessages.push({ role: m.role === "assistant" ? "assistant" : "user", content: m.content });
           }
         }
