@@ -88,6 +88,16 @@ interface UsageLog {
   created_at: string;
 }
 
+interface SalesStage {
+  id: string;
+  bot_id: string;
+  name: string;
+  instructions: string;
+  action_type: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
 type TopLevel = "dashboard" | "bots" | "accounts" | "chats";
 type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug" | "usage_stats" | "sales";
 
