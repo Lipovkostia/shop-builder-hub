@@ -868,6 +868,9 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
 
       {/* Fly to cart animation */}
       <FlyToCartAnimation cartIconRef={isMobile ? mobileCartIconRef : cartIconRef} />
+
+      {/* Chat widget */}
+      {store?.id && <StorefrontChatWidget storeId={store.id} channel="retail" />}
     </div>
   );
 }

@@ -304,6 +304,9 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
           minOrderAmount={store.wholesale_min_order_amount}
         />
       )}
+
+      {/* Chat widget */}
+      {store?.id && <StorefrontChatWidget storeId={store.id} channel="wholesale" />}
     </div>
   );
 }

@@ -327,7 +327,7 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-6 mb-6">
+        <TabsList className="w-full grid grid-cols-7 mb-6">
           <TabsTrigger value="general" className="gap-1.5">
             <Store className="h-4 w-4" />
             <span className="hidden sm:inline">Общее</span>
@@ -339,6 +339,10 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
           <TabsTrigger value="design" className="gap-1.5">
             <Palette className="h-4 w-4" />
             <span className="hidden sm:inline">Дизайн</span>
+          </TabsTrigger>
+          <TabsTrigger value="chat" className="gap-1.5">
+            <Bot className="h-4 w-4" />
+            <span className="hidden sm:inline">Чат</span>
           </TabsTrigger>
           <TabsTrigger value="seo" className="gap-1.5">
             <Search className="h-4 w-4" />
@@ -353,6 +357,55 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
             <span className="hidden sm:inline">Товары</span>
           </TabsTrigger>
         </TabsList>
+
+        {/* Chat Tab */}
+        <TabsContent value="chat" className="space-y-6">
+          <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-1">ИИ-чат на сайте</h3>
+              <p className="text-sm text-muted-foreground">Подключите робота-ассистента к оптовому магазину. Покупатели смогут общаться с ним прямо на сайте.</p>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+              <div>
+                <p className="font-medium text-sm">Включить чат</p>
+                <p className="text-xs text-muted-foreground">Виджет появится в правом нижнем углу магазина</p>
+              </div>
+              <Switch
+                checked={chatEnabled}
+                onCheckedChange={(v) => saveChatSettings(v, chatBotId)}
+                disabled={chatSaving}
+              />
+            </div>
+
+            {chatEnabled && (
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Робот для чата</Label>
+                {availableBots.length === 0 ? (
+                  <div className="p-4 border border-dashed rounded-lg text-center text-sm text-muted-foreground">
+                    <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Нет созданных роботов</p>
+                    <p className="text-xs mt-1">Создайте робота во вкладке «Авитобот», затем подключите его здесь</p>
+                  </div>
+                ) : (
+                  <Select value={chatBotId || "none"} onValueChange={v => saveChatSettings(chatEnabled, v === "none" ? null : v)}>
+                    <SelectTrigger><SelectValue placeholder="Выберите робота" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Не выбран</SelectItem>
+                      {availableBots.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+                {chatBotId && (
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-green-500 rounded-full inline-block" />
+                    Робот подключен и готов отвечать покупателям
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </TabsContent>
 
         {/* General Tab */}
         <TabsContent value="general" className="space-y-6">
