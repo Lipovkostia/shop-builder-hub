@@ -1458,7 +1458,10 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
                     <Label className="text-xs whitespace-nowrap">Через (мин):</Label>
                     <Input type="number" value={msg.delay_minutes} onChange={e => { const u = [...msgs]; u[i] = { ...msg, delay_minutes: parseInt(e.target.value) || 0 }; updateForm({ reactivation_messages: u }); }} className="w-24" />
                   </div>
-                  <Textarea value={msg.message} onChange={e => { const u = [...msgs]; u[i] = { ...msg, message: e.target.value }; updateForm({ reactivation_messages: u }); }} placeholder="Сообщение..." className="min-h-[60px]" />
+                  <div className="flex items-center gap-1">
+                    <Textarea value={msg.message} onChange={e => { const u = [...msgs]; u[i] = { ...msg, message: e.target.value }; updateForm({ reactivation_messages: u }); }} placeholder="Сообщение..." className="min-h-[60px]" />
+                  </div>
+                  <AIFillBtn fieldKey={`reactivation_${i}`} value={msg.message || ""} context={`Сообщение реактивации #${i+1} для бота на Авито (короткое, мотивирующее вернуться к диалогу)`} onResult={v => { const u = [...msgs]; u[i] = { ...msg, message: v }; updateForm({ reactivation_messages: u }); }} />
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => updateForm({ reactivation_messages: msgs.filter((_, idx) => idx !== i) })}><Trash2 className="h-4 w-4" /></Button>
               </div>
