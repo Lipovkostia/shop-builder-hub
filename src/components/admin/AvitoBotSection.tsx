@@ -1919,7 +1919,7 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
                 <Card className="min-h-[400px] flex flex-col">
                   <CardHeader className="pb-2 border-b"><CardTitle className="text-sm flex items-center gap-2"><Bot className="h-4 w-4" />Тест: {bot.name || "бот"}</CardTitle></CardHeader>
                   <CardContent className="flex-1 flex flex-col p-0">
-                    <ScrollArea className="flex-1 p-4" style={{ maxHeight: "calc(100vh - 400px)", minHeight: "300px" }}>
+                    <ScrollArea className="flex-1 p-4 overflow-y-auto" style={{ height: "400px" }}>
                       {debugMessages.length === 0 ? (
                         <div className="text-center text-muted-foreground text-sm py-8">Начните диалог</div>
                       ) : (
