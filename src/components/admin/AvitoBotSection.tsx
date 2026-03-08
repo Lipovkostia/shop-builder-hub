@@ -2214,6 +2214,56 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
         );
       }
 
+      case "usage_stats": {
+        const [usageLogs, setUsageLogs] = React.useState<UsageLog[]>([]);
+        const [usageLoading, setUsageLoading] = React.useState(false);
+        React.useEffect(() => {
+          setUsageLoading(true);
+          supabase.functions.invoke("avito-bot", { body: { action: "usage_stats", store_id: storeId || bot.store_id, bot_id: bot.id } })
+            .then(({ data }) => { if (data?.logs) setUsageLogs(data.logs); })
+            .finally(() => setUsageLoading(false));
+        }, []);
+        const totalCost = usageLogs.reduce((s, l) => s + Number(l.cost || 0), 0);
+        const totalTokens = usageLogs.reduce((s, l) => s + (l.total_tokens || 0), 0);
+        const avgCost = usageLogs.length > 0 ? totalCost / usageLogs.length : 0;
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" /><h2 className="text-lg font-semibold">Статистика расходов</h2></div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Card><CardContent className="py-3 px-4"><div className="text-xs text-muted-foreground">Запросов</div><div className="text-2xl font-bold">{usageLogs.length}</div></CardContent></Card>
+              <Card><CardContent className="py-3 px-4"><div className="text-xs text-muted-foreground">Общая стоимость</div><div className="text-2xl font-bold">{totalCost.toFixed(4)} ₽</div></CardContent></Card>
+              <Card><CardContent className="py-3 px-4"><div className="text-xs text-muted-foreground">Средняя цена/ответ</div><div className="text-2xl font-bold">{avgCost.toFixed(4)} ₽</div></CardContent></Card>
+              <Card><CardContent className="py-3 px-4"><div className="text-xs text-muted-foreground">Всего токенов</div><div className="text-2xl font-bold">{(totalTokens/1000).toFixed(1)}K</div></CardContent></Card>
+            </div>
+            {usageLoading ? <p className="text-sm text-muted-foreground">Загрузка...</p> : (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead><tr className="border-b bg-muted/50"><th className="p-2 text-left">Время</th><th className="p-2 text-left">Модель</th><th className="p-2 text-right">Вход</th><th className="p-2 text-right">Выход</th><th className="p-2 text-right">Всего</th><th className="p-2 text-right">Стоимость</th><th className="p-2 text-left">Тип</th></tr></thead>
+                      <tbody>
+                        {usageLogs.slice(0, 50).map(log => (
+                          <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30">
+                            <td className="p-2 text-xs text-muted-foreground whitespace-nowrap">{new Date(log.created_at).toLocaleString("ru-RU")}</td>
+                            <td className="p-2 text-xs font-mono">{log.model?.split("/").pop()}</td>
+                            <td className="p-2 text-right text-xs">{log.prompt_tokens.toLocaleString()}</td>
+                            <td className="p-2 text-right text-xs">{log.completion_tokens.toLocaleString()}</td>
+                            <td className="p-2 text-right text-xs font-medium">{log.total_tokens.toLocaleString()}</td>
+                            <td className="p-2 text-right text-xs font-medium">{Number(log.cost).toFixed(6)}</td>
+                            <td className="p-2"><Badge variant="outline" className="text-xs">{log.action_type === "debug" ? "Отладка" : "Чат"}</Badge></td>
+                          </tr>
+                        ))}
+                        {usageLogs.length === 0 && <tr><td colSpan={7} className="p-4 text-center text-muted-foreground">Нет данных. Статистика начнёт собираться с новых сообщений.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        );
+      }
+
       case "debug":
         return (
           <div className="space-y-4">
