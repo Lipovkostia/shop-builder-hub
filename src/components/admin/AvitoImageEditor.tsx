@@ -277,6 +277,10 @@ export function AvitoImageEditor({
     setTemplateUrl(tpl.url);
     setTemplatePreview(tpl.previewUrl);
     toast({ title: "Шаблон выбран" });
+    // Auto-scroll down so user sees images and buttons
+    setTimeout(() => {
+      scrollViewportRef.current?.scrollTo({ top: scrollViewportRef.current.scrollHeight, behavior: "smooth" });
+    }, 100);
   };
 
   const handleDeleteTemplate = async (tpl: SavedTemplate) => {
