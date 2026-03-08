@@ -282,7 +282,7 @@ export function AvitoImageEditor({
     }
   }, [storeId, productId, projectId, toast]);
 
-
+  const handleTemplateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const localUrl = URL.createObjectURL(file);
