@@ -346,6 +346,134 @@ async function sendTelegramNotification(
   }
 }
 
+// ===== LEAD DETECTION =====
+interface LeadDetectionResult {
+  isLead: boolean;
+  contacts: { type: string; value: string }[];
+  matchedConditions: string[];
+}
+
+function detectLeadFromMessages(
+  messages: { role: string; content: string }[],
+  leadConditions: string[]
+): LeadDetectionResult {
+  const contacts: { type: string; value: string }[] = [];
+  const matchedConditions: string[] = [];
+
+  // Only check user messages
+  const userMessages = messages.filter(m => m.role === "user");
+  const allUserText = userMessages.map(m => m.content).join(" ");
+
+  // Phone patterns: Russian and international formats
+  const phonePatterns = [
+    /(?:\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}/g,
+    /\b\d{10,11}\b/g,
+    /\+\d{1,3}[\s\-]?\d{3,4}[\s\-]?\d{3,4}[\s\-]?\d{2,4}/g,
+  ];
+
+  for (const pattern of phonePatterns) {
+    const matches = allUserText.match(pattern);
+    if (matches) {
+      for (const m of matches) {
+        const digits = m.replace(/\D/g, "");
+        if (digits.length >= 10 && digits.length <= 15) {
+          contacts.push({ type: "phone", value: m.trim() });
+        }
+      }
+    }
+  }
+
+  // Email pattern
+  const emailPattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+  const emailMatches = allUserText.match(emailPattern);
+  if (emailMatches) {
+    for (const e of emailMatches) {
+      contacts.push({ type: "email", value: e.trim() });
+    }
+  }
+
+  // Telegram / WhatsApp / Instagram patterns
+  const tgPattern = /@[a-zA-Z0-9_]{5,}/g;
+  const tgMatches = allUserText.match(tgPattern);
+  if (tgMatches) {
+    for (const t of tgMatches) {
+      contacts.push({ type: "telegram", value: t.trim() });
+    }
+  }
+
+  // Check custom lead conditions from bot settings
+  if (leadConditions && leadConditions.length > 0) {
+    const textLower = allUserText.toLowerCase();
+    for (const condition of leadConditions) {
+      if (!condition || !condition.trim()) continue;
+      const condLower = condition.toLowerCase().trim();
+      // Simple keyword/phrase check
+      if (textLower.includes(condLower)) {
+        matchedConditions.push(condition);
+      }
+    }
+  }
+
+  // Default: any contact info = lead
+  const isLead = contacts.length > 0 || matchedConditions.length > 0;
+  return { isLead, contacts, matchedConditions };
+}
+
+async function updateLeadStatus(
+  supabase: any,
+  chatId: string,
+  detection: LeadDetectionResult,
+  bot: any,
+  userName?: string
+) {
+  if (!detection.isLead) return;
+
+  // Get current lead_data to merge
+  const { data: chat } = await supabase
+    .from("avito_bot_chats")
+    .select("is_lead, lead_data")
+    .eq("id", chatId)
+    .single();
+
+  const existingData = (chat?.lead_data && typeof chat.lead_data === "object") ? chat.lead_data : {};
+  const existingContacts = Array.isArray(existingData.contacts) ? existingData.contacts : [];
+  
+  // Merge contacts, deduplicate by value
+  const allContacts = [...existingContacts];
+  for (const c of detection.contacts) {
+    if (!allContacts.some((ec: any) => ec.value === c.value)) {
+      allContacts.push(c);
+    }
+  }
+
+  const newLeadData = {
+    ...existingData,
+    contacts: allContacts,
+    matched_conditions: detection.matchedConditions,
+    detected_at: existingData.detected_at || new Date().toISOString(),
+    last_updated: new Date().toISOString(),
+  };
+
+  const wasLead = chat?.is_lead === true;
+
+  await supabase
+    .from("avito_bot_chats")
+    .update({
+      is_lead: true,
+      lead_data: newLeadData,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", chatId);
+
+  // Send Telegram notification for NEW leads only
+  if (!wasLead && bot.telegram_lead_notifications !== false && bot.telegram_bot_token && bot.telegram_chat_id) {
+    const contactsStr = allContacts.map((c: any) => `${c.type}: ${c.value}`).join(", ");
+    const condStr = detection.matchedConditions.length > 0 ? `\n📋 Условия: ${detection.matchedConditions.join(", ")}` : "";
+    const leadMsg = `🔥 <b>Новый лид!</b>\n\n👤 ${userName || "Клиент"}${condStr}\n📞 Контакты: ${contactsStr || "по условиям"}`;
+    await sendTelegramNotification(bot.telegram_bot_token, bot.telegram_chat_id, leadMsg);
+  }
+}
+
 function buildQAContext(qaItems: Array<{ question: string; answer: string; match_mode: string }>): string {
   if (!qaItems || qaItems.length === 0) return "";
   
