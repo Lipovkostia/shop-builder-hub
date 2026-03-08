@@ -52,9 +52,9 @@ function calcPrice(p: any): number {
 
 function buildCatalogContext(products: any[]): string {
   if (!products.length) return "Каталог пуст.";
-  const lines = products.slice(0, 100).map(p => {
+  const lines = products.slice(0, 150).map(p => {
     const price = calcPrice(p);
-    return `- ${p.name}${p.sku ? ` (арт. ${p.sku})` : ""}: ${price > 0 ? price + "₽" : "цена не указана"}${p.unit ? ` / ${p.unit}` : ""}${p.quantity > 0 ? "" : " (нет в наличии)"}`;
+    return `- [ID:${p.id}] ${p.name}${p.sku ? ` (арт. ${p.sku})` : ""}: ${price > 0 ? price + "₽" : "цена не указана"}${p.unit ? ` / ${p.unit}` : ""}${p.quantity > 0 ? "" : " (нет в наличии)"}`;
   });
   return `Каталог товаров (${products.length} позиций):\n${lines.join("\n")}`;
 }
@@ -115,6 +115,7 @@ function buildSystemPrompt(bot: any, catalogContext: string, salesStages: any[])
   prompt += `\n\n${catalogContext}`;
 
   prompt += `\n\nОтвечай кратко и по делу. Ты — помощник в интернет-магазине. Помогай с выбором товаров, ценами, оформлением заказов.`;
+  prompt += `\n\nКОГДА РЕКОМЕНДУЕШЬ ТОВАРЫ: после текстового ответа ОБЯЗАТЕЛЬНО добавь на новой строке тег [PRODUCTS:id1,id2,id3] с ID рекомендуемых товаров (максимум 6). Пример: "Вот что могу предложить:\n[PRODUCTS:abc-123,def-456]". ID бери из каталога (формат [ID:xxx]). Используй этот тег КАЖДЫЙ РАЗ, когда упоминаешь конкретные товары.`;
 
   return prompt;
 }
@@ -299,10 +300,32 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Save assistant message
+      // Extract product IDs from [PRODUCTS:...] tag
+      let recommendedProducts: any[] = [];
+      const productsMatch = aiResponse.match(/\[PRODUCTS:([^\]]+)\]/);
+      if (productsMatch) {
+        const ids = productsMatch[1].split(",").map((s: string) => s.trim()).filter(Boolean);
+        recommendedProducts = ids.map((id: string) => {
+          const p = products.find((pr: any) => pr.id === id);
+          if (!p) return null;
+          return {
+            id: p.id,
+            name: p.name,
+            price: calcPrice(p),
+            unit: p.unit || "шт",
+            images: p.images || [],
+            sku: p.sku,
+            quantity: p.quantity,
+          };
+        }).filter(Boolean);
+        // Remove the tag from visible response
+        aiResponse = aiResponse.replace(/\[PRODUCTS:[^\]]+\]/g, "").trim();
+      }
+
+      // Save assistant message (clean, without tags)
       await supabase.from("storefront_chat_messages").insert({ session_id: sessionId, role: "assistant", content: aiResponse });
 
-      return new Response(JSON.stringify({ response: aiResponse, session_id: sessionId }), {
+      return new Response(JSON.stringify({ response: aiResponse, session_id: sessionId, products: recommendedProducts }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

@@ -1,22 +1,35 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageCircle, X, Send, Loader2, Bot } from "lucide-react";
+import { MessageCircle, X, Send, Loader2, Bot, ShoppingCart, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
+interface ChatProduct {
+  id: string;
+  name: string;
+  price: number;
+  unit: string;
+  images: string[];
+  sku?: string;
+  quantity?: number;
+}
+
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  products?: ChatProduct[];
 }
 
 interface StorefrontChatWidgetProps {
   storeId: string;
   channel: "retail" | "wholesale";
+  onProductClick?: (productId: string) => void;
+  onAddToCart?: (product: ChatProduct) => void;
 }
 
-export function StorefrontChatWidget({ storeId, channel }: StorefrontChatWidgetProps) {
+export function StorefrontChatWidget({ storeId, channel, onProductClick, onAddToCart }: StorefrontChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [botName, setBotName] = useState("Помощник");
@@ -28,7 +41,6 @@ export function StorefrontChatWidget({ storeId, channel }: StorefrontChatWidgetP
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Get visitor ID from localStorage
   const getVisitorId = useCallback(() => {
     const key = `chat_visitor_${storeId}_${channel}`;
     let id = localStorage.getItem(key);
@@ -39,26 +51,23 @@ export function StorefrontChatWidget({ storeId, channel }: StorefrontChatWidgetP
     return id;
   }, [storeId, channel]);
 
-  // Restore session from localStorage
   useEffect(() => {
-    const savedSession = localStorage.getItem(`chat_session_${storeId}_${channel}`);
-    if (savedSession) {
+    const saved = localStorage.getItem(`chat_session_${storeId}_${channel}`);
+    if (saved) {
       try {
-        const parsed = JSON.parse(savedSession);
+        const parsed = JSON.parse(saved);
         setSessionId(parsed.sessionId);
         setMessages(parsed.messages || []);
       } catch {}
     }
   }, [storeId, channel]);
 
-  // Save session to localStorage
   useEffect(() => {
     if (sessionId && messages.length > 0) {
       localStorage.setItem(`chat_session_${storeId}_${channel}`, JSON.stringify({ sessionId, messages }));
     }
   }, [sessionId, messages, storeId, channel]);
 
-  // Check if chat is enabled
   useEffect(() => {
     async function checkConfig() {
       try {
@@ -106,7 +115,11 @@ export function StorefrontChatWidget({ storeId, channel }: StorefrontChatWidgetP
       });
       if (error) throw error;
       if (data?.session_id && !sessionId) setSessionId(data.session_id);
-      setMessages(prev => [...prev, { role: "assistant", content: data?.response || "..." }]);
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: data?.response || "...",
+        products: data?.products?.length > 0 ? data.products : undefined,
+      }]);
     } catch (err: any) {
       console.error("Chat error:", err);
       setMessages(prev => [...prev, { role: "assistant", content: "Извините, произошла ошибка. Попробуйте позже." }]);
@@ -125,7 +138,6 @@ export function StorefrontChatWidget({ storeId, channel }: StorefrontChatWidgetP
 
   return (
     <>
-      {/* Chat bubble */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -138,9 +150,8 @@ export function StorefrontChatWidget({ storeId, channel }: StorefrontChatWidgetP
         </button>
       )}
 
-      {/* Chat window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[500px] max-h-[calc(100vh-6rem)] bg-background border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed bottom-6 right-6 z-50 w-[400px] max-w-[calc(100vw-2rem)] h-[550px] max-h-[calc(100vh-6rem)] bg-background border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-primary text-primary-foreground rounded-t-2xl">
             <div className="flex items-center gap-2">
@@ -184,17 +195,34 @@ export function StorefrontChatWidget({ storeId, channel }: StorefrontChatWidgetP
               </div>
             )}
             {messages.map((msg, i) => (
-              <div key={i} className={cn("mb-3 flex", msg.role === "user" ? "justify-end" : "justify-start")}>
-                <div
-                  className={cn(
-                    "max-w-[80%] px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap",
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground rounded-br-md"
-                      : "bg-muted text-foreground rounded-bl-md"
-                  )}
-                >
-                  {msg.content}
+              <div key={i} className="mb-3">
+                <div className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
+                  <div
+                    className={cn(
+                      "max-w-[85%] px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap",
+                      msg.role === "user"
+                        ? "bg-primary text-primary-foreground rounded-br-md"
+                        : "bg-muted text-foreground rounded-bl-md"
+                    )}
+                  >
+                    {msg.content}
+                  </div>
                 </div>
+                {/* Product cards */}
+                {msg.products && msg.products.length > 0 && (
+                  <div className="mt-2 ml-0 mr-4">
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                      {msg.products.map((p) => (
+                        <ProductCard
+                          key={p.id}
+                          product={p}
+                          onProductClick={onProductClick}
+                          onAddToCart={onAddToCart}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
             {loading && (
@@ -234,5 +262,58 @@ export function StorefrontChatWidget({ storeId, channel }: StorefrontChatWidgetP
         </div>
       )}
     </>
+  );
+}
+
+function ProductCard({
+  product,
+  onProductClick,
+  onAddToCart,
+}: {
+  product: ChatProduct;
+  onProductClick?: (id: string) => void;
+  onAddToCart?: (p: ChatProduct) => void;
+}) {
+  const imgSrc = product.images?.[0];
+  const hasStock = (product.quantity ?? 0) > 0;
+
+  return (
+    <div
+      className="flex-shrink-0 w-[140px] rounded-xl border bg-card overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+      onClick={() => onProductClick?.(product.id)}
+    >
+      {/* Image */}
+      <div className="w-full h-[100px] bg-muted flex items-center justify-center overflow-hidden">
+        {imgSrc ? (
+          <img src={imgSrc} alt={product.name} className="w-full h-full object-cover" />
+        ) : (
+          <Package className="h-8 w-8 text-muted-foreground/40" />
+        )}
+      </div>
+      {/* Info */}
+      <div className="p-2">
+        <p className="text-xs font-medium line-clamp-2 leading-tight text-foreground">{product.name}</p>
+        <div className="flex items-center justify-between mt-1.5 gap-1">
+          <span className="text-sm font-bold text-foreground">
+            {product.price > 0 ? `${product.price}₽` : "—"}
+          </span>
+          <span className="text-[10px] text-muted-foreground">/{product.unit}</span>
+        </div>
+        {!hasStock && <p className="text-[10px] text-destructive mt-0.5">Нет в наличии</p>}
+        {onAddToCart && hasStock && product.price > 0 && (
+          <Button
+            size="sm"
+            className="w-full h-7 text-xs mt-1.5 rounded-lg"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToCart(product);
+            }}
+          >
+            <ShoppingCart className="h-3 w-3 mr-1" />
+            В корзину
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
