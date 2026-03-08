@@ -313,7 +313,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings" | "exchange" | "avito" | "avito-bot";
+type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings" | "exchange" | "avito" | "avito-bot" | "office";
 type ImportView = "accounts" | "catalog" | "counterparties";
 type ImportSource = "select" | "moysklad" | "excel" | "google-sheets";
 type CatalogView = "list" | "detail";
