@@ -1173,8 +1173,6 @@ Deno.serve(async (req) => {
     // ===== SYNC CHAT MESSAGES FROM AVITO =====
     if (action === "sync_chat_messages") {
       if (!store_id) throw new Error("store_id required");
-      const body = await req.json().catch(() => ({}));
-      const { avito_chat_id, db_chat_id } = body;
       if (!avito_chat_id || !db_chat_id) throw new Error("avito_chat_id and db_chat_id required");
 
       const { data: account } = await supabase
