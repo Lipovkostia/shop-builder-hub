@@ -157,9 +157,9 @@ function DebouncedTextarea({ value: externalValue, onChange, ...props }: { value
 function BotStatusIndicator({ bot, account }: { bot: AvitoBot; account?: AvitoAccount | null }) {
   const issues: string[] = [];
   if (!bot.is_active) issues.push("Бот выключен");
-  if (!account) issues.push("Аккаунт не привязан");
-  else if (!account.avito_user_id) issues.push("Авито user_id не определён");
-  if (!(bot as any).avito_account_id) issues.push("Нет привязки к аккаунту");
+  // Avito account is optional — only warn if account is linked but misconfigured
+  if ((bot as any).avito_account_id && !account) issues.push("Привязанный аккаунт не найден");
+  else if (account && !account.avito_user_id) issues.push("Авито user_id не определён");
 
   if (issues.length === 0 && bot.is_active) {
     return (
