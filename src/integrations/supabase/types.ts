@@ -61,6 +61,190 @@ export type Database = {
           },
         ]
       }
+      avito_bot_chats: {
+        Row: {
+          avito_chat_id: string
+          avito_user_id: string
+          avito_user_name: string | null
+          bot_responses_count: number
+          created_at: string
+          id: string
+          is_escalated: boolean
+          is_lead: boolean
+          last_message_at: string | null
+          lead_data: Json | null
+          messages_count: number
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          avito_chat_id: string
+          avito_user_id: string
+          avito_user_name?: string | null
+          bot_responses_count?: number
+          created_at?: string
+          id?: string
+          is_escalated?: boolean
+          is_lead?: boolean
+          last_message_at?: string | null
+          lead_data?: Json | null
+          messages_count?: number
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          avito_chat_id?: string
+          avito_user_id?: string
+          avito_user_name?: string | null
+          bot_responses_count?: number
+          created_at?: string
+          id?: string
+          is_escalated?: boolean
+          is_lead?: boolean
+          last_message_at?: string | null
+          lead_data?: Json | null
+          messages_count?: number
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avito_bot_chats_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avito_bot_messages: {
+        Row: {
+          avito_message_id: string | null
+          chat_id: string
+          content: string
+          created_at: string
+          id: string
+          role: string
+          store_id: string
+        }
+        Insert: {
+          avito_message_id?: string | null
+          chat_id: string
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          store_id: string
+        }
+        Update: {
+          avito_message_id?: string | null
+          chat_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avito_bot_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "avito_bot_chats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avito_bot_messages_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avito_bots: {
+        Row: {
+          ai_model: string
+          completion_rules: Json | null
+          created_at: string
+          escalation_rules: Json | null
+          id: string
+          is_active: boolean
+          lead_conditions: Json | null
+          max_responses: number | null
+          mode: string
+          name: string
+          pro_seller_mode: boolean
+          reactivation_messages: Json | null
+          response_delay_seconds: number
+          schedule_config: Json | null
+          schedule_mode: string
+          store_id: string
+          system_prompt: string | null
+          telegram_notification_format: string | null
+          updated_at: string
+          upgrade_after_messages: number | null
+          upgrade_model: string | null
+        }
+        Insert: {
+          ai_model?: string
+          completion_rules?: Json | null
+          created_at?: string
+          escalation_rules?: Json | null
+          id?: string
+          is_active?: boolean
+          lead_conditions?: Json | null
+          max_responses?: number | null
+          mode?: string
+          name?: string
+          pro_seller_mode?: boolean
+          reactivation_messages?: Json | null
+          response_delay_seconds?: number
+          schedule_config?: Json | null
+          schedule_mode?: string
+          store_id: string
+          system_prompt?: string | null
+          telegram_notification_format?: string | null
+          updated_at?: string
+          upgrade_after_messages?: number | null
+          upgrade_model?: string | null
+        }
+        Update: {
+          ai_model?: string
+          completion_rules?: Json | null
+          created_at?: string
+          escalation_rules?: Json | null
+          id?: string
+          is_active?: boolean
+          lead_conditions?: Json | null
+          max_responses?: number | null
+          mode?: string
+          name?: string
+          pro_seller_mode?: boolean
+          reactivation_messages?: Json | null
+          response_delay_seconds?: number
+          schedule_config?: Json | null
+          schedule_mode?: string
+          store_id?: string
+          system_prompt?: string | null
+          telegram_notification_format?: string | null
+          updated_at?: string
+          upgrade_after_messages?: number | null
+          upgrade_model?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avito_bots_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avito_feed_products: {
         Row: {
           avito_address: string | null
