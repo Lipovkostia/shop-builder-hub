@@ -75,6 +75,7 @@ serve(async (req) => {
     }
 
     const results: SeoOutput[] = [];
+    let gatewayError: { code: number; message: string } | null = null;
 
     // Process products (in batches for bulk mode to avoid rate limits)
     for (const product of products) {
@@ -149,11 +150,21 @@ serve(async (req) => {
 
         if (!response.ok) {
           if (response.status === 429) {
-            console.error("Rate limit hit for product:", product.id);
-            // Add delay and continue with next product
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            continue;
+            gatewayError = {
+              code: 429,
+              message: "Превышен лимит запросов к ИИ. Подождите немного и попробуйте снова.",
+            };
+            break;
           }
+
+          if (response.status === 402) {
+            gatewayError = {
+              code: 402,
+              message: "Закончились кредиты ИИ. Пополните баланс Workspace Usage, чтобы продолжить генерацию.",
+            };
+            break;
+          }
+
           throw new Error(`AI API error: ${response.status}`);
         }
 
@@ -179,7 +190,7 @@ serve(async (req) => {
             cleanContent = cleanContent.slice(0, -3);
           }
           seoData = JSON.parse(cleanContent.trim());
-        } catch (parseError) {
+        } catch (_parseError) {
           console.error("Failed to parse AI response for product:", product.id, content);
           continue;
         }
@@ -217,6 +228,40 @@ serve(async (req) => {
         console.error("Error processing product:", product.id, productError);
         continue;
       }
+    }
+
+    if (gatewayError) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: gatewayError.message,
+          code: gatewayError.code,
+          processed: results.length,
+          total: productIds.length,
+          results,
+        }),
+        {
+          status: gatewayError.code,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (results.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "ИИ не смог сгенерировать SEO для выбранных товаров. Проверьте описание товара и попробуйте снова.",
+          code: 500,
+          processed: 0,
+          total: productIds.length,
+          results: [],
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     return new Response(
