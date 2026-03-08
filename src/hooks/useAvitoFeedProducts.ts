@@ -94,7 +94,22 @@ export function useAvitoFeedProducts(storeId: string | null) {
         .select("*")
         .eq("store_id", storeId)
         .order("created_at", { ascending: false });
+
       if (error) throw error;
+
+      // Fallback: если из-за RLS/сессии вернулся пустой массив,
+      // забираем товары через backend функцию (как и прочие данные Авито в этом разделе)
+      if (!data || data.length === 0) {
+        const { data: apiData, error: fnError } = await supabase.functions.invoke("avito-api", {
+          body: { action: "get_feed_products", store_id: storeId },
+        });
+
+        if (!fnError && apiData?.success && Array.isArray(apiData.feed_products)) {
+          setFeedProducts(apiData.feed_products as AvitoFeedProduct[]);
+          return;
+        }
+      }
+
       setFeedProducts((data || []) as AvitoFeedProduct[]);
     } catch (err: any) {
       console.error("Error fetching avito feed products:", err);
