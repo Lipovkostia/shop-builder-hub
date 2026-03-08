@@ -1086,6 +1086,11 @@ export default function SuperAdmin() {
           <TabsContent value="ai" className="space-y-6">
             <AiPasswordManager />
           </TabsContent>
+
+          {/* Info Blocks Tab */}
+          <TabsContent value="infoblocks" className="space-y-6">
+            <LandingInfoBlocksManager />
+          </TabsContent>
         </Tabs>
       </main>
     </div>
