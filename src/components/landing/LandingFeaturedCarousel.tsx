@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -12,30 +12,63 @@ interface FeaturedProduct {
   slug: string;
 }
 
+const PAGE_SIZE = 10;
+
 export default function LandingFeaturedCarousel() {
   const [products, setProducts] = useState<FeaturedProduct[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
-  useEffect(() => {
-    const fetchFeatured = async () => {
-      try {
-        const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/landing-featured`
-        );
-        const json = await res.json();
-        if (json.data) setProducts(json.data);
-      } catch {
-        // silently fail
-      }
-    };
-
-    fetchFeatured();
+  const fetchPage = useCallback(async (pageNum: number) => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/landing-featured?page=${pageNum}&limit=${PAGE_SIZE}`
+      );
+      const json = await res.json();
+      const newProducts: FeaturedProduct[] = json.data || [];
+      if (newProducts.length < PAGE_SIZE) setHasMore(false);
+      return newProducts;
+    } catch {
+      setHasMore(false);
+      return [];
+    }
   }, []);
+
+  useEffect(() => {
+    fetchPage(0).then((data) => {
+      setProducts(data);
+      setPage(0);
+    });
+  }, [fetchPage]);
+
+  // Infinite scroll via IntersectionObserver on sentinel
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore) {
+          setLoadingMore(true);
+          const nextPage = page + 1;
+          fetchPage(nextPage).then((data) => {
+            setProducts((prev) => [...prev, ...data]);
+            setPage(nextPage);
+            setLoadingMore(false);
+          });
+        }
+      },
+      { root: scrollRef.current, threshold: 0.1 }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, page, fetchPage]);
 
   const scroll = (direction: "left" | "right") => {
     if (!scrollRef.current) return;
-    const scrollAmount = isMobile ? 260 : 340;
+    const scrollAmount = isMobile ? 200 : 260;
     scrollRef.current.scrollBy({
       left: direction === "left" ? -scrollAmount : scrollAmount,
       behavior: "smooth",
@@ -44,11 +77,6 @@ export default function LandingFeaturedCarousel() {
 
   if (products.length === 0) return null;
 
-  const formatPrice = (price: number) => {
-    if (!price || price === 0) return "По запросу";
-    return `${price.toLocaleString("ru-RU")} ₽`;
-  };
-
   return (
     <section className="mt-6 mb-4">
       <div className="flex items-center justify-between mb-3">
@@ -56,20 +84,10 @@ export default function LandingFeaturedCarousel() {
           Новые предложения по выгодной цене
         </h2>
         <div className="hidden lg:flex items-center gap-1.5">
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-7 w-7 rounded-full"
-            onClick={() => scroll("left")}
-          >
+          <Button variant="outline" size="icon" className="h-7 w-7 rounded-full" onClick={() => scroll("left")}>
             <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-7 w-7 rounded-full"
-            onClick={() => scroll("right")}
-          >
+          <Button variant="outline" size="icon" className="h-7 w-7 rounded-full" onClick={() => scroll("right")}>
             <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -83,13 +101,9 @@ export default function LandingFeaturedCarousel() {
         {products.map((product) => (
           <div
             key={product.id}
-            className={`flex-shrink-0 snap-start ${
-              isMobile ? "w-[42%]" : "w-[220px]"
-            }`}
+            className={`flex-shrink-0 snap-start ${isMobile ? "w-[30%]" : "w-[140px]"}`}
           >
-            {/* Card */}
             <div className="rounded-xl border bg-card overflow-hidden flex flex-col h-full">
-              {/* Square image */}
               <div className="aspect-square w-full overflow-hidden bg-muted">
                 {product.images.length > 0 ? (
                   <img
@@ -99,68 +113,26 @@ export default function LandingFeaturedCarousel() {
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground text-[10px]">
                     Нет фото
                   </div>
                 )}
               </div>
-
-              <div className="p-2.5 flex flex-col flex-1 gap-1.5">
-                {/* Name + description (desktop) */}
-                {isMobile ? (
-                  <>
-                    <p className="text-xs font-semibold text-foreground line-clamp-2 leading-tight">
-                      {product.name}
-                    </p>
-                    <div className="mt-auto pt-1.5 flex items-center justify-between gap-1">
-                      <span className="text-xs font-bold text-primary whitespace-nowrap">
-                        {formatPrice(product.price)}
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 text-[10px] px-2 shrink-0"
-                        onClick={() => {
-                          // Could navigate to product page
-                        }}
-                      >
-                        Смотреть
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex gap-2 items-start">
-                      <p className="text-xs font-semibold text-foreground line-clamp-2 leading-tight flex-1">
-                        {product.name}
-                      </p>
-                      {product.description && (
-                        <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight flex-1 min-w-0">
-                          {product.description}
-                        </p>
-                      )}
-                    </div>
-                    <div className="mt-auto pt-2 flex items-center justify-between gap-2">
-                      <span className="text-sm font-bold text-primary whitespace-nowrap">
-                        {formatPrice(product.price)}
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-[11px] px-3 shrink-0"
-                        onClick={() => {
-                          // Could navigate to product page
-                        }}
-                      >
-                        Посмотреть товар
-                      </Button>
-                    </div>
-                  </>
-                )}
+              <div className="p-1.5">
+                <p className="text-[11px] font-medium text-foreground line-clamp-2 leading-tight">
+                  {product.name}
+                </p>
               </div>
             </div>
           </div>
         ))}
+
+        {/* Sentinel for infinite scroll */}
+        {hasMore && (
+          <div ref={sentinelRef} className="flex-shrink-0 w-10 flex items-center justify-center">
+            {loadingMore && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          </div>
+        )}
       </div>
     </section>
   );
