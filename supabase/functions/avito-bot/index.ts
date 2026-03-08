@@ -427,6 +427,33 @@ function buildPersonalityPrompt(bot: any): string {
   return parts.join("");
 }
 
+function buildSalesStagesContext(stages: any[]): string {
+  if (!stages || stages.length === 0) return "";
+  
+  const stagesText = stages
+    .filter((s: any) => s.is_active)
+    .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+    .map((s: any, i: number) => {
+      let actionDesc = "";
+      if (s.action_type === "collect_contact") actionDesc = " [ДЕЙСТВИЕ: собери имя, номер телефона и адрес доставки]";
+      else if (s.action_type === "create_order") actionDesc = " [ДЕЙСТВИЕ: когда все данные собраны, ответь строкой [CREATE_ORDER:{\"name\":\"...\",\"phone\":\"...\",\"address\":\"...\",\"items\":\"описание товаров\"}] чтобы создать заказ]";
+      else if (s.action_type === "confirm_order") actionDesc = " [ДЕЙСТВИЕ: подтверди заказ клиенту, сообщи что заказ принят]";
+      return `Этап ${i + 1}: ${s.name}${actionDesc}\nИнструкции: ${s.instructions || "Следуй общим правилам"}`;
+    }).join("\n\n");
+  
+  return `\n\n--- АЛГОРИТМ ПРОДАЖИ ---
+Когда клиент хочет купить товар, следуй этим этапам последовательно:
+
+${stagesText}
+
+ВАЖНО О СОЗДАНИИ ЗАКАЗА:
+- Когда у тебя есть ВСЕ данные клиента (имя, телефон, адрес) и он подтвердил заказ, включи в свой ответ строку:
+  [CREATE_ORDER:{"name":"Имя клиента","phone":"+7...","address":"Адрес доставки","items":"Список товаров с ценами"}]
+- Эта строка будет обработана автоматически и заказ будет создан
+- После строки CREATE_ORDER продолжи общение с клиентом, подтвердив что заказ принят
+--- КОНЕЦ АЛГОРИТМА ПРОДАЖИ ---\n`;
+}
+
 function getEffectiveSystemPrompt(bot: any): string {
   let base = "";
   if (bot.mode === "smart" && bot.smart_setup_data) {
