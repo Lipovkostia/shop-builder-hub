@@ -28,6 +28,7 @@ const navItems: NavItem[] = [
   { id: "exchange", label: "Биржа", icon: ArrowLeftRight },
   { id: "megacatalog", label: "Мегакаталог", icon: Globe },
   { id: "avito", label: "Авито", icon: Megaphone },
+  { id: "avito-bot", label: "Авитобот", icon: Bot },
 ];
 
 interface MobileTabNavProps {
