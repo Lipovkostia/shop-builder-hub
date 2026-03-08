@@ -87,13 +87,15 @@ const App = () => {
   if (!isPlatformDomain(hostname)) {
     return (
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <CustomDomainHandler hostname={hostname} />
-          </TooltipProvider>
-        </AuthProvider>
+        <HelmetProvider>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <CustomDomainHandler hostname={hostname} />
+            </TooltipProvider>
+          </AuthProvider>
+        </HelmetProvider>
       </QueryClientProvider>
     );
   }
