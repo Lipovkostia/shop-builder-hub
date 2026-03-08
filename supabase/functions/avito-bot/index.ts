@@ -1029,6 +1029,26 @@ Deno.serve(async (req) => {
           { chat_id: debug_session_id, store_id: store_id || bot.store_id, role: "user", content: message },
           { chat_id: debug_session_id, store_id: store_id || bot.store_id, role: "assistant", content: aiResponse },
         ]);
+
+        // Lead detection in debug mode too
+        try {
+          const { data: allChatMsgs } = await supabase
+            .from("avito_bot_messages")
+            .select("role, content")
+            .eq("chat_id", debug_session_id)
+            .order("created_at", { ascending: true });
+          
+          const msgsForDetection = (allChatMsgs || []).map((m: any) => ({ role: m.role, content: m.content }));
+          const leadConditions = Array.isArray(bot.lead_conditions) ? bot.lead_conditions : [];
+          const detection = detectLeadFromMessages(msgsForDetection, leadConditions as string[]);
+          
+          if (detection.isLead) {
+            await updateLeadStatus(supabase, debug_session_id, detection, bot, "Отладка");
+            console.log(`Debug session ${debug_session_id}: lead detected!`);
+          }
+        } catch (leadErr) {
+          console.error("Debug lead detection error:", leadErr);
+        }
       }
 
       return new Response(
