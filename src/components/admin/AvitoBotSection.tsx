@@ -1989,14 +1989,25 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
 }
 
 // ===== Reusable List Editor =====
-function ListEditor({ title, desc, items, onAdd, onUpdate, onRemove, placeholder }: {
+function ListEditor({ title, desc, items, onAdd, onUpdate, onRemove, placeholder, onAiFill, aiFillingField }: {
   title: string; desc: string; items: string[];
   onAdd: () => void; onUpdate: (i: number, v: string) => void; onRemove: (i: number) => void;
   placeholder: string;
+  onAiFill?: () => void;
+  aiFillingField?: string | null;
 }) {
+  const isGenerating = !!aiFillingField && ["leads_gen", "escalation_gen", "completion_gen"].includes(aiFillingField);
   return (
     <div className="space-y-4">
-      <div><h2 className="text-lg font-semibold mb-1">{title}</h2><p className="text-sm text-muted-foreground mb-3">{desc}</p></div>
+      <div className="flex items-center justify-between">
+        <div><h2 className="text-lg font-semibold mb-1">{title}</h2><p className="text-sm text-muted-foreground">{desc}</p></div>
+        {onAiFill && (
+          <Button variant="ghost" size="sm" className="text-primary gap-1 h-7 px-2 text-xs shrink-0" disabled={isGenerating} onClick={onAiFill}>
+            {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {items.length > 0 ? "Улучшить ИИ" : "Заполнить ИИ"}
+          </Button>
+        )}
+      </div>
       {items.map((item, i) => (
         <div key={i} className="flex gap-2">
           <Input value={item} onChange={e => onUpdate(i, e.target.value)} placeholder={placeholder} />
