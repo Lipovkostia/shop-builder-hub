@@ -1092,7 +1092,6 @@ Deno.serve(async (req) => {
 
     // ===== FETCH CHAT MESSAGES =====
     if (action === "fetch_chat_messages") {
-      const { chat_id } = await req.json().catch(() => ({}));
       if (!chat_id) throw new Error("chat_id required");
 
       const { data: messages, error } = await supabase
