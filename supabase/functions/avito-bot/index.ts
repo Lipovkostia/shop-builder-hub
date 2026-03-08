@@ -990,8 +990,17 @@ Deno.serve(async (req) => {
             model = bot.upgrade_model;
           }
 
-          const aiResponse = await getAIResponse(conversationMessages, model, vsegptApiKey);
+          const { text: aiResponse, usage } = await getAIResponse(conversationMessages, model, vsegptApiKey);
           if (!aiResponse) continue;
+
+          // Log usage
+          await logUsage(supabase, {
+            store_id,
+            bot_id: bot.id,
+            chat_id: dbChat.id,
+            usage,
+            action_type: "chat",
+          });
 
           // Apply response delay
           if (bot.response_delay_seconds > 0) {
