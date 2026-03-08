@@ -275,31 +275,85 @@ export function useRetailStore(subdomain: string | undefined) {
     
     const loadAll = async () => {
       setLoading(true);
-      await fetchStore();
+      try {
+        // Fetch store first
+        const { data, error: storeError } = await supabase
+          .from("stores")
+          .select("*")
+          .eq("subdomain", subdomain)
+          .eq("status", "active")
+          .single();
+
+        if (cancelled) return;
+
+        if (storeError || !data) {
+          setError(storeError ? "Ошибка загрузки магазина" : "Магазин не найден");
+          setLoading(false);
+          return;
+        }
+
+        if (!data.retail_enabled) {
+          setError("Розничный магазин не активирован");
+          setLoading(false);
+          return;
+        }
+
+        const storeData: RetailStore = {
+          ...data,
+          retail_theme: (data.retail_theme as RetailStore["retail_theme"]) || {},
+        };
+        setStore(storeData);
+
+        // Now fetch products
+        if (storeData.retail_catalog_id) {
+          const { data: productsData, error: productsError } = await supabase
+            .rpc('get_retail_products_public' as any, { _subdomain: subdomain });
+
+          if (cancelled) return;
+
+          if (!productsError && productsData) {
+            const rawData = productsData as any[] || [];
+            const formattedProducts: RetailProduct[] = rawData.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              description: p.description,
+              price: p.price,
+              compare_price: p.compare_price,
+              images: p.images || [],
+              unit: p.unit || "шт",
+              sku: p.sku,
+              quantity: p.quantity,
+              slug: p.slug,
+              packaging_type: p.packaging_type || "piece",
+              category_id: p.category_id,
+              category_ids: p.category_ids || (p.category_id ? [p.category_id] : []),
+              category_name: p.category_name,
+              is_active: true,
+              catalog_status: p.catalog_status,
+              seo_title: p.seo_title || null,
+              seo_description: p.seo_description || null,
+              seo_keywords: p.seo_keywords || null,
+              seo_schema: p.seo_schema || null,
+              seo_noindex: p.seo_noindex || false,
+              seo_generated_at: p.seo_generated_at || null,
+            }));
+            setProducts(formattedProducts);
+          }
+        } else {
+          setProducts([]);
+        }
+      } catch (err) {
+        console.error("Error loading retail store:", err);
+        if (!cancelled) setError("Ошибка загрузки магазина");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     };
     
     loadAll();
     
     return () => { cancelled = true; };
-  }, [subdomain, fetchStore]);
-
-  // Fetch products after store is loaded
-  useEffect(() => {
-    if (!store?.id) return;
-    
-    let cancelled = false;
-    
-    const loadProducts = async () => {
-      await fetchProducts();
-      if (!cancelled) {
-        setLoading(false);
-      }
-    };
-    
-    loadProducts();
-    
-    return () => { cancelled = true; };
-  }, [store?.id, store?.retail_catalog_id, fetchProducts]);
+  }, [subdomain]);
 
   useEffect(() => {
     if (store?.id) {
