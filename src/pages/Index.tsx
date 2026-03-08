@@ -1096,6 +1096,11 @@ const Index = () => {
       <div className="w-full max-w-[100vw] px-4 lg:px-8">
         <LandingFeaturedCarousel />
       </div>
+
+      {/* Info blocks - full width */}
+      <div className="w-full max-w-[100vw] px-4 lg:px-8">
+        <LandingInfoBlocks />
+      </div>
     </div>
     </div>
   );

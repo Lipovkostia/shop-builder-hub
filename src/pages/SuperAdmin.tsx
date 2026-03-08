@@ -25,6 +25,7 @@ import FeaturedProductsManager from '@/components/admin/FeaturedProductsManager'
 import MegacatalogManager from '@/components/admin/MegacatalogManager';
 import TelegramBotSection from '@/components/admin/TelegramBotSection';
 import AiPasswordManager from '@/components/admin/AiPasswordManager';
+import LandingInfoBlocksManager from '@/components/admin/LandingInfoBlocksManager';
 
 interface StoreWithCounts {
   id: string;
