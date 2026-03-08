@@ -96,11 +96,19 @@ async function getAvitoToken(clientId: string, clientSecret: string): Promise<st
   return data.access_token;
 }
 
+interface AIUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  cost: number;
+  model: string;
+}
+
 async function getAIResponse(
   messages: { role: string; content: string }[],
   model: string,
   apiKey: string
-): Promise<string> {
+): Promise<{ text: string; usage: AIUsage }> {
   const res = await fetch(AI_GATEWAY, {
     method: "POST",
     headers: {
@@ -122,7 +130,40 @@ async function getAIResponse(
   }
 
   const data = await res.json();
-  return data.choices?.[0]?.message?.content || "";
+  const text = data.choices?.[0]?.message?.content || "";
+  const rawUsage = data.usage || {};
+  const usage: AIUsage = {
+    prompt_tokens: rawUsage.prompt_tokens || 0,
+    completion_tokens: rawUsage.completion_tokens || 0,
+    total_tokens: rawUsage.total_tokens || 0,
+    cost: rawUsage.total_cost || rawUsage.cost || 0,
+    model: data.model || model,
+  };
+  return { text, usage };
+}
+
+async function logUsage(supabase: any, params: {
+  store_id: string;
+  bot_id?: string;
+  chat_id?: string;
+  usage: AIUsage;
+  action_type: string;
+}) {
+  try {
+    await supabase.from("avito_bot_usage_logs").insert({
+      store_id: params.store_id,
+      bot_id: params.bot_id || null,
+      chat_id: params.chat_id || null,
+      model: params.usage.model,
+      prompt_tokens: params.usage.prompt_tokens,
+      completion_tokens: params.usage.completion_tokens,
+      total_tokens: params.usage.total_tokens,
+      cost: params.usage.cost,
+      action_type: params.action_type,
+    });
+  } catch (e) {
+    console.error("Failed to log usage:", e);
+  }
 }
 
 async function getAvitoListingInfo(token: string, userId: number, itemId: string): Promise<{ title: string; description: string; price: number; category: string; url: string } | null> {
