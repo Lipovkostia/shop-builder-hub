@@ -75,7 +75,13 @@ function findRelevantProducts(allProducts: any[], query: string, maxResults = 30
 function buildCatalogContext(products: any[], totalCount: number): string {
   if (!products.length) return "";
   const productLines = products.map((p: any, i: number) => {
-    const price = p.price || p.buy_price || 0;
+    let price = p.price || 0;
+    if ((!price || price <= 0) && p.buy_price && p.buy_price > 0) {
+      const bp = Number(p.buy_price);
+      const mt = p.markup_type || "percent";
+      const mv = Number(p.markup_value || 0);
+      price = mt === "percent" ? Math.round(bp * (1 + mv / 100)) : Math.round(bp + mv);
+    }
     return `${i + 1}. ${p.name} — ${price}₽${p.unit ? ` (${p.unit})` : ""}${p.sku ? ` [${p.sku}]` : ""}`;
   }).join("\n");
   return `\n\n--- КАТАЛОГ ТОВАРОВ (показано ${products.length} из ${totalCount}) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\nВАЖНО: Ищи ПОХОЖИЕ названия (частичное совпадение, сокращения). НИКОГДА не говори «нет в каталоге» если есть хоть частичное совпадение. Называй точные цены.\n`;
