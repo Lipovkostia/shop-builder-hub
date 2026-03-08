@@ -22,11 +22,12 @@ interface ProductSeoPanelProps {
   storeId: string | null;
   storeName?: string;
   subdomain?: string;
+  storeType?: "retail" | "wholesale";
   onUpdate?: () => void;
 }
 
-export function ProductSeoPanel({ product, storeId, storeName, subdomain, onUpdate }: ProductSeoPanelProps) {
-  const { generating, saving, generateSeo, updateSeo, resetSeo } = useProductSeo(storeId, storeName);
+export function ProductSeoPanel({ product, storeId, storeName, subdomain, storeType = "wholesale", onUpdate }: ProductSeoPanelProps) {
+  const { generating, saving, generateSeo, updateSeo, resetSeo } = useProductSeo(storeId, storeName, storeType);
 
   // Local state for form fields
   const [seoTitle, setSeoTitle] = useState(product.seo_title || "");
@@ -90,7 +91,9 @@ export function ProductSeoPanel({ product, storeId, storeName, subdomain, onUpda
   const titleOptimal = titleLength >= 50 && titleLength <= 70;
   const descriptionOptimal = descriptionLength >= 140 && descriptionLength <= 160;
 
-  const productUrl = subdomain ? `/wholesale/${subdomain}/product/${product.slug}` : `#`;
+  const productUrl = subdomain 
+    ? (storeType === "retail" ? `/retail/${subdomain}/p/${product.slug}` : `/wholesale/${subdomain}/product/${product.slug}`)
+    : `#`;
 
   return (
     <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
@@ -236,7 +239,7 @@ export function ProductSeoPanel({ product, storeId, storeName, subdomain, onUpda
           <div className="p-3 bg-background rounded border space-y-1">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Globe className="h-3 w-3" />
-              <span className="truncate">{subdomain || "example"}.store.com › product › {product.slug}</span>
+              <span className="truncate">{subdomain || "example"}.store.com › {storeType === "retail" ? "p" : "product"} › {product.slug}</span>
             </div>
             <h4 className="text-primary text-sm font-medium hover:underline cursor-pointer truncate">
               {seoTitle || product.name}

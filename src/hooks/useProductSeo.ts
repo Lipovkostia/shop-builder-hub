@@ -26,7 +26,7 @@ interface GenerationResult {
   }>;
 }
 
-export function useProductSeo(storeId: string | null, storeName?: string) {
+export function useProductSeo(storeId: string | null, storeName?: string, storeType: "retail" | "wholesale" = "wholesale") {
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
@@ -42,6 +42,7 @@ export function useProductSeo(storeId: string | null, storeName?: string) {
           productIds: [productId],
           storeId,
           storeName,
+          storeType,
           mode: "single",
         },
       });
@@ -83,6 +84,7 @@ export function useProductSeo(storeId: string | null, storeName?: string) {
             productIds: batch,
             storeId,
             storeName,
+            storeType,
             mode: "bulk",
           },
         });

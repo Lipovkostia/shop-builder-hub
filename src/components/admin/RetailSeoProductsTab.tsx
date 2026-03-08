@@ -19,7 +19,7 @@ interface RetailSeoProductsTabProps {
 
 export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCatalogId }: RetailSeoProductsTabProps) {
   const { products, loading, refetch } = useStoreProducts(storeId);
-  const { generating, progress, generateBulkSeo } = useProductSeo(storeId, storeName);
+  const { generating, progress, generateBulkSeo } = useProductSeo(storeId, storeName, "retail");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
@@ -189,6 +189,7 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
                 storeId={storeId}
                 storeName={storeName}
                 subdomain={subdomain}
+                storeType="retail"
                 onUpdate={refetch}
               />
             </div>
