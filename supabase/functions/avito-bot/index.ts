@@ -319,7 +319,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      const systemPrompt = (bot.system_prompt || "Ты — помощник продавца на Авито.") + listingContext + qaContext;
+      const systemPrompt = getEffectiveSystemPrompt(bot) + listingContext + qaContext;
       const proSuffix = bot.pro_seller_mode
         ? "\n\nВеди себя как профессиональный продавец. Используй техники продаж."
         : "";
