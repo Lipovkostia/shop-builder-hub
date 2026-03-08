@@ -239,7 +239,7 @@ export function ProductSeoPanel({ product, storeId, storeName, subdomain, storeT
           <div className="p-3 bg-background rounded border space-y-1">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Globe className="h-3 w-3" />
-              <span className="truncate">{subdomain || "example"}.store.com › product › {product.slug}</span>
+              <span className="truncate">{subdomain || "example"}.store.com › {storeType === "retail" ? "p" : "product"} › {product.slug}</span>
             </div>
             <h4 className="text-primary text-sm font-medium hover:underline cursor-pointer truncate">
               {seoTitle || product.name}

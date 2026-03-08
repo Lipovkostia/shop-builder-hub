@@ -189,6 +189,7 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
                 storeId={storeId}
                 storeName={storeName}
                 subdomain={subdomain}
+                storeType="retail"
                 onUpdate={refetch}
               />
             </div>
