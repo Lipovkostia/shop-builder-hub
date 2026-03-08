@@ -848,10 +848,17 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Load sales stages
+      let salesContext = "";
+      try {
+        const { data: stages } = await supabase.from("avito_bot_sales_stages").select("*").eq("bot_id", bot_id).eq("is_active", true).order("sort_order");
+        salesContext = buildSalesStagesContext(stages || []);
+      } catch (e) { console.error("Failed to load sales stages:", e); }
+
       const charLimitSuffix = bot.max_response_chars
         ? `\n\nВАЖНО: Ограничивай длину каждого ответа до ${bot.max_response_chars} символов. Будь лаконичным. Если информации много — выбери самое важное. Не перечисляй весь каталог, а предложи уточнить запрос.`
         : "";
-      const systemPrompt = getEffectiveSystemPrompt(bot) + catalogContext + listingContext + qaContext + charLimitSuffix;
+      const systemPrompt = getEffectiveSystemPrompt(bot) + catalogContext + listingContext + qaContext + salesContext + charLimitSuffix;
       const proSuffix = bot.pro_seller_mode
         ? "\n\nВеди себя как профессиональный продавец. Используй техники продаж."
         : "";
