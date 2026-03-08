@@ -89,7 +89,7 @@ interface UsageLog {
 }
 
 type TopLevel = "dashboard" | "bots" | "accounts" | "chats";
-type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug";
+type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug" | "usage_stats";
 
 const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "Основные", icon: Bot },
