@@ -109,6 +109,7 @@ const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType 
   { id: "stop_command", label: "Стоп-команда", icon: Hand },
   { id: "notifications", label: "Уведомления", icon: Bell },
   { id: "telegram", label: "Telegram", icon: Bell },
+  { id: "usage_stats", label: "Статистика", icon: BarChart3 },
   { id: "debug", label: "Отладка", icon: PlayCircle },
 ];
 
