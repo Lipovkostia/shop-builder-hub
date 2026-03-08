@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const AVITO_TOKEN_URL = "https://api.avito.ru/token";
 const AVITO_API_BASE = "https://api.avito.ru";
-const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_GATEWAY = "https://api.vsegpt.ru/v1/chat/completions";
 
 async function getAvitoToken(clientId: string, clientSecret: string): Promise<string> {
   const res = await fetch(AVITO_TOKEN_URL, {
