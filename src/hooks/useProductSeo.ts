@@ -42,6 +42,7 @@ export function useProductSeo(storeId: string | null, storeName?: string, storeT
           productIds: [productId],
           storeId,
           storeName,
+          storeType,
           mode: "single",
         },
       });
