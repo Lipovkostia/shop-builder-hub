@@ -135,6 +135,7 @@ export function AvitoImageEditor({
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const templateInputRef = useRef<HTMLInputElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
   // Load saved templates from storage
@@ -270,12 +271,19 @@ export function AvitoImageEditor({
     setSavedTemplates(prev => [{ name: fileName.split("/").pop()!, url: urlData.publicUrl, previewUrl: urlData.publicUrl }, ...prev]);
     toast({ title: "Шаблон загружен и сохранён" });
     e.target.value = "";
+    setTimeout(() => {
+      scrollViewportRef.current?.scrollTo({ top: scrollViewportRef.current.scrollHeight, behavior: "smooth" });
+    }, 100);
   };
 
   const handleSelectSavedTemplate = (tpl: SavedTemplate) => {
     setTemplateUrl(tpl.url);
     setTemplatePreview(tpl.previewUrl);
     toast({ title: "Шаблон выбран" });
+    // Auto-scroll down so user sees images and buttons
+    setTimeout(() => {
+      scrollViewportRef.current?.scrollTo({ top: scrollViewportRef.current.scrollHeight, behavior: "smooth" });
+    }, 100);
   };
 
   const handleDeleteTemplate = async (tpl: SavedTemplate) => {
@@ -381,7 +389,7 @@ export function AvitoImageEditor({
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full w-full">
+          <ScrollArea className="h-full w-full" viewportRef={scrollViewportRef}>
             <div className="px-6 py-4 space-y-4">
               {/* Template section */}
               <div className="p-3 rounded-lg border bg-muted/30">
