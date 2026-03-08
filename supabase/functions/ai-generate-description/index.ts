@@ -18,13 +18,15 @@ serve(async (req) => {
       });
     }
 
-    // Check AI access for this store
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+    const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // Check AI access for this store and get model
+    let aiModel = "openai/gpt-4.1-mini";
     if (storeId) {
-      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
-      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
       const { data: aiAccess } = await sb
         .from("store_ai_access")
-        .select("is_unlocked, product_descriptions_enabled")
+        .select("is_unlocked, product_descriptions_enabled, product_descriptions_model")
         .eq("store_id", storeId)
         .maybeSingle();
 
@@ -33,6 +35,8 @@ serve(async (req) => {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      
+      aiModel = aiAccess.product_descriptions_model || "openai/gpt-4.1-mini";
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -55,7 +59,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: aiModel,
           messages: [
             {
               role: "system",
