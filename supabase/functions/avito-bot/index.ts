@@ -633,18 +633,12 @@ Deno.serve(async (req) => {
 
       const qaContext = buildQAContext(qaItems || []);
 
-      // Build full product catalog context (all store products)
+      // Build product catalog context — only relevant products to save tokens
       let catalogContext = "";
       try {
-        const allProducts = await fetchAllProducts(supabase, bot.store_id, "name, description, price, buy_price, unit, sku, category_id, images");
-
-        if (allProducts && allProducts.length > 0) {
-          const productLines = allProducts.map((p: any, i: number) => {
-            const price = p.price || p.buy_price || 0;
-            return `${i + 1}. ${p.name} — ${price} ₽${p.unit ? ` (${p.unit})` : ""}${p.sku ? ` [Артикул: ${p.sku}]` : ""}${p.description ? `\n   ${p.description.substring(0, 150)}` : ""}`;
-          }).join("\n");
-          catalogContext = `\n\n--- КАТАЛОГ ТОВАРОВ МАГАЗИНА (${allProducts.length} шт.) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\n\nВАЖНО:\n- Ты знаешь ВСЕ товары магазина из каталога выше.\n- Если клиент спрашивает о товаре — ищи ПОХОЖИЕ названия в каталоге (частичное совпадение, сокращения, ключевые слова).\n- Например, если клиент пишет «ландана с лавандой», найди «Сыр Landana с лавандой 4,5кг» в каталоге.\n- НИКОГДА не говори «товара нет в каталоге», если есть хотя бы частичное совпадение по ключевым словам.\n- Называй точные цены из каталога.\n`;
-        }
+        const allProducts = await fetchAllProducts(supabase, bot.store_id, "name, description, price, buy_price, unit, sku");
+        const relevantProducts = findRelevantProducts(allProducts, message, 30);
+        catalogContext = buildCatalogContext(relevantProducts, allProducts.length);
       } catch (e) {
         console.error("Failed to fetch product catalog:", e);
       }
