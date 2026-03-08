@@ -50,13 +50,41 @@ function calcPrice(p: any): number {
   return 0;
 }
 
-function buildCatalogContext(products: any[]): string {
+function normalizeForMatch(s: string): string {
+  return (s || "").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+}
+
+function findRelevantProducts(allProducts: any[], query: string, maxResults = 80): any[] {
+  if (!query || !allProducts.length) return allProducts.slice(0, maxResults);
+  const qNorm = normalizeForMatch(query);
+  const qTokens = qNorm.split(" ").filter(t => t.length > 2);
+  if (qTokens.length === 0) return allProducts.slice(0, maxResults);
+
+  const scored = allProducts.map(p => {
+    const nameNorm = normalizeForMatch(p.name || "");
+    const descNorm = normalizeForMatch(p.description || "");
+    let score = 0;
+    if (nameNorm.includes(qNorm)) score += 100;
+    for (const t of qTokens) {
+      if (nameNorm.includes(t)) score += 30;
+      if (descNorm.includes(t)) score += 10;
+    }
+    return { ...p, _score: score };
+  });
+
+  // Sort: relevant first, then alphabetical
+  scored.sort((a, b) => b._score - a._score || (a.name || "").localeCompare(b.name || ""));
+  return scored.slice(0, maxResults);
+}
+
+function buildCatalogContext(products: any[], totalCount: number): string {
   if (!products.length) return "Каталог пуст.";
-  const lines = products.slice(0, 150).map(p => {
+  const lines = products.map(p => {
     const price = calcPrice(p);
     return `- [ID:${p.id}] ${p.name}${p.sku ? ` (арт. ${p.sku})` : ""}: ${price > 0 ? price + "₽" : "цена не указана"}${p.unit ? ` / ${p.unit}` : ""}${p.quantity > 0 ? "" : " (нет в наличии)"}`;
   });
-  return `Каталог товаров (${products.length} позиций):\n${lines.join("\n")}`;
+  const suffix = totalCount > products.length ? `\n(Показано ${products.length} из ${totalCount} товаров, наиболее релевантных запросу)` : "";
+  return `Каталог товаров (${totalCount} позиций):\n${lines.join("\n")}${suffix}`;
 }
 
 // Build system prompt from bot config
@@ -219,9 +247,10 @@ Deno.serve(async (req) => {
         .eq("is_active", true)
         .order("sort_order");
 
-      // Get products
-      const products = await fetchAllProducts(supabase, (session as any).store_id);
-      const catalogContext = buildCatalogContext(products);
+      // Get products — filter by relevance to user's message
+      const allProducts = await fetchAllProducts(supabase, (session as any).store_id);
+      const relevantProducts = findRelevantProducts(allProducts, message, 80);
+      const catalogContext = buildCatalogContext(relevantProducts, allProducts.length);
       const systemPrompt = buildSystemPrompt(bot, catalogContext, salesStages || []);
 
       // Get conversation history
@@ -318,7 +347,7 @@ Deno.serve(async (req) => {
       if (productsMatch) {
         const ids = productsMatch[1].split(",").map((s: string) => s.trim()).filter(Boolean);
         recommendedProducts = ids.map((id: string) => {
-          const p = products.find((pr: any) => pr.id === id);
+          const p = allProducts.find((pr: any) => pr.id === id);
           if (!p) return null;
           return {
             id: p.id,
