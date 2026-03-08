@@ -830,6 +830,73 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ===== AUTO PROCESS ALL (called by cron) =====
+    if (action === "auto_process_all") {
+      const { data: allBots, error: botsErr } = await supabase
+        .from("avito_bots")
+        .select("id, store_id, is_active, schedule_mode, schedule_config, avito_account_id")
+        .eq("is_active", true);
+
+      if (botsErr || !allBots?.length) {
+        return new Response(
+          JSON.stringify({ success: true, processed_bots: 0, message: "No active bots" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const results: any[] = [];
+      for (const b of allBots) {
+        if (!isBotWithinSchedule(b)) {
+          results.push({ bot_id: b.id, skipped: "outside_schedule" });
+          continue;
+        }
+        if (!b.avito_account_id) {
+          results.push({ bot_id: b.id, skipped: "no_account" });
+          continue;
+        }
+
+        // Check AI access
+        const { data: aiAccess } = await supabase
+          .from("store_ai_access")
+          .select("is_unlocked, avito_bot_enabled")
+          .eq("store_id", b.store_id)
+          .maybeSingle();
+
+        if (!aiAccess?.is_unlocked || !aiAccess?.avito_bot_enabled) {
+          results.push({ bot_id: b.id, skipped: "ai_disabled" });
+          continue;
+        }
+
+        try {
+          // Recursively call process_messages for this bot
+          const processReq = new Request(req.url, {
+            method: "POST",
+            headers: req.headers,
+            body: JSON.stringify({ action: "process_messages", store_id: b.store_id, bot_id: b.id }),
+          });
+          // Instead of recursive call, inline a simplified fetch to self
+          const url = `${supabaseUrl}/functions/v1/avito-bot`;
+          const res = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({ action: "process_messages", store_id: b.store_id, bot_id: b.id }),
+          });
+          const data = await res.json();
+          results.push({ bot_id: b.id, ...data });
+        } catch (err: any) {
+          results.push({ bot_id: b.id, error: err.message });
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, processed_bots: allBots.length, results }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: "Unknown action" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
