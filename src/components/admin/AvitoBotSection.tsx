@@ -1488,16 +1488,7 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
           </div>
         );
 
-      case "pro":
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2"><h2 className="text-lg font-semibold">Про-режим продавца</h2><Badge variant="secondary">Бета</Badge></div>
-            <div className="flex items-center gap-3">
-              <Switch checked={botForm.pro_seller_mode || false} onCheckedChange={v => updateForm({ pro_seller_mode: v })} />
-              <span className="text-sm">{botForm.pro_seller_mode ? "Включён" : "Выключен"}</span>
-            </div>
-          </div>
-        );
+      // pro section removed — functionality moved to personality & prompt tabs
 
       case "notifications":
         return (
