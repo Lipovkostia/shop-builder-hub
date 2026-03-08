@@ -498,11 +498,18 @@ function BotsListView({ bots, accounts, showNewBot, setShowNewBot, newBotName, s
                       </div>
                       <div className="text-xs text-muted-foreground flex items-center gap-2">
                         <span>{AI_MODELS.find(m => m.id === bot.ai_model)?.label || bot.ai_model}</span>
-                        {account && (
-                          <>
-                            <span>•</span>
-                            <span>{account.profile_name || account.client_id}</span>
-                          </>
+                      </div>
+                      <div className="text-xs mt-0.5 flex items-center gap-1.5">
+                        {account ? (
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <KeyRound className="h-3 w-3" />
+                            {account.profile_name || account.client_id}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-amber-600">
+                            <KeyRound className="h-3 w-3" />
+                            Аккаунт не привязан
+                          </span>
                         )}
                       </div>
                     </div>
