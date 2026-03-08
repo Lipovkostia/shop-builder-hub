@@ -1287,8 +1287,16 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
             {/* RULES */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2"><ListChecks className="h-4 w-4 text-primary" /> Правила работы</CardTitle>
-                <CardDescription className="text-xs">Список конкретных правил, которым робот должен следовать</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2"><ListChecks className="h-4 w-4 text-primary" /> Правила работы</CardTitle>
+                    <CardDescription className="text-xs">Список конкретных правил, которым робот должен следовать</CardDescription>
+                  </div>
+                  <AIFillBtn fieldKey="rules_gen" value={rulesList.join("; ")} context="Список правил работы для бота-помощника на Авито (верни каждое правило на новой строке)" onResult={v => {
+                    const items = v.split(/[\n;]/).map((s: string) => s.replace(/^\d+\.\s*[-•]?\s*/, "").trim()).filter(Boolean);
+                    updateForm({ rules_list: items });
+                  }} />
+                </div>
               </CardHeader>
               <CardContent className="space-y-2">
                 {rulesList.map((rule: string, i: number) => (
