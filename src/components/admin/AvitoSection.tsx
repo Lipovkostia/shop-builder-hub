@@ -698,11 +698,13 @@ function AvitoFeedTable({
             return params.avitoImages || undefined;
           })()}
           onSave={async (selectedImages) => {
-            if (!avitoFeed) return;
-            const fp = avitoFeed.feedProducts.find(f => f.product_id === editingImageProduct.id);
+            const fp = feedProducts.find(f => f.product_id === editingImageProduct.id);
             const currentParams = fp?.avito_params || {};
             const newParams = { ...currentParams, avitoImages: selectedImages };
-            await avitoFeed.updateProductParams(editingImageProduct.id, newParams);
+            // Use handleInlineParamUpdate indirectly - we need to set the full params
+            // Since handleInlineParamUpdate merges single keys, we store as JSON string
+            // But we actually need to call updateProductParams directly, so pass it as prop
+            onUpdateProductParams(editingImageProduct.id, newParams);
             setEditingImageProduct(null);
           }}
         />
