@@ -498,11 +498,18 @@ function BotsListView({ bots, accounts, showNewBot, setShowNewBot, newBotName, s
                       </div>
                       <div className="text-xs text-muted-foreground flex items-center gap-2">
                         <span>{AI_MODELS.find(m => m.id === bot.ai_model)?.label || bot.ai_model}</span>
-                        {account && (
-                          <>
-                            <span>•</span>
-                            <span>{account.profile_name || account.client_id}</span>
-                          </>
+                      </div>
+                      <div className="text-xs mt-0.5 flex items-center gap-1.5">
+                        {account ? (
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <KeyRound className="h-3 w-3" />
+                            {account.profile_name || account.client_id}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-amber-600">
+                            <KeyRound className="h-3 w-3" />
+                            Аккаунт не привязан
+                          </span>
                         )}
                       </div>
                     </div>
@@ -860,6 +867,13 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
 
             <div>
               <h2 className="text-lg font-semibold mb-1">Аккаунт Авито</h2>
+              <p className="text-sm text-muted-foreground mb-3">Привяжите робота к аккаунту Авито, чтобы он мог отвечать на сообщения и загружать товары в отладке.</p>
+              {!(botForm as any).avito_account_id || (botForm as any).avito_account_id === "none" ? (
+                <div className="mb-3 p-3 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 text-sm flex items-center gap-2">
+                  <KeyRound className="h-4 w-4 flex-shrink-0" />
+                  Робот не привязан к аккаунту. Без привязки отладка и автоответы не будут работать.
+                </div>
+              ) : null}
               <Select value={(botForm as any).avito_account_id || "none"} onValueChange={v => updateForm({ avito_account_id: v === "none" ? null : v } as any)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите аккаунт" />
@@ -871,6 +885,11 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
                   ))}
                 </SelectContent>
               </Select>
+              {accounts.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  У вас нет аккаунтов Авито. Перейдите в раздел «Аккаунты Авито» в боковом меню, чтобы добавить.
+                </p>
+              )}
             </div>
 
             <div>
