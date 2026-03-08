@@ -856,9 +856,9 @@ Deno.serve(async (req) => {
             if (dbTime >= avitoTime) continue;
           }
 
-          // Fetch messages to check for seller stop command
+          // Fetch only last 10 messages (not 20) to reduce token usage
           const msgsRes = await fetch(
-            `${AVITO_API_BASE}/messenger/v3/accounts/${userId}/chats/${chatId}/messages/?limit=20`,
+            `${AVITO_API_BASE}/messenger/v3/accounts/${userId}/chats/${chatId}/messages/?limit=10`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
 
@@ -884,28 +884,37 @@ Deno.serve(async (req) => {
             continue;
           }
 
+          // Get user's last message text for relevance search
+          const userMessageText = lastMsg.content?.text || lastMsg.text || "";
+          const itemTitle = chat.context?.value?.title || chat.item?.title || "";
+          const searchQuery = `${userMessageText} ${itemTitle}`.trim();
+
+          // Build per-chat catalog context with only RELEVANT products
+          const relevantProducts = findRelevantProducts(allProducts, searchQuery, 30);
+          const catalogContext = buildCatalogContext(relevantProducts, allProducts.length);
+
           let listingContext = "";
           if (itemId) {
             const localListing = await getLocalListingInfo(
               supabase,
               store_id,
               String(itemId),
-              chat.context?.value?.title || chat.item?.title || ""
+              itemTitle
             );
             const apiListing = await getAvitoListingInfo(token, userId, String(itemId));
             const listing = mergeListingInfo(localListing, apiListing);
 
             if (listing) {
-              listingContext = `\n\n--- КОНТЕКСТ ТЕКУЩЕГО ОБЪЯВЛЕНИЯ ---\nНазвание товара: ${listing.title}\nЦена: ${listing.price} ₽\nКатегория: ${listing.category}\nОписание товара:\n${listing.description}\n--- КОНЕЦ КОНТЕКСТА ---\n\nВАЖНО: Клиент пишет по поводу этого конкретного объявления. Отвечай в контексте этого товара. Если спрашивают цену — называй цену из контекста.`;
+              listingContext = `\n\n--- КОНТЕКСТ ОБЪЯВЛЕНИЯ ---\nНазвание: ${listing.title}\nЦена: ${listing.price} ₽\nКатегория: ${listing.category}\nОписание:\n${listing.description.substring(0, 300)}\n--- КОНЕЦ ---`;
             }
           }
 
           const basePrompt = getEffectiveSystemPrompt(bot);
           const charLimitSuffix = bot.max_response_chars
-            ? `\n\nВАЖНО: Ограничивай длину каждого ответа до ${bot.max_response_chars} символов. Будь лаконичным. Если информации много — выбери самое важное. Не перечисляй весь каталог, а предложи уточнить запрос.`
+            ? `\n\nВАЖНО: Ограничивай длину ответа до ${bot.max_response_chars} символов.`
             : "";
           const proSuffix = bot.pro_seller_mode
-            ? "\n\nВеди себя как профессиональный продавец. Используй техники продаж, задавай уточняющие вопросы."
+            ? "\n\nВеди себя как профессиональный продавец."
             : "";
 
           const systemPrompt = basePrompt + catalogContext + listingContext + qaContext + charLimitSuffix + proSuffix;
@@ -914,7 +923,9 @@ Deno.serve(async (req) => {
             { role: "system", content: systemPrompt },
           ];
 
-          for (const msg of avitoMessages) {
+          // Only use last 10 messages for conversation context
+          const recentMessages = avitoMessages.slice(-10);
+          for (const msg of recentMessages) {
             const role = String(msg.author_id) === String(userId) ? "assistant" : "user";
             const text = msg.content?.text || msg.text || "";
             if (text) {
