@@ -230,6 +230,50 @@ export type Database = {
           },
         ]
       }
+      avito_bot_sales_stages: {
+        Row: {
+          action_type: string
+          bot_id: string
+          created_at: string
+          id: string
+          instructions: string
+          is_active: boolean
+          name: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          action_type?: string
+          bot_id: string
+          created_at?: string
+          id?: string
+          instructions?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          action_type?: string
+          bot_id?: string
+          created_at?: string
+          id?: string
+          instructions?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avito_bot_sales_stages_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "avito_bots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avito_bot_usage_logs: {
         Row: {
           action_type: string

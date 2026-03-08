@@ -2453,9 +2453,9 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
                     <CardContent className="py-4 px-4 space-y-3">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs font-mono">{idx + 1}</Badge>
-                        <Input
+                        <DebouncedInput
                           value={stage.name}
-                          onChange={e => updateSalesStage(stage.id, { name: e.target.value })}
+                          onChange={val => updateSalesStage(stage.id, { name: val })}
                           className="font-semibold h-8"
                           placeholder="Название этапа"
                         />
@@ -2475,9 +2475,9 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
 
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">Инструкции для робота на этом этапе</Label>
-                        <Textarea
+                        <DebouncedTextarea
                           value={stage.instructions}
-                          onChange={e => updateSalesStage(stage.id, { instructions: e.target.value })}
+                          onChange={val => updateSalesStage(stage.id, { instructions: val })}
                           placeholder="Опишите, что робот должен делать на этом этапе. Например: Уточни у клиента, какой товар его интересует. Предложи варианты из каталога."
                           rows={3}
                         />
