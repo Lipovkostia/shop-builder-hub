@@ -271,6 +271,9 @@ export function AvitoImageEditor({
     setSavedTemplates(prev => [{ name: fileName.split("/").pop()!, url: urlData.publicUrl, previewUrl: urlData.publicUrl }, ...prev]);
     toast({ title: "Шаблон загружен и сохранён" });
     e.target.value = "";
+    setTimeout(() => {
+      scrollViewportRef.current?.scrollTo({ top: scrollViewportRef.current.scrollHeight, behavior: "smooth" });
+    }, 100);
   };
 
   const handleSelectSavedTemplate = (tpl: SavedTemplate) => {
