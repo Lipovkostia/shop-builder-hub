@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_platform_settings: {
+        Row: {
+          ai_password: string
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          ai_password?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_password?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       avito_accounts: {
         Row: {
           avito_user_id: number | null
@@ -2031,6 +2052,56 @@ export type Database = {
           },
         ]
       }
+      store_ai_access: {
+        Row: {
+          ai_assistant_enabled: boolean
+          avito_bot_enabled: boolean
+          avito_descriptions_enabled: boolean
+          created_at: string
+          id: string
+          is_unlocked: boolean
+          product_descriptions_enabled: boolean
+          seo_enabled: boolean
+          store_id: string
+          unlocked_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_assistant_enabled?: boolean
+          avito_bot_enabled?: boolean
+          avito_descriptions_enabled?: boolean
+          created_at?: string
+          id?: string
+          is_unlocked?: boolean
+          product_descriptions_enabled?: boolean
+          seo_enabled?: boolean
+          store_id: string
+          unlocked_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_assistant_enabled?: boolean
+          avito_bot_enabled?: boolean
+          avito_descriptions_enabled?: boolean
+          created_at?: string
+          id?: string
+          is_unlocked?: boolean
+          product_descriptions_enabled?: boolean
+          seo_enabled?: boolean
+          store_id?: string
+          unlocked_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_ai_access_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_customers: {
         Row: {
           created_at: string
@@ -2444,6 +2515,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_store_ai_access: {
+        Args: { _feature: string; _store_id: string }
+        Returns: boolean
+      }
       get_catalog_by_access_code: {
         Args: { _access_code: string }
         Returns: {
@@ -2602,6 +2677,7 @@ export type Database = {
         Args: { customer_profile_id: string }
         Returns: boolean
       }
+      verify_ai_password: { Args: { _password: string }; Returns: boolean }
       verify_megacatalog_password: {
         Args: { _password: string }
         Returns: boolean
