@@ -886,10 +886,55 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
   const [itemsLoading, setItemsLoading] = useState(false);
   const [vsegptModels, setVsegptModels] = useState<VseGPTModel[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
+  const [aiFillingField, setAiFillingField] = useState<string | null>(null);
 
   const debugEndRef = useRef<HTMLDivElement>(null);
 
   const updateForm = (updates: any) => setBotForm((prev: any) => ({ ...prev, ...updates }));
+
+  // AI Fill helper — generates or improves text for a given field
+  const aiFill = async (fieldKey: string, currentValue: string, context: string): Promise<string | null> => {
+    setAiFillingField(fieldKey);
+    try {
+      const isGenerate = !currentValue.trim();
+      const prompt = isGenerate
+        ? `Сгенерируй текст для поля "${context}" для бота-помощника на Авито. Бот называется "${botForm.name || "Помощник"}". Верни ТОЛЬКО текст без пояснений, кратко и по делу.`
+        : `Улучши и дополни следующий текст для настройки бота на Авито. Поле: "${context}". Сделай его более чётким и профессиональным, сохранив смысл. Верни ТОЛЬКО улучшенный текст без пояснений.\n\nИсходный текст:\n${currentValue}`;
+
+      const { data: result, error } = await supabase.functions.invoke("ai-generate-description", {
+        body: { prompt, store_id: storeId },
+      });
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+      const text = result?.description || result?.text || "";
+      if (text) {
+        toast({ title: isGenerate ? "Текст сгенерирован ✨" : "Текст улучшен ✨" });
+        return text;
+      }
+    } catch (err: any) {
+      toast({ title: "Ошибка ИИ", description: err.message, variant: "destructive" });
+    } finally {
+      setAiFillingField(null);
+    }
+    return null;
+  };
+
+  // AI Fill button component
+  const AIFillBtn = ({ fieldKey, value, context, onResult }: { fieldKey: string; value: string; context: string; onResult: (text: string) => void }) => (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="text-primary gap-1 h-7 px-2 text-xs shrink-0"
+      disabled={aiFillingField === fieldKey}
+      onClick={async () => {
+        const result = await aiFill(fieldKey, value, context);
+        if (result) onResult(result);
+      }}
+    >
+      {aiFillingField === fieldKey ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+      {value.trim() ? "Улучшить" : "Заполнить ИИ"}
+    </Button>
+  );
 
   const addListItem = (field: "lead_conditions" | "escalation_rules" | "completion_rules") => {
     const arr = (botForm[field] as string[]) || [];
@@ -1137,24 +1182,35 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
                 <CardTitle className="text-base flex items-center gap-2"><User className="h-4 w-4 text-primary" /> Личность робота</CardTitle>
                 <CardDescription className="text-xs">Определите характер и стиль общения робота</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+               <CardContent className="space-y-3">
                 <div>
-                  <Label className="text-sm">Как зовут робота?</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Как зовут робота?</Label>
+                  </div>
                   <Input value={personality.bot_name || ""} onChange={e => updateForm({ personality_config: { ...personality, bot_name: e.target.value } })} placeholder="Например: Анна, Помощник Алексей" />
                   <p className="text-xs text-muted-foreground mt-1">Имя, которым робот представляется клиентам</p>
                 </div>
                 <div>
-                  <Label className="text-sm">Черты характера</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Черты характера</Label>
+                    <AIFillBtn fieldKey="p_traits" value={personality.character_traits || ""} context="Черты характера робота-помощника на Авито" onResult={v => updateForm({ personality_config: { ...personality, character_traits: v } })} />
+                  </div>
                   <Textarea value={personality.character_traits || ""} onChange={e => updateForm({ personality_config: { ...personality, character_traits: e.target.value } })} placeholder="Дружелюбный, профессиональный, внимательный к деталям, терпеливый" className="min-h-[60px]" />
                   <p className="text-xs text-muted-foreground mt-1">Какие качества проявляет робот в общении?</p>
                 </div>
                 <div>
-                  <Label className="text-sm">Стиль общения</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Стиль общения</Label>
+                    <AIFillBtn fieldKey="p_style" value={personality.communication_style || ""} context="Стиль общения робота на Авито (формальный/дружеский)" onResult={v => updateForm({ personality_config: { ...personality, communication_style: v } })} />
+                  </div>
                   <Textarea value={personality.communication_style || ""} onChange={e => updateForm({ personality_config: { ...personality, communication_style: e.target.value } })} placeholder="Деловой но тёплый, без канцеляризмов, простыми словами" className="min-h-[60px]" />
                   <p className="text-xs text-muted-foreground mt-1">Как робот формулирует мысли? Формально или дружески?</p>
                 </div>
                 <div>
-                  <Label className="text-sm">Тон и настроение</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Тон и настроение</Label>
+                    <AIFillBtn fieldKey="p_tone" value={personality.tone || ""} context="Тон и настроение робота-помощника" onResult={v => updateForm({ personality_config: { ...personality, tone: v } })} />
+                  </div>
                   <Input value={personality.tone || ""} onChange={e => updateForm({ personality_config: { ...personality, tone: e.target.value } })} placeholder="Позитивный, уверенный, готовый помочь" />
                 </div>
                 <div>
@@ -1170,7 +1226,10 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-sm">Как робот приветствует клиента?</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Как робот приветствует клиента?</Label>
+                    <AIFillBtn fieldKey="p_greeting" value={personality.greeting_style || ""} context="Приветствие робота для клиентов на Авито" onResult={v => updateForm({ personality_config: { ...personality, greeting_style: v } })} />
+                  </div>
                   <Textarea value={personality.greeting_style || ""} onChange={e => updateForm({ personality_config: { ...personality, greeting_style: e.target.value } })} placeholder="Здравствуйте! Меня зовут Анна, я помогу вам с выбором. Чем могу быть полезна?" className="min-h-[60px]" />
                 </div>
               </CardContent>
@@ -1184,26 +1243,41 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <Label className="text-sm">Главная цель робота</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Главная цель робота</Label>
+                    <AIFillBtn fieldKey="i_goal" value={instructions.main_goal || ""} context="Главная цель робота-помощника на Авито" onResult={v => updateForm({ instructions_config: { ...instructions, main_goal: v } })} />
+                  </div>
                   <Textarea value={instructions.main_goal || ""} onChange={e => updateForm({ instructions_config: { ...instructions, main_goal: e.target.value } })} placeholder="Помочь клиенту выбрать товар, ответить на вопросы и довести до покупки" className="min-h-[60px]" />
                   <p className="text-xs text-muted-foreground mt-1">Какой основной результат должен достигать робот?</p>
                 </div>
                 <div>
-                  <Label className="text-sm">Обязанности и зона ответственности</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Обязанности и зона ответственности</Label>
+                    <AIFillBtn fieldKey="i_resp" value={instructions.responsibilities || ""} context="Обязанности и зона ответственности робота на Авито" onResult={v => updateForm({ instructions_config: { ...instructions, responsibilities: v } })} />
+                  </div>
                   <Textarea value={instructions.responsibilities || ""} onChange={e => updateForm({ instructions_config: { ...instructions, responsibilities: e.target.value } })} placeholder="Отвечать на вопросы о товарах, ценах, доставке. Предлагать аналоги если нужного нет в наличии." className="min-h-[80px]" />
                   <p className="text-xs text-muted-foreground mt-1">Перечислите конкретные задачи робота</p>
                 </div>
                 <div>
-                  <Label className="text-sm">Что робот НЕ должен делать</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Что робот НЕ должен делать</Label>
+                    <AIFillBtn fieldKey="i_forbidden" value={instructions.forbidden_actions || ""} context="Запреты и ограничения для робота на Авито" onResult={v => updateForm({ instructions_config: { ...instructions, forbidden_actions: v } })} />
+                  </div>
                   <Textarea value={instructions.forbidden_actions || ""} onChange={e => updateForm({ instructions_config: { ...instructions, forbidden_actions: e.target.value } })} placeholder="Не давать скидки без согласования, не обсуждать конкурентов, не давать личные контакты" className="min-h-[60px]" />
                 </div>
                 <div>
-                  <Label className="text-sm">Формат ответов</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Формат ответов</Label>
+                    <AIFillBtn fieldKey="i_format" value={instructions.response_format || ""} context="Формат и стиль ответов робота на Авито" onResult={v => updateForm({ instructions_config: { ...instructions, response_format: v } })} />
+                  </div>
                   <Textarea value={instructions.response_format || ""} onChange={e => updateForm({ instructions_config: { ...instructions, response_format: e.target.value } })} placeholder="Короткие ответы до 3 предложений. Всегда задавать уточняющий вопрос." className="min-h-[60px]" />
                   <p className="text-xs text-muted-foreground mt-1">Длина ответов, структура, стиль</p>
                 </div>
                 <div>
-                  <Label className="text-sm">Границы знаний</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Границы знаний</Label>
+                    <AIFillBtn fieldKey="i_boundaries" value={instructions.knowledge_boundaries || ""} context="Границы знаний робота — что делать если не знает ответа" onResult={v => updateForm({ instructions_config: { ...instructions, knowledge_boundaries: v } })} />
+                  </div>
                   <Textarea value={instructions.knowledge_boundaries || ""} onChange={e => updateForm({ instructions_config: { ...instructions, knowledge_boundaries: e.target.value } })} placeholder="Если не знает ответ — предложить связаться с менеджером. Не выдумывать характеристики товара." className="min-h-[60px]" />
                   <p className="text-xs text-muted-foreground mt-1">Что делать, если робот не знает ответа?</p>
                 </div>
@@ -1213,8 +1287,16 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
             {/* RULES */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2"><ListChecks className="h-4 w-4 text-primary" /> Правила работы</CardTitle>
-                <CardDescription className="text-xs">Список конкретных правил, которым робот должен следовать</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2"><ListChecks className="h-4 w-4 text-primary" /> Правила работы</CardTitle>
+                    <CardDescription className="text-xs">Список конкретных правил, которым робот должен следовать</CardDescription>
+                  </div>
+                  <AIFillBtn fieldKey="rules_gen" value={rulesList.join("; ")} context="Список правил работы для бота-помощника на Авито (верни каждое правило на новой строке)" onResult={v => {
+                    const items = v.split(/[\n;]/).map((s: string) => s.replace(/^\d+\.\s*[-•]?\s*/, "").trim()).filter(Boolean);
+                    updateForm({ rules_list: items });
+                  }} />
+                </div>
               </CardHeader>
               <CardContent className="space-y-2">
                 {rulesList.map((rule: string, i: number) => (
@@ -1258,8 +1340,13 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
               </div>
             ) : (
               <div>
-                <h2 className="text-lg font-semibold mb-1">Произвольный промпт (дополнительно)</h2>
-                <p className="text-sm text-muted-foreground mb-2">Все блоки выше автоматически формируют промпт. Здесь можете дополнить его вручную.</p>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h2 className="text-lg font-semibold mb-1">Произвольный промпт (дополнительно)</h2>
+                    <p className="text-sm text-muted-foreground">Все блоки выше автоматически формируют промпт. Здесь можете дополнить его вручную.</p>
+                  </div>
+                  <AIFillBtn fieldKey="system_prompt" value={botForm.system_prompt || ""} context="Системный промпт для бота-помощника на Авито" onResult={v => updateForm({ system_prompt: v })} />
+                </div>
                 <Textarea value={botForm.system_prompt || ""} onChange={e => updateForm({ system_prompt: e.target.value })} placeholder="Дополнительные инструкции..." className="min-h-[200px]" />
               </div>
             )}
@@ -1294,13 +1381,22 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
         );
 
       case "leads":
-        return <ListEditor title="Когда создавать лид?" desc="По умолчанию лид создаётся при получении контакта." items={(botForm.lead_conditions as string[]) || []} onAdd={() => addListItem("lead_conditions")} onUpdate={(i, v) => updateListItem("lead_conditions", i, v)} onRemove={(i) => removeListItem("lead_conditions", i)} placeholder="Условие..." />;
+        return <ListEditor title="Когда создавать лид?" desc="По умолчанию лид создаётся при получении контакта." items={(botForm.lead_conditions as string[]) || []} onAdd={() => addListItem("lead_conditions")} onUpdate={(i, v) => updateListItem("lead_conditions", i, v)} onRemove={(i) => removeListItem("lead_conditions", i)} placeholder="Условие..." onAiFill={async () => {
+          const result = await aiFill("leads_gen", ((botForm.lead_conditions as string[]) || []).join("; "), "Условия для создания лида в чат-боте на Авито (список через точку с запятой)");
+          if (result) { const items = result.split(/[;\n]/).map((s: string) => s.replace(/^\d+\.\s*/, "").trim()).filter(Boolean); updateForm({ lead_conditions: items }); }
+        }} aiFillingField={aiFillingField} />;
 
       case "escalation":
-        return <ListEditor title="Когда передать человеку?" desc="Случаи передачи диалога." items={(botForm.escalation_rules as string[]) || []} onAdd={() => addListItem("escalation_rules")} onUpdate={(i, v) => updateListItem("escalation_rules", i, v)} onRemove={(i) => removeListItem("escalation_rules", i)} placeholder="Правило..." />;
+        return <ListEditor title="Когда передать человеку?" desc="Случаи передачи диалога." items={(botForm.escalation_rules as string[]) || []} onAdd={() => addListItem("escalation_rules")} onUpdate={(i, v) => updateListItem("escalation_rules", i, v)} onRemove={(i) => removeListItem("escalation_rules", i)} placeholder="Правило..." onAiFill={async () => {
+          const result = await aiFill("escalation_gen", ((botForm.escalation_rules as string[]) || []).join("; "), "Правила эскалации (когда передать диалог человеку) для бота на Авито");
+          if (result) { const items = result.split(/[;\n]/).map((s: string) => s.replace(/^\d+\.\s*/, "").trim()).filter(Boolean); updateForm({ escalation_rules: items }); }
+        }} aiFillingField={aiFillingField} />;
 
       case "completion":
-        return <ListEditor title="Когда считать завершённым?" desc="Признаки завершённого диалога." items={(botForm.completion_rules as string[]) || []} onAdd={() => addListItem("completion_rules")} onUpdate={(i, v) => updateListItem("completion_rules", i, v)} onRemove={(i) => removeListItem("completion_rules", i)} placeholder="Признак..." />;
+        return <ListEditor title="Когда считать завершённым?" desc="Признаки завершённого диалога." items={(botForm.completion_rules as string[]) || []} onAdd={() => addListItem("completion_rules")} onUpdate={(i, v) => updateListItem("completion_rules", i, v)} onRemove={(i) => removeListItem("completion_rules", i)} placeholder="Признак..." onAiFill={async () => {
+          const result = await aiFill("completion_gen", ((botForm.completion_rules as string[]) || []).join("; "), "Признаки завершённого диалога для бота на Авито");
+          if (result) { const items = result.split(/[;\n]/).map((s: string) => s.replace(/^\d+\.\s*/, "").trim()).filter(Boolean); updateForm({ completion_rules: items }); }
+        }} aiFillingField={aiFillingField} />;
 
       case "schedule":
         return (
@@ -1370,7 +1466,10 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
                     <Label className="text-xs whitespace-nowrap">Через (мин):</Label>
                     <Input type="number" value={msg.delay_minutes} onChange={e => { const u = [...msgs]; u[i] = { ...msg, delay_minutes: parseInt(e.target.value) || 0 }; updateForm({ reactivation_messages: u }); }} className="w-24" />
                   </div>
-                  <Textarea value={msg.message} onChange={e => { const u = [...msgs]; u[i] = { ...msg, message: e.target.value }; updateForm({ reactivation_messages: u }); }} placeholder="Сообщение..." className="min-h-[60px]" />
+                  <div className="flex items-center gap-1">
+                    <Textarea value={msg.message} onChange={e => { const u = [...msgs]; u[i] = { ...msg, message: e.target.value }; updateForm({ reactivation_messages: u }); }} placeholder="Сообщение..." className="min-h-[60px]" />
+                  </div>
+                  <AIFillBtn fieldKey={`reactivation_${i}`} value={msg.message || ""} context={`Сообщение реактивации #${i+1} для бота на Авито (короткое, мотивирующее вернуться к диалогу)`} onResult={v => { const u = [...msgs]; u[i] = { ...msg, message: v }; updateForm({ reactivation_messages: u }); }} />
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => updateForm({ reactivation_messages: msgs.filter((_, idx) => idx !== i) })}><Trash2 className="h-4 w-4" /></Button>
               </div>
@@ -1898,14 +1997,25 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
 }
 
 // ===== Reusable List Editor =====
-function ListEditor({ title, desc, items, onAdd, onUpdate, onRemove, placeholder }: {
+function ListEditor({ title, desc, items, onAdd, onUpdate, onRemove, placeholder, onAiFill, aiFillingField }: {
   title: string; desc: string; items: string[];
   onAdd: () => void; onUpdate: (i: number, v: string) => void; onRemove: (i: number) => void;
   placeholder: string;
+  onAiFill?: () => void;
+  aiFillingField?: string | null;
 }) {
+  const isGenerating = !!aiFillingField && ["leads_gen", "escalation_gen", "completion_gen"].includes(aiFillingField);
   return (
     <div className="space-y-4">
-      <div><h2 className="text-lg font-semibold mb-1">{title}</h2><p className="text-sm text-muted-foreground mb-3">{desc}</p></div>
+      <div className="flex items-center justify-between">
+        <div><h2 className="text-lg font-semibold mb-1">{title}</h2><p className="text-sm text-muted-foreground">{desc}</p></div>
+        {onAiFill && (
+          <Button variant="ghost" size="sm" className="text-primary gap-1 h-7 px-2 text-xs shrink-0" disabled={isGenerating} onClick={onAiFill}>
+            {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {items.length > 0 ? "Улучшить ИИ" : "Заполнить ИИ"}
+          </Button>
+        )}
+      </div>
       {items.map((item, i) => (
         <div key={i} className="flex gap-2">
           <Input value={item} onChange={e => onUpdate(i, e.target.value)} placeholder={placeholder} />
