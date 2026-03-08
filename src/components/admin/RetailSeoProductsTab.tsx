@@ -1,13 +1,16 @@
-import React, { useState, useMemo, useCallback } from "react";
-import { Search, Sparkles, Loader2, ChevronRight, ImageOff, ExternalLink } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Search, Sparkles, Loader2, ChevronRight, ImageOff, ExternalLink, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { ProductSeoPanel } from "./ProductSeoPanel";
 import { useProductSeo } from "@/hooks/useProductSeo";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface RetailSeoProductsTabProps {
@@ -22,11 +25,43 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
   const { generating, progress, generateBulkSeo } = useProductSeo(storeId, storeName, "retail");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [onlyRetailCatalog, setOnlyRetailCatalog] = useState(true);
+  const [retailProductIds, setRetailProductIds] = useState<Set<string> | null>(null);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+
+  // Load retail catalog product IDs
+  useEffect(() => {
+    if (!retailCatalogId || !onlyRetailCatalog) {
+      setRetailProductIds(null);
+      return;
+    }
+    setLoadingCatalog(true);
+    const load = async () => {
+      // Try catalog_product_settings first, then product_catalog_visibility
+      const { data: cps } = await supabase
+        .from("catalog_product_settings")
+        .select("product_id")
+        .eq("catalog_id", retailCatalogId);
+      
+      if (cps && cps.length > 0) {
+        setRetailProductIds(new Set(cps.map(r => r.product_id)));
+      } else {
+        const { data: pcv } = await supabase
+          .from("product_catalog_visibility")
+          .select("product_id")
+          .eq("catalog_id", retailCatalogId);
+        setRetailProductIds(new Set((pcv || []).map(r => r.product_id)));
+      }
+      setLoadingCatalog(false);
+    };
+    load();
+  }, [retailCatalogId, onlyRetailCatalog]);
 
   // Filter products that are in the retail catalog
   const retailProducts = useMemo(() => {
-    return products;
-  }, [products]);
+    if (!onlyRetailCatalog || !retailProductIds) return products;
+    return products.filter(p => retailProductIds.has(p.id));
+  }, [products, onlyRetailCatalog, retailProductIds]);
 
   const filteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return retailProducts;
