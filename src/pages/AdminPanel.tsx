@@ -129,6 +129,7 @@ import { OrdersSection } from "@/components/admin/OrdersSection";
 import { MoyskladCounterpartiesSection } from "@/components/admin/MoyskladCounterpartiesSection";
 import { AvitoSection } from "@/components/admin/AvitoSection";
 import { AiAccessSection } from "@/components/admin/AiAccessSection";
+import { OfficeSection } from "@/components/admin/OfficeSection";
 import { useAvitoFeedProducts } from "@/hooks/useAvitoFeedProducts";
 
 // Removed localStorage keys - now using Supabase
@@ -313,7 +314,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings" | "exchange" | "avito" | "avito-bot";
+type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings" | "exchange" | "avito" | "avito-bot" | "office";
 type ImportView = "accounts" | "catalog" | "counterparties";
 type ImportSource = "select" | "moysklad" | "excel" | "google-sheets";
 type CatalogView = "list" | "detail";
@@ -702,7 +703,7 @@ export default function AdminPanel({
     }
     
     const section = searchParams.get('section');
-    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients' || section === 'help' || section === 'category-settings' || section === 'profile' || section === 'history' || section === 'trash' || section === 'retail' || section === 'wholesale' || section === 'avito' || section === 'showcase' || section === 'megacatalog' || section === 'exchange' || section === 'avito-bot') {
+    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients' || section === 'help' || section === 'category-settings' || section === 'profile' || section === 'history' || section === 'trash' || section === 'retail' || section === 'wholesale' || section === 'avito' || section === 'showcase' || section === 'megacatalog' || section === 'exchange' || section === 'avito-bot' || section === 'office') {
       setActiveSection(section);
     }
   }, [searchParams, workspaceMode, initialSection]);
@@ -7182,6 +7183,20 @@ export default function AdminPanel({
 
           {activeSection === "avito-bot" && (
             <AvitoBotSection storeId={effectiveStoreId} />
+          )}
+
+          {activeSection === "office" && (
+            <OfficeSection
+              storeId={effectiveStoreId}
+              onNavigateToBot={(botId) => {
+                setActiveSection("avito-bot");
+                setSearchParams(prev => {
+                  prev.set('section', 'avito-bot');
+                  prev.set('bot', botId);
+                  return prev;
+                });
+              }}
+            />
           )}
         </main>
 
