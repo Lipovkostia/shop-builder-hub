@@ -76,7 +76,7 @@ serve(async (req) => {
     // Check AI access for this store
     const { data: aiAccess } = await supabase
       .from("store_ai_access")
-      .select("is_unlocked, ai_assistant_enabled")
+      .select("is_unlocked, ai_assistant_enabled, ai_assistant_model")
       .eq("store_id", storeId)
       .maybeSingle();
 
