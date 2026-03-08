@@ -683,10 +683,10 @@ function StatCard({ icon: Icon, label, value, sub, color }: { icon: React.Elemen
 }
 
 // ===== BOTS LIST =====
-function BotsListView({ bots, accounts, showNewBot, setShowNewBot, newBotName, setNewBotName, newBotAccountId, setNewBotAccountId, onCreateBot, onEditBot, onToggle }: {
+function BotsListView({ bots, accounts, showNewBot, setShowNewBot, newBotName, setNewBotName, newBotAccountId, setNewBotAccountId, onCreateBot, onEditBot, onToggle, onDuplicate }: {
   bots: AvitoBot[]; accounts: AvitoAccount[]; showNewBot: boolean; setShowNewBot: (v: boolean) => void;
   newBotName: string; setNewBotName: (v: string) => void; newBotAccountId: string; setNewBotAccountId: (v: string) => void;
-  onCreateBot: () => void; onEditBot: (id: string) => void; onToggle: (id: string, active: boolean) => void;
+  onCreateBot: () => void; onEditBot: (id: string) => void; onToggle: (id: string, active: boolean) => void; onDuplicate: (id: string) => void;
 }) {
   return (
     <div className="space-y-4">
