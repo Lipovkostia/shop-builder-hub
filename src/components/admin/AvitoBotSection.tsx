@@ -470,21 +470,41 @@ function DashboardView({ stats, recentChats, loading, bots, accounts, onRefresh,
         <StatCard icon={Users} label="Лиды" value={stats?.leads_total ?? 0} sub={`${stats?.escalated_total ?? 0} эскалировано`} color="text-green-600" />
       </div>
 
-      {/* Important notice about auto-processing */}
-      <Card className="border-amber-300 bg-amber-50/50">
-        <CardContent className="py-3 px-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-amber-800">Автоматическая обработка сообщений</p>
-              <p className="text-xs text-amber-700 mt-1">
-                Робот обрабатывает новые сообщения при нажатии «Проверить сообщения» в настройках бота. 
-                Для автоматической работы настройте внешний планировщик (cron), который будет вызывать функцию обработки каждые 1-5 минут.
-              </p>
+      {/* Auto-processing status */}
+      {bots.some(b => b.is_active) ? (
+        <Card className="border-green-300 bg-green-50/50">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-start gap-3">
+              <div className="relative flex-shrink-0 mt-0.5">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-green-800">Робот активен и отвечает на сообщения</p>
+                <p className="text-xs text-green-700 mt-1">
+                  Автоматическая проверка новых сообщений каждые 2 минуты. Активных ботов: {bots.filter(b => b.is_active).length}
+                </p>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-amber-300 bg-amber-50/50">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-800">Все роботы выключены</p>
+                <p className="text-xs text-amber-700 mt-1">
+                  Включите хотя бы одного робота, чтобы он начал автоматически отвечать клиентам на Авито.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )
 
       {/* Bots Overview */}
       <div>
