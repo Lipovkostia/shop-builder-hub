@@ -249,6 +249,7 @@ function AvitoFeedTable({
   feedSearchQuery: string;
   feedPriceFilter: string;
   storeId: string;
+  onUpdateProductParams: (productId: string, params: any) => Promise<void>;
 }) {
   const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
 
