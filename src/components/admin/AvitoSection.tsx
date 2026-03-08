@@ -1390,42 +1390,6 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         )}
       </div>
 
-      {/* Connection form */}
-      <Card className="p-4 space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Link2 className="h-4 w-4 text-primary" />
-          <span className="font-medium text-sm">Подключение к Авито API</span>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Получите Client ID и Client Secret на{" "}
-          <a href="https://www.avito.ru/professionals/api" target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-0.5">
-            avito.ru/professionals/api <ExternalLink className="h-3 w-3" />
-          </a>
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="avito-client-id" className="text-xs">Client ID</Label>
-            <Input id="avito-client-id" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="Введите Client ID" className="h-9 text-sm" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="avito-client-secret" className="text-xs">Client Secret</Label>
-            <Input id="avito-client-secret" type="password" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder="Введите Client Secret" className="h-9 text-sm" />
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={handleConnect} disabled={connecting || !clientId.trim() || !clientSecret.trim()}>
-            {connecting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {isConnected ? "Переподключить" : "Подключить"}
-          </Button>
-          {isConnected && (
-            <Button size="sm" variant="outline" onClick={handleDisconnect} disabled={disconnecting} className="text-destructive hover:text-destructive">
-              {disconnecting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              <Unlink className="h-3.5 w-3.5" /> Отключить
-            </Button>
-          )}
-        </div>
-      </Card>
-
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
@@ -1751,6 +1715,39 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     );
                   })()}
 
+                  {/* API Connection - collapsible */}
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full py-1">
+                      <div className="flex items-center gap-1.5">
+                        <Link2 className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">API подключение</span>
+                      </div>
+                      <Badge variant="secondary" className="text-[9px] py-0">▼</Badge>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 space-y-2">
+                      <p className="text-[9px] text-muted-foreground">
+                        Client ID и Secret с{" "}
+                        <a href="https://www.avito.ru/professionals/api" target="_blank" rel="noopener noreferrer" className="text-primary underline">avito.ru/professionals/api</a>
+                      </p>
+                      <div className="space-y-1.5">
+                        <Input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="Client ID" className="h-7 text-xs" />
+                        <Input type="password" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder="Client Secret" className="h-7 text-xs" />
+                      </div>
+                      <div className="flex gap-1.5">
+                        <Button size="sm" className="h-7 text-xs flex-1" onClick={handleConnect} disabled={connecting || !clientId.trim() || !clientSecret.trim()}>
+                          {connecting && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                          {isConnected ? "Переподключить" : "Подключить"}
+                        </Button>
+                        {isConnected && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={handleDisconnect} disabled={disconnecting}>
+                            {disconnecting && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                            <Unlink className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+
                   {/* Settings Defaults */}
                   <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
                     <CollapsibleTrigger className="flex items-center justify-between w-full py-1">
@@ -1832,24 +1829,36 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
             {/* Right Area - Table */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              {/* Bulk actions bar */}
-              {avitoFeed && avitoFeed.feedProducts.length > 0 && selectedFeedProducts.size > 0 && (
+              {/* Bulk actions bar - always visible when there are products */}
+              {avitoFeed && avitoFeed.feedProducts.length > 0 && (
                 <div className="flex items-center gap-2 bg-primary/5 border-b border-primary/20 px-3 py-1.5 flex-shrink-0">
-                  <span className="text-xs font-medium">Выбрано: {selectedFeedProducts.size}</span>
+                  <span className="text-xs font-medium">
+                    {selectedFeedProducts.size > 0 ? `Выбрано: ${selectedFeedProducts.size}` : `Товаров: ${avitoFeed.feedProducts.length}`}
+                  </span>
                   <div className="flex gap-1.5 ml-auto">
-                    <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => openAiForProducts(Array.from(selectedFeedProducts), "title")}>
-                      <Wand2 className="h-3 w-3" /> AI название
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => openAiForProducts(Array.from(selectedFeedProducts), "description")}>
-                      <Sparkles className="h-3 w-3" /> AI описание
-                    </Button>
-                    <Button size="sm" variant="destructive" className="h-6 text-[10px]" onClick={async () => {
-                      await avitoFeed!.removeProductsFromFeed(Array.from(selectedFeedProducts));
-                      setSelectedFeedProducts(new Set());
+                    <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => {
+                      const ids = selectedFeedProducts.size > 0 ? Array.from(selectedFeedProducts) : avitoFeed!.feedProducts.map(fp => fp.product_id);
+                      openAiForProducts(ids, "title");
                     }}>
-                      <X className="h-3 w-3 mr-0.5" /> Убрать
+                      <Wand2 className="h-3 w-3" /> AI название {selectedFeedProducts.size > 0 ? `(${selectedFeedProducts.size})` : "(все)"}
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setSelectedFeedProducts(new Set())}>Сбросить</Button>
+                    <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => {
+                      const ids = selectedFeedProducts.size > 0 ? Array.from(selectedFeedProducts) : avitoFeed!.feedProducts.map(fp => fp.product_id);
+                      openAiForProducts(ids, "description");
+                    }}>
+                      <Sparkles className="h-3 w-3" /> AI описание {selectedFeedProducts.size > 0 ? `(${selectedFeedProducts.size})` : "(все)"}
+                    </Button>
+                    {selectedFeedProducts.size > 0 && (
+                      <>
+                        <Button size="sm" variant="destructive" className="h-6 text-[10px]" onClick={async () => {
+                          await avitoFeed!.removeProductsFromFeed(Array.from(selectedFeedProducts));
+                          setSelectedFeedProducts(new Set());
+                        }}>
+                          <X className="h-3 w-3 mr-0.5" /> Убрать
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setSelectedFeedProducts(new Set())}>Сбросить</Button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
