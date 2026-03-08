@@ -23,6 +23,8 @@ export interface AvitoBot {
   max_responses: number | null;
   pro_seller_mode: boolean;
   telegram_notification_format: string;
+  telegram_bot_token: string | null;
+  telegram_chat_id: string | null;
   created_at: string;
   updated_at: string;
 }

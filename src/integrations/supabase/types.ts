@@ -168,6 +168,7 @@ export type Database = {
       avito_bots: {
         Row: {
           ai_model: string
+          avito_account_id: string | null
           completion_rules: Json | null
           created_at: string
           escalation_rules: Json | null
@@ -191,6 +192,7 @@ export type Database = {
         }
         Insert: {
           ai_model?: string
+          avito_account_id?: string | null
           completion_rules?: Json | null
           created_at?: string
           escalation_rules?: Json | null
@@ -214,6 +216,7 @@ export type Database = {
         }
         Update: {
           ai_model?: string
+          avito_account_id?: string | null
           completion_rules?: Json | null
           created_at?: string
           escalation_rules?: Json | null
@@ -237,9 +240,16 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "avito_bots_avito_account_id_fkey"
+            columns: ["avito_account_id"]
+            isOneToOne: false
+            referencedRelation: "avito_accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "avito_bots_store_id_fkey"
             columns: ["store_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "stores"
             referencedColumns: ["id"]
           },
