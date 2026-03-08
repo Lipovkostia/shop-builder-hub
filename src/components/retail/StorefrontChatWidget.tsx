@@ -210,17 +210,15 @@ export function StorefrontChatWidget({ storeId, channel, onProductClick, onAddTo
                 </div>
                 {/* Product cards */}
                 {msg.products && msg.products.length > 0 && (
-                  <div className="mt-2 ml-0 mr-4">
-                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                      {msg.products.map((p) => (
-                        <ProductCard
-                          key={p.id}
-                          product={p}
-                          onProductClick={onProductClick}
-                          onAddToCart={onAddToCart}
-                        />
-                      ))}
-                    </div>
+                  <div className="mt-2 ml-0 mr-4 space-y-2">
+                    {msg.products.map((p) => (
+                      <ProductCardRow
+                        key={p.id}
+                        product={p}
+                        onProductClick={onProductClick}
+                        onAddToCart={onAddToCart}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
