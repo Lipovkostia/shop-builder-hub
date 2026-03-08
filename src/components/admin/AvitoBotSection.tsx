@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Bot, MessageCircle, Settings, Users, Sparkles, Power, Save, Plus, Trash2, Clock, Shield, Bell, Zap, ChevronRight, RefreshCw, KeyRound, ArrowLeft, Edit, HelpCircle, PlayCircle, Send, Loader2, Package, MessageSquarePlus, History, Activity, BarChart3, AlertTriangle, CheckCircle2, XCircle, Hand, User, FileText, ListChecks, Filter, Repeat, ShoppingCart, GripVertical, ArrowDown, ArrowUp } from "lucide-react";
+import { Bot, MessageCircle, Settings, Users, Sparkles, Power, Save, Plus, Trash2, Clock, Shield, Bell, Zap, ChevronRight, RefreshCw, KeyRound, ArrowLeft, Edit, HelpCircle, PlayCircle, Send, Loader2, Package, MessageSquarePlus, History, Activity, BarChart3, AlertTriangle, CheckCircle2, XCircle, Hand, User, FileText, ListChecks, Filter, Repeat, ShoppingCart, GripVertical, ArrowDown, ArrowUp, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -183,7 +183,7 @@ function BotStatusIndicator({ bot, account }: { bot: AvitoBot; account?: AvitoAc
 
 export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
   const { toast } = useToast();
-  const { bots, loading, saving, createBot, saveBot, deleteBot, toggleBot, processMessages, fetchChats, refetch } = useAvitoBots(storeId);
+  const { bots, loading, saving, createBot, duplicateBot, saveBot, deleteBot, toggleBot, processMessages, fetchChats, refetch } = useAvitoBots(storeId);
   
   const [topLevel, setTopLevel] = useState<TopLevel>("dashboard");
   const [editingBotId, setEditingBotId] = useState<string | null>(null);
@@ -460,6 +460,7 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
                   onCreateBot={handleCreateBot}
                   onEditBot={(id) => { setEditingBotId(id); setBotSection("general"); }}
                   onToggle={toggleBot}
+                  onDuplicate={async (id) => { await duplicateBot(id); }}
                 />
               </div>
             )}
@@ -682,10 +683,10 @@ function StatCard({ icon: Icon, label, value, sub, color }: { icon: React.Elemen
 }
 
 // ===== BOTS LIST =====
-function BotsListView({ bots, accounts, showNewBot, setShowNewBot, newBotName, setNewBotName, newBotAccountId, setNewBotAccountId, onCreateBot, onEditBot, onToggle }: {
+function BotsListView({ bots, accounts, showNewBot, setShowNewBot, newBotName, setNewBotName, newBotAccountId, setNewBotAccountId, onCreateBot, onEditBot, onToggle, onDuplicate }: {
   bots: AvitoBot[]; accounts: AvitoAccount[]; showNewBot: boolean; setShowNewBot: (v: boolean) => void;
   newBotName: string; setNewBotName: (v: string) => void; newBotAccountId: string; setNewBotAccountId: (v: string) => void;
-  onCreateBot: () => void; onEditBot: (id: string) => void; onToggle: (id: string, active: boolean) => void;
+  onCreateBot: () => void; onEditBot: (id: string) => void; onToggle: (id: string, active: boolean) => void; onDuplicate: (id: string) => void;
 }) {
   return (
     <div className="space-y-4">
@@ -751,6 +752,9 @@ function BotsListView({ bots, accounts, showNewBot, setShowNewBot, newBotName, s
                     </div>
                   </div>
                   <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Дублировать" onClick={() => onDuplicate(bot.id)}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
                     <Switch checked={bot.is_active} onCheckedChange={active => onToggle(bot.id, active)} />
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>

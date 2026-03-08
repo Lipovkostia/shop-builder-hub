@@ -2400,6 +2400,89 @@ export type Database = {
           },
         ]
       }
+      storefront_chat_messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          role: string
+          session_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          role?: string
+          session_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          role?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storefront_chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "storefront_chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storefront_chat_sessions: {
+        Row: {
+          bot_id: string
+          channel: string
+          created_at: string | null
+          id: string
+          status: string
+          store_id: string
+          updated_at: string | null
+          visitor_id: string
+          visitor_name: string | null
+        }
+        Insert: {
+          bot_id: string
+          channel?: string
+          created_at?: string | null
+          id?: string
+          status?: string
+          store_id: string
+          updated_at?: string | null
+          visitor_id: string
+          visitor_name?: string | null
+        }
+        Update: {
+          bot_id?: string
+          channel?: string
+          created_at?: string | null
+          id?: string
+          status?: string
+          store_id?: string
+          updated_at?: string | null
+          visitor_id?: string
+          visitor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storefront_chat_sessions_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "avito_bots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storefront_chat_sessions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           address: string | null
@@ -2418,6 +2501,8 @@ export type Database = {
           primary_color: string | null
           products_count: number | null
           retail_catalog_id: string | null
+          retail_chat_bot_id: string | null
+          retail_chat_enabled: boolean | null
           retail_delivery_free_from: number | null
           retail_delivery_info: string | null
           retail_delivery_region: string | null
@@ -2466,6 +2551,8 @@ export type Database = {
           updated_at: string
           whatsapp_phone: string | null
           wholesale_catalog_id: string | null
+          wholesale_chat_bot_id: string | null
+          wholesale_chat_enabled: boolean | null
           wholesale_custom_domain: string | null
           wholesale_enabled: boolean | null
           wholesale_livestream_enabled: boolean | null
@@ -2496,6 +2583,8 @@ export type Database = {
           primary_color?: string | null
           products_count?: number | null
           retail_catalog_id?: string | null
+          retail_chat_bot_id?: string | null
+          retail_chat_enabled?: boolean | null
           retail_delivery_free_from?: number | null
           retail_delivery_info?: string | null
           retail_delivery_region?: string | null
@@ -2544,6 +2633,8 @@ export type Database = {
           updated_at?: string
           whatsapp_phone?: string | null
           wholesale_catalog_id?: string | null
+          wholesale_chat_bot_id?: string | null
+          wholesale_chat_enabled?: boolean | null
           wholesale_custom_domain?: string | null
           wholesale_enabled?: boolean | null
           wholesale_livestream_enabled?: boolean | null
@@ -2574,6 +2665,8 @@ export type Database = {
           primary_color?: string | null
           products_count?: number | null
           retail_catalog_id?: string | null
+          retail_chat_bot_id?: string | null
+          retail_chat_enabled?: boolean | null
           retail_delivery_free_from?: number | null
           retail_delivery_info?: string | null
           retail_delivery_region?: string | null
@@ -2622,6 +2715,8 @@ export type Database = {
           updated_at?: string
           whatsapp_phone?: string | null
           wholesale_catalog_id?: string | null
+          wholesale_chat_bot_id?: string | null
+          wholesale_chat_enabled?: boolean | null
           wholesale_custom_domain?: string | null
           wholesale_enabled?: boolean | null
           wholesale_livestream_enabled?: boolean | null
@@ -2651,6 +2746,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "stores_retail_chat_bot_id_fkey"
+            columns: ["retail_chat_bot_id"]
+            isOneToOne: false
+            referencedRelation: "avito_bots"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "stores_showcase_catalog_id_fkey"
             columns: ["showcase_catalog_id"]
             isOneToOne: false
@@ -2662,6 +2764,13 @@ export type Database = {
             columns: ["wholesale_catalog_id"]
             isOneToOne: false
             referencedRelation: "catalogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stores_wholesale_chat_bot_id_fkey"
+            columns: ["wholesale_chat_bot_id"]
+            isOneToOne: false
+            referencedRelation: "avito_bots"
             referencedColumns: ["id"]
           },
         ]

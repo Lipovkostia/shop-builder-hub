@@ -128,6 +128,58 @@ export function useAvitoBots(storeId: string | null) {
     }
   }, [storeId, toast]);
 
+  const duplicateBot = useCallback(async (botId: string) => {
+    if (!storeId) return null;
+    const source = bots.find(b => b.id === botId);
+    if (!source) return null;
+    setSaving(true);
+    try {
+      const { id, created_at, updated_at, ...rest } = source as any;
+      const { data, error } = await (supabase as any)
+        .from("avito_bots")
+        .insert({
+          ...rest,
+          store_id: storeId,
+          name: `${source.name} (копия)`,
+          is_active: false,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+
+      // Copy QA pairs
+      const { data: qaItems } = await (supabase as any)
+        .from("avito_bot_qa")
+        .select("*")
+        .eq("bot_id", botId);
+      if (qaItems?.length) {
+        await (supabase as any).from("avito_bot_qa").insert(
+          qaItems.map((q: any) => ({ bot_id: data.id, question: q.question, answer: q.answer, match_mode: q.match_mode, is_active: q.is_active, sort_order: q.sort_order }))
+        );
+      }
+
+      // Copy sales stages
+      const { data: stages } = await (supabase as any)
+        .from("avito_bot_sales_stages")
+        .select("*")
+        .eq("bot_id", botId);
+      if (stages?.length) {
+        await (supabase as any).from("avito_bot_sales_stages").insert(
+          stages.map((s: any) => ({ bot_id: data.id, name: s.name, instructions: s.instructions, action_type: s.action_type, is_active: s.is_active, sort_order: s.sort_order }))
+        );
+      }
+
+      setBots(prev => [...prev, data as AvitoBot]);
+      toast({ title: "Робот дублирован" });
+      return data as AvitoBot;
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  }, [storeId, bots, toast]);
+
   const saveBot = useCallback(async (botId: string, updates: Partial<AvitoBot>) => {
     setSaving(true);
     try {
@@ -202,6 +254,7 @@ export function useAvitoBots(storeId: string | null) {
     loading,
     saving,
     createBot,
+    duplicateBot,
     saveBot,
     deleteBot,
     toggleBot,
