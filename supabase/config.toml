@@ -59,6 +59,3 @@ verify_jwt = false
 
 [functions.avito-bot]
 verify_jwt = false
-
-[functions.avito-image-process]
-verify_jwt = false

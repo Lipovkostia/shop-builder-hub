@@ -201,21 +201,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (action === "get_feed_products") {
-      const { data: feedProducts, error: feedError } = await supabase
-        .from("avito_feed_products")
-        .select("*")
-        .eq("store_id", store_id)
-        .order("created_at", { ascending: false });
-
-      if (feedError) throw new Error(`DB error: ${feedError.message}`);
-
-      return new Response(
-        JSON.stringify({ success: true, feed_products: feedProducts || [] }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     if (action === "get_credentials") {
       const { data: account } = await supabase
         .from("avito_accounts")
