@@ -2647,7 +2647,7 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
       </div>
       <div className="flex-1 flex flex-col">
         <ScrollArea className="flex-1">
-          <div className={cn("p-6", botSection === "debug" ? "max-w-none" : "max-w-2xl")}>{renderSection()}</div>
+          <div className={cn("p-6", (botSection === "debug" || botSection === "ai_settings") ? "max-w-none" : "max-w-2xl")}>{renderSection()}</div>
         </ScrollArea>
         <div className="border-t border-border p-3 flex items-center justify-between bg-card">
           <span className="text-sm text-muted-foreground">Заполните поля и сохраните</span>
