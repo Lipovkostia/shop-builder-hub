@@ -96,11 +96,19 @@ async function getAvitoToken(clientId: string, clientSecret: string): Promise<st
   return data.access_token;
 }
 
+interface AIUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  cost: number;
+  model: string;
+}
+
 async function getAIResponse(
   messages: { role: string; content: string }[],
   model: string,
   apiKey: string
-): Promise<string> {
+): Promise<{ text: string; usage: AIUsage }> {
   const res = await fetch(AI_GATEWAY, {
     method: "POST",
     headers: {
@@ -122,7 +130,40 @@ async function getAIResponse(
   }
 
   const data = await res.json();
-  return data.choices?.[0]?.message?.content || "";
+  const text = data.choices?.[0]?.message?.content || "";
+  const rawUsage = data.usage || {};
+  const usage: AIUsage = {
+    prompt_tokens: rawUsage.prompt_tokens || 0,
+    completion_tokens: rawUsage.completion_tokens || 0,
+    total_tokens: rawUsage.total_tokens || 0,
+    cost: rawUsage.total_cost || rawUsage.cost || 0,
+    model: data.model || model,
+  };
+  return { text, usage };
+}
+
+async function logUsage(supabase: any, params: {
+  store_id: string;
+  bot_id?: string;
+  chat_id?: string;
+  usage: AIUsage;
+  action_type: string;
+}) {
+  try {
+    await supabase.from("avito_bot_usage_logs").insert({
+      store_id: params.store_id,
+      bot_id: params.bot_id || null,
+      chat_id: params.chat_id || null,
+      model: params.usage.model,
+      prompt_tokens: params.usage.prompt_tokens,
+      completion_tokens: params.usage.completion_tokens,
+      total_tokens: params.usage.total_tokens,
+      cost: params.usage.cost,
+      action_type: params.action_type,
+    });
+  } catch (e) {
+    console.error("Failed to log usage:", e);
+  }
 }
 
 async function getAvitoListingInfo(token: string, userId: number, itemId: string): Promise<{ title: string; description: string; price: number; category: string; url: string } | null> {
@@ -457,7 +498,7 @@ Deno.serve(async (req) => {
     const { action, store_id, bot_id, message, item_id, debug_session_id, avito_chat_id, db_chat_id, chat_id, text } = reqBody;
 
     // Check AI access for this store
-    if (store_id && action !== "fetch_models" && action !== "bot_stats") {
+    if (store_id && action !== "fetch_models" && action !== "bot_stats" && action !== "usage_stats") {
       const { data: aiAccess } = await supabase
         .from("store_ai_access")
         .select("is_unlocked, avito_bot_enabled")
@@ -499,6 +540,18 @@ Deno.serve(async (req) => {
         .select("id", { count: "exact", head: true })
         .eq("store_id", store_id);
 
+      // Get usage totals
+      const { data: usageTotals } = await supabase
+        .from("avito_bot_usage_logs")
+        .select("prompt_tokens, completion_tokens, total_tokens, cost")
+        .eq("store_id", store_id);
+      
+      const totalPromptTokens = (usageTotals || []).reduce((s: number, u: any) => s + (u.prompt_tokens || 0), 0);
+      const totalCompletionTokens = (usageTotals || []).reduce((s: number, u: any) => s + (u.completion_tokens || 0), 0);
+      const totalTokens = (usageTotals || []).reduce((s: number, u: any) => s + (u.total_tokens || 0), 0);
+      const totalCost = (usageTotals || []).reduce((s: number, u: any) => s + Number(u.cost || 0), 0);
+      const usageCount = (usageTotals || []).length;
+
       // Filter out debug chats for real stats
       const realChats = (chats || []).filter(c => !c.avito_user_name?.startsWith("Отладка"));
       const totalBotResponses = realChats.reduce((sum, c) => sum + (c.bot_responses_count || 0), 0);
@@ -518,8 +571,65 @@ Deno.serve(async (req) => {
             bot_responses_total: totalBotResponses,
             leads_total: totalLeads,
             escalated_total: totalEscalated,
+            total_prompt_tokens: totalPromptTokens,
+            total_completion_tokens: totalCompletionTokens,
+            total_tokens: totalTokens,
+            total_cost: Math.round(totalCost * 1000000) / 1000000,
+            total_requests: usageCount,
+            avg_cost_per_message: usageCount > 0 ? Math.round((totalCost / usageCount) * 1000000) / 1000000 : 0,
           },
           recent_chats: realChats.slice(0, 10),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ===== USAGE STATS (detailed per-bot) =====
+    if (action === "usage_stats") {
+      if (!store_id) throw new Error("store_id required");
+      
+      let query = supabase
+        .from("avito_bot_usage_logs")
+        .select("*")
+        .eq("store_id", store_id)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      
+      if (bot_id) {
+        query = query.eq("bot_id", bot_id);
+      }
+      
+      const { data: logs, error } = await query;
+      if (error) throw error;
+
+      // Aggregate per-bot stats
+      const botMap: Record<string, { requests: number; prompt_tokens: number; completion_tokens: number; total_tokens: number; cost: number }> = {};
+      for (const log of (logs || [])) {
+        const bid = log.bot_id || "unknown";
+        if (!botMap[bid]) botMap[bid] = { requests: 0, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost: 0 };
+        botMap[bid].requests++;
+        botMap[bid].prompt_tokens += log.prompt_tokens || 0;
+        botMap[bid].completion_tokens += log.completion_tokens || 0;
+        botMap[bid].total_tokens += log.total_tokens || 0;
+        botMap[bid].cost += Number(log.cost || 0);
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          logs: (logs || []).map((l: any) => ({
+            id: l.id,
+            bot_id: l.bot_id,
+            chat_id: l.chat_id,
+            model: l.model,
+            prompt_tokens: l.prompt_tokens,
+            completion_tokens: l.completion_tokens,
+            total_tokens: l.total_tokens,
+            cost: l.cost,
+            action_type: l.action_type,
+            created_at: l.created_at,
+          })),
+          per_bot: botMap,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -717,7 +827,16 @@ Deno.serve(async (req) => {
       conversationMessages.push({ role: "user", content: message });
 
       const model = bot.ai_model || "openai/gpt-4.1-mini";
-      const aiResponse = await getAIResponse(conversationMessages, model, vsegptApiKey);
+      const { text: aiResponse, usage } = await getAIResponse(conversationMessages, model, vsegptApiKey);
+
+      // Log usage
+      await logUsage(supabase, {
+        store_id: store_id || bot.store_id,
+        bot_id: bot.id,
+        chat_id: debug_session_id || undefined,
+        usage,
+        action_type: "debug",
+      });
 
       if (debug_session_id) {
         await supabase.from("avito_bot_messages").insert([
@@ -727,7 +846,7 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ success: true, response: aiResponse }),
+        JSON.stringify({ success: true, response: aiResponse, usage }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -940,8 +1059,17 @@ Deno.serve(async (req) => {
             model = bot.upgrade_model;
           }
 
-          const aiResponse = await getAIResponse(conversationMessages, model, vsegptApiKey);
+          const { text: aiResponse, usage } = await getAIResponse(conversationMessages, model, vsegptApiKey);
           if (!aiResponse) continue;
+
+          // Log usage
+          await logUsage(supabase, {
+            store_id,
+            bot_id: bot.id,
+            chat_id: dbChat.id,
+            usage,
+            action_type: "chat",
+          });
 
           // Apply response delay
           if (bot.response_delay_seconds > 0) {

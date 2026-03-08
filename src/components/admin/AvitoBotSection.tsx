@@ -67,10 +67,29 @@ interface DashboardStats {
   bot_responses_total: number;
   leads_total: number;
   escalated_total: number;
+  total_prompt_tokens?: number;
+  total_completion_tokens?: number;
+  total_tokens?: number;
+  total_cost?: number;
+  total_requests?: number;
+  avg_cost_per_message?: number;
+}
+
+interface UsageLog {
+  id: string;
+  bot_id: string;
+  chat_id: string;
+  model: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  cost: number;
+  action_type: string;
+  created_at: string;
 }
 
 type TopLevel = "dashboard" | "bots" | "accounts" | "chats";
-type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug";
+type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug" | "usage_stats";
 
 const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "Основные", icon: Bot },
@@ -90,6 +109,7 @@ const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType 
   { id: "stop_command", label: "Стоп-команда", icon: Hand },
   { id: "notifications", label: "Уведомления", icon: Bell },
   { id: "telegram", label: "Telegram", icon: Bell },
+  { id: "usage_stats", label: "Статистика", icon: BarChart3 },
   { id: "debug", label: "Отладка", icon: PlayCircle },
 ];
 
@@ -486,6 +506,44 @@ function DashboardView({ stats, recentChats, loading, bots, accounts, onRefresh,
         <StatCard icon={MessageCircle} label="Чаты" value={stats?.chats_total ?? 0} sub={`${stats?.bot_responses_total ?? 0} ответов бота`} color="text-blue-600" />
         <StatCard icon={Users} label="Лиды" value={stats?.leads_total ?? 0} sub={`${stats?.escalated_total ?? 0} эскалировано`} color="text-green-600" />
       </div>
+
+      {/* Usage / Cost Stats */}
+      {(stats?.total_requests ?? 0) > 0 && (
+        <div>
+          <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" /> Статистика расхода ИИ
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Card>
+              <CardContent className="py-3 px-4">
+                <div className="text-xs text-muted-foreground mb-1">Запросов к ИИ</div>
+                <div className="text-2xl font-bold">{stats?.total_requests ?? 0}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="py-3 px-4">
+                <div className="text-xs text-muted-foreground mb-1">Общая стоимость</div>
+                <div className="text-2xl font-bold">{(stats?.total_cost ?? 0).toFixed(4)} ₽</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="py-3 px-4">
+                <div className="text-xs text-muted-foreground mb-1">Средняя цена / ответ</div>
+                <div className="text-2xl font-bold">{(stats?.avg_cost_per_message ?? 0).toFixed(4)} ₽</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="py-3 px-4">
+                <div className="text-xs text-muted-foreground mb-1">Всего токенов</div>
+                <div className="text-2xl font-bold">{((stats?.total_tokens ?? 0) / 1000).toFixed(1)}K</div>
+                <div className="text-xs text-muted-foreground">
+                  Вход: {((stats?.total_prompt_tokens ?? 0) / 1000).toFixed(1)}K · Выход: {((stats?.total_completion_tokens ?? 0) / 1000).toFixed(1)}K
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
 
       {/* Auto-processing status */}
       {bots.some(b => b.is_active) ? (
@@ -1137,6 +1195,8 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
   const [debugLoading, setDebugLoading] = useState(false);
   const [debugSessionId, setDebugSessionId] = useState<string | null>(null);
   const [debugSessions, setDebugSessions] = useState<{ id: string; created_at: string; avito_user_name: string | null }[]>([]);
+  const [usageLogs, setUsageLogs] = useState<UsageLog[]>([]);
+  const [usageLoading, setUsageLoading] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [avitoItems, setAvitoItems] = useState<AvitoItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
@@ -1252,6 +1312,14 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
 
   useEffect(() => { if (botSection === "debug") { loadDebugSessions(); loadAvitoItems(); } }, [botSection, loadDebugSessions, loadAvitoItems]);
   useEffect(() => { if (botSection === "model") { loadVsegptModels(); } }, [botSection, loadVsegptModels]);
+  useEffect(() => {
+    if (botSection === "usage_stats") {
+      setUsageLoading(true);
+      supabase.functions.invoke("avito-bot", { body: { action: "usage_stats", store_id: storeId || bot.store_id, bot_id: bot.id } })
+        .then(({ data }) => { if (data?.logs) setUsageLogs(data.logs); })
+        .finally(() => setUsageLoading(false));
+    }
+  }, [botSection]);
 
   const handleDebugSend = async () => {
     if (!debugInput.trim() || debugLoading) return;
@@ -1271,7 +1339,8 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
     try {
       const { data, error } = await supabase.functions.invoke("avito-bot", { body: { action: "debug_chat", bot_id: bot.id, message: userMsg, item_id: selectedItemId, debug_session_id: sessionId, store_id: storeId || bot.store_id } });
       if (error) throw error; if (data?.error) throw new Error(data.error);
-      setDebugMessages(prev => [...prev, { role: "assistant", content: data.response || "..." }]);
+      const usageInfo = data.usage ? `\n\n---\n💰 Токены: ${data.usage.prompt_tokens}→${data.usage.completion_tokens} (${data.usage.total_tokens}) · Стоимость: ${Number(data.usage.cost || 0).toFixed(6)} ₽ · Модель: ${data.usage.model || ""}` : "";
+      setDebugMessages(prev => [...prev, { role: "assistant", content: (data.response || "...") + usageInfo }]);
     } catch (err: any) {
       toast({ title: "Ошибка", description: err.message, variant: "destructive" });
       setDebugMessages(prev => [...prev, { role: "assistant", content: `Ошибка: ${err.message}` }]);
@@ -2151,6 +2220,48 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
             <Button variant="outline" onClick={() => updateForm({ handoff_rules: [...handoffRules, { target_bot_id: "", trigger_topics: [], description: "", return_back: true }] })} disabled={otherBots.length === 0}>
               <Plus className="h-4 w-4 mr-1" /> Добавить правило переключения
             </Button>
+          </div>
+        );
+      }
+
+      case "usage_stats": {
+        const totalCost = usageLogs.reduce((s, l) => s + Number(l.cost || 0), 0);
+        const totalTokens = usageLogs.reduce((s, l) => s + (l.total_tokens || 0), 0);
+        const avgCost = usageLogs.length > 0 ? totalCost / usageLogs.length : 0;
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" /><h2 className="text-lg font-semibold">Статистика расходов</h2></div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Card><CardContent className="py-3 px-4"><div className="text-xs text-muted-foreground">Запросов</div><div className="text-2xl font-bold">{usageLogs.length}</div></CardContent></Card>
+              <Card><CardContent className="py-3 px-4"><div className="text-xs text-muted-foreground">Общая стоимость</div><div className="text-2xl font-bold">{totalCost.toFixed(4)} ₽</div></CardContent></Card>
+              <Card><CardContent className="py-3 px-4"><div className="text-xs text-muted-foreground">Средняя цена/ответ</div><div className="text-2xl font-bold">{avgCost.toFixed(4)} ₽</div></CardContent></Card>
+              <Card><CardContent className="py-3 px-4"><div className="text-xs text-muted-foreground">Всего токенов</div><div className="text-2xl font-bold">{(totalTokens/1000).toFixed(1)}K</div></CardContent></Card>
+            </div>
+            {usageLoading ? <p className="text-sm text-muted-foreground">Загрузка...</p> : (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead><tr className="border-b bg-muted/50"><th className="p-2 text-left">Время</th><th className="p-2 text-left">Модель</th><th className="p-2 text-right">Вход</th><th className="p-2 text-right">Выход</th><th className="p-2 text-right">Всего</th><th className="p-2 text-right">Стоимость</th><th className="p-2 text-left">Тип</th></tr></thead>
+                      <tbody>
+                        {usageLogs.slice(0, 50).map(log => (
+                          <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30">
+                            <td className="p-2 text-xs text-muted-foreground whitespace-nowrap">{new Date(log.created_at).toLocaleString("ru-RU")}</td>
+                            <td className="p-2 text-xs font-mono">{log.model?.split("/").pop()}</td>
+                            <td className="p-2 text-right text-xs">{log.prompt_tokens.toLocaleString()}</td>
+                            <td className="p-2 text-right text-xs">{log.completion_tokens.toLocaleString()}</td>
+                            <td className="p-2 text-right text-xs font-medium">{log.total_tokens.toLocaleString()}</td>
+                            <td className="p-2 text-right text-xs font-medium">{Number(log.cost).toFixed(6)}</td>
+                            <td className="p-2"><Badge variant="outline" className="text-xs">{log.action_type === "debug" ? "Отладка" : "Чат"}</Badge></td>
+                          </tr>
+                        ))}
+                        {usageLogs.length === 0 && <tr><td colSpan={7} className="p-4 text-center text-muted-foreground">Нет данных. Статистика начнёт собираться с новых сообщений.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         );
       }
