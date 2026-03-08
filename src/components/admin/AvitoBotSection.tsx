@@ -2866,8 +2866,8 @@ function AISettingsPanel({ botForm, setBotForm, onSave, storeId }: {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {messages.map((msg, i) => (
-                      <div key={i}>
+                    {messages.map((msg, mi) => (
+                      <div key={mi}>
                         <div className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
                           <div className={cn(
                             "max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
