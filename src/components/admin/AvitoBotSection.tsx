@@ -1582,10 +1582,35 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
       case "limits":
         return (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold mb-1">Лимит ответов</h2>
-            <div className="flex items-center gap-3">
-              <Input type="number" value={botForm.max_responses || ""} onChange={e => updateForm({ max_responses: e.target.value ? parseInt(e.target.value) : null })} className="w-24" min={1} placeholder="∞" />
-              <span className="text-sm text-muted-foreground">ответов (пусто = без ограничений)</span>
+            <h2 className="text-lg font-semibold mb-1">Лимиты</h2>
+            
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Максимум ответов в чате</Label>
+              <div className="flex items-center gap-3">
+                <Input type="number" value={botForm.max_responses || ""} onChange={e => updateForm({ max_responses: e.target.value ? parseInt(e.target.value) : null })} className="w-24" min={1} placeholder="∞" />
+                <span className="text-sm text-muted-foreground">ответов (пусто = без ограничений)</span>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Максимум символов в ответе</Label>
+              <p className="text-xs text-muted-foreground">Ограничивает длину каждого сообщения робота. Помогает избежать слишком длинных ответов.</p>
+              <div className="flex items-center gap-3">
+                <Input type="number" value={(botForm as any).max_response_chars || ""} onChange={e => updateForm({ max_response_chars: e.target.value ? parseInt(e.target.value) : null })} className="w-28" min={50} step={50} placeholder="∞" />
+                <span className="text-sm text-muted-foreground">символов (пусто = без ограничений)</span>
+              </div>
+              <div className="flex gap-2 mt-1">
+                {[300, 500, 800, 1500].map(v => (
+                  <Button key={v} variant={(botForm as any).max_response_chars === v ? "default" : "outline"} size="sm" className="text-xs h-7 px-2" onClick={() => updateForm({ max_response_chars: v })}>
+                    {v}
+                  </Button>
+                ))}
+                <Button variant={(botForm as any).max_response_chars === null || !(botForm as any).max_response_chars ? "default" : "outline"} size="sm" className="text-xs h-7 px-2" onClick={() => updateForm({ max_response_chars: null })}>
+                  Без лимита
+                </Button>
+              </div>
             </div>
           </div>
         );
