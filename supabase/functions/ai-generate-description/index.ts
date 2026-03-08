@@ -52,10 +52,10 @@ serve(async (req) => {
         `${idx + 1}. ID: ${item.id} — "${item.name}"`
       ).join("\n");
 
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const response = await fetch("https://api.vsegpt.ru/v1/chat/completions", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          Authorization: `Bearer ${VSEGPT_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
