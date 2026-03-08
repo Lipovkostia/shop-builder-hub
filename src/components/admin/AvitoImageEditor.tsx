@@ -371,6 +371,8 @@ export function AvitoImageEditor({
     e.preventDefault();
     setIsDragOver(false);
   }, []);
+
+  const allImages = [...imageInfos, ...generatedImages];
   const is43 = (w: number, h: number) => w > 0 && h > 0 && Math.abs((w / h) - (4 / 3)) < 0.05;
 
   return (
