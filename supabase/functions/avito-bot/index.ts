@@ -1127,6 +1127,48 @@ Deno.serve(async (req) => {
           const { text: aiResponse, usage } = await getAIResponse(conversationMessages, model, vsegptApiKey);
           if (!aiResponse) continue;
 
+          // Parse CREATE_ORDER command from AI response
+          let cleanResponse = aiResponse;
+          const orderMatch = aiResponse.match(/\[CREATE_ORDER:(\{.*?\})\]/s);
+          if (orderMatch) {
+            try {
+              const orderData = JSON.parse(orderMatch[1]);
+              const orderNumber = `AV-${Date.now().toString(36).toUpperCase()}`;
+              const itemTitle = chat.context?.value?.title || "Товар с Авито";
+              
+              await supabase.from("orders").insert({
+                store_id,
+                order_number: orderNumber,
+                guest_name: orderData.name || "Клиент Авито",
+                guest_phone: orderData.phone || "",
+                is_guest_order: true,
+                status: "new",
+                subtotal: 0,
+                total: 0,
+                notes: `Заказ от Авито-бота.\nТовары: ${orderData.items || itemTitle}\nАдрес: ${orderData.address || "не указан"}\nЧат: ${chatId}`,
+                shipping_address: { address: orderData.address || "", city: "" },
+              });
+
+              console.log(`Order ${orderNumber} created from Avito chat ${chatId}`);
+              
+              // Notify via Telegram
+              if (bot.telegram_bot_token && bot.telegram_chat_id) {
+                await sendTelegramNotification(bot.telegram_bot_token, bot.telegram_chat_id,
+                  `🛒 <b>Новый заказ от Авито-бота!</b>\n\n` +
+                  `📋 Заказ: ${orderNumber}\n` +
+                  `👤 Клиент: ${orderData.name || "—"}\n` +
+                  `📱 Телефон: ${orderData.phone || "—"}\n` +
+                  `📍 Адрес: ${orderData.address || "—"}\n` +
+                  `📦 Товары: ${orderData.items || itemTitle}`
+                );
+              }
+            } catch (e) {
+              console.error("Failed to create order from AI response:", e);
+            }
+            // Remove the CREATE_ORDER tag from message sent to user
+            cleanResponse = aiResponse.replace(/\[CREATE_ORDER:\{.*?\}\]/s, "").trim();
+          }
+
           // Log usage
           await logUsage(supabase, {
             store_id,
@@ -1150,7 +1192,7 @@ Deno.serve(async (req) => {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                message: { text: aiResponse },
+                message: { text: cleanResponse },
                 type: "text",
               }),
             }
