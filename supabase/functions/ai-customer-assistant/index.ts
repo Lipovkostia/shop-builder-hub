@@ -404,14 +404,16 @@ ${orderItems.map((i: OrderItem) => `- ${i.product_name}: ${i.quantity} ед. п�
       };
     });
 
-    // Call Lovable AI
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    // Call vsegpt AI
+    const VSEGPT_API_KEY = Deno.env.get("VSEGPT_API_KEY");
+    if (!VSEGPT_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "Lovable AI API key not configured" }),
+        JSON.stringify({ error: "VSEGPT_API_KEY not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const aiModel = aiAccess?.ai_assistant_model || "openai/gpt-4.1-mini";
 
     const systemPrompt = `Ты AI-помощник покупателя B2B каталога. Помогаешь быстро сформировать заказ.
 
