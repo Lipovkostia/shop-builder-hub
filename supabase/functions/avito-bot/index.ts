@@ -427,6 +427,33 @@ function buildPersonalityPrompt(bot: any): string {
   return parts.join("");
 }
 
+function buildSalesStagesContext(stages: any[]): string {
+  if (!stages || stages.length === 0) return "";
+  
+  const stagesText = stages
+    .filter((s: any) => s.is_active)
+    .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+    .map((s: any, i: number) => {
+      let actionDesc = "";
+      if (s.action_type === "collect_contact") actionDesc = " [ДЕЙСТВИЕ: собери имя, номер телефона и адрес доставки]";
+      else if (s.action_type === "create_order") actionDesc = " [ДЕЙСТВИЕ: когда все данные собраны, ответь строкой [CREATE_ORDER:{\"name\":\"...\",\"phone\":\"...\",\"address\":\"...\",\"items\":\"описание товаров\"}] чтобы создать заказ]";
+      else if (s.action_type === "confirm_order") actionDesc = " [ДЕЙСТВИЕ: подтверди заказ клиенту, сообщи что заказ принят]";
+      return `Этап ${i + 1}: ${s.name}${actionDesc}\nИнструкции: ${s.instructions || "Следуй общим правилам"}`;
+    }).join("\n\n");
+  
+  return `\n\n--- АЛГОРИТМ ПРОДАЖИ ---
+Когда клиент хочет купить товар, следуй этим этапам последовательно:
+
+${stagesText}
+
+ВАЖНО О СОЗДАНИИ ЗАКАЗА:
+- Когда у тебя есть ВСЕ данные клиента (имя, телефон, адрес) и он подтвердил заказ, включи в свой ответ строку:
+  [CREATE_ORDER:{"name":"Имя клиента","phone":"+7...","address":"Адрес доставки","items":"Список товаров с ценами"}]
+- Эта строка будет обработана автоматически и заказ будет создан
+- После строки CREATE_ORDER продолжи общение с клиентом, подтвердив что заказ принят
+--- КОНЕЦ АЛГОРИТМА ПРОДАЖИ ---\n`;
+}
+
 function getEffectiveSystemPrompt(bot: any): string {
   let base = "";
   if (bot.mode === "smart" && bot.smart_setup_data) {
@@ -821,10 +848,17 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Load sales stages
+      let salesContext = "";
+      try {
+        const { data: stages } = await supabase.from("avito_bot_sales_stages").select("*").eq("bot_id", bot_id).eq("is_active", true).order("sort_order");
+        salesContext = buildSalesStagesContext(stages || []);
+      } catch (e) { console.error("Failed to load sales stages:", e); }
+
       const charLimitSuffix = bot.max_response_chars
         ? `\n\nВАЖНО: Ограничивай длину каждого ответа до ${bot.max_response_chars} символов. Будь лаконичным. Если информации много — выбери самое важное. Не перечисляй весь каталог, а предложи уточнить запрос.`
         : "";
-      const systemPrompt = getEffectiveSystemPrompt(bot) + catalogContext + listingContext + qaContext + charLimitSuffix;
+      const systemPrompt = getEffectiveSystemPrompt(bot) + catalogContext + listingContext + qaContext + salesContext + charLimitSuffix;
       const proSuffix = bot.pro_seller_mode
         ? "\n\nВеди себя как профессиональный продавец. Используй техники продаж."
         : "";
@@ -1054,6 +1088,13 @@ Deno.serve(async (req) => {
             }
           }
 
+          // Load sales stages
+          let salesContext = "";
+          try {
+            const { data: stages } = await supabase.from("avito_bot_sales_stages").select("*").eq("bot_id", bot.id).eq("is_active", true).order("sort_order");
+            salesContext = buildSalesStagesContext(stages || []);
+          } catch (e) { console.error("Failed to load sales stages:", e); }
+
           const basePrompt = getEffectiveSystemPrompt(bot);
           const charLimitSuffix = bot.max_response_chars
             ? `\n\nВАЖНО: Ограничивай длину ответа до ${bot.max_response_chars} символов.`
@@ -1062,7 +1103,7 @@ Deno.serve(async (req) => {
             ? "\n\nВеди себя как профессиональный продавец."
             : "";
 
-          const systemPrompt = basePrompt + catalogContext + listingContext + qaContext + charLimitSuffix + proSuffix;
+          const systemPrompt = basePrompt + catalogContext + listingContext + qaContext + salesContext + charLimitSuffix + proSuffix;
 
           const conversationMessages: { role: string; content: string }[] = [
             { role: "system", content: systemPrompt },
@@ -1085,6 +1126,48 @@ Deno.serve(async (req) => {
 
           const { text: aiResponse, usage } = await getAIResponse(conversationMessages, model, vsegptApiKey);
           if (!aiResponse) continue;
+
+          // Parse CREATE_ORDER command from AI response
+          let cleanResponse = aiResponse;
+          const orderMatch = aiResponse.match(/\[CREATE_ORDER:(\{.*?\})\]/s);
+          if (orderMatch) {
+            try {
+              const orderData = JSON.parse(orderMatch[1]);
+              const orderNumber = `AV-${Date.now().toString(36).toUpperCase()}`;
+              const itemTitle = chat.context?.value?.title || "Товар с Авито";
+              
+              await supabase.from("orders").insert({
+                store_id,
+                order_number: orderNumber,
+                guest_name: orderData.name || "Клиент Авито",
+                guest_phone: orderData.phone || "",
+                is_guest_order: true,
+                status: "new",
+                subtotal: 0,
+                total: 0,
+                notes: `Заказ от Авито-бота.\nТовары: ${orderData.items || itemTitle}\nАдрес: ${orderData.address || "не указан"}\nЧат: ${chatId}`,
+                shipping_address: { address: orderData.address || "", city: "" },
+              });
+
+              console.log(`Order ${orderNumber} created from Avito chat ${chatId}`);
+              
+              // Notify via Telegram
+              if (bot.telegram_bot_token && bot.telegram_chat_id) {
+                await sendTelegramNotification(bot.telegram_bot_token, bot.telegram_chat_id,
+                  `🛒 <b>Новый заказ от Авито-бота!</b>\n\n` +
+                  `📋 Заказ: ${orderNumber}\n` +
+                  `👤 Клиент: ${orderData.name || "—"}\n` +
+                  `📱 Телефон: ${orderData.phone || "—"}\n` +
+                  `📍 Адрес: ${orderData.address || "—"}\n` +
+                  `📦 Товары: ${orderData.items || itemTitle}`
+                );
+              }
+            } catch (e) {
+              console.error("Failed to create order from AI response:", e);
+            }
+            // Remove the CREATE_ORDER tag from message sent to user
+            cleanResponse = aiResponse.replace(/\[CREATE_ORDER:\{.*?\}\]/s, "").trim();
+          }
 
           // Log usage
           await logUsage(supabase, {
@@ -1109,7 +1192,7 @@ Deno.serve(async (req) => {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                message: { text: aiResponse },
+                message: { text: cleanResponse },
                 type: "text",
               }),
             }

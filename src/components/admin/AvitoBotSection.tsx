@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Bot, MessageCircle, Settings, Users, Sparkles, Power, Save, Plus, Trash2, Clock, Shield, Bell, Zap, ChevronRight, RefreshCw, KeyRound, ArrowLeft, Edit, HelpCircle, PlayCircle, Send, Loader2, Package, MessageSquarePlus, History, Activity, BarChart3, AlertTriangle, CheckCircle2, XCircle, Hand, User, FileText, ListChecks, Filter, Repeat } from "lucide-react";
+import { Bot, MessageCircle, Settings, Users, Sparkles, Power, Save, Plus, Trash2, Clock, Shield, Bell, Zap, ChevronRight, RefreshCw, KeyRound, ArrowLeft, Edit, HelpCircle, PlayCircle, Send, Loader2, Package, MessageSquarePlus, History, Activity, BarChart3, AlertTriangle, CheckCircle2, XCircle, Hand, User, FileText, ListChecks, Filter, Repeat, ShoppingCart, GripVertical, ArrowDown, ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -88,8 +88,18 @@ interface UsageLog {
   created_at: string;
 }
 
+interface SalesStage {
+  id: string;
+  bot_id: string;
+  name: string;
+  instructions: string;
+  action_type: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
 type TopLevel = "dashboard" | "bots" | "accounts" | "chats";
-type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug" | "usage_stats";
+type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug" | "usage_stats" | "sales";
 
 const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "Основные", icon: Bot },
@@ -97,6 +107,7 @@ const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType 
   { id: "qa", label: "Вопрос-ответ", icon: HelpCircle },
   { id: "ad_filter", label: "Объявления", icon: Filter },
   { id: "handoff", label: "Переключение", icon: Repeat },
+  { id: "sales", label: "Продажа", icon: ShoppingCart },
   { id: "leads", label: "Лиды", icon: Users },
   { id: "escalation", label: "Эскалация", icon: Shield },
   { id: "completion", label: "Завершение", icon: ChevronRight },
@@ -1203,6 +1214,78 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
   const [vsegptModels, setVsegptModels] = useState<VseGPTModel[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [aiFillingField, setAiFillingField] = useState<string | null>(null);
+
+  // Sales stages state
+  const [salesStages, setSalesStages] = useState<SalesStage[]>([]);
+  const [salesLoading, setSalesLoading] = useState(false);
+
+  const loadSalesStages = useCallback(async (botId: string) => {
+    setSalesLoading(true);
+    try {
+      const { data, error } = await (supabase as any).from("avito_bot_sales_stages").select("*").eq("bot_id", botId).order("sort_order", { ascending: true });
+      if (error) throw error;
+      setSalesStages((data || []) as SalesStage[]);
+    } catch (err: any) { console.error("Error loading sales stages:", err); } finally { setSalesLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (bot.id && botSection === "sales") {
+      loadSalesStages(bot.id);
+    }
+  }, [bot.id, botSection, loadSalesStages]);
+
+  const addSalesStage = async () => {
+    try {
+      const { data, error } = await (supabase as any).from("avito_bot_sales_stages").insert({
+        bot_id: bot.id,
+        name: `Этап ${salesStages.length + 1}`,
+        instructions: "",
+        action_type: "none",
+        sort_order: salesStages.length,
+      }).select().single();
+      if (error) throw error;
+      setSalesStages(prev => [...prev, data as SalesStage]);
+      toast({ title: "Этап добавлен" });
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const updateSalesStage = async (stageId: string, updates: Partial<SalesStage>) => {
+    try {
+      const { error } = await (supabase as any).from("avito_bot_sales_stages").update({ ...updates, updated_at: new Date().toISOString() }).eq("id", stageId);
+      if (error) throw error;
+      setSalesStages(prev => prev.map(s => s.id === stageId ? { ...s, ...updates } : s));
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const deleteSalesStage = async (stageId: string) => {
+    try {
+      const { error } = await (supabase as any).from("avito_bot_sales_stages").delete().eq("id", stageId);
+      if (error) throw error;
+      setSalesStages(prev => prev.filter(s => s.id !== stageId));
+      toast({ title: "Этап удалён" });
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const moveSalesStage = async (stageId: string, direction: "up" | "down") => {
+    const idx = salesStages.findIndex(s => s.id === stageId);
+    if (idx < 0) return;
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= salesStages.length) return;
+    const newStages = [...salesStages];
+    [newStages[idx], newStages[swapIdx]] = [newStages[swapIdx], newStages[idx]];
+    newStages.forEach((s, i) => s.sort_order = i);
+    setSalesStages(newStages);
+    await Promise.all([
+      (supabase as any).from("avito_bot_sales_stages").update({ sort_order: idx }).eq("id", newStages[idx].id),
+      (supabase as any).from("avito_bot_sales_stages").update({ sort_order: swapIdx }).eq("id", newStages[swapIdx].id),
+    ]);
+  };
 
   const debugEndRef = useRef<HTMLDivElement>(null);
 
@@ -2338,6 +2421,107 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
                 </ScrollArea>
               </div>
             </div>
+          </div>
+        );
+
+      case "sales":
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold flex items-center gap-2"><ShoppingCart className="h-5 w-5 text-primary" /> Этапы продажи</h2>
+                <p className="text-sm text-muted-foreground mt-1">Настройте алгоритм продажи. Робот будет следовать этим этапам при оформлении заказа.</p>
+              </div>
+              <Button onClick={addSalesStage} size="sm"><Plus className="h-4 w-4 mr-1" /> Добавить этап</Button>
+            </div>
+
+            {salesLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center"><Loader2 className="h-5 w-5 animate-spin" />Загрузка...</div>
+            ) : salesStages.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
+                  <p className="text-muted-foreground mb-2">Нет этапов продажи</p>
+                  <p className="text-sm text-muted-foreground mb-4">Создайте этапы, по которым робот будет вести клиента к покупке</p>
+                  <Button onClick={addSalesStage}><Plus className="h-4 w-4 mr-1" /> Создать первый этап</Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {salesStages.map((stage, idx) => (
+                  <Card key={stage.id} className={cn("transition-colors", stage.is_active ? "border-border" : "border-border opacity-60")}>
+                    <CardContent className="py-4 px-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs font-mono">{idx + 1}</Badge>
+                        <Input
+                          value={stage.name}
+                          onChange={e => updateSalesStage(stage.id, { name: e.target.value })}
+                          className="font-semibold h-8"
+                          placeholder="Название этапа"
+                        />
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveSalesStage(stage.id, "up")} disabled={idx === 0}>
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveSalesStage(stage.id, "down")} disabled={idx === salesStages.length - 1}>
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </Button>
+                          <Switch checked={stage.is_active} onCheckedChange={v => updateSalesStage(stage.id, { is_active: v })} />
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteSalesStage(stage.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">Инструкции для робота на этом этапе</Label>
+                        <Textarea
+                          value={stage.instructions}
+                          onChange={e => updateSalesStage(stage.id, { instructions: e.target.value })}
+                          placeholder="Опишите, что робот должен делать на этом этапе. Например: Уточни у клиента, какой товар его интересует. Предложи варианты из каталога."
+                          rows={3}
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">Действие</Label>
+                        <Select value={stage.action_type} onValueChange={v => updateSalesStage(stage.id, { action_type: v })}>
+                          <SelectTrigger className="h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Без действия (только диалог)</SelectItem>
+                            <SelectItem value="collect_contact">📋 Собрать контакты (имя, телефон, адрес)</SelectItem>
+                            <SelectItem value="create_order">🛒 Создать заказ в сервисе</SelectItem>
+                            <SelectItem value="confirm_order">✅ Подтвердить заказ</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {stage.action_type === "collect_contact" && (
+                          <p className="text-xs text-muted-foreground mt-1">Робот запросит имя, номер телефона и адрес доставки у клиента</p>
+                        )}
+                        {stage.action_type === "create_order" && (
+                          <p className="text-xs text-muted-foreground mt-1">Робот создаст заказ в вашем сервисе. Заказ появится во вкладке «Заказы». Вам придёт уведомление.</p>
+                        )}
+                        {stage.action_type === "confirm_order" && (
+                          <p className="text-xs text-muted-foreground mt-1">Робот подтвердит заказ и сообщит клиенту итоговую информацию</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground space-y-2">
+                  <p className="font-medium text-foreground">💡 Как это работает</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Когда клиент хочет купить товар, робот переходит к этапам продажи</li>
+                    <li>На каждом этапе робот следует вашим инструкциям</li>
+                    <li>Этап «Собрать контакты» — робот запросит имя, телефон и адрес</li>
+                    <li>Этап «Создать заказ» — заказ автоматически появится в вашей системе</li>
+                    <li>Вы получите уведомление о новом заказе</li>
+                  </ol>
+                </div>
+              </div>
+            )}
           </div>
         );
 
