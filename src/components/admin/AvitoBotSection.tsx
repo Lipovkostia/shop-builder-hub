@@ -444,8 +444,8 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
               </div>
             )}
             {topLevel === "chats" && (
-              <div className="max-w-3xl">
-                <ChatsView chats={chats} onRefresh={loadChats} />
+              <div className="max-w-none">
+                <ChatsView chats={chats} bots={bots} storeId={storeId} onRefresh={loadChats} />
               </div>
             )}
           </div>
