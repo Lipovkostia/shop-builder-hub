@@ -2756,7 +2756,7 @@ function AISettingsPanel({ botForm, setBotForm, onSave, storeId }: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ messages: apiMessages, bot_settings: getSettingsSnapshot() }),
+          body: JSON.stringify({ messages: apiMessages, bot_settings: getSettingsSnapshot(), agent_model: agentModel }),
         }
       );
       const data = await response.json();
