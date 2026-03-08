@@ -1128,10 +1128,135 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
             </div>
           );
         }
+        // Pro mode — structured prompt with personality, instructions, rules + raw prompt
+        const personality = (botForm as any).personality_config || {};
+        const instructions = (botForm as any).instructions_config || {};
+        const rulesList: string[] = (botForm as any).rules_list || [];
         return (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold mb-1">Что бот должен знать?</h2>
-            <Textarea value={botForm.system_prompt || ""} onChange={e => updateForm({ system_prompt: e.target.value })} placeholder="Ты — продавец на Авито..." className="min-h-[300px]" />
+          <div className="space-y-6">
+            {/* PERSONALITY */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2"><User className="h-4 w-4 text-primary" /> Личность робота</CardTitle>
+                <CardDescription className="text-xs">Определите характер и стиль общения робота</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label className="text-sm">Как зовут робота?</Label>
+                  <Input value={personality.bot_name || ""} onChange={e => updateForm({ personality_config: { ...personality, bot_name: e.target.value } })} placeholder="Например: Анна, Помощник Алексей" />
+                  <p className="text-xs text-muted-foreground mt-1">Имя, которым робот представляется клиентам</p>
+                </div>
+                <div>
+                  <Label className="text-sm">Черты характера</Label>
+                  <Textarea value={personality.character_traits || ""} onChange={e => updateForm({ personality_config: { ...personality, character_traits: e.target.value } })} placeholder="Дружелюбный, профессиональный, внимательный к деталям, терпеливый" className="min-h-[60px]" />
+                  <p className="text-xs text-muted-foreground mt-1">Какие качества проявляет робот в общении?</p>
+                </div>
+                <div>
+                  <Label className="text-sm">Стиль общения</Label>
+                  <Textarea value={personality.communication_style || ""} onChange={e => updateForm({ personality_config: { ...personality, communication_style: e.target.value } })} placeholder="Деловой но тёплый, без канцеляризмов, простыми словами" className="min-h-[60px]" />
+                  <p className="text-xs text-muted-foreground mt-1">Как робот формулирует мысли? Формально или дружески?</p>
+                </div>
+                <div>
+                  <Label className="text-sm">Тон и настроение</Label>
+                  <Input value={personality.tone || ""} onChange={e => updateForm({ personality_config: { ...personality, tone: e.target.value } })} placeholder="Позитивный, уверенный, готовый помочь" />
+                </div>
+                <div>
+                  <Label className="text-sm">Использование эмодзи</Label>
+                  <Select value={personality.emoji_usage || "moderate"} onValueChange={v => updateForm({ personality_config: { ...personality, emoji_usage: v } })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Не использовать</SelectItem>
+                      <SelectItem value="minimal">Минимально (1-2 в сообщении)</SelectItem>
+                      <SelectItem value="moderate">Умеренно</SelectItem>
+                      <SelectItem value="frequent">Часто</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm">Как робот приветствует клиента?</Label>
+                  <Textarea value={personality.greeting_style || ""} onChange={e => updateForm({ personality_config: { ...personality, greeting_style: e.target.value } })} placeholder="Здравствуйте! Меня зовут Анна, я помогу вам с выбором. Чем могу быть полезна?" className="min-h-[60px]" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* INSTRUCTIONS */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Должностные инструкции</CardTitle>
+                <CardDescription className="text-xs">Что робот должен делать и знать</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label className="text-sm">Главная цель робота</Label>
+                  <Textarea value={instructions.main_goal || ""} onChange={e => updateForm({ instructions_config: { ...instructions, main_goal: e.target.value } })} placeholder="Помочь клиенту выбрать товар, ответить на вопросы и довести до покупки" className="min-h-[60px]" />
+                  <p className="text-xs text-muted-foreground mt-1">Какой основной результат должен достигать робот?</p>
+                </div>
+                <div>
+                  <Label className="text-sm">Обязанности и зона ответственности</Label>
+                  <Textarea value={instructions.responsibilities || ""} onChange={e => updateForm({ instructions_config: { ...instructions, responsibilities: e.target.value } })} placeholder="Отвечать на вопросы о товарах, ценах, доставке. Предлагать аналоги если нужного нет в наличии." className="min-h-[80px]" />
+                  <p className="text-xs text-muted-foreground mt-1">Перечислите конкретные задачи робота</p>
+                </div>
+                <div>
+                  <Label className="text-sm">Что робот НЕ должен делать</Label>
+                  <Textarea value={instructions.forbidden_actions || ""} onChange={e => updateForm({ instructions_config: { ...instructions, forbidden_actions: e.target.value } })} placeholder="Не давать скидки без согласования, не обсуждать конкурентов, не давать личные контакты" className="min-h-[60px]" />
+                </div>
+                <div>
+                  <Label className="text-sm">Формат ответов</Label>
+                  <Textarea value={instructions.response_format || ""} onChange={e => updateForm({ instructions_config: { ...instructions, response_format: e.target.value } })} placeholder="Короткие ответы до 3 предложений. Всегда задавать уточняющий вопрос." className="min-h-[60px]" />
+                  <p className="text-xs text-muted-foreground mt-1">Длина ответов, структура, стиль</p>
+                </div>
+                <div>
+                  <Label className="text-sm">Границы знаний</Label>
+                  <Textarea value={instructions.knowledge_boundaries || ""} onChange={e => updateForm({ instructions_config: { ...instructions, knowledge_boundaries: e.target.value } })} placeholder="Если не знает ответ — предложить связаться с менеджером. Не выдумывать характеристики товара." className="min-h-[60px]" />
+                  <p className="text-xs text-muted-foreground mt-1">Что делать, если робот не знает ответа?</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* RULES */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2"><ListChecks className="h-4 w-4 text-primary" /> Правила работы</CardTitle>
+                <CardDescription className="text-xs">Список конкретных правил, которым робот должен следовать</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {rulesList.map((rule: string, i: number) => (
+                  <div key={i} className="flex gap-2 items-start">
+                    <span className="text-xs text-muted-foreground mt-2.5 w-6 flex-shrink-0">{i + 1}.</span>
+                    <Input value={rule} onChange={e => {
+                      const newRules = [...rulesList];
+                      newRules[i] = e.target.value;
+                      updateForm({ rules_list: newRules });
+                    }} placeholder="Правило..." className="flex-1" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => updateForm({ rules_list: rulesList.filter((_: any, idx: number) => idx !== i) })}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button variant="outline" size="sm" onClick={() => updateForm({ rules_list: [...rulesList, ""] })}>
+                  <Plus className="h-4 w-4 mr-1" /> Добавить правило
+                </Button>
+                {rulesList.length === 0 && (
+                  <div className="text-xs text-muted-foreground space-y-1 mt-2 p-3 rounded-lg bg-muted/50">
+                    <p className="font-medium">Примеры правил:</p>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      <li>Всегда называть цену из объявления</li>
+                      <li>При вопросе о скидке предложить оптовую покупку</li>
+                      <li>Не отвечать на политические вопросы</li>
+                      <li>Всегда благодарить за обращение</li>
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Separator />
+
+            <div>
+              <h2 className="text-lg font-semibold mb-1">Произвольный промпт (дополнительно)</h2>
+              <p className="text-sm text-muted-foreground mb-2">Все блоки выше автоматически формируют промпт. Здесь можете дополнить его вручную.</p>
+              <Textarea value={botForm.system_prompt || ""} onChange={e => updateForm({ system_prompt: e.target.value })} placeholder="Дополнительные инструкции..." className="min-h-[200px]" />
+            </div>
           </div>
         );
 
