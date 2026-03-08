@@ -1328,7 +1328,8 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
     try {
       const { data, error } = await supabase.functions.invoke("avito-bot", { body: { action: "debug_chat", bot_id: bot.id, message: userMsg, item_id: selectedItemId, debug_session_id: sessionId, store_id: storeId || bot.store_id } });
       if (error) throw error; if (data?.error) throw new Error(data.error);
-      setDebugMessages(prev => [...prev, { role: "assistant", content: data.response || "..." }]);
+      const usageInfo = data.usage ? `\n\n---\n💰 Токены: ${data.usage.prompt_tokens}→${data.usage.completion_tokens} (${data.usage.total_tokens}) · Стоимость: ${Number(data.usage.cost || 0).toFixed(6)} ₽ · Модель: ${data.usage.model || ""}` : "";
+      setDebugMessages(prev => [...prev, { role: "assistant", content: (data.response || "...") + usageInfo }]);
     } catch (err: any) {
       toast({ title: "Ошибка", description: err.message, variant: "destructive" });
       setDebugMessages(prev => [...prev, { role: "assistant", content: `Ошибка: ${err.message}` }]);
