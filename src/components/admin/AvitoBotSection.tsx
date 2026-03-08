@@ -1312,6 +1312,14 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
 
   useEffect(() => { if (botSection === "debug") { loadDebugSessions(); loadAvitoItems(); } }, [botSection, loadDebugSessions, loadAvitoItems]);
   useEffect(() => { if (botSection === "model") { loadVsegptModels(); } }, [botSection, loadVsegptModels]);
+  useEffect(() => {
+    if (botSection === "usage_stats") {
+      setUsageLoading(true);
+      supabase.functions.invoke("avito-bot", { body: { action: "usage_stats", store_id: storeId || bot.store_id, bot_id: bot.id } })
+        .then(({ data }) => { if (data?.logs) setUsageLogs(data.logs); })
+        .finally(() => setUsageLoading(false));
+    }
+  }, [botSection]);
 
   const handleDebugSend = async () => {
     if (!debugInput.trim() || debugLoading) return;
