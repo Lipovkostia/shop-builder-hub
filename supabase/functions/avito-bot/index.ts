@@ -921,7 +921,7 @@ Deno.serve(async (req) => {
       // Load all products once — we'll filter per-chat for relevant ones
       let allProducts: any[] = [];
       try {
-        allProducts = await fetchAllProducts(supabase, store_id, "name, price, buy_price, unit, sku");
+        allProducts = await fetchAllProducts(supabase, store_id, "name, price, buy_price, markup_type, markup_value, is_fixed_price, unit, sku");
       } catch (e) {
         console.error("Failed to fetch product catalog:", e);
       }
