@@ -294,11 +294,30 @@ function buildPersonalityPrompt(bot: any): string {
 }
 
 function getEffectiveSystemPrompt(bot: any): string {
+  let base = "";
   if (bot.mode === "smart" && bot.smart_setup_data) {
     const smartPrompt = buildSmartSetupPrompt(bot.smart_setup_data);
-    if (smartPrompt) return smartPrompt;
+    if (smartPrompt) base = smartPrompt;
   }
-  return bot.system_prompt || "Ты — помощник продавца на Авито. Отвечай вежливо и помогай с вопросами о товарах.";
+  if (!base) {
+    base = bot.system_prompt || "Ты — помощник продавца на Авито. Отвечай вежливо и помогай с вопросами о товарах.";
+  }
+  // Append personality, instructions, rules from structured config
+  base += buildPersonalityPrompt(bot);
+
+  // Append handoff instructions if handoff_rules exist
+  const handoffRules = bot.handoff_rules;
+  if (Array.isArray(handoffRules) && handoffRules.length > 0) {
+    const handoffText = handoffRules
+      .filter((r: any) => r.target_bot_id && r.trigger_topics?.length > 0)
+      .map((r: any, i: number) => `${i + 1}. Темы: ${r.trigger_topics.join(", ")} → ${r.description || "переключить на специалиста"}`)
+      .join("\n");
+    if (handoffText) {
+      base += `\n\n--- ПЕРЕКЛЮЧЕНИЕ НА ДРУГОГО СПЕЦИАЛИСТА ---\nЕсли клиент задаёт вопрос на одну из этих тем, ответь: "[HANDOFF:номер_правила]" в начале ответа, а затем вежливо сообщи что передаёшь клиента специалисту.\n${handoffText}\n--- КОНЕЦ ПРАВИЛ ПЕРЕКЛЮЧЕНИЯ ---`;
+    }
+  }
+
+  return base;
 }
 
 // Check if bot should work right now based on schedule
