@@ -263,7 +263,7 @@ export function StorefrontChatWidget({ storeId, channel, onProductClick, onAddTo
   );
 }
 
-function ProductCard({
+function ProductCardRow({
   product,
   onProductClick,
   onAddToCart,
@@ -277,41 +277,38 @@ function ProductCard({
 
   return (
     <div
-      className="flex-shrink-0 w-[140px] rounded-xl border bg-card overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+      className="flex items-center gap-2.5 rounded-xl border bg-card p-2 cursor-pointer hover:shadow-md transition-shadow"
       onClick={() => onProductClick?.(product.id)}
     >
-      {/* Image */}
-      <div className="w-full h-[100px] bg-muted flex items-center justify-center overflow-hidden">
+      <div className="w-14 h-14 flex-shrink-0 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
         {imgSrc ? (
           <img src={imgSrc} alt={product.name} className="w-full h-full object-cover" />
         ) : (
-          <Package className="h-8 w-8 text-muted-foreground/40" />
+          <Package className="h-5 w-5 text-muted-foreground/40" />
         )}
       </div>
-      {/* Info */}
-      <div className="p-2">
+      <div className="flex-1 min-w-0">
         <p className="text-xs font-medium line-clamp-2 leading-tight text-foreground">{product.name}</p>
-        <div className="flex items-center justify-between mt-1.5 gap-1">
+        <div className="flex items-center gap-1.5 mt-1">
           <span className="text-sm font-bold text-foreground">
             {product.price > 0 ? `${product.price}₽` : "—"}
           </span>
           <span className="text-[10px] text-muted-foreground">/{product.unit}</span>
+          {!hasStock && <span className="text-[10px] text-destructive">· нет в наличии</span>}
         </div>
-        {!hasStock && <p className="text-[10px] text-destructive mt-0.5">Нет в наличии</p>}
-        {onAddToCart && hasStock && product.price > 0 && (
-          <Button
-            size="sm"
-            className="w-full h-7 text-xs mt-1.5 rounded-lg"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddToCart(product);
-            }}
-          >
-            <ShoppingCart className="h-3 w-3 mr-1" />
-            В корзину
-          </Button>
-        )}
       </div>
+      {onAddToCart && hasStock && product.price > 0 && (
+        <Button
+          size="icon"
+          className="h-8 w-8 rounded-lg flex-shrink-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddToCart(product);
+          }}
+        >
+          <ShoppingCart className="h-3.5 w-3.5" />
+        </Button>
+      )}
     </div>
   );
 }
