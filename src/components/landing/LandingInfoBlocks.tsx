@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Rocket, Store, Zap, Shield, BarChart3, Globe } from "lucide-react";
 
 interface InfoBlock {
