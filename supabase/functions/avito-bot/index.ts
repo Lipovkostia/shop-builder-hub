@@ -758,7 +758,16 @@ Deno.serve(async (req) => {
       conversationMessages.push({ role: "user", content: message });
 
       const model = bot.ai_model || "openai/gpt-4.1-mini";
-      const aiResponse = await getAIResponse(conversationMessages, model, vsegptApiKey);
+      const { text: aiResponse, usage } = await getAIResponse(conversationMessages, model, vsegptApiKey);
+
+      // Log usage
+      await logUsage(supabase, {
+        store_id: store_id || bot.store_id,
+        bot_id: bot.id,
+        chat_id: debug_session_id || undefined,
+        usage,
+        action_type: "debug",
+      });
 
       if (debug_session_id) {
         await supabase.from("avito_bot_messages").insert([
@@ -768,7 +777,7 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ success: true, response: aiResponse }),
+        JSON.stringify({ success: true, response: aiResponse, usage }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
