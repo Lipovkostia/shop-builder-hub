@@ -2589,6 +2589,16 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
           </div>
         );
 
+      case "ai_settings":
+        return (
+          <AISettingsPanel
+            botForm={botForm}
+            setBotForm={setBotForm}
+            onSave={onSave}
+            storeId={storeId}
+          />
+        );
+
       default:
         return null;
     }
