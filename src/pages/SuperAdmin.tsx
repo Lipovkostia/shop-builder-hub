@@ -572,6 +572,10 @@ export default function SuperAdmin() {
               <Bot className="h-4 w-4" />
               <span className="hidden sm:inline">Telegram</span>
             </TabsTrigger>
+            <TabsTrigger value="ai" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline">ИИ</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
