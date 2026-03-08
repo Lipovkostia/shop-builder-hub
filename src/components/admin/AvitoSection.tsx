@@ -232,7 +232,7 @@ function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
 function AvitoFeedTable({
   feedProducts, storeProducts, storeCategories, selectedFeedProducts, setSelectedFeedProducts,
   aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
-  feedSearchQuery, feedPriceFilter, storeId,
+  feedSearchQuery, feedPriceFilter, storeId, onUpdateProductParams,
 }: {
   feedProducts: AvitoFeedProduct[];
   storeProducts: Product[];
@@ -249,6 +249,7 @@ function AvitoFeedTable({
   feedSearchQuery: string;
   feedPriceFilter: string;
   storeId: string;
+  onUpdateProductParams: (productId: string, params: any) => Promise<void>;
 }) {
   const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
 
@@ -697,8 +698,14 @@ function AvitoFeedTable({
             const params = fp?.avito_params || {};
             return params.avitoImages || undefined;
           })()}
-          onSave={(selectedImages) => {
-            handleInlineParamUpdate(editingImageProduct.id, "avitoImages", JSON.stringify(selectedImages));
+          onSave={async (selectedImages) => {
+            const fp = feedProducts.find(f => f.product_id === editingImageProduct.id);
+            const currentParams = fp?.avito_params || {};
+            const newParams = { ...currentParams, avitoImages: selectedImages };
+            // Use handleInlineParamUpdate indirectly - we need to set the full params
+            // Since handleInlineParamUpdate merges single keys, we store as JSON string
+            // But we actually need to call updateProductParams directly, so pass it as prop
+            onUpdateProductParams(editingImageProduct.id, newParams);
             setEditingImageProduct(null);
           }}
         />
@@ -1907,6 +1914,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     feedSearchQuery={feedSearchQuery}
                     feedPriceFilter={feedPriceFilter}
                     storeId={storeId || ""}
+                    onUpdateProductParams={avitoFeed.updateProductParams}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full">
