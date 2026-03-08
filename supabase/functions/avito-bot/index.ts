@@ -712,6 +712,28 @@ Deno.serve(async (req) => {
 
       const qaContext = buildQAContext(qaItems || []);
 
+      // Load full product catalog for context
+      let catalogContext = "";
+      try {
+        const { data: allProducts } = await supabase
+          .from("products")
+          .select("name, description, price, buy_price, unit, sku")
+          .eq("store_id", store_id)
+          .eq("is_active", true)
+          .is("deleted_at", null)
+          .limit(200);
+
+        if (allProducts && allProducts.length > 0) {
+          const productLines = allProducts.map((p: any, i: number) => {
+            const price = p.price || p.buy_price || 0;
+            return `${i + 1}. ${p.name} — ${price} ₽${p.unit ? ` (${p.unit})` : ""}${p.sku ? ` [${p.sku}]` : ""}${p.description ? ` | ${p.description.substring(0, 100)}` : ""}`;
+          }).join("\n");
+          catalogContext = `\n\n--- КАТАЛОГ ТОВАРОВ (${allProducts.length} шт.) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\nТы знаешь ВСЕ товары магазина. Называй точные цены из каталога.\n`;
+        }
+      } catch (e) {
+        console.error("Failed to fetch product catalog:", e);
+      }
+
       const chatsRes = await fetch(
         `${AVITO_API_BASE}/messenger/v2/accounts/${userId}/chats?unread_only=true`,
         { headers: { Authorization: `Bearer ${token}` } }
