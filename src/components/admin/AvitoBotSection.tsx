@@ -143,6 +143,7 @@ const botSidebarGroups: { label: string; items: { id: BotSection; label: string;
     label: "🔧 Продвинутое",
     items: [
       { id: "pro", label: "Про-режим", icon: Sparkles },
+      { id: "ai_settings", label: "AI корректировка", icon: Sparkles },
       { id: "usage_stats", label: "Статистика", icon: BarChart3 },
       { id: "debug", label: "Отладка", icon: PlayCircle },
     ],
