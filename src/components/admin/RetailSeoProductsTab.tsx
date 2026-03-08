@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Search, Sparkles, Loader2, ChevronRight, ImageOff, ExternalLink, Filter, CheckSquare, Square, Bot } from "lucide-react";
+import { Search, Sparkles, Loader2, ChevronRight, ImageOff, ExternalLink, Filter, Bot, StopCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,8 @@ import { useProductSeo } from "@/hooks/useProductSeo";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useStoreAiAccess, AI_MODELS } from "@/hooks/useStoreAiAccess";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+
+type SeoFilter = "all" | "with_seo" | "without_seo";
 
 interface RetailSeoProductsTabProps {
   storeId: string | null;
@@ -25,7 +26,7 @@ interface RetailSeoProductsTabProps {
 
 export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCatalogId }: RetailSeoProductsTabProps) {
   const { products, loading, refetch } = useStoreProducts(storeId);
-  const { generating, progress, generateBulkSeo } = useProductSeo(storeId, storeName, "retail");
+  const { generating, progress, generateBulkSeo, stopGeneration } = useProductSeo(storeId, storeName, "retail");
   const { access, updateModel, getModel } = useStoreAiAccess(storeId);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -33,10 +34,10 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
   const [retailProductIds, setRetailProductIds] = useState<Set<string> | null>(null);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [seoFilter, setSeoFilter] = useState<SeoFilter>("all");
 
   const currentModel = getModel("seo");
 
-  // Load retail catalog product IDs
   useEffect(() => {
     if (!retailCatalogId || !onlyRetailCatalog) {
       setRetailProductIds(null);
@@ -48,7 +49,6 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
         .from("catalog_product_settings")
         .select("product_id")
         .eq("catalog_id", retailCatalogId);
-      
       if (cps && cps.length > 0) {
         setRetailProductIds(new Set(cps.map(r => r.product_id)));
       } else {
@@ -69,30 +69,38 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
   }, [products, onlyRetailCatalog, retailProductIds]);
 
   const filteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) return retailProducts;
-    const q = searchQuery.toLowerCase();
-    return retailProducts.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      (p.sku && p.sku.toLowerCase().includes(q))
-    );
-  }, [retailProducts, searchQuery]);
+    let list = retailProducts;
+
+    // SEO filter
+    if (seoFilter === "with_seo") {
+      list = list.filter(p => !!(p as any).seo_title);
+    } else if (seoFilter === "without_seo") {
+      list = list.filter(p => !(p as any).seo_title);
+    }
+
+    // Search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        (p.sku && p.sku.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [retailProducts, searchQuery, seoFilter]);
 
   const selectedProduct = useMemo(() => {
     if (!selectedProductId) return null;
     return products.find(p => p.id === selectedProductId) || null;
   }, [products, selectedProductId]);
 
-  // Bulk for checked or all filtered
   const handleBulkGenerate = async () => {
     const ids = checkedIds.size > 0
       ? filteredProducts.filter(p => checkedIds.has(p.id)).map(p => p.id)
       : filteredProducts.map(p => p.id);
     if (ids.length === 0) return;
-    
     const label = checkedIds.size > 0 ? `выбранных ${ids.length}` : `всех ${ids.length}`;
-    const confirmed = window.confirm(`Сгенерировать SEO для ${label} товаров?`);
-    if (!confirmed) return;
-    
+    if (!window.confirm(`Сгенерировать SEO для ${label} товаров?`)) return;
     await generateBulkSeo(ids);
     setCheckedIds(new Set());
     refetch();
@@ -115,11 +123,11 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
   };
 
   const productsWithSeo = retailProducts.filter(p => (p as any).seo_title).length;
+  const productsWithoutSeo = retailProducts.length - productsWithSeo;
   const allChecked = filteredProducts.length > 0 && checkedIds.size === filteredProducts.length;
 
   return (
     <div className="flex gap-0 h-[calc(100vh-280px)] min-h-[500px]">
-      {/* Product list */}
       <div className={cn(
         "flex flex-col border border-border rounded-lg overflow-hidden bg-card",
         selectedProduct ? "w-1/2" : "w-full"
@@ -130,51 +138,76 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
             <div>
               <h3 className="font-semibold text-foreground">SEO товаров</h3>
               <p className="text-xs text-muted-foreground">
-                {productsWithSeo} из {retailProducts.length} товаров с SEO
+                {productsWithSeo} из {retailProducts.length} с SEO
                 {onlyRetailCatalog && retailCatalogId && (
-                  <span className="ml-1 text-primary">(только розница)</span>
+                  <span className="ml-1 text-primary">(розница)</span>
                 )}
               </p>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleBulkGenerate}
-              disabled={generating || filteredProducts.length === 0}
-            >
-              {generating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                  {progress ? `${progress.current}/${progress.total}` : "..."}
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-1" />
-                  {checkedIds.size > 0 ? `SEO для ${checkedIds.size} выбр.` : "SEO для всех"}
-                </>
+            <div className="flex items-center gap-2">
+              {generating && (
+                <Button size="sm" variant="destructive" onClick={stopGeneration}>
+                  <StopCircle className="h-4 w-4 mr-1" />
+                  Стоп
+                </Button>
               )}
-            </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleBulkGenerate}
+                disabled={generating || filteredProducts.length === 0}
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    {progress ? `${progress.current}/${progress.total}` : "..."}
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-1" />
+                    {checkedIds.size > 0 ? `SEO для ${checkedIds.size}` : "SEO для всех"}
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
 
           {/* Model selector */}
           <div className="flex items-center gap-2 bg-muted/50 rounded-md px-3 py-2">
             <Bot className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
             <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Модель:</span>
-            <Select
-              value={currentModel}
-              onValueChange={(val) => updateModel("seo_model", val)}
-            >
+            <Select value={currentModel} onValueChange={(val) => updateModel("seo_model", val)}>
               <SelectTrigger className="h-7 text-xs border-0 bg-transparent shadow-none px-1 min-w-[160px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {AI_MODELS.map(m => (
-                  <SelectItem key={m.value} value={m.value} className="text-xs">
-                    {m.label}
-                  </SelectItem>
+                  <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* SEO status filter */}
+          <div className="flex items-center gap-1.5">
+            {([
+              { value: "all" as SeoFilter, label: `Все (${retailProducts.length})` },
+              { value: "with_seo" as SeoFilter, label: `С SEO (${productsWithSeo})` },
+              { value: "without_seo" as SeoFilter, label: `Без SEO (${productsWithoutSeo})` },
+            ]).map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setSeoFilter(opt.value)}
+                className={cn(
+                  "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                  seoFilter === opt.value
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
 
           {retailCatalogId && (
@@ -205,19 +238,12 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
         {/* Select all bar */}
         {filteredProducts.length > 0 && (
           <div className="px-4 py-2 border-b border-border flex items-center gap-2 bg-muted/30">
-            <Checkbox
-              checked={allChecked}
-              onCheckedChange={toggleAll}
-              className="h-4 w-4"
-            />
+            <Checkbox checked={allChecked} onCheckedChange={toggleAll} className="h-4 w-4" />
             <span className="text-xs text-muted-foreground">
               {checkedIds.size > 0 ? `Выбрано: ${checkedIds.size}` : "Выбрать все"}
             </span>
             {checkedIds.size > 0 && (
-              <button
-                onClick={() => setCheckedIds(new Set())}
-                className="text-xs text-primary ml-auto hover:underline"
-              >
+              <button onClick={() => setCheckedIds(new Set())} className="text-xs text-primary ml-auto hover:underline">
                 Сбросить
               </button>
             )}
@@ -232,7 +258,7 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground text-sm">
-              Товары не найдены
+              {seoFilter === "without_seo" ? "Все товары уже с SEO 🎉" : "Товары не найдены"}
             </div>
           ) : (
             <div className="divide-y divide-border">
@@ -251,11 +277,7 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
                     )}
                   >
                     <div className="pl-3 flex items-center" onClick={e => e.stopPropagation()}>
-                      <Checkbox
-                        checked={isChecked}
-                        onCheckedChange={() => toggleCheck(product.id)}
-                        className="h-4 w-4"
-                      />
+                      <Checkbox checked={isChecked} onCheckedChange={() => toggleCheck(product.id)} className="h-4 w-4" />
                     </div>
                     <button
                       onClick={() => setSelectedProductId(isSelected ? null : product.id)}
@@ -273,9 +295,7 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{product.name}</p>
                         <div className="flex items-center gap-2 mt-0.5">
-                          {product.sku && (
-                            <span className="text-xs text-muted-foreground">{product.sku}</span>
-                          )}
+                          {product.sku && <span className="text-xs text-muted-foreground">{product.sku}</span>}
                           {hasSeo ? (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-emerald-50 text-emerald-600 border-emerald-200">
                               SEO ✓
@@ -304,11 +324,7 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
             <div className="p-4 border-b border-border flex items-center justify-between">
               <h3 className="font-semibold text-sm truncate">{selectedProduct.name}</h3>
               {subdomain && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => window.open(`/retail/${subdomain}/p/${selectedProduct.slug}`, "_blank")}
-                >
+                <Button variant="ghost" size="sm" onClick={() => window.open(`/retail/${subdomain}/p/${selectedProduct.slug}`, "_blank")}>
                   <ExternalLink className="h-3 w-3 mr-1" />
                   Открыть
                 </Button>
