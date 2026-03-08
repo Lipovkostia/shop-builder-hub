@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Bot, MessageCircle, Settings, Users, Sparkles, Power, Save, Plus, Trash2, Clock, Shield, Bell, Zap, ChevronRight, RefreshCw, KeyRound, ArrowLeft, Edit, HelpCircle, PlayCircle, Send, Loader2, Package, MessageSquarePlus, History, Activity, BarChart3, AlertTriangle, CheckCircle2, XCircle, Hand, User, FileText, ListChecks, Filter, Repeat } from "lucide-react";
+import { Bot, MessageCircle, Settings, Users, Sparkles, Power, Save, Plus, Trash2, Clock, Shield, Bell, Zap, ChevronRight, RefreshCw, KeyRound, ArrowLeft, Edit, HelpCircle, PlayCircle, Send, Loader2, Package, MessageSquarePlus, History, Activity, BarChart3, AlertTriangle, CheckCircle2, XCircle, Hand, User, FileText, ListChecks, Filter, Repeat, ShoppingCart, GripVertical, ArrowDown, ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
