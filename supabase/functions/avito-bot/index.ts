@@ -131,6 +131,16 @@ function buildSmartSetupPrompt(data: any): string {
     parts.push(`\n\n--- ВЗАИМОДЕЙСТВИЕ С КЛИЕНТОМ ---\n${data.customer_interaction}`);
   }
   
+  // Include custom knowledge blocks
+  if (Array.isArray(data.custom_blocks)) {
+    for (const block of data.custom_blocks) {
+      if (block?.content?.trim()) {
+        const title = block.title?.trim() || "ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ";
+        parts.push(`\n\n--- ${title.toUpperCase()} ---\n${block.content}`);
+      }
+    }
+  }
+  
   parts.push("\n\nВАЖНО: Всегда будь вежливым и профессиональным. Отвечай по существу.");
   return parts.join("");
 }

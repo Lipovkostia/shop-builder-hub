@@ -191,6 +191,7 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
           pricing_info: smartData.pricing_info || "",
           delivery_info: smartData.delivery_info || "",
           customer_interaction: smartData.customer_interaction || "",
+          custom_blocks: smartData.custom_blocks || [],
         },
       } as any);
       loadQAItems(editingBot.id);
@@ -949,6 +950,7 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
             pricing_info: "",
             delivery_info: "",
             customer_interaction: "",
+            custom_blocks: [],
           };
           return (
             <div className="space-y-4">

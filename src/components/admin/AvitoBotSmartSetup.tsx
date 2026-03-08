@@ -1,12 +1,19 @@
 import React, { useState } from "react";
-import { ShoppingBag, User, Monitor, Sparkles, Mic, Undo2, Redo2, Loader2 } from "lucide-react";
+import { ShoppingBag, User, Monitor, Sparkles, Mic, Undo2, Redo2, Loader2, Plus, Trash2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+export interface CustomBlock {
+  id: string;
+  title: string;
+  content: string;
+}
 
 export interface SmartSetupData {
   category: "products" | "services" | "online" | "other";
@@ -14,6 +21,7 @@ export interface SmartSetupData {
   pricing_info: string;
   delivery_info: string;
   customer_interaction: string;
+  custom_blocks?: CustomBlock[];
 }
 
 interface SmartSetupProps {
@@ -24,10 +32,10 @@ interface SmartSetupProps {
 }
 
 const CATEGORIES = [
-  { id: "products" as const, label: "Товары", emoji: "🛍️", icon: ShoppingBag },
-  { id: "services" as const, label: "Услуги", emoji: "👩‍💼", icon: User },
-  { id: "online" as const, label: "Онлайн-сервис", emoji: "📱", icon: Monitor },
-  { id: "other" as const, label: "Другое", emoji: "✨", icon: Sparkles },
+  { id: "products" as const, label: "Товары", emoji: "🛍️" },
+  { id: "services" as const, label: "Услуги", emoji: "👩‍💼" },
+  { id: "online" as const, label: "Онлайн-сервис", emoji: "📱" },
+  { id: "other" as const, label: "Другое", emoji: "✨" },
 ];
 
 interface QuestionBlockProps {
@@ -41,8 +49,8 @@ interface QuestionBlockProps {
 }
 
 function QuestionBlock({ question, value, onChange, instruction, example, onImprove, improving }: QuestionBlockProps) {
-  const [historyIndex, setHistoryIndex] = useState(-1);
   const [history, setHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
 
   const handleChange = (newValue: string) => {
     if (value && value !== newValue) {
@@ -70,71 +78,32 @@ function QuestionBlock({ question, value, onChange, instruction, example, onImpr
     <Card className="p-6 space-y-4">
       <div className="flex items-start justify-between gap-4">
         <h3 className="text-base font-semibold leading-tight">{question}</h3>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="flex-shrink-0 gap-1.5 text-primary border-primary/30 hover:bg-primary/5"
-          onClick={onImprove}
-          disabled={improving || !value.trim()}
-        >
-          {improving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Sparkles className="h-4 w-4" />
-          )}
-          Открыть в компоновщике
-        </Button>
       </div>
 
       <div className="flex gap-4">
         <div className="flex-1">
-          <Textarea 
+          <Textarea
             value={value}
             onChange={(e) => handleChange(e.target.value)}
             placeholder="Введите информацию..."
             className="min-h-[180px] resize-none"
           />
           <div className="flex items-center gap-1 mt-2">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8" 
-              onClick={handleUndo}
-              disabled={historyIndex < 0}
-            >
-              <Mic className="h-4 w-4 text-muted-foreground" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8" 
-              onClick={handleUndo}
-              disabled={historyIndex < 0}
-            >
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleUndo} disabled={historyIndex < 0}>
               <Undo2 className="h-4 w-4 text-muted-foreground" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8" 
-              onClick={handleRedo}
-              disabled={historyIndex >= history.length - 1}
-            >
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRedo} disabled={historyIndex >= history.length - 1}>
               <Redo2 className="h-4 w-4 text-muted-foreground" />
             </Button>
             <div className="flex-1" />
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="text-primary gap-1"
               onClick={onImprove}
               disabled={improving || !value.trim()}
             >
-              {improving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
+              {improving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               Улучшить
             </Button>
           </div>
@@ -163,51 +132,253 @@ function QuestionBlock({ question, value, onChange, instruction, example, onImpr
   );
 }
 
-const QUESTIONS = [
+// ===== CATEGORY-SPECIFIC QUESTIONS =====
+
+interface QuestionDef {
+  key: "company_info" | "pricing_info" | "delivery_info" | "customer_interaction";
+  question: string;
+  instruction: string;
+  example: string;
+}
+
+const QUESTIONS_PRODUCTS: QuestionDef[] = [
   {
-    key: "company_info" as const,
+    key: "company_info",
     question: "Как называется компания / кто продаёт? Что за продукция? Какой график работы? Что важно знать о вас?",
     instruction: `Укажите общую информацию о вашем бизнесе:
 - Название компании или имя продавца;
 - Что вы предлагаете (категория товаров, ниша);
-- Основные особенности и преимущества (опыт, стиль работы, уникальное торговое предложение);
+- Основные особенности и преимущества;
 - График работы.`,
     example: `Меня зовут Алексей, я продаю качественные итальянские продукты: оливки, сыры, прошутто. Работаю с 2015 года, более 500 довольных клиентов. Все товары привожу напрямую из Италии. Работаем с 9:00 до 21:00 без выходных.`,
   },
   {
-    key: "pricing_info" as const,
-    question: "Какие цены? Есть ли скидки? Если есть, то как их получить? Предоставляете ли вы бонусы или дополнительные услуги?",
-    instruction: `Опишите подход к ценообразованию, расскажите о выгодах для клиента:
-- Базовые цены или диапазон цен, формулы расчёта, если применимо;
-- Условия, при которых даются скидки (например: по промокоду, при заказе от 3 штук и т.д.);
-- Есть ли сезонные акции или распродажи;
-- Какие бонусы или подарки вы предлагаете;
-- Есть ли дополнительные платные или бесплатные услуги.`,
-    example: `Цены указаны за 1 кг. При заказе от 3 кг — скидка 5%, от 5 кг — 10%. Постоянным клиентам даём накопительную скидку до 15%. К первому заказу прилагаем небольшой подарок — пробники других сортов.`,
+    key: "pricing_info",
+    question: "Какие цены? Есть ли скидки? Как их получить? Предоставляете ли вы бонусы или дополнительные услуги?",
+    instruction: `Опишите подход к ценообразованию:
+- Базовые цены или диапазон цен;
+- Условия скидок (промокод, объём заказа и т.д.);
+- Сезонные акции или распродажи;
+- Бонусы или подарки;
+- Дополнительные услуги.`,
+    example: `Цены указаны за 1 кг. При заказе от 3 кг — скидка 5%, от 5 кг — 10%. Постоянным клиентам даём накопительную скидку до 15%. К первому заказу прилагаем пробники.`,
   },
   {
-    key: "delivery_info" as const,
-    question: "Как получить товар? Есть ли доставка? Какие условия? Какие варианты оплаты? Какие гарантии и условия возврата средств? Как происходит оформление заказа?",
-    instruction: `Уточните, что бот должен сообщить о процессе оформления заказа:
-- Как получить товар (где вы находитесь, есть ли самовывоз, есть ли доставка, надо ли приезжать к вам в офис для заключения договора и пр.);
-- Варианты доставки (куда, как быстро, стоимость);
-- Способы оплаты (наличные, карта, онлайн, рассрочка и т.д.);
-- Условия гарантии или возврата средств в тех или иных случаях;
-- Требуются ли от клиента какие-то шаги для оформления заказа после завершения чата, если заявка не оформляется прямо через бот.`,
-    example: `Доставляем по Москве курьером (от 300₽, бесплатно от 5000₽). Отправляем по России СДЭК или Почтой. Самовывоз возможен с м. Автозаводская. Оплата: перевод на карту или наличные при получении. Если товар не подошёл — вернём деньги в течение 7 дней.`,
+    key: "delivery_info",
+    question: "Как получить товар? Есть ли доставка? Какие условия оплаты? Гарантии и возврат? Как оформить заказ?",
+    instruction: `Уточните информацию о процессе заказа:
+- Способы получения (самовывоз, доставка);
+- Варианты доставки (регионы, сроки, стоимость);
+- Способы оплаты;
+- Условия гарантии или возврата;
+- Шаги оформления заказа.`,
+    example: `Доставляем по Москве курьером (от 300₽, бесплатно от 5000₽). Отправляем по России СДЭК или Почтой. Самовывоз с м. Автозаводская. Оплата: перевод на карту или наличные. Возврат денег в течение 7 дней.`,
   },
   {
-    key: "customer_interaction" as const,
-    question: "Что спрашивать у клиента? Нужно ли уточнять детали заказа прямо в чате? Что отвечать, если клиент отказывается? В каких случаях нужно отказать клиенту?",
-    instruction: `Определите, что бот должен уточнять у клиента, если он готов сделать заказ, и как действовать при отказе:
-- Какие данные нужно запросить (товар, количество, адрес, имя и т.п.);
-- В каких случаях обязательно задавать уточняющие вопросы, если клиент не прояснил их сам;
-- Что бот должен сказать, если клиент отказывается (использовать ли техники работы с возражениями, предложить скидку, вежливо поблагодарить и т.п.);
-- Когда можно отказать клиенту (например, нет доставки в ваш регион, нет нужного товара, клиент клянчит скидку и т.п.).`,
-    example: `При заказе уточнить: какой именно товар, сколько, адрес доставки, имя и телефон. Если клиент сомневается — предложить пробник или небольшую партию. Если просит невозможную скидку — вежливо объяснить, что это минимальная цена. Не доставляем в Крым и за рубеж.`,
+    key: "customer_interaction",
+    question: "Что спрашивать у клиента? Нужно ли уточнять детали? Что отвечать при отказе? Когда отказать клиенту?",
+    instruction: `Определите взаимодействие бота с клиентом:
+- Какие данные запрашивать (товар, количество, адрес);
+- Когда задавать уточняющие вопросы;
+- Как реагировать на отказ (возражения, скидки);
+- Когда отказать клиенту.`,
+    example: `При заказе уточнить: какой товар, сколько, адрес, имя и телефон. Если сомневается — предложить пробник. Если просит невозможную скидку — вежливо объяснить. Не доставляем в Крым и за рубеж.`,
   },
 ];
 
+const QUESTIONS_SERVICES: QuestionDef[] = [
+  {
+    key: "company_info",
+    question: "Кто вы? Какие услуги оказываете? Какой опыт? График работы? Ваши преимущества?",
+    instruction: `Расскажите о себе и своих услугах:
+- Название компании или ваше имя, специализация;
+- Какие услуги вы оказываете (перечень);
+- Опыт работы, сертификаты, квалификация;
+- График и режим работы;
+- Чем вы лучше конкурентов.`,
+    example: `Студия «Комфорт». Оказываем услуги по ремонту квартир: от косметического до капитального. Работаем с 2012 года, более 300 объектов. Бригада из 8 мастеров. Работаем ежедневно с 8:00 до 20:00. Предоставляем гарантию на все работы 2 года.`,
+  },
+  {
+    key: "pricing_info",
+    question: "Сколько стоят ваши услуги? От чего зависит цена? Есть ли скидки или пакетные предложения?",
+    instruction: `Опишите ценообразование услуг:
+- Фиксированные цены или диапазон «от ... до»;
+- От чего зависит итоговая стоимость (объём, сложность, срочность);
+- Есть ли бесплатная консультация или выезд;
+- Пакетные предложения, абонементы;
+- Скидки для постоянных клиентов.`,
+    example: `Косметический ремонт — от 3 500₽/м². Капитальный — от 7 000₽/м². Цена зависит от объёма и материалов. Бесплатный выезд замерщика. При заказе ремонта «под ключ» — скидка 10%. Постоянным клиентам — 5% на следующий заказ.`,
+  },
+  {
+    key: "delivery_info",
+    question: "Как проходит оказание услуги? Какие этапы? Варианты оплаты? Гарантии? Что нужно от клиента?",
+    instruction: `Опишите процесс работы:
+- Этапы оказания услуги (консультация, выезд, выполнение, сдача);
+- Сроки выполнения;
+- Варианты оплаты (предоплата, по этапам, по завершению);
+- Гарантийные обязательства;
+- Какие документы или данные нужны от клиента.`,
+    example: `Этапы: 1) Бесплатная консультация, 2) Выезд замерщика, 3) Согласование сметы, 4) Выполнение работ, 5) Приёмка и гарантийный акт. Срок: от 2 недель. Оплата 50/50: предоплата и по завершению. Гарантия 2 года.`,
+  },
+  {
+    key: "customer_interaction",
+    question: "Что уточнять у клиента? Какие вопросы задать для оценки? Как обрабатывать возражения?",
+    instruction: `Определите логику общения бота с клиентом:
+- Какие данные нужны для оценки (адрес, площадь, фото);
+- Какие вопросы задавать для понимания задачи;
+- Как реагировать на «дорого» или сравнение с конкурентами;
+- Когда перевести на живого специалиста.`,
+    example: `Уточнить: какая услуга нужна, адрес объекта, желаемые сроки. Попросить фото или видео, если возможно. Если клиент говорит «дорого» — объяснить, что в стоимость входят материалы и гарантия. При сложных вопросах — предложить связь с мастером.`,
+  },
+];
+
+const QUESTIONS_ONLINE: QuestionDef[] = [
+  {
+    key: "company_info",
+    question: "Что за сервис? Для кого он? Какие ключевые функции? Чем отличаетесь от конкурентов?",
+    instruction: `Расскажите о вашем онлайн-сервисе:
+- Название и краткое описание;
+- Целевая аудитория;
+- Ключевые функции и возможности;
+- Конкурентные преимущества;
+- Поддерживаемые платформы (веб, iOS, Android).`,
+    example: `TaskFlow — сервис управления проектами для малого бизнеса. Канбан-доски, учёт времени, автоматические отчёты. Интеграция с Telegram и Google Calendar. Отличие от конкурентов — простой интерфейс на русском языке и бесплатный тариф до 5 пользователей.`,
+  },
+  {
+    key: "pricing_info",
+    question: "Какие тарифы? Есть ли бесплатная версия? Пробный период? Как оплатить?",
+    instruction: `Опишите тарифную политику:
+- Список тарифов и что входит в каждый;
+- Есть ли бесплатный тариф или пробный период;
+- Стоимость и периодичность оплаты;
+- Способы оплаты;
+- Скидки при годовой подписке или для команд.`,
+    example: `Бесплатный тариф: до 5 пользователей, 3 проекта. Про-тариф: 490₽/мес за пользователя — безлимитные проекты, интеграции, приоритетная поддержка. При годовой оплате — скидка 20%. 14-дней бесплатно на Про-тариф.`,
+  },
+  {
+    key: "delivery_info",
+    question: "Как начать? Нужна ли регистрация? Как подключить? Есть ли техподдержка? Условия возврата?",
+    instruction: `Опишите процесс подключения:
+- Как зарегистрироваться и начать;
+- Нужна ли установка или всё в браузере;
+- Как подключить команду;
+- Каналы техподдержки (чат, email, телефон);
+- Политика возврата средств.`,
+    example: `Регистрация за 30 секунд по email или через Google. Работает в браузере, есть мобильное приложение. Приглашайте команду по ссылке. Техподдержка в чате с 9:00 до 21:00. Возврат — в течение 14 дней, если сервис не подошёл.`,
+  },
+  {
+    key: "customer_interaction",
+    question: "Какие вопросы задать клиенту? Как помочь выбрать тариф? Что делать при технических проблемах?",
+    instruction: `Определите поведение бота:
+- Что спрашивать (размер команды, задачи, бюджет);
+- Как рекомендовать подходящий тариф;
+- Как реагировать на технические вопросы;
+- Когда переводить на живого оператора.`,
+    example: `Спросить: сколько человек в команде, какие задачи хотите решить. Для 1-5 человек — рекомендовать бесплатный тариф. Для больших команд — Про. При техпроблемах — уточнить браузер/устройство и передать в поддержку с описанием.`,
+  },
+];
+
+const QUESTIONS_OTHER: QuestionDef[] = [
+  {
+    key: "company_info",
+    question: "Расскажите о себе. Чем вы занимаетесь? Что предлагаете на Авито? Какой у вас опыт?",
+    instruction: `Общая информация:
+- Кто вы (компания, частное лицо, ИП);
+- Чем занимаетесь;
+- Что предлагаете в объявлениях;
+- Опыт и достижения;
+- Режим работы.`,
+    example: `Иван, частный мастер по ремонту техники Apple. Работаю с 2018 года. Чиню iPhone, iPad, MacBook. Опыт — более 2000 устройств. Работаю ежедневно с 10:00 до 22:00, принимаю у себя или выезжаю к клиенту.`,
+  },
+  {
+    key: "pricing_info",
+    question: "Сколько это стоит? Есть ли фиксированные цены? От чего зависит стоимость?",
+    instruction: `Опишите ценообразование:
+- Фиксированные цены или диапазон;
+- Факторы, влияющие на стоимость;
+- Предоплата или оплата по факту;
+- Скидки и акции.`,
+    example: `Замена экрана iPhone — от 3000₽ до 8000₽ в зависимости от модели. Диагностика бесплатно. Оплата после ремонта. Постоянным клиентам — скидка 10%.`,
+  },
+  {
+    key: "delivery_info",
+    question: "Как всё происходит? Какие шаги? Как с вами связаться? Есть ли гарантии?",
+    instruction: `Процесс взаимодействия:
+- Шаги от первого контакта до результата;
+- Сроки;
+- Способы связи;
+- Гарантии;
+- Что нужно от клиента.`,
+    example: `Написать в чат → обсудить проблему → приехать ко мне или вызвать на дом → ремонт за 1-3 часа → проверка и оплата. Гарантия 3 месяца на работу и запчасти. Нужен только сам аппарат.`,
+  },
+  {
+    key: "customer_interaction",
+    question: "Что узнать у клиента? Как помочь определиться? Что делать при отказе?",
+    instruction: `Логика общения:
+- Какие вопросы задавать;
+- Как помочь клиенту сделать выбор;
+- Как работать с возражениями;
+- Когда отказать.`,
+    example: `Спросить: модель устройства, описание проблемы. Если клиент не уверен — предложить бесплатную диагностику. Если говорит «дорого» — объяснить, что используем оригинальные запчасти. Не берём устройства с признаками «утопления».`,
+  },
+];
+
+function getQuestionsForCategory(category: SmartSetupData["category"]): QuestionDef[] {
+  switch (category) {
+    case "products": return QUESTIONS_PRODUCTS;
+    case "services": return QUESTIONS_SERVICES;
+    case "online": return QUESTIONS_ONLINE;
+    case "other": return QUESTIONS_OTHER;
+    default: return QUESTIONS_PRODUCTS;
+  }
+}
+
+// ===== CUSTOM BLOCK COMPONENT =====
+function CustomBlockEditor({
+  block,
+  onUpdate,
+  onDelete,
+  onImprove,
+  improving,
+}: {
+  block: CustomBlock;
+  onUpdate: (updates: Partial<CustomBlock>) => void;
+  onDelete: () => void;
+  onImprove: () => Promise<void>;
+  improving: boolean;
+}) {
+  return (
+    <Card className="p-6 space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          <Input
+            value={block.title}
+            onChange={(e) => onUpdate({ title: e.target.value })}
+            placeholder="Название блока (например: Часто задаваемые вопросы)"
+            className="font-semibold border-none px-0 text-base shadow-none focus-visible:ring-0 placeholder:font-normal"
+          />
+        </div>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={onDelete}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+      <Textarea
+        value={block.content}
+        onChange={(e) => onUpdate({ content: e.target.value })}
+        placeholder="Введите информацию, которую должен знать бот..."
+        className="min-h-[140px] resize-none"
+      />
+      <div className="flex justify-end">
+        <Button variant="ghost" size="sm" className="text-primary gap-1" onClick={onImprove} disabled={improving || !block.content.trim()}>
+          {improving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          Улучшить
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+// ===== MAIN COMPONENT =====
 export function AvitoBotSmartSetup({ data, onChange, storeId, botId }: SmartSetupProps) {
   const { toast } = useToast();
   const [improvingField, setImprovingField] = useState<string | null>(null);
@@ -220,14 +391,14 @@ export function AvitoBotSmartSetup({ data, onChange, storeId, botId }: SmartSetu
     onChange({ ...data, [field]: value });
   };
 
-  const handleImprove = async (field: keyof SmartSetupData) => {
-    if (!data[field]?.trim()) return;
-    
+  const handleImprove = async (field: string, text: string) => {
+    if (!text.trim()) return;
+
     setImprovingField(field);
     try {
       const { data: result, error } = await supabase.functions.invoke("ai-generate-description", {
         body: {
-          prompt: `Улучши и дополни следующий текст для промпта бота на Авито. Сделай его более чётким, структурированным и профессиональным, сохранив всю исходную информацию. Категория бизнеса: ${data.category}. Исходный текст:\n\n${data[field]}`,
+          prompt: `Улучши и дополни следующий текст для промпта бота на Авито. Сделай его более чётким, структурированным и профессиональным, сохранив всю исходную информацию. Категория бизнеса: ${data.category}. Верни ТОЛЬКО улучшенный текст без пояснений.\n\nИсходный текст:\n${text}`,
           store_id: storeId,
         },
       });
@@ -237,15 +408,54 @@ export function AvitoBotSmartSetup({ data, onChange, storeId, botId }: SmartSetu
 
       const improved = result?.description || result?.text || "";
       if (improved) {
-        handleFieldChange(field, improved);
-        toast({ title: "Текст улучшен" });
+        toast({ title: "Текст улучшен ✨" });
+        return improved;
       }
     } catch (err: any) {
       toast({ title: "Ошибка", description: err.message, variant: "destructive" });
     } finally {
       setImprovingField(null);
     }
+    return null;
   };
+
+  const handleImproveField = async (field: keyof SmartSetupData) => {
+    const improved = await handleImprove(field, data[field] as string);
+    if (improved) handleFieldChange(field, improved);
+  };
+
+  // Custom blocks
+  const customBlocks = data.custom_blocks || [];
+
+  const addCustomBlock = () => {
+    const newBlock: CustomBlock = {
+      id: crypto.randomUUID(),
+      title: "",
+      content: "",
+    };
+    onChange({ ...data, custom_blocks: [...customBlocks, newBlock] });
+  };
+
+  const updateCustomBlock = (id: string, updates: Partial<CustomBlock>) => {
+    onChange({
+      ...data,
+      custom_blocks: customBlocks.map((b) => (b.id === id ? { ...b, ...updates } : b)),
+    });
+  };
+
+  const deleteCustomBlock = (id: string) => {
+    onChange({
+      ...data,
+      custom_blocks: customBlocks.filter((b) => b.id !== id),
+    });
+  };
+
+  const handleImproveCustomBlock = async (block: CustomBlock) => {
+    const improved = await handleImprove(`custom_${block.id}`, block.content);
+    if (improved) updateCustomBlock(block.id, { content: improved });
+  };
+
+  const questions = getQuestionsForCategory(data.category);
 
   return (
     <div className="space-y-6">
@@ -274,19 +484,37 @@ export function AvitoBotSmartSetup({ data, onChange, storeId, botId }: SmartSetu
         </div>
       </div>
 
-      {/* Question Blocks */}
-      {QUESTIONS.map((q) => (
+      {/* Category-Specific Question Blocks */}
+      {questions.map((q) => (
         <QuestionBlock
-          key={q.key}
+          key={`${data.category}_${q.key}`}
           question={q.question}
-          value={data[q.key] || ""}
+          value={(data[q.key] as string) || ""}
           onChange={(value) => handleFieldChange(q.key, value)}
           instruction={q.instruction}
           example={q.example}
-          onImprove={() => handleImprove(q.key)}
+          onImprove={() => handleImproveField(q.key)}
           improving={improvingField === q.key}
         />
       ))}
+
+      {/* Custom Blocks */}
+      {customBlocks.map((block) => (
+        <CustomBlockEditor
+          key={block.id}
+          block={block}
+          onUpdate={(updates) => updateCustomBlock(block.id, updates)}
+          onDelete={() => deleteCustomBlock(block.id)}
+          onImprove={() => handleImproveCustomBlock(block)}
+          improving={improvingField === `custom_${block.id}`}
+        />
+      ))}
+
+      {/* Add Custom Block Button */}
+      <Button variant="outline" className="w-full gap-2 border-dashed" onClick={addCustomBlock}>
+        <Plus className="h-4 w-4" />
+        Добавить свой блок информации
+      </Button>
     </div>
   );
 }
@@ -311,6 +539,16 @@ export function buildSystemPromptFromSmartSetup(data: SmartSetupData): string {
 
   if (data.customer_interaction) {
     parts.push(`\n\n--- ВЗАИМОДЕЙСТВИЕ С КЛИЕНТОМ ---\n${data.customer_interaction}`);
+  }
+
+  // Include custom blocks
+  if (data.custom_blocks?.length) {
+    for (const block of data.custom_blocks) {
+      if (block.content.trim()) {
+        const title = block.title.trim() || "ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ";
+        parts.push(`\n\n--- ${title.toUpperCase()} ---\n${block.content}`);
+      }
+    }
   }
 
   parts.push("\n\nВАЖНО: Всегда будь вежливым и профессиональным. Отвечай по существу. Если не знаешь ответа — попроси клиента уточнить или предложи связаться с продавцом напрямую.");
