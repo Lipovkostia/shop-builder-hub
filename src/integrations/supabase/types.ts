@@ -243,6 +243,7 @@ export type Database = {
           instructions_config: Json | null
           is_active: boolean
           lead_conditions: Json | null
+          max_response_chars: number | null
           max_responses: number | null
           mode: string
           name: string
@@ -279,6 +280,7 @@ export type Database = {
           instructions_config?: Json | null
           is_active?: boolean
           lead_conditions?: Json | null
+          max_response_chars?: number | null
           max_responses?: number | null
           mode?: string
           name?: string
@@ -315,6 +317,7 @@ export type Database = {
           instructions_config?: Json | null
           is_active?: boolean
           lead_conditions?: Json | null
+          max_response_chars?: number | null
           max_responses?: number | null
           mode?: string
           name?: string
