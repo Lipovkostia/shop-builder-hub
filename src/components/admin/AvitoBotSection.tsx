@@ -2875,28 +2875,67 @@ function AISettingsPanel({ botForm, setBotForm, onSave, storeId }: {
                           </div>
                         </div>
                         {msg.proposal && msg.proposal.changes.length > 0 && (
-                          <div className="mt-2 ml-0 max-w-[85%]">
+                          <div className="mt-2 ml-0 max-w-[95%]">
                             <Card className="border-primary/30 bg-primary/5">
-                              <CardContent className="py-3 px-3 space-y-2">
+                              <CardContent className="py-3 px-3 space-y-3">
                                 <p className="text-xs font-semibold text-primary">Предлагаемые изменения:</p>
-                                {msg.proposal.changes.map((change, ci) => (
-                                  <div key={ci} className="text-xs space-y-0.5 border-b border-border/50 pb-2 last:border-0 last:pb-0">
-                                    <div className="font-medium">{SETTINGS_LABELS[change.field] || change.field}</div>
-                                    <div className="text-destructive line-through truncate">
-                                      {change.old_value?.substring(0, 100) || "(пусто)"}
-                                      {(change.old_value?.length || 0) > 100 && "..."}
+                                {msg.proposal.changes.map((change, ci) => {
+                                  const editKey = `${mi}-${ci}`;
+                                  const isEditing = editingProposals[editKey] !== undefined;
+                                  const editedValue = editingProposals[editKey] ?? change.new_value;
+                                  const isLong = (change.old_value?.length || 0) > 80 || (change.new_value?.length || 0) > 80;
+                                  const isExpanded = expandedChanges[editKey];
+                                  return (
+                                    <div key={ci} className="text-xs space-y-1 border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                                      <div className="font-medium flex items-center justify-between">
+                                        <span>{SETTINGS_LABELS[change.field] || change.field}</span>
+                                        {isLong && (
+                                          <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5" onClick={() => setExpandedChanges(prev => ({ ...prev, [editKey]: !prev[editKey] }))}>
+                                            {isExpanded ? "Свернуть" : "Развернуть"}
+                                          </Button>
+                                        )}
+                                      </div>
+                                      <div className={cn("text-destructive bg-destructive/5 rounded p-1.5 border border-destructive/20", isExpanded || !isLong ? "whitespace-pre-wrap break-words" : "line-clamp-3")}>
+                                        <span className="line-through">{change.old_value || "(пусто)"}</span>
+                                      </div>
+                                      {isEditing ? (
+                                        <Textarea
+                                          className="text-xs min-h-[60px] bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700"
+                                          value={editedValue}
+                                          onChange={(e) => setEditingProposals(prev => ({ ...prev, [editKey]: e.target.value }))}
+                                        />
+                                      ) : (
+                                        <div className={cn("text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded p-1.5 border border-green-200 dark:border-green-800", isExpanded || !isLong ? "whitespace-pre-wrap break-words" : "line-clamp-3")}>
+                                          {change.new_value || "(пусто)"}
+                                        </div>
+                                      )}
+                                      <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5" onClick={() => {
+                                        if (isEditing) {
+                                          setEditingProposals(prev => { const n = { ...prev }; delete n[editKey]; return n; });
+                                        } else {
+                                          setEditingProposals(prev => ({ ...prev, [editKey]: change.new_value || "" }));
+                                        }
+                                      }}>
+                                        <Pencil className="h-3 w-3 mr-0.5" /> {isEditing ? "Готово" : "Редактировать"}
+                                      </Button>
                                     </div>
-                                    <div className="text-green-700 dark:text-green-400 truncate">
-                                      {change.new_value?.substring(0, 100) || "(пусто)"}
-                                      {(change.new_value?.length || 0) > 100 && "..."}
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                                 <div className="flex gap-2 pt-1">
-                                  <Button size="sm" className="h-7 text-xs" onClick={() => applyChanges(msg.proposal!.changes)}>
+                                  <Button size="sm" className="h-7 text-xs" onClick={() => {
+                                    const finalChanges = msg.proposal!.changes.map((ch, ci) => {
+                                      const editKey = `${mi}-${ci}`;
+                                      return editingProposals[editKey] !== undefined ? { ...ch, new_value: editingProposals[editKey] } : ch;
+                                    });
+                                    applyChanges(finalChanges);
+                                    setEditingProposals({});
+                                    setExpandedChanges({});
+                                  }}>
                                     <CheckCircle2 className="h-3 w-3 mr-1" /> Подтвердить
                                   </Button>
                                   <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => {
+                                    setEditingProposals({});
+                                    setExpandedChanges({});
                                     setMessages(prev => [...prev, { role: "assistant", content: "Отменено. Что хотите изменить?" }]);
                                   }}>
                                     <XCircle className="h-3 w-3 mr-1" /> Отмена
