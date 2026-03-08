@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const AVITO_TOKEN_URL = "https://api.avito.ru/token";
 const AVITO_API_BASE = "https://api.avito.ru";
-const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_GATEWAY = "https://api.vsegpt.ru/v1/chat/completions";
 
 async function getAvitoToken(clientId: string, clientSecret: string): Promise<string> {
   const res = await fetch(AVITO_TOKEN_URL, {
@@ -113,8 +113,8 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableApiKey) throw new Error("LOVABLE_API_KEY is not configured");
+    const vsegptApiKey = Deno.env.get("VSEGPT_API_KEY");
+    if (!vsegptApiKey) throw new Error("VSEGPT_API_KEY is not configured");
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { action, store_id, bot_id, message } = await req.json();
@@ -150,8 +150,8 @@ Deno.serve(async (req) => {
         { role: "user", content: message },
       ];
 
-      const model = bot.ai_model || "google/gemini-3-flash-preview";
-      const aiResponse = await getAIResponse(conversationMessages, model, lovableApiKey);
+      const model = bot.ai_model || "openai/gpt-4.1-mini";
+      const aiResponse = await getAIResponse(conversationMessages, model, vsegptApiKey);
 
       return new Response(
         JSON.stringify({ success: true, response: aiResponse }),
@@ -298,7 +298,7 @@ Deno.serve(async (req) => {
           }
 
           // Generate AI response
-          const aiResponse = await getAIResponse(conversationMessages, model, lovableApiKey);
+          const aiResponse = await getAIResponse(conversationMessages, model, vsegptApiKey);
           if (!aiResponse) continue;
 
           // Send response to Avito
