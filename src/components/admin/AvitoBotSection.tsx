@@ -157,9 +157,9 @@ function DebouncedTextarea({ value: externalValue, onChange, ...props }: { value
 function BotStatusIndicator({ bot, account }: { bot: AvitoBot; account?: AvitoAccount | null }) {
   const issues: string[] = [];
   if (!bot.is_active) issues.push("Бот выключен");
-  if (!account) issues.push("Аккаунт не привязан");
-  else if (!account.avito_user_id) issues.push("Авито user_id не определён");
-  if (!(bot as any).avito_account_id) issues.push("Нет привязки к аккаунту");
+  // Avito account is optional — only warn if account is linked but misconfigured
+  if ((bot as any).avito_account_id && !account) issues.push("Привязанный аккаунт не найден");
+  else if (account && !account.avito_user_id) issues.push("Авито user_id не определён");
 
   if (issues.length === 0 && bot.is_active) {
     return (
@@ -1539,12 +1539,12 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
             </div>
 
             {/* ===== ACCOUNT ===== */}
-            <div>
+             <div>
               <h2 className="text-lg font-semibold mb-1">Аккаунт Авито</h2>
               {!(botForm as any).avito_account_id || (botForm as any).avito_account_id === "none" ? (
-                <div className="mb-3 p-3 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 text-sm flex items-center gap-2">
+                <div className="mb-3 p-3 rounded-lg border border-blue-300 bg-blue-50 text-blue-800 text-sm flex items-center gap-2">
                   <KeyRound className="h-4 w-4 flex-shrink-0" />
-                  Робот не привязан к аккаунту. Без привязки автоответы не будут работать.
+                  Аккаунт Авито не привязан. Это нужно только для автоответов в Авито. Для чата на сайте магазина привязка не требуется.
                 </div>
               ) : null}
               <Select value={(botForm as any).avito_account_id || "none"} onValueChange={v => updateForm({ avito_account_id: v === "none" ? null : v })}>
