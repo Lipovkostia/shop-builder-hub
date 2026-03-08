@@ -61,16 +61,21 @@ async function getAvitoListingInfo(token: string, userId: number, itemId: string
     const res = await fetch(`${AVITO_API_BASE}/core/v1/accounts/${userId}/items/${itemId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error(`Avito listing fetch failed [${res.status}] for item ${itemId}`);
+      return null;
+    }
     const data = await res.json();
+    const price = data.price || data.price_string || 0;
     return {
       title: data.title || "",
       description: data.description || data.body || "",
-      price: data.price || 0,
+      price: typeof price === "string" ? parseInt(price.replace(/\D/g, ""), 10) || 0 : price,
       category: data.category?.name || "",
-      url: data.url || "",
+      url: data.url || `https://www.avito.ru/${itemId}`,
     };
-  } catch {
+  } catch (err) {
+    console.error("getAvitoListingInfo error:", err);
     return null;
   }
 }
