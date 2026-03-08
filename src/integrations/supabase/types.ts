@@ -248,6 +248,7 @@ export type Database = {
           response_delay_seconds: number
           schedule_config: Json | null
           schedule_mode: string
+          smart_setup_data: Json | null
           store_id: string
           system_prompt: string | null
           telegram_bot_token: string | null
@@ -274,6 +275,7 @@ export type Database = {
           response_delay_seconds?: number
           schedule_config?: Json | null
           schedule_mode?: string
+          smart_setup_data?: Json | null
           store_id: string
           system_prompt?: string | null
           telegram_bot_token?: string | null
@@ -300,6 +302,7 @@ export type Database = {
           response_delay_seconds?: number
           schedule_config?: Json | null
           schedule_mode?: string
+          smart_setup_data?: Json | null
           store_id?: string
           system_prompt?: string | null
           telegram_bot_token?: string | null
