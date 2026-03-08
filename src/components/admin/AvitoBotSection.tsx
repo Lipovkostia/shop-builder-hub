@@ -1527,6 +1527,185 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
           </div>
         );
 
+      case "ad_filter": {
+        const allowedIds: string[] = (botForm as any).allowed_item_ids || [];
+        const hasFilter = allowedIds.length > 0;
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Фильтр по объявлениям</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Укажите номера объявлений (ID), на которые этот робот должен отвечать. Если оставить пустым — робот отвечает на все объявления аккаунта.
+            </p>
+            
+            <Card className="bg-blue-50/50 border-blue-200">
+              <CardContent className="pt-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Совет:</strong> Создайте несколько роботов и распределите объявления по группам. 
+                  Каждый робот будет обрабатывать только свои объявления с соответствующей настройкой.
+                </p>
+              </CardContent>
+            </Card>
+
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={hasFilter}
+                onCheckedChange={(v) => {
+                  if (!v) updateForm({ allowed_item_ids: null });
+                  else updateForm({ allowed_item_ids: [] });
+                }}
+              />
+              <span className="text-sm">{hasFilter ? "Фильтр включён — только выбранные объявления" : "Фильтр выключен — все объявления"}</span>
+            </div>
+
+            {hasFilter && (
+              <div className="space-y-3">
+                <Label className="text-sm">ID объявлений (по одному на строку)</Label>
+                <Textarea
+                  value={allowedIds.join("\n")}
+                  onChange={e => {
+                    const ids = e.target.value.split("\n").map(s => s.trim()).filter(Boolean);
+                    updateForm({ allowed_item_ids: ids });
+                  }}
+                  placeholder={"123456789\n987654321\n..."}
+                  className="min-h-[120px] font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Введено: {allowedIds.length} объявлений. ID можно найти в URL объявления или в разделе «Отладка».
+                </p>
+
+                {avitoItems.length > 0 && (
+                  <div className="mt-3">
+                    <Label className="text-sm mb-2 block">Или выберите из загруженных объявлений:</Label>
+                    <div className="max-h-[300px] overflow-y-auto space-y-1 border rounded-lg p-2">
+                      {avitoItems.map(item => {
+                        const isChecked = allowedIds.includes(item.id);
+                        return (
+                          <label key={item.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer text-sm">
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={(checked) => {
+                                if (checked) updateForm({ allowed_item_ids: [...allowedIds, item.id] });
+                                else updateForm({ allowed_item_ids: allowedIds.filter((id: string) => id !== item.id) });
+                              }}
+                            />
+                            <div className="flex items-center gap-2 min-w-0">
+                              {item.image && <img src={item.image} className="w-8 h-8 rounded object-cover flex-shrink-0" alt="" />}
+                              <div className="min-w-0">
+                                <span className="block truncate">{item.title}</span>
+                                <span className="text-xs text-muted-foreground">ID: {item.id} • {item.price > 0 ? `${item.price.toLocaleString()} ₽` : ""}</span>
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {avitoItems.length === 0 && (
+                  <Button variant="outline" size="sm" onClick={loadAvitoItems} disabled={itemsLoading}>
+                    <RefreshCw className={cn("h-4 w-4 mr-1", itemsLoading && "animate-spin")} /> Загрузить объявления с Авито
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      case "handoff": {
+        const handoffRules: Array<{ target_bot_id: string; trigger_topics: string[]; description: string; return_back: boolean }> = (botForm as any).handoff_rules || [];
+        const otherBots = bots.filter(b => b.id !== bot.id);
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Repeat className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Переключение на другого робота</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Настройте автоматическое переключение разговора на другого робота, когда клиент задаёт определённые вопросы. 
+              Контекст беседы сохраняется — новый робот видит всю историю переписки.
+            </p>
+
+            {otherBots.length === 0 && (
+              <Card className="bg-amber-50/50 border-amber-200">
+                <CardContent className="pt-4">
+                  <p className="text-sm text-amber-800">Для переключения нужен минимум один другой робот. Создайте ещё одного робота.</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {handoffRules.map((rule, i) => (
+              <Card key={i} className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="text-xs">Правило #{i + 1}</Badge>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateForm({ handoff_rules: handoffRules.filter((_: any, idx: number) => idx !== i) })}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div>
+                  <Label className="text-sm">Переключить на робота</Label>
+                  <Select value={rule.target_bot_id || ""} onValueChange={v => {
+                    const newRules = [...handoffRules];
+                    newRules[i] = { ...rule, target_bot_id: v };
+                    updateForm({ handoff_rules: newRules });
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="Выберите робота" /></SelectTrigger>
+                    <SelectContent>
+                      {otherBots.map(b => <SelectItem key={b.id} value={b.id}>{b.name || "Робот"}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm">Триггерные темы / вопросы</Label>
+                  <Textarea
+                    value={(rule.trigger_topics || []).join("\n")}
+                    onChange={e => {
+                      const newRules = [...handoffRules];
+                      newRules[i] = { ...rule, trigger_topics: e.target.value.split("\n").map(s => s.trim()).filter(Boolean) };
+                      updateForm({ handoff_rules: newRules });
+                    }}
+                    placeholder={"гарантия\nвозврат товара\nрекламация"}
+                    className="min-h-[80px]"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">По одной теме на строку. Если клиент задаёт вопрос на эту тему — происходит переключение.</p>
+                </div>
+                <div>
+                  <Label className="text-sm">Описание (для ИИ)</Label>
+                  <Input
+                    value={rule.description || ""}
+                    onChange={e => {
+                      const newRules = [...handoffRules];
+                      newRules[i] = { ...rule, description: e.target.value };
+                      updateForm({ handoff_rules: newRules });
+                    }}
+                    placeholder="Этот робот специализируется на гарантийных вопросах"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={rule.return_back !== false}
+                    onCheckedChange={v => {
+                      const newRules = [...handoffRules];
+                      newRules[i] = { ...rule, return_back: v };
+                      updateForm({ handoff_rules: newRules });
+                    }}
+                  />
+                  <span className="text-sm">Вернуть клиента обратно после завершения</span>
+                </div>
+              </Card>
+            ))}
+
+            <Button variant="outline" onClick={() => updateForm({ handoff_rules: [...handoffRules, { target_bot_id: "", trigger_topics: [], description: "", return_back: true }] })} disabled={otherBots.length === 0}>
+              <Plus className="h-4 w-4 mr-1" /> Добавить правило переключения
+            </Button>
+          </div>
+        );
+      }
+
       case "debug":
         return (
           <div className="space-y-4">
