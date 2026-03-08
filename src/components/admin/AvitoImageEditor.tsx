@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Wand2, Image as ImageIcon, Upload, X, Check, Maximize, Layers, Download, Bookmark,
+  Eraser, ZoomIn, Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
