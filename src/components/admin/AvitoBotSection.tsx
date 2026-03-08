@@ -67,6 +67,25 @@ interface DashboardStats {
   bot_responses_total: number;
   leads_total: number;
   escalated_total: number;
+  total_prompt_tokens?: number;
+  total_completion_tokens?: number;
+  total_tokens?: number;
+  total_cost?: number;
+  total_requests?: number;
+  avg_cost_per_message?: number;
+}
+
+interface UsageLog {
+  id: string;
+  bot_id: string;
+  chat_id: string;
+  model: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  cost: number;
+  action_type: string;
+  created_at: string;
 }
 
 type TopLevel = "dashboard" | "bots" | "accounts" | "chats";
