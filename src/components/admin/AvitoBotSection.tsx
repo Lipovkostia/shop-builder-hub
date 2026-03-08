@@ -70,10 +70,11 @@ interface DashboardStats {
 }
 
 type TopLevel = "dashboard" | "bots" | "accounts" | "chats";
-type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug";
+type BotSection = "general" | "personality" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug";
 
 const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "Основные", icon: Bot },
+  { id: "personality", label: "Личность", icon: User },
   { id: "prompt", label: "Промпт", icon: Sparkles },
   { id: "qa", label: "Вопрос-ответ", icon: HelpCircle },
   { id: "ad_filter", label: "Объявления", icon: Filter },
@@ -86,7 +87,6 @@ const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType 
   { id: "model", label: "Модель ИИ", icon: Zap },
   { id: "delay", label: "Задержка", icon: Clock },
   { id: "limits", label: "Лимиты", icon: Shield },
-  { id: "pro", label: "Про-режим", icon: Sparkles },
   { id: "stop_command", label: "Стоп-команда", icon: Hand },
   { id: "notifications", label: "Уведомления", icon: Bell },
   { id: "telegram", label: "Telegram", icon: Bell },
