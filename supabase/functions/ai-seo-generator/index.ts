@@ -31,7 +31,7 @@ serve(async (req) => {
   }
 
   try {
-    const { productIds, storeId, storeName, mode = "single" } = await req.json();
+    const { productIds, storeId, storeName, mode = "single", storeType = "wholesale" } = await req.json();
 
     if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
       throw new Error("productIds array is required");
