@@ -353,7 +353,10 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
       onBack={() => { setEditingBotId(null); refetch(); }}
       onToggle={(active) => toggleBot(editingBotId, active)}
       onProcess={() => processMessages(editingBotId)}
-      onDelete={async () => { await deleteBot(editingBotId); setEditingBotId(null); }}
+      onDelete={async () => {
+        if (!window.confirm("Вы уверены, что хотите удалить этого робота? Это действие нельзя отменить.")) return;
+        await deleteBot(editingBotId); setEditingBotId(null);
+      }}
     />;
   }
 
