@@ -128,6 +128,7 @@ import { ExchangeSection } from "@/components/admin/ExchangeSection";
 import { OrdersSection } from "@/components/admin/OrdersSection";
 import { MoyskladCounterpartiesSection } from "@/components/admin/MoyskladCounterpartiesSection";
 import { AvitoSection } from "@/components/admin/AvitoSection";
+import { AiAccessSection } from "@/components/admin/AiAccessSection";
 import { useAvitoFeedProducts } from "@/hooks/useAvitoFeedProducts";
 
 // Removed localStorage keys - now using Supabase
