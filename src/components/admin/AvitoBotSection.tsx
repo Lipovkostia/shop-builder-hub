@@ -444,8 +444,8 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
               </div>
             )}
             {topLevel === "chats" && (
-              <div className="max-w-3xl">
-                <ChatsView chats={chats} onRefresh={loadChats} />
+              <div className="max-w-none">
+                <ChatsView chats={chats} bots={bots} storeId={storeId} onRefresh={loadChats} />
               </div>
             )}
           </div>
@@ -737,40 +737,295 @@ function AccountsView({ accounts, loading, newName, setNewName, newClientId, set
   );
 }
 
-// ===== CHATS VIEW =====
-function ChatsView({ chats, onRefresh }: { chats: AvitoBotChat[]; onRefresh: () => void }) {
+// ===== CHATS VIEW (Dual-pane) =====
+function ChatsView({ chats, bots, storeId, onRefresh }: { chats: AvitoBotChat[]; bots: AvitoBot[]; storeId: string | null; onRefresh: () => void }) {
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<{ id: string; role: string; content: string; created_at: string }[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  // Filter out debug chats
+  const realChats = chats.filter(c => !c.avito_user_name?.startsWith("Отладка") && !c.avito_chat_id?.startsWith("debug_"));
+
+  const selectedChat = realChats.find(c => c.id === selectedChatId);
+
+  const loadMessages = async (chatId: string) => {
+    setMessagesLoading(true);
+    try {
+      const { data, error } = await (supabase as any)
+        .from("avito_bot_messages")
+        .select("*")
+        .eq("chat_id", chatId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      setMessages(data || []);
+    } catch (err: any) {
+      console.error("Error loading messages:", err);
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
+
+  const syncAndLoadMessages = async (chat: AvitoBotChat) => {
+    if (!storeId) return;
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("avito-bot", {
+        body: { action: "sync_chat_messages", store_id: storeId, avito_chat_id: chat.avito_chat_id, db_chat_id: chat.id },
+      });
+      if (error) throw error;
+      if (data?.messages) {
+        setMessages(data.messages);
+      }
+    } catch (err: any) {
+      console.error("Sync error:", err);
+      // Fallback to local messages
+      await loadMessages(chat.id);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleSelectChat = (chat: AvitoBotChat) => {
+    setSelectedChatId(chat.id);
+    setReplyText("");
+    syncAndLoadMessages(chat);
+  };
+
+  const handleSendReply = async () => {
+    if (!selectedChat || !replyText.trim() || !storeId) return;
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("avito-bot", {
+        body: {
+          action: "send_avito_message",
+          store_id: storeId,
+          avito_chat_id: selectedChat.avito_chat_id,
+          text: replyText.trim(),
+          db_chat_id: selectedChat.id,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(),
+        role: "seller",
+        content: replyText.trim(),
+        created_at: new Date().toISOString(),
+      }]);
+      setReplyText("");
+      toast({ title: "Сообщение отправлено в Авито" });
+    } catch (err: any) {
+      toast({ title: "Ошибка отправки", description: err.message, variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleResumeBot = async () => {
+    if (!selectedChat) return;
+    try {
+      await (supabase as any)
+        .from("avito_bot_chats")
+        .update({ is_escalated: false, status: "active", updated_at: new Date().toISOString() })
+        .eq("id", selectedChat.id);
+      toast({ title: "Бот снова активен в этом чате" });
+      onRefresh();
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  };
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case "user": return "Клиент";
+      case "assistant": return "Робот";
+      case "seller": return "Вы";
+      default: return role;
+    }
+  };
+
+  const getRoleBg = (role: string) => {
+    switch (role) {
+      case "user": return "bg-muted";
+      case "assistant": return "bg-primary/10 border border-primary/20";
+      case "seller": return "bg-blue-500/10 border border-blue-500/20";
+      default: return "bg-muted";
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Чаты</h2>
-        <Button variant="outline" size="sm" onClick={onRefresh}><RefreshCw className="h-4 w-4 mr-1" /> Обновить</Button>
+    <div className="flex gap-0 -mx-6 -mt-6" style={{ height: "calc(100vh - 240px)" }}>
+      {/* Chat list */}
+      <div className="w-80 flex-shrink-0 border-r border-border flex flex-col">
+        <div className="p-3 border-b border-border flex items-center justify-between">
+          <h2 className="font-semibold text-sm">Чаты ({realChats.length})</h2>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRefresh}><RefreshCw className="h-3.5 w-3.5" /></Button>
+        </div>
+        <ScrollArea className="flex-1">
+          {realChats.length === 0 ? (
+            <div className="p-6 text-center text-muted-foreground text-sm">Чатов пока нет</div>
+          ) : (
+            <div className="divide-y divide-border">
+              {realChats.map(chat => {
+                const isSelected = chat.id === selectedChatId;
+                return (
+                  <button
+                    key={chat.id}
+                    onClick={() => handleSelectChat(chat)}
+                    className={cn(
+                      "w-full text-left p-3 transition-colors hover:bg-muted/50",
+                      isSelected && "bg-primary/5 border-l-2 border-l-primary"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <User className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                          <span className="font-medium text-sm truncate">{chat.avito_user_name || "Пользователь"}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">{chat.messages_count} сообщ.</Badge>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">{chat.bot_responses_count} от бота</Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {chat.is_lead && <Badge className="bg-green-500/20 text-green-700 text-[10px] px-1.5 py-0">Лид</Badge>}
+                          {chat.is_escalated && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Вы в чате</Badge>}
+                          {chat.status === "seller_takeover" && !chat.is_escalated && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Перехвачен</Badge>}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap flex-shrink-0">
+                        {chat.last_message_at ? new Date(chat.last_message_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </ScrollArea>
       </div>
-      {chats.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">Чатов пока нет.</p>
-      ) : (
-        <div className="space-y-2">
-          {chats.map(chat => (
-            <Card key={chat.id} className="p-3">
-              <div className="flex items-center justify-between">
+
+      {/* Chat messages pane */}
+      <div className="flex-1 flex flex-col">
+        {!selectedChat ? (
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">Выберите чат слева</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Chat header */}
+            <div className="p-3 border-b border-border flex items-center justify-between bg-card">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                </div>
                 <div>
-                  <span className="font-medium text-sm">{chat.avito_user_name || "Пользователь"}</span>
-                  <div className="flex gap-2 mt-1">
-                    <Badge variant="outline" className="text-xs">Сообщений: {chat.messages_count}</Badge>
-                    <Badge variant="outline" className="text-xs">Ответов бота: {chat.bot_responses_count}</Badge>
-                    {chat.is_lead && <Badge className="bg-green-500/20 text-green-700 text-xs">Лид</Badge>}
-                    {chat.is_escalated && <Badge variant="destructive" className="text-xs">Эскалация</Badge>}
+                  <div className="font-medium text-sm">{selectedChat.avito_user_name || "Пользователь"}</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {selectedChat.messages_count} сообщ. · {selectedChat.bot_responses_count} ответов бота
+                    {selectedChat.is_escalated && " · Вы ведёте диалог"}
                   </div>
                 </div>
-                <span className="text-xs text-muted-foreground">{chat.last_message_at ? new Date(chat.last_message_at).toLocaleString("ru-RU") : "—"}</span>
               </div>
-            </Card>
-          ))}
-        </div>
-      )}
+              <div className="flex items-center gap-1">
+                {selectedChat.is_escalated && (
+                  <Button variant="outline" size="sm" className="text-xs h-7" onClick={handleResumeBot}>
+                    <Bot className="h-3 w-3 mr-1" /> Вернуть боту
+                  </Button>
+                )}
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => syncAndLoadMessages(selectedChat)} disabled={syncing}>
+                  <RefreshCw className={cn("h-3.5 w-3.5", syncing && "animate-spin")} />
+                </Button>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <ScrollArea className="flex-1 p-4" style={{ height: "calc(100vh - 380px)" }}>
+              {messagesLoading || syncing ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="text-center text-muted-foreground text-sm py-12">Сообщений пока нет</div>
+              ) : (
+                <div className="space-y-3">
+                  {messages.map((msg, i) => (
+                    <div key={msg.id || i} className={cn("flex", msg.role === "user" ? "justify-start" : "justify-end")}>
+                      <div className={cn("max-w-[75%] rounded-xl px-3.5 py-2.5", getRoleBg(msg.role))}>
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className={cn("text-[10px] font-semibold",
+                            msg.role === "user" ? "text-foreground" : msg.role === "seller" ? "text-blue-600" : "text-primary"
+                          )}>
+                            {getRoleLabel(msg.role)}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(msg.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+            </ScrollArea>
+
+            {/* Reply input */}
+            <div className="p-3 border-t border-border bg-card">
+              {selectedChat.is_escalated ? (
+                <div className="flex gap-2">
+                  <Input
+                    value={replyText}
+                    onChange={e => setReplyText(e.target.value)}
+                    placeholder="Написать клиенту в Авито..."
+                    onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSendReply()}
+                    disabled={sending}
+                    className="text-sm"
+                  />
+                  <Button onClick={handleSendReply} disabled={!replyText.trim() || sending} size="sm">
+                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-muted-foreground flex-1">Бот ведёт этот диалог. Чтобы подключиться — нажмите:</p>
+                  <Button variant="outline" size="sm" className="text-xs h-7" onClick={async () => {
+                    try {
+                      await (supabase as any)
+                        .from("avito_bot_chats")
+                        .update({ is_escalated: true, status: "seller_takeover", updated_at: new Date().toISOString() })
+                        .eq("id", selectedChat.id);
+                      toast({ title: "Вы подключились к чату" });
+                      onRefresh();
+                    } catch {}
+                  }}>
+                    <Hand className="h-3 w-3 mr-1" /> Подключиться
+                  </Button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
-
 // ===== SCHEDULE EDITOR =====
 const WEEKDAYS = [
   { key: "monday", label: "Пн" },
