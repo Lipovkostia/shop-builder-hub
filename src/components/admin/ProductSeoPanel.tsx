@@ -91,7 +91,9 @@ export function ProductSeoPanel({ product, storeId, storeName, subdomain, storeT
   const titleOptimal = titleLength >= 50 && titleLength <= 70;
   const descriptionOptimal = descriptionLength >= 140 && descriptionLength <= 160;
 
-  const productUrl = subdomain ? `/wholesale/${subdomain}/product/${product.slug}` : `#`;
+  const productUrl = subdomain 
+    ? (storeType === "retail" ? `/retail/${subdomain}/p/${product.slug}` : `/wholesale/${subdomain}/product/${product.slug}`)
+    : `#`;
 
   return (
     <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
