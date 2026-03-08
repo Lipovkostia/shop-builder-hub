@@ -407,16 +407,20 @@ Deno.serve(async (req) => {
 
       const qaContext = buildQAContext(qaItems || []);
 
-      // If item_id is provided, fetch listing context
+      // If item_id is provided, fetch listing context (prefer local service data)
       let listingContext = "";
       if (item_id) {
         try {
+          const localListing = await getLocalListingInfo(supabase, bot.store_id, String(item_id));
+
+          let apiListing: { title: string; description: string; price: number; category: string; url: string } | null = null;
           let accQuery = supabase.from("avito_accounts").select("*");
           if (bot.avito_account_id) {
             accQuery = accQuery.eq("id", bot.avito_account_id);
           } else {
             accQuery = accQuery.eq("store_id", bot.store_id);
           }
+
           const { data: account } = await accQuery.single();
           if (account) {
             const token = await getAvitoToken(account.client_id, account.client_secret);
@@ -434,11 +438,13 @@ Deno.serve(async (req) => {
               } catch {}
             }
             if (uid) {
-              const listing = await getAvitoListingInfo(token, uid, item_id);
-              if (listing) {
-                listingContext = `\n\n--- КОНТЕКСТ ТЕКУЩЕГО ОБЪЯВЛЕНИЯ (клиент спрашивает именно про этот товар) ---\nНазвание товара: ${listing.title}\nЦена: ${listing.price} ₽\nКатегория: ${listing.category}\nОписание товара:\n${listing.description}\nСсылка: ${listing.url}\n--- КОНЕЦ КОНТЕКСТА ОБЪЯВЛЕНИЯ ---\n\nВАЖНО: Клиент пишет тебе по поводу этого конкретного объявления. Отвечай в контексте этого товара, знай его название, цену и описание. Если спрашивают цену — называй цену из контекста.`;
-              }
+              apiListing = await getAvitoListingInfo(token, uid, item_id);
             }
+          }
+
+          const listing = mergeListingInfo(localListing, apiListing);
+          if (listing) {
+            listingContext = `\n\n--- КОНТЕКСТ ТЕКУЩЕГО ОБЪЯВЛЕНИЯ (клиент спрашивает именно про этот товар) ---\nНазвание товара: ${listing.title}\nЦена: ${listing.price} ₽\nКатегория: ${listing.category}\nОписание товара:\n${listing.description}\n${listing.url ? `Ссылка: ${listing.url}\n` : ""}--- КОНЕЦ КОНТЕКСТА ОБЪЯВЛЕНИЯ ---\n\nВАЖНО: Клиент пишет тебе по поводу этого конкретного объявления. Отвечай в контексте этого товара, знай его название, цену и описание. Если спрашивают цену — называй цену из контекста.`;
           }
         } catch (e) {
           console.error("Failed to fetch listing for debug:", e);
