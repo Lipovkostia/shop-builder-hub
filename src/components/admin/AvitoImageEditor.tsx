@@ -251,7 +251,38 @@ export function AvitoImageEditor({
     }
   }, [storeId, productId, projectId, toast]);
 
-  const handleTemplateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAiAction = useCallback(async (imageUrl: string, actionType: string, label: string) => {
+    const key = `${actionType}_${imageUrl}`;
+    setProcessing(prev => new Set(prev).add(key));
+    try {
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/avito-image-edit`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: actionType, image_url: imageUrl, store_id: storeId, product_id: productId,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "AI error");
+      const dims = await loadImageDimensions(data.url);
+      const newImg: ImageInfo = { url: data.url, ...dims, isGenerated: true };
+      setGeneratedImages(prev => [...prev, newImg]);
+      setSelectedUrls(prev => new Set(prev).add(data.url));
+      toast({ title: label });
+      setTimeout(() => {
+        scrollViewportRef.current?.scrollTo({ top: scrollViewportRef.current.scrollHeight, behavior: "smooth" });
+      }, 200);
+    } catch (err: any) {
+      toast({ title: "Ошибка AI", description: err.message, variant: "destructive" });
+    } finally {
+      setProcessing(prev => { const n = new Set(prev); n.delete(key); return n; });
+    }
+  }, [storeId, productId, projectId, toast]);
+
+
     const file = e.target.files?.[0];
     if (!file) return;
     const localUrl = URL.createObjectURL(file);
