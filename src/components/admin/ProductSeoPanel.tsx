@@ -22,10 +22,11 @@ interface ProductSeoPanelProps {
   storeId: string | null;
   storeName?: string;
   subdomain?: string;
+  storeType?: "retail" | "wholesale";
   onUpdate?: () => void;
 }
 
-export function ProductSeoPanel({ product, storeId, storeName, subdomain, onUpdate }: ProductSeoPanelProps) {
+export function ProductSeoPanel({ product, storeId, storeName, subdomain, storeType = "wholesale", onUpdate }: ProductSeoPanelProps) {
   const { generating, saving, generateSeo, updateSeo, resetSeo } = useProductSeo(storeId, storeName);
 
   // Local state for form fields
