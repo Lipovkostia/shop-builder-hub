@@ -164,8 +164,24 @@ Deno.serve(async (req) => {
       if (accErr || !account) throw new Error("Авито аккаунт не найден");
 
       const token = await getAvitoToken(account.client_id, account.client_secret);
-      const userId = account.avito_user_id;
-      if (!userId) throw new Error("Авито user_id не найден");
+      let userId = account.avito_user_id;
+      
+      // Auto-fetch user_id if missing
+      if (!userId) {
+        try {
+          const selfRes = await fetch(`${AVITO_API_BASE}/core/v1/accounts/self`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (selfRes.ok) {
+            const selfData = await selfRes.json();
+            userId = selfData.id;
+            if (userId) {
+              await supabase.from("avito_accounts").update({ avito_user_id: userId }).eq("id", account.id);
+            }
+          }
+        } catch {}
+      }
+      if (!userId) throw new Error("Не удалось определить Авито user_id. Проверьте API-ключи аккаунта.");
 
       const res = await fetch(
         `${AVITO_API_BASE}/core/v1/accounts/${userId}/items?per_page=50&status=active`,
