@@ -347,7 +347,7 @@ Deno.serve(async (req) => {
       if (productsMatch) {
         const ids = productsMatch[1].split(",").map((s: string) => s.trim()).filter(Boolean);
         recommendedProducts = ids.map((id: string) => {
-          const p = products.find((pr: any) => pr.id === id);
+          const p = allProducts.find((pr: any) => pr.id === id);
           if (!p) return null;
           return {
             id: p.id,
