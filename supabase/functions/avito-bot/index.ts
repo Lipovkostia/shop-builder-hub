@@ -12,6 +12,29 @@ const AVITO_API_BASE = "https://api.avito.ru";
 const AI_GATEWAY = "https://api.vsegpt.ru/v1/chat/completions";
 const VSEGPT_MODELS_URL = "https://api.vsegpt.ru/v1/models";
 
+// Batch-fetch all products to bypass Supabase 1000-row limit
+async function fetchAllProducts(supabase: any, storeId: string, columns: string): Promise<any[]> {
+  const PAGE_SIZE = 1000;
+  let allData: any[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("products")
+      .select(columns)
+      .eq("store_id", storeId)
+      .eq("is_active", true)
+      .is("deleted_at", null)
+      .order("name")
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    allData = allData.concat(data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return allData;
+}
+
 async function getAvitoToken(clientId: string, clientSecret: string): Promise<string> {
   const res = await fetch(AVITO_TOKEN_URL, {
     method: "POST",
@@ -566,20 +589,14 @@ Deno.serve(async (req) => {
       // Build full product catalog context (all store products)
       let catalogContext = "";
       try {
-        const { data: allProducts } = await supabase
-          .from("products")
-          .select("name, description, price, buy_price, unit, sku, category_id, images")
-          .eq("store_id", bot.store_id)
-          .eq("is_active", true)
-          .is("deleted_at", null)
-          .limit(200);
+        const allProducts = await fetchAllProducts(supabase, bot.store_id, "name, description, price, buy_price, unit, sku, category_id, images");
 
         if (allProducts && allProducts.length > 0) {
           const productLines = allProducts.map((p: any, i: number) => {
             const price = p.price || p.buy_price || 0;
             return `${i + 1}. ${p.name} — ${price} ₽${p.unit ? ` (${p.unit})` : ""}${p.sku ? ` [Артикул: ${p.sku}]` : ""}${p.description ? `\n   ${p.description.substring(0, 150)}` : ""}`;
           }).join("\n");
-          catalogContext = `\n\n--- КАТАЛОГ ТОВАРОВ МАГАЗИНА (${allProducts.length} шт.) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\n\nВАЖНО: Ты знаешь ВСЕ товары магазина. Если клиент спрашивает о любом товаре из каталога — используй информацию выше. Называй точные цены из каталога.\n`;
+          catalogContext = `\n\n--- КАТАЛОГ ТОВАРОВ МАГАЗИНА (${allProducts.length} шт.) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\n\nВАЖНО:\n- Ты знаешь ВСЕ товары магазина из каталога выше.\n- Если клиент спрашивает о товаре — ищи ПОХОЖИЕ названия в каталоге (частичное совпадение, сокращения, ключевые слова).\n- Например, если клиент пишет «ландана с лавандой», найди «Сыр Landana с лавандой 4,5кг» в каталоге.\n- НИКОГДА не говори «товара нет в каталоге», если есть хотя бы частичное совпадение по ключевым словам.\n- Называй точные цены из каталога.\n`;
         }
       } catch (e) {
         console.error("Failed to fetch product catalog:", e);
@@ -715,20 +732,14 @@ Deno.serve(async (req) => {
       // Load full product catalog for context
       let catalogContext = "";
       try {
-        const { data: allProducts } = await supabase
-          .from("products")
-          .select("name, description, price, buy_price, unit, sku")
-          .eq("store_id", store_id)
-          .eq("is_active", true)
-          .is("deleted_at", null)
-          .limit(200);
+        const allProducts = await fetchAllProducts(supabase, store_id, "name, description, price, buy_price, unit, sku");
 
         if (allProducts && allProducts.length > 0) {
           const productLines = allProducts.map((p: any, i: number) => {
             const price = p.price || p.buy_price || 0;
             return `${i + 1}. ${p.name} — ${price} ₽${p.unit ? ` (${p.unit})` : ""}${p.sku ? ` [${p.sku}]` : ""}${p.description ? ` | ${p.description.substring(0, 100)}` : ""}`;
           }).join("\n");
-          catalogContext = `\n\n--- КАТАЛОГ ТОВАРОВ (${allProducts.length} шт.) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\nТы знаешь ВСЕ товары магазина. Называй точные цены из каталога.\n`;
+          catalogContext = `\n\n--- КАТАЛОГ ТОВАРОВ (${allProducts.length} шт.) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\nВАЖНО: Ты знаешь ВСЕ товары. Ищи ПОХОЖИЕ названия (частичное совпадение, сокращения, ключевые слова). НИКОГДА не говори «нет в каталоге» если есть частичное совпадение. Называй точные цены.\n`;
         }
       } catch (e) {
         console.error("Failed to fetch product catalog:", e);
