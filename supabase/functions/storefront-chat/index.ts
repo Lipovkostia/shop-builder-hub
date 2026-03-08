@@ -300,10 +300,32 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Save assistant message
+      // Extract product IDs from [PRODUCTS:...] tag
+      let recommendedProducts: any[] = [];
+      const productsMatch = aiResponse.match(/\[PRODUCTS:([^\]]+)\]/);
+      if (productsMatch) {
+        const ids = productsMatch[1].split(",").map((s: string) => s.trim()).filter(Boolean);
+        recommendedProducts = ids.map((id: string) => {
+          const p = products.find((pr: any) => pr.id === id);
+          if (!p) return null;
+          return {
+            id: p.id,
+            name: p.name,
+            price: calcPrice(p),
+            unit: p.unit || "шт",
+            images: p.images || [],
+            sku: p.sku,
+            quantity: p.quantity,
+          };
+        }).filter(Boolean);
+        // Remove the tag from visible response
+        aiResponse = aiResponse.replace(/\[PRODUCTS:[^\]]+\]/g, "").trim();
+      }
+
+      // Save assistant message (clean, without tags)
       await supabase.from("storefront_chat_messages").insert({ session_id: sessionId, role: "assistant", content: aiResponse });
 
-      return new Response(JSON.stringify({ response: aiResponse, session_id: sessionId }), {
+      return new Response(JSON.stringify({ response: aiResponse, session_id: sessionId, products: recommendedProducts }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
