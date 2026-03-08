@@ -1097,23 +1097,6 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
             </div>
 
             <Separator />
-
-            {/* ===== SETUP MODE ===== */}
-            <div>
-              <h2 className="text-lg font-semibold mb-1">Режим настройки</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => updateForm({ mode: "smart" })} className={cn("p-4 rounded-lg border-2 text-left transition-colors", botForm.mode === "smart" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30")}>
-                  <span className="text-2xl mb-2 block">🐱</span>
-                  <span className="font-medium">Умная настройка</span>
-                </button>
-                <button onClick={() => updateForm({ mode: "pro" })} className={cn("p-4 rounded-lg border-2 text-left transition-colors", botForm.mode === "pro" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30")}>
-                  <span className="text-2xl mb-2 block">💻</span>
-                  <span className="font-medium">Для профессионалов</span>
-                </button>
-              </div>
-            </div>
-
-            <Separator />
             <div className="flex items-center gap-2">
               <Button onClick={onProcess} variant="outline" size="sm"><RefreshCw className="h-4 w-4 mr-1" /> Проверить сообщения сейчас</Button>
               <span className="text-xs text-muted-foreground">Принудительная проверка (обычно автоматически каждые 2 мин.)</span>
