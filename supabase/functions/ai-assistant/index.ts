@@ -76,7 +76,7 @@ serve(async (req) => {
     // Check AI access for this store
     const { data: aiAccess } = await supabase
       .from("store_ai_access")
-      .select("is_unlocked, ai_assistant_enabled")
+      .select("is_unlocked, ai_assistant_enabled, ai_assistant_model")
       .eq("store_id", storeId)
       .maybeSingle();
 
@@ -201,14 +201,16 @@ serve(async (req) => {
       status: statusMap.get(p.id) || "in_stock", // Add current catalog status
     }));
 
-    // Call Lovable AI for product matching
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    // Call vsegpt AI for product matching
+    const VSEGPT_API_KEY = Deno.env.get("VSEGPT_API_KEY");
+    if (!VSEGPT_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "Lovable AI API key not configured" }),
+        JSON.stringify({ error: "VSEGPT_API_KEY not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const aiModel = aiAccess?.ai_assistant_model || "openai/gpt-4.1-mini";
 
     const systemPrompt = `Ты AI-помощник продавца B2B каталога. Анализируй товары и выполняй команды пользователя.
 
@@ -251,14 +253,14 @@ ${productList.length > 200 ? `\n... и ещё ${productList.length - 200} тов
 
 Найди соответствующие товары и определи действие. Верни результат через tool calling.`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.vsegpt.ru/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Authorization": `Bearer ${VSEGPT_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: aiModel,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
