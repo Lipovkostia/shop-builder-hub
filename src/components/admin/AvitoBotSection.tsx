@@ -70,11 +70,10 @@ interface DashboardStats {
 }
 
 type TopLevel = "dashboard" | "bots" | "accounts" | "chats";
-type BotSection = "general" | "personality" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug";
+type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug";
 
 const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "Основные", icon: Bot },
-  { id: "personality", label: "Личность", icon: User },
   { id: "prompt", label: "Промпт", icon: Sparkles },
   { id: "qa", label: "Вопрос-ответ", icon: HelpCircle },
   { id: "ad_filter", label: "Объявления", icon: Filter },
@@ -87,6 +86,7 @@ const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType 
   { id: "model", label: "Модель ИИ", icon: Zap },
   { id: "delay", label: "Задержка", icon: Clock },
   { id: "limits", label: "Лимиты", icon: Shield },
+  { id: "pro", label: "Про-режим", icon: Sparkles },
   { id: "stop_command", label: "Стоп-команда", icon: Hand },
   { id: "notifications", label: "Уведомления", icon: Bell },
   { id: "telegram", label: "Telegram", icon: Bell },
@@ -1097,6 +1097,23 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
             </div>
 
             <Separator />
+
+            {/* ===== SETUP MODE ===== */}
+            <div>
+              <h2 className="text-lg font-semibold mb-1">Режим настройки</h2>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => updateForm({ mode: "smart" })} className={cn("p-4 rounded-lg border-2 text-left transition-colors", botForm.mode === "smart" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30")}>
+                  <span className="text-2xl mb-2 block">🐱</span>
+                  <span className="font-medium">Умная настройка</span>
+                </button>
+                <button onClick={() => updateForm({ mode: "pro" })} className={cn("p-4 rounded-lg border-2 text-left transition-colors", botForm.mode === "pro" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30")}>
+                  <span className="text-2xl mb-2 block">💻</span>
+                  <span className="font-medium">Для профессионалов</span>
+                </button>
+              </div>
+            </div>
+
+            <Separator />
             <div className="flex items-center gap-2">
               <Button onClick={onProcess} variant="outline" size="sm"><RefreshCw className="h-4 w-4 mr-1" /> Проверить сообщения сейчас</Button>
               <span className="text-xs text-muted-foreground">Принудительная проверка (обычно автоматически каждые 2 мин.)</span>
@@ -1104,10 +1121,14 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
           </div>
         );
 
-      case "personality": {
+      case "prompt": {
         const personality = (botForm as any).personality_config || {};
+        const instructions = (botForm as any).instructions_config || {};
+        const rulesList: string[] = (botForm as any).rules_list || [];
+        const isSmartMode = botForm.mode === "smart";
         return (
           <div className="space-y-6">
+            {/* PERSONALITY */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2"><User className="h-4 w-4 text-primary" /> Личность робота</CardTitle>
@@ -1151,15 +1172,7 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
                 </div>
               </CardContent>
             </Card>
-          </div>
-        );
-      }
 
-      case "prompt": {
-        const instructions = (botForm as any).instructions_config || {};
-        const rulesList: string[] = (botForm as any).rules_list || [];
-        return (
-          <div className="space-y-6">
             {/* INSTRUCTIONS */}
             <Card>
               <CardHeader className="pb-2">
@@ -1233,11 +1246,20 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
 
             <Separator />
 
-            <div>
-              <h2 className="text-lg font-semibold mb-1">Произвольный промпт (дополнительно)</h2>
-              <p className="text-sm text-muted-foreground mb-2">Все блоки выше автоматически формируют промпт. Здесь можете дополнить его вручную.</p>
-              <Textarea value={botForm.system_prompt || ""} onChange={e => updateForm({ system_prompt: e.target.value })} placeholder="Дополнительные инструкции..." className="min-h-[200px]" />
-            </div>
+            {/* Smart setup or raw prompt */}
+            {isSmartMode ? (
+              <div>
+                <h2 className="text-lg font-semibold mb-1">Умная настройка контента</h2>
+                <p className="text-sm text-muted-foreground mb-3">Заполните информацию о бизнесе — промпт сформируется автоматически.</p>
+                <AvitoBotSmartSetup data={(botForm as any).smart_setup_data || { category: "products", company_info: "", pricing_info: "", delivery_info: "", customer_interaction: "", custom_blocks: [] }} onChange={(newData) => { updateForm({ smart_setup_data: newData }); const prompt = buildSystemPromptFromSmartSetup(newData); updateForm({ system_prompt: prompt }); }} storeId={storeId} botId={bot.id} />
+              </div>
+            ) : (
+              <div>
+                <h2 className="text-lg font-semibold mb-1">Произвольный промпт (дополнительно)</h2>
+                <p className="text-sm text-muted-foreground mb-2">Все блоки выше автоматически формируют промпт. Здесь можете дополнить его вручную.</p>
+                <Textarea value={botForm.system_prompt || ""} onChange={e => updateForm({ system_prompt: e.target.value })} placeholder="Дополнительные инструкции..." className="min-h-[200px]" />
+              </div>
+            )}
           </div>
         );
       }
@@ -1466,7 +1488,16 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
           </div>
         );
 
-      // pro section removed — functionality moved to personality & prompt tabs
+      case "pro":
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2"><h2 className="text-lg font-semibold">Про-режим продавца</h2><Badge variant="secondary">Бета</Badge></div>
+            <div className="flex items-center gap-3">
+              <Switch checked={botForm.pro_seller_mode || false} onCheckedChange={v => updateForm({ pro_seller_mode: v })} />
+              <span className="text-sm">{botForm.pro_seller_mode ? "Включён" : "Выключен"}</span>
+            </div>
+          </div>
+        );
 
       case "notifications":
         return (
