@@ -7184,6 +7184,20 @@ export default function AdminPanel({
           {activeSection === "avito-bot" && (
             <AvitoBotSection storeId={effectiveStoreId} />
           )}
+
+          {activeSection === "office" && (
+            <OfficeSection
+              storeId={effectiveStoreId}
+              onNavigateToBot={(botId) => {
+                setActiveSection("avito-bot");
+                setSearchParams(prev => {
+                  prev.set('section', 'avito-bot');
+                  prev.set('bot', botId);
+                  return prev;
+                });
+              }}
+            />
+          )}
         </main>
 
       {/* Quick Add Product Dialog */}
