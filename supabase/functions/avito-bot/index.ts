@@ -1088,6 +1088,13 @@ Deno.serve(async (req) => {
             }
           }
 
+          // Load sales stages
+          let salesContext = "";
+          try {
+            const { data: stages } = await supabase.from("avito_bot_sales_stages").select("*").eq("bot_id", bot.id).eq("is_active", true).order("sort_order");
+            salesContext = buildSalesStagesContext(stages || []);
+          } catch (e) { console.error("Failed to load sales stages:", e); }
+
           const basePrompt = getEffectiveSystemPrompt(bot);
           const charLimitSuffix = bot.max_response_chars
             ? `\n\nВАЖНО: Ограничивай длину ответа до ${bot.max_response_chars} символов.`
@@ -1096,7 +1103,7 @@ Deno.serve(async (req) => {
             ? "\n\nВеди себя как профессиональный продавец."
             : "";
 
-          const systemPrompt = basePrompt + catalogContext + listingContext + qaContext + charLimitSuffix + proSuffix;
+          const systemPrompt = basePrompt + catalogContext + listingContext + qaContext + salesContext + charLimitSuffix + proSuffix;
 
           const conversationMessages: { role: string; content: string }[] = [
             { role: "system", content: systemPrompt },
