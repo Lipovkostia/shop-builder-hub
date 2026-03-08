@@ -1,3 +1,4 @@
+// Avito Bot Edge Function v2
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -184,7 +185,7 @@ Deno.serve(async (req) => {
       if (!userId) throw new Error("Не удалось определить Авито user_id. Проверьте API-ключи аккаунта.");
 
       const res = await fetch(
-        `${AVITO_API_BASE}/core/v1/accounts/${userId}/items?per_page=50&status=active`,
+        `${AVITO_API_BASE}/core/v1/items?per_page=50&status=active`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) {
@@ -197,7 +198,7 @@ Deno.serve(async (req) => {
         title: item.title || "",
         price: item.price || 0,
         url: item.url || "",
-        image: item.images?.[0]?.640x480 || item.images?.[0]?.default || "",
+        image: item.images?.[0]?.["640x480"] || item.images?.[0]?.["default"] || "",
         category: item.category?.name || "",
       }));
 
