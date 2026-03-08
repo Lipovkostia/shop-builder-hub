@@ -1368,13 +1368,22 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
         );
 
       case "leads":
-        return <ListEditor title="Когда создавать лид?" desc="По умолчанию лид создаётся при получении контакта." items={(botForm.lead_conditions as string[]) || []} onAdd={() => addListItem("lead_conditions")} onUpdate={(i, v) => updateListItem("lead_conditions", i, v)} onRemove={(i) => removeListItem("lead_conditions", i)} placeholder="Условие..." />;
+        return <ListEditor title="Когда создавать лид?" desc="По умолчанию лид создаётся при получении контакта." items={(botForm.lead_conditions as string[]) || []} onAdd={() => addListItem("lead_conditions")} onUpdate={(i, v) => updateListItem("lead_conditions", i, v)} onRemove={(i) => removeListItem("lead_conditions", i)} placeholder="Условие..." onAiFill={async () => {
+          const result = await aiFill("leads_gen", ((botForm.lead_conditions as string[]) || []).join("; "), "Условия для создания лида в чат-боте на Авито (список через точку с запятой)");
+          if (result) { const items = result.split(/[;\n]/).map((s: string) => s.replace(/^\d+\.\s*/, "").trim()).filter(Boolean); updateForm({ lead_conditions: items }); }
+        }} aiFillingField={aiFillingField} />;
 
       case "escalation":
-        return <ListEditor title="Когда передать человеку?" desc="Случаи передачи диалога." items={(botForm.escalation_rules as string[]) || []} onAdd={() => addListItem("escalation_rules")} onUpdate={(i, v) => updateListItem("escalation_rules", i, v)} onRemove={(i) => removeListItem("escalation_rules", i)} placeholder="Правило..." />;
+        return <ListEditor title="Когда передать человеку?" desc="Случаи передачи диалога." items={(botForm.escalation_rules as string[]) || []} onAdd={() => addListItem("escalation_rules")} onUpdate={(i, v) => updateListItem("escalation_rules", i, v)} onRemove={(i) => removeListItem("escalation_rules", i)} placeholder="Правило..." onAiFill={async () => {
+          const result = await aiFill("escalation_gen", ((botForm.escalation_rules as string[]) || []).join("; "), "Правила эскалации (когда передать диалог человеку) для бота на Авито");
+          if (result) { const items = result.split(/[;\n]/).map((s: string) => s.replace(/^\d+\.\s*/, "").trim()).filter(Boolean); updateForm({ escalation_rules: items }); }
+        }} aiFillingField={aiFillingField} />;
 
       case "completion":
-        return <ListEditor title="Когда считать завершённым?" desc="Признаки завершённого диалога." items={(botForm.completion_rules as string[]) || []} onAdd={() => addListItem("completion_rules")} onUpdate={(i, v) => updateListItem("completion_rules", i, v)} onRemove={(i) => removeListItem("completion_rules", i)} placeholder="Признак..." />;
+        return <ListEditor title="Когда считать завершённым?" desc="Признаки завершённого диалога." items={(botForm.completion_rules as string[]) || []} onAdd={() => addListItem("completion_rules")} onUpdate={(i, v) => updateListItem("completion_rules", i, v)} onRemove={(i) => removeListItem("completion_rules", i)} placeholder="Признак..." onAiFill={async () => {
+          const result = await aiFill("completion_gen", ((botForm.completion_rules as string[]) || []).join("; "), "Признаки завершённого диалога для бота на Авито");
+          if (result) { const items = result.split(/[;\n]/).map((s: string) => s.replace(/^\d+\.\s*/, "").trim()).filter(Boolean); updateForm({ completion_rules: items }); }
+        }} aiFillingField={aiFillingField} />;
 
       case "schedule":
         return (
