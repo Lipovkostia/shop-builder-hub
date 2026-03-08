@@ -311,7 +311,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings" | "exchange" | "avito";
+type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings" | "exchange" | "avito" | "avito-bot";
 type ImportView = "accounts" | "catalog" | "counterparties";
 type ImportSource = "select" | "moysklad" | "excel" | "google-sheets";
 type CatalogView = "list" | "detail";
