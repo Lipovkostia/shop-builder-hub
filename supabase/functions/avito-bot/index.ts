@@ -245,10 +245,28 @@ async function getLocalListingInfo(
 
       const title = String(params.title || product.name || "").trim();
       const description = String(params.description || product.description || "").trim();
-      const rawPrice = params.Price ?? params.price ?? product.price ?? 0;
+      
+      // Calculate effective price: params price > fixed price > calculated price > buy_price
+      let rawPrice = params.Price ?? params.price ?? null;
+      if (rawPrice == null || rawPrice === 0 || rawPrice === "0") {
+        if (product.is_fixed_price && product.price > 0) {
+          rawPrice = product.price;
+        } else if (product.buy_price && product.buy_price > 0) {
+          const bp = Number(product.buy_price);
+          const mt = product.markup_type || "percent";
+          const mv = Number(product.markup_value || 0);
+          if (mt === "percent") {
+            rawPrice = bp * (1 + mv / 100);
+          } else {
+            rawPrice = bp + mv;
+          }
+        } else {
+          rawPrice = product.price || 0;
+        }
+      }
       const price = typeof rawPrice === "string"
         ? parseInt(rawPrice.replace(/\D/g, ""), 10) || 0
-        : Number(rawPrice) || 0;
+        : Math.round(Number(rawPrice) || 0);
       const category = String(row.avito_category || params.category || "").trim();
 
       const avitoIdCandidates = [
