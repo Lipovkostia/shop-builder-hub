@@ -80,7 +80,18 @@ serve(async (req) => {
     for (const product of products) {
       const categoryName = (product.categories as any)?.name || "Товары";
       
-      const prompt = `Ты — SEO-эксперт для российского B2B интернет-магазина "${storeName || 'Магазин'}".
+      const isRetail = storeType === "retail";
+      const storeTypeLabel = isRetail ? "розничного интернет-магазина" : "B2B интернет-магазина";
+      const buyAction = isRetail ? "Купите" : "Купите оптом";
+      const targetAudience = isRetail ? "для розничных покупателей" : "для B2B, оптовых закупок";
+      const keywordHint = isRetail 
+        ? "релевантных ключевых слов для розничной покупки (купить, цена, заказать, доставка)" 
+        : "релевантных ключевых слов для оптовых закупок";
+      const titleHint = isRetail 
+        ? 'включи название товара и "купить" или "цена"' 
+        : 'включи название товара и "оптом" или "купить оптом"';
+
+      const prompt = `Ты — SEO-эксперт для российского ${storeTypeLabel} "${storeName || 'Магазин'}".
 
 Сгенерируй SEO-метаданные для товара:
 
@@ -93,9 +104,9 @@ serve(async (req) => {
 - Артикул: ${product.sku || "не указан"}
 
 ТРЕБОВАНИЯ:
-1. seo_title: 55-65 символов, включи название товара и "оптом" или "купить оптом"
-2. seo_description: 145-160 символов, начни с действия (Купите, Закажите), укажи преимущества для B2B
-3. seo_keywords: 5-8 релевантных ключевых слов для оптовых закупок
+1. seo_title: 55-65 символов, ${titleHint}
+2. seo_description: 145-160 символов, начни с действия (${buyAction}, Закажите), укажи преимущества ${targetAudience}
+3. seo_keywords: 5-8 ${keywordHint}
 4. seo_schema: JSON-LD разметка Product для Schema.org
 
 Верни ТОЛЬКО JSON без markdown, без \`\`\`json:
