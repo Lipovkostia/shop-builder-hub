@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Bot, MessageCircle, Settings, Users, Sparkles, Power, Save, Plus, Trash2, Clock, Shield, Bell, Zap, ChevronRight, RefreshCw, KeyRound, ArrowLeft, Edit } from "lucide-react";
+import { Bot, MessageCircle, Settings, Users, Sparkles, Power, Save, Plus, Trash2, Clock, Shield, Bell, Zap, ChevronRight, RefreshCw, KeyRound, ArrowLeft, Edit, HelpCircle, PlayCircle, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ import { useAvitoBots, AI_MODELS, AvitoBot, AvitoBotChat } from "@/hooks/useAvit
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { TelegramIcon } from "@/components/icons/TelegramIcon";
 
 interface AvitoBotSectionProps {
   storeId: string | null;
@@ -29,12 +30,24 @@ interface AvitoAccount {
   profile_name: string | null;
 }
 
+// Q&A item type
+interface QAItem {
+  id: string;
+  bot_id: string;
+  question: string;
+  answer: string;
+  match_mode: "exact" | "fuzzy";
+  is_active: boolean;
+  sort_order: number;
+}
+
 type TopLevel = "bots" | "accounts" | "chats";
-type BotSection = "general" | "prompt" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications";
+type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "debug";
 
 const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "Основные", icon: Bot },
   { id: "prompt", label: "Промпт", icon: Sparkles },
+  { id: "qa", label: "Вопрос-ответ", icon: HelpCircle },
   { id: "leads", label: "Лиды", icon: Users },
   { id: "escalation", label: "Эскалация", icon: Shield },
   { id: "completion", label: "Завершение", icon: ChevronRight },
@@ -45,6 +58,8 @@ const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType 
   { id: "limits", label: "Лимиты", icon: Shield },
   { id: "pro", label: "Про-режим", icon: Sparkles },
   { id: "notifications", label: "Уведомления", icon: Bell },
+  { id: "telegram", label: "Telegram", icon: Bell },
+  { id: "debug", label: "Отладка", icon: PlayCircle },
 ];
 
 export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
@@ -71,7 +86,11 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
   const [chats, setChats] = useState<AvitoBotChat[]>([]);
 
   // Bot editing state
-  const [botForm, setBotForm] = useState<Partial<AvitoBot>>({});
+  const [botForm, setBotForm] = useState<Partial<AvitoBot> & { telegram_bot_token?: string; telegram_chat_id?: string }>({});
+
+  // Q&A items
+  const [qaItems, setQaItems] = useState<QAItem[]>([]);
+  const [qaLoading, setQaLoading] = useState(false);
 
   const editingBot = bots.find(b => b.id === editingBotId) || null;
 
@@ -117,9 +136,29 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
         pro_seller_mode: editingBot.pro_seller_mode || false,
         telegram_notification_format: editingBot.telegram_notification_format || "summary",
         avito_account_id: (editingBot as any).avito_account_id || null,
+        telegram_bot_token: (editingBot as any).telegram_bot_token || "",
+        telegram_chat_id: (editingBot as any).telegram_chat_id || "",
       });
+      loadQAItems(editingBot.id);
     }
   }, [editingBot]);
+
+  const loadQAItems = async (botId: string) => {
+    setQaLoading(true);
+    try {
+      const { data, error } = await (supabase as any)
+        .from("avito_bot_qa")
+        .select("*")
+        .eq("bot_id", botId)
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      setQaItems((data || []) as QAItem[]);
+    } catch (err: any) {
+      console.error("Error loading Q&A:", err);
+    } finally {
+      setQaLoading(false);
+    }
+  };
 
   const handleSaveBot = async () => {
     if (!editingBotId) return;
@@ -180,6 +219,52 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
     if (topLevel === "chats") loadChats();
   }, [topLevel]);
 
+  // Q&A handlers
+  const handleAddQA = async () => {
+    if (!editingBotId) return;
+    try {
+      const { error } = await (supabase as any)
+        .from("avito_bot_qa")
+        .insert({
+          bot_id: editingBotId,
+          question: "",
+          answer: "",
+          match_mode: "fuzzy",
+          sort_order: qaItems.length,
+        });
+      if (error) throw error;
+      loadQAItems(editingBotId);
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleUpdateQA = async (id: string, updates: Partial<QAItem>) => {
+    try {
+      const { error } = await (supabase as any)
+        .from("avito_bot_qa")
+        .update(updates)
+        .eq("id", id);
+      if (error) throw error;
+      setQaItems(prev => prev.map(q => q.id === id ? { ...q, ...updates } : q));
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteQA = async (id: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from("avito_bot_qa")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      setQaItems(prev => prev.filter(q => q.id !== id));
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Загрузка...</div>;
   }
@@ -194,6 +279,11 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
       setBotSection={setBotSection}
       saving={saving}
       accounts={accounts}
+      qaItems={qaItems}
+      qaLoading={qaLoading}
+      onAddQA={handleAddQA}
+      onUpdateQA={handleUpdateQA}
+      onDeleteQA={handleDeleteQA}
       onSave={handleSaveBot}
       onBack={() => { setEditingBotId(null); refetch(); }}
       onToggle={(active) => toggleBot(editingBotId, active)}
@@ -495,21 +585,31 @@ function ChatsView({ chats, onRefresh }: { chats: AvitoBotChat[]; onRefresh: () 
 }
 
 // ===== BOT EDITOR (dual pane) =====
-function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving, accounts, onSave, onBack, onToggle, onProcess, onDelete }: {
+function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving, accounts, qaItems, qaLoading, onAddQA, onUpdateQA, onDeleteQA, onSave, onBack, onToggle, onProcess, onDelete }: {
   bot: AvitoBot;
-  botForm: Partial<AvitoBot>;
-  setBotForm: React.Dispatch<React.SetStateAction<Partial<AvitoBot>>>;
+  botForm: Partial<AvitoBot> & { telegram_bot_token?: string; telegram_chat_id?: string };
+  setBotForm: React.Dispatch<React.SetStateAction<Partial<AvitoBot> & { telegram_bot_token?: string; telegram_chat_id?: string }>>;
   botSection: BotSection;
   setBotSection: (s: BotSection) => void;
   saving: boolean;
   accounts: AvitoAccount[];
+  qaItems: QAItem[];
+  qaLoading: boolean;
+  onAddQA: () => void;
+  onUpdateQA: (id: string, updates: Partial<QAItem>) => void;
+  onDeleteQA: (id: string) => void;
   onSave: () => void;
   onBack: () => void;
   onToggle: (active: boolean) => void;
   onProcess: () => void;
   onDelete: () => void;
 }) {
-  const updateForm = (updates: Partial<AvitoBot>) => setBotForm(prev => ({ ...prev, ...updates }));
+  const { toast } = useToast();
+  const [debugMessages, setDebugMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [debugInput, setDebugInput] = useState("");
+  const [debugLoading, setDebugLoading] = useState(false);
+
+  const updateForm = (updates: Partial<AvitoBot> & { telegram_bot_token?: string; telegram_chat_id?: string }) => setBotForm(prev => ({ ...prev, ...updates }));
 
   const addListItem = (field: "lead_conditions" | "escalation_rules" | "completion_rules") => {
     const arr = (botForm[field] as string[]) || [];
@@ -523,6 +623,28 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
   const removeListItem = (field: "lead_conditions" | "escalation_rules" | "completion_rules", index: number) => {
     const arr = ((botForm[field] as string[]) || []).filter((_, i) => i !== index);
     updateForm({ [field]: arr } as any);
+  };
+
+  const handleDebugSend = async () => {
+    if (!debugInput.trim() || debugLoading) return;
+    const userMsg = debugInput.trim();
+    setDebugInput("");
+    setDebugMessages(prev => [...prev, { role: "user", content: userMsg }]);
+    setDebugLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("avito-bot", {
+        body: { action: "debug_chat", bot_id: bot.id, message: userMsg },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setDebugMessages(prev => [...prev, { role: "assistant", content: data.response || "..." }]);
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+      setDebugMessages(prev => [...prev, { role: "assistant", content: `Ошибка: ${err.message}` }]);
+    } finally {
+      setDebugLoading(false);
+    }
   };
 
   const renderSection = () => {
@@ -593,6 +715,66 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
             <h2 className="text-lg font-semibold mb-1">Что бот должен знать?</h2>
             <p className="text-sm text-muted-foreground mb-3">Введите, что должен знать бот. Схема: ключевые задачи, техники убеждения, ограничения, персона бота, примеры диалогов.</p>
             <Textarea value={botForm.system_prompt || ""} onChange={e => updateForm({ system_prompt: e.target.value })} placeholder="Ты — продавец на Авито..." className="min-h-[300px]" />
+          </div>
+        );
+
+      case "qa":
+        return (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold mb-1">База вопросов и ответов</h2>
+              <p className="text-sm text-muted-foreground mb-3">Добавьте типовые вопросы и ответы. Бот будет использовать их при общении с клиентами.</p>
+            </div>
+            
+            {qaLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Загрузка...</div>
+            ) : (
+              <>
+                {qaItems.map((qa, i) => (
+                  <Card key={qa.id} className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-muted-foreground">#{i + 1}</span>
+                      <div className="flex items-center gap-2">
+                        <Select value={qa.match_mode} onValueChange={v => onUpdateQA(qa.id, { match_mode: v as "exact" | "fuzzy" })}>
+                          <SelectTrigger className="w-32 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="fuzzy">Примерное</SelectItem>
+                            <SelectItem value="exact">Точное</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Switch checked={qa.is_active} onCheckedChange={v => onUpdateQA(qa.id, { is_active: v })} />
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteQA(qa.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Вопрос клиента</Label>
+                      <Input 
+                        value={qa.question} 
+                        onChange={e => onUpdateQA(qa.id, { question: e.target.value })} 
+                        placeholder="Например: Какая доставка?" 
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Ответ бота</Label>
+                      <Textarea 
+                        value={qa.answer} 
+                        onChange={e => onUpdateQA(qa.id, { answer: e.target.value })} 
+                        placeholder="Доставляем в течение 1-2 дней..." 
+                        className="min-h-[80px]"
+                      />
+                    </div>
+                  </Card>
+                ))}
+
+                <Button variant="outline" onClick={onAddQA}>
+                  <Plus className="h-4 w-4 mr-1" /> Добавить вопрос-ответ
+                </Button>
+              </>
+            )}
           </div>
         );
 
@@ -735,7 +917,8 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
       case "notifications":
         return (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold mb-1">Уведомления в Telegram</h2>
+            <h2 className="text-lg font-semibold mb-1">Формат уведомлений</h2>
+            <p className="text-sm text-muted-foreground mb-3">Как вы хотите получать информацию о новых сообщениях?</p>
             <div className="grid grid-cols-2 gap-3">
               {[{ value: "summary", label: "Краткая сводка" }, { value: "full", label: "Полный диалог" }].map(opt => (
                 <button key={opt.value} onClick={() => updateForm({ telegram_notification_format: opt.value })} className={cn("p-3 rounded-lg border-2 text-sm transition-colors", botForm.telegram_notification_format === opt.value ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30")}>
@@ -743,6 +926,122 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
                 </button>
               ))}
             </div>
+          </div>
+        );
+
+      case "telegram":
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <TelegramIcon className="h-5 w-5 text-[#0088cc]" />
+              <h2 className="text-lg font-semibold">Уведомления в Telegram</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">Подключите Telegram-бота для получения уведомлений о новых сообщениях.</p>
+
+            <Card className="bg-blue-50/50 border-blue-200">
+              <CardContent className="pt-4 space-y-3">
+                <p className="text-sm">
+                  <strong>Инструкция:</strong>
+                </p>
+                <ol className="text-sm space-y-2 list-decimal list-inside text-muted-foreground">
+                  <li>Создайте бота в Telegram через <a href="https://t.me/BotFather" target="_blank" rel="noopener" className="text-primary underline">@BotFather</a></li>
+                  <li>Скопируйте токен бота и вставьте ниже</li>
+                  <li>Напишите вашему боту любое сообщение</li>
+                  <li>Получите ваш Chat ID через <a href="https://t.me/userinfobot" target="_blank" rel="noopener" className="text-primary underline">@userinfobot</a></li>
+                </ol>
+              </CardContent>
+            </Card>
+
+            <div>
+              <Label>Токен Telegram бота</Label>
+              <Input 
+                value={botForm.telegram_bot_token || ""} 
+                onChange={e => updateForm({ telegram_bot_token: e.target.value })} 
+                placeholder="123456789:ABCdefGhIJKlmnoPQRstuVWXyz" 
+              />
+            </div>
+            <div>
+              <Label>Chat ID (ваш или группы)</Label>
+              <Input 
+                value={botForm.telegram_chat_id || ""} 
+                onChange={e => updateForm({ telegram_chat_id: e.target.value })} 
+                placeholder="123456789" 
+              />
+            </div>
+
+            {botForm.telegram_bot_token && botForm.telegram_chat_id && (
+              <Badge className="bg-green-500/20 text-green-700 border-green-300">
+                ✓ Telegram подключён
+              </Badge>
+            )}
+          </div>
+        );
+
+      case "debug":
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <PlayCircle className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Режим отладки</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">Протестируйте бота в реальном времени. Отправляйте сообщения и смотрите, как бот будет отвечать.</p>
+
+            <Card className="min-h-[400px] flex flex-col">
+              <CardHeader className="pb-2 border-b">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Bot className="h-4 w-4" />
+                  Тестовый диалог с {bot.name || "ботом"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col p-0">
+                <ScrollArea className="flex-1 p-4 max-h-[300px]">
+                  {debugMessages.length === 0 ? (
+                    <div className="text-center text-muted-foreground text-sm py-8">
+                      Начните диалог, отправив сообщение ниже
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {debugMessages.map((msg, i) => (
+                        <div key={i} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
+                          <div className={cn(
+                            "max-w-[80%] rounded-lg px-3 py-2 text-sm",
+                            msg.role === "user" 
+                              ? "bg-primary text-primary-foreground" 
+                              : "bg-muted"
+                          )}>
+                            {msg.content}
+                          </div>
+                        </div>
+                      ))}
+                      {debugLoading && (
+                        <div className="flex justify-start">
+                          <div className="bg-muted rounded-lg px-3 py-2 text-sm flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Бот думает...
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </ScrollArea>
+                <div className="p-3 border-t flex gap-2">
+                  <Input 
+                    value={debugInput} 
+                    onChange={e => setDebugInput(e.target.value)} 
+                    placeholder="Введите сообщение..." 
+                    onKeyDown={e => e.key === "Enter" && handleDebugSend()}
+                    disabled={debugLoading}
+                  />
+                  <Button onClick={handleDebugSend} disabled={!debugInput.trim() || debugLoading}>
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Button variant="outline" size="sm" onClick={() => setDebugMessages([])}>
+              Очистить диалог
+            </Button>
           </div>
         );
 
