@@ -773,18 +773,10 @@ Deno.serve(async (req) => {
 
       const qaContext = buildQAContext(qaItems || []);
 
-      // Load full product catalog for context
-      let catalogContext = "";
+      // Load all products once — we'll filter per-chat for relevant ones
+      let allProducts: any[] = [];
       try {
-        const allProducts = await fetchAllProducts(supabase, store_id, "name, description, price, buy_price, unit, sku");
-
-        if (allProducts && allProducts.length > 0) {
-          const productLines = allProducts.map((p: any, i: number) => {
-            const price = p.price || p.buy_price || 0;
-            return `${i + 1}. ${p.name} — ${price} ₽${p.unit ? ` (${p.unit})` : ""}${p.sku ? ` [${p.sku}]` : ""}${p.description ? ` | ${p.description.substring(0, 100)}` : ""}`;
-          }).join("\n");
-          catalogContext = `\n\n--- КАТАЛОГ ТОВАРОВ (${allProducts.length} шт.) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\nВАЖНО: Ты знаешь ВСЕ товары. Ищи ПОХОЖИЕ названия (частичное совпадение, сокращения, ключевые слова). НИКОГДА не говори «нет в каталоге» если есть частичное совпадение. Называй точные цены.\n`;
-        }
+        allProducts = await fetchAllProducts(supabase, store_id, "name, price, buy_price, unit, sku");
       } catch (e) {
         console.error("Failed to fetch product catalog:", e);
       }
