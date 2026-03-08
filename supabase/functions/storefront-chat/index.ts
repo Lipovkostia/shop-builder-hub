@@ -227,30 +227,51 @@ Deno.serve(async (req) => {
       // Call AI
       const aiModel = (bot as any).ai_model || "google/gemini-3-flash-preview";
       
-      // Try Lovable AI first, fallback to VseGPT
       let aiResponse = "";
       const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
       const VSEGPT_KEY = Deno.env.get("VSEGPT_API_KEY");
-      
-      const gateway = LOVABLE_API_KEY ? LOVABLE_GATEWAY : AI_GATEWAY;
-      const apiKey = LOVABLE_API_KEY || VSEGPT_KEY;
 
-      if (!apiKey) throw new Error("No AI API key configured");
+      // Build ordered list of gateways to try
+      const gateways: { url: string; key: string; name: string }[] = [];
+      if (LOVABLE_API_KEY) gateways.push({ url: LOVABLE_GATEWAY, key: LOVABLE_API_KEY, name: "Lovable" });
+      if (VSEGPT_KEY) gateways.push({ url: AI_GATEWAY, key: VSEGPT_KEY, name: "VseGPT" });
 
-      const aiResp = await fetch(gateway, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: aiModel, messages, max_tokens: 1000, temperature: 0.7 }),
-      });
+      if (gateways.length === 0) throw new Error("No AI API key configured");
 
-      if (!aiResp.ok) {
-        const errText = await aiResp.text();
-        console.error("AI error:", aiResp.status, errText);
-        throw new Error("AI service error");
+      const requestBody = JSON.stringify({ model: aiModel, messages, max_tokens: 1000, temperature: 0.7 });
+      let lastError = "";
+
+      for (const gw of gateways) {
+        try {
+          console.log(`Trying ${gw.name} gateway with model ${aiModel}...`);
+          const aiResp = await fetch(gw.url, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${gw.key}`, "Content-Type": "application/json" },
+            body: requestBody,
+          });
+
+          if (aiResp.ok) {
+            const aiData = await aiResp.json();
+            aiResponse = aiData.choices?.[0]?.message?.content || "";
+            if (aiResponse) {
+              console.log(`${gw.name} responded successfully`);
+              break;
+            }
+          } else {
+            const errText = await aiResp.text();
+            console.error(`${gw.name} error: ${aiResp.status} ${errText}`);
+            lastError = `${gw.name}: ${aiResp.status}`;
+          }
+        } catch (e) {
+          console.error(`${gw.name} fetch error:`, e.message);
+          lastError = `${gw.name}: ${e.message}`;
+        }
       }
 
-      const aiData = await aiResp.json();
-      aiResponse = aiData.choices?.[0]?.message?.content || "Извините, не смог ответить. Попробуйте позже.";
+      if (!aiResponse) {
+        aiResponse = "Извините, не смог ответить. Попробуйте позже.";
+        console.error("All AI gateways failed. Last error:", lastError);
+      }
 
       // Check for order creation trigger
       const orderMatch = aiResponse.match(/\[?CREATE_ORDER:\{([^}]+)\}\]?/);
