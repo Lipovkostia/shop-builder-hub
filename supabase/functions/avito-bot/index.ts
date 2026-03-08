@@ -298,7 +298,7 @@ Deno.serve(async (req) => {
           }
 
           // Generate AI response
-          const aiResponse = await getAIResponse(conversationMessages, model, lovableApiKey);
+          const aiResponse = await getAIResponse(conversationMessages, model, vsegptApiKey);
           if (!aiResponse) continue;
 
           // Send response to Avito
