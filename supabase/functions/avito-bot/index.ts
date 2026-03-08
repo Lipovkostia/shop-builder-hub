@@ -814,6 +814,15 @@ Deno.serve(async (req) => {
           if (dbChat.is_escalated) continue;
           if (bot.max_responses && dbChat.bot_responses_count >= bot.max_responses) continue;
 
+          // Check if we already responded to this message by comparing timestamps
+          const lastMsgTimestamp = lastMsg.created ? new Date(lastMsg.created * 1000).toISOString() : null;
+          if (dbChat.last_message_at && lastMsgTimestamp) {
+            const dbTime = new Date(dbChat.last_message_at).getTime();
+            const avitoTime = new Date(lastMsgTimestamp).getTime();
+            // If our last recorded activity is after this message, skip (already processed)
+            if (dbTime >= avitoTime) continue;
+          }
+
           // Fetch messages to check for seller stop command
           const msgsRes = await fetch(
             `${AVITO_API_BASE}/messenger/v3/accounts/${userId}/chats/${chatId}/messages/?limit=20`,
