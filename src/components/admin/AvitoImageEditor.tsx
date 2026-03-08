@@ -414,7 +414,7 @@ export function AvitoImageEditor({
                 </div>
                 {templatePreview && (
                   <div className="flex items-center gap-3">
-                    <img src={templatePreview} alt="Шаблон" className="h-16 rounded border bg-[repeating-conic-gradient(#80808022_0%_25%,transparent_0%_50%)_50%/16px_16px]" />
+                    <img src={templatePreview} alt="Шаблон" className="h-16 rounded border bg-muted" />
                     <div className="text-xs text-muted-foreground">
                       Шаблон загружен. Нажмите «Шаблон» на любом фото для наложения.
                     </div>
