@@ -1539,12 +1539,12 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
             </div>
 
             {/* ===== ACCOUNT ===== */}
-            <div>
+             <div>
               <h2 className="text-lg font-semibold mb-1">Аккаунт Авито</h2>
               {!(botForm as any).avito_account_id || (botForm as any).avito_account_id === "none" ? (
-                <div className="mb-3 p-3 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 text-sm flex items-center gap-2">
+                <div className="mb-3 p-3 rounded-lg border border-blue-300 bg-blue-50 text-blue-800 text-sm flex items-center gap-2">
                   <KeyRound className="h-4 w-4 flex-shrink-0" />
-                  Робот не привязан к аккаунту. Без привязки автоответы не будут работать.
+                  Аккаунт Авито не привязан. Это нужно только для автоответов в Авито. Для чата на сайте магазина привязка не требуется.
                 </div>
               ) : null}
               <Select value={(botForm as any).avito_account_id || "none"} onValueChange={v => updateForm({ avito_account_id: v === "none" ? null : v })}>
