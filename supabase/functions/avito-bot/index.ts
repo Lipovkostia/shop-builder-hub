@@ -739,7 +739,7 @@ Deno.serve(async (req) => {
             const price = p.price || p.buy_price || 0;
             return `${i + 1}. ${p.name} — ${price} ₽${p.unit ? ` (${p.unit})` : ""}${p.sku ? ` [${p.sku}]` : ""}${p.description ? ` | ${p.description.substring(0, 100)}` : ""}`;
           }).join("\n");
-          catalogContext = `\n\n--- КАТАЛОГ ТОВАРОВ (${allProducts.length} шт.) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\nТы знаешь ВСЕ товары магазина. Называй точные цены из каталога.\n`;
+          catalogContext = `\n\n--- КАТАЛОГ ТОВАРОВ (${allProducts.length} шт.) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\nВАЖНО: Ты знаешь ВСЕ товары. Ищи ПОХОЖИЕ названия (частичное совпадение, сокращения, ключевые слова). НИКОГДА не говори «нет в каталоге» если есть частичное совпадение. Называй точные цены.\n`;
         }
       } catch (e) {
         console.error("Failed to fetch product catalog:", e);
