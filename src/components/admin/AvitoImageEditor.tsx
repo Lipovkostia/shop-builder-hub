@@ -377,8 +377,8 @@ export function AvitoImageEditor({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col gap-0">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-sm">
             <ImageIcon className="h-4 w-4" />
             Фото для Авито — {productName}
@@ -387,223 +387,201 @@ export function AvitoImageEditor({
 
         <div className="flex-1 min-h-0 overflow-hidden">
           <ScrollArea className="h-full w-full">
-          {/* Template section */}
-          <div className="mb-4 p-3 rounded-lg border bg-muted/30">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5" />
-                Шаблон (накладывается поверх фото)
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs"
-                onClick={() => templateInputRef.current?.click()}
-              >
-                <Upload className="h-3 w-3 mr-1" />
-                {templatePreview ? "Заменить" : "Загрузить PNG"}
-              </Button>
-              <input
-                ref={templateInputRef}
-                type="file"
-                accept="image/png"
-                className="hidden"
-                onChange={handleTemplateUpload}
-              />
-            </div>
-            {templatePreview && (
-              <div className="flex items-center gap-3">
-                <img src={templatePreview} alt="Шаблон" className="h-16 rounded border bg-[repeating-conic-gradient(#80808022_0%_25%,transparent_0%_50%)_50%/16px_16px]" />
-                <div className="text-xs text-muted-foreground">
-                  Шаблон загружен. Нажмите «Шаблон» на любом фото для наложения.
+            <div className="px-6 py-4">
+              {/* Template section */}
+              <div className="mb-4 p-3 rounded-lg border bg-muted/30">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium flex items-center gap-1.5">
+                    <Layers className="h-3.5 w-3.5" />
+                    Шаблон (накладывается поверх фото)
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={() => templateInputRef.current?.click()}
+                  >
+                    <Upload className="h-3 w-3 mr-1" />
+                    {templatePreview ? "Заменить" : "Загрузить PNG"}
+                  </Button>
+                  <input
+                    ref={templateInputRef}
+                    type="file"
+                    accept="image/png"
+                    className="hidden"
+                    onChange={handleTemplateUpload}
+                  />
                 </div>
-                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 ml-auto" onClick={() => { setTemplatePreview(null); setTemplateUrl(null); }}>
-                  <X className="h-3 w-3" />
-                </Button>
+                {templatePreview && (
+                  <div className="flex items-center gap-3">
+                    <img src={templatePreview} alt="Шаблон" className="h-16 rounded border bg-[repeating-conic-gradient(#80808022_0%_25%,transparent_0%_50%)_50%/16px_16px]" />
+                    <div className="text-xs text-muted-foreground">
+                      Шаблон загружен. Нажмите «Шаблон» на любом фото для наложения.
+                    </div>
+                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0 ml-auto" onClick={() => { setTemplatePreview(null); setTemplateUrl(null); }}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+                {!templatePreview && (
+                  <p className="text-xs text-muted-foreground">
+                    Загрузите PNG с прозрачным фоном. Он будет наложен поверх фото товара.
+                  </p>
+                )}
               </div>
-            )}
-            {!templatePreview && (
-              <p className="text-xs text-muted-foreground">
-                Загрузите PNG с прозрачным фоном. Он будет наложен поверх фото товара.
-              </p>
-            )}
-          </div>
 
-          {/* Avito requirements info */}
-          <div className="mb-3 flex items-center gap-2 text-[11px] text-muted-foreground">
-            <Maximize className="h-3 w-3" />
-            Оптимально: 1280×960 (4:3). Допустимо: 1920×1440. JPG/PNG до 30 МБ.
-          </div>
-
-          {/* Upload / Drop zone */}
-          <div
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onClick={() => uploadInputRef.current?.click()}
-            className={`mb-4 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${isDragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
-          >
-            {uploading ? (
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Загрузка...
+              {/* Avito requirements info */}
+              <div className="mb-3 flex items-center gap-2 text-[11px] text-muted-foreground">
+                <Maximize className="h-3 w-3" />
+                Оптимально: 1280×960 (4:3). Допустимо: 1920×1440. JPG/PNG до 30 МБ.
               </div>
-            ) : (
-              <div className="flex flex-col items-center gap-1">
-                <Upload className="h-5 w-5 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">
-                  Перетащите фото сюда или нажмите для выбора
-                </span>
-                <span className="text-[10px] text-muted-foreground/60">JPG, PNG до 30 МБ</span>
-              </div>
-            )}
-            <input
-              ref={uploadInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files) handleUploadPhotos(e.target.files);
-                e.target.value = "";
-              }}
-            />
-          </div>
 
-          {/* Original images */}
-          {imageInfos.length > 0 && (
-            <div className="mb-3">
-              <h4 className="text-xs font-medium mb-2 text-muted-foreground">Оригинальные фото ({imageInfos.length})</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {imageInfos.map((info, idx) => {
-                  const isProcessing = processing.has(info.url) || processing.has(`ai_${info.url}`) || processing.has(`tpl_${info.url}`);
-                  const isSelected = selectedUrls.has(info.url);
-                  const isOptimal = is43(info.width, info.height);
-                  
-                  return (
-                    <div key={info.url} className={`relative border rounded-lg overflow-hidden transition-all ${isSelected ? "ring-2 ring-primary" : "opacity-70"}`}>
-                      <div className="relative aspect-[4/3] bg-muted">
-                        <img src={info.url} alt="" className="w-full h-full object-cover" />
-                        {/* Checkbox overlay */}
-                        <div className="absolute top-2 left-2">
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => toggleSelect(info.url)}
-                            className="bg-background/80 border-2"
+              {/* Upload / Drop zone */}
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => uploadInputRef.current?.click()}
+                className={`mb-4 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${isDragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
+              >
+                {uploading ? (
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Загрузка...
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm text-muted-foreground">
+                      Перетащите фото сюда или нажмите для выбора
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      JPG, PNG до 30 МБ
+                    </p>
+                  </>
+                )}
+                <input
+                  ref={uploadInputRef}
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => e.target.files && handleUploadPhotos(e.target.files)}
+                />
+              </div>
+
+              {/* Original images section */}
+              {imageInfos.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold mb-3 flex items-center gap-1.5">
+                    <span>Оригинальные фото ({imageInfos.length})</span>
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {imageInfos.map((img) => (
+                      <div key={img.url} className="relative group">
+                        <div className="aspect-square bg-muted rounded-lg overflow-hidden border relative">
+                          <img
+                            src={img.url}
+                            alt="Оригинал"
+                            className="w-full h-full object-cover"
                           />
+                          {is43(img.width, img.height) && (
+                            <Badge className="absolute top-2 right-2 bg-green-500/80 text-xs">4:3</Badge>
+                          )}
+                          <span className="absolute bottom-1 right-1 text-[10px] bg-background/80 px-1.5 py-0.5 rounded text-muted-foreground">
+                            {img.width}×{img.height}
+                          </span>
                         </div>
-                        {/* Dimensions badge */}
-                        <div className="absolute top-2 right-2">
-                          <Badge variant={isOptimal ? "default" : "secondary"} className="text-[10px] px-1.5 py-0.5">
-                            {info.width}×{info.height}
-                          </Badge>
-                        </div>
-                        {isOptimal && (
-                          <div className="absolute bottom-2 right-2">
-                            <Badge className="text-[10px] px-1.5 py-0.5 bg-green-600 text-white">4:3 ✓</Badge>
-                          </div>
-                        )}
-                      </div>
-                      {/* Actions */}
-                      <div className="flex gap-1 p-1.5 bg-card">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 text-[10px] flex-1"
-                          disabled={isProcessing}
-                          onClick={() => handleCanvasResize(info.url)}
-                        >
-                          {processing.has(info.url) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Maximize className="h-3 w-3 mr-0.5" />}
-                          4:3
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 text-[10px] flex-1"
-                          disabled={isProcessing}
-                          onClick={() => handleAiResize(info.url)}
-                        >
-                          {processing.has(`ai_${info.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3 mr-0.5" />}
-                          AI
-                        </Button>
-                        {(templatePreview || templateUrl) && (
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-lg transition-opacity flex items-center justify-center gap-1">
                           <Button
                             size="sm"
-                            variant="outline"
-                            className="h-6 text-[10px] flex-1"
-                            disabled={isProcessing}
-                            onClick={() => handleApplyTemplate(info.url)}
+                            variant="secondary"
+                            className="h-7"
+                            onClick={() => handleCanvasResize(img.url)}
+                            disabled={processing.has(img.url)}
                           >
-                            {processing.has(`tpl_${info.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Layers className="h-3 w-3 mr-0.5" />}
-                            Шаблон
+                            {processing.has(img.url) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Maximize className="h-3 w-3" />}
                           </Button>
-                        )}
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7"
+                            onClick={() => handleAiResize(img.url)}
+                            disabled={processing.has(`ai_${img.url}`)}
+                          >
+                            {processing.has(`ai_${img.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                          </Button>
+                          {templatePreview && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="h-7"
+                              onClick={() => handleApplyTemplate(img.url)}
+                              disabled={processing.has(`tpl_${img.url}`)}
+                            >
+                              {processing.has(`tpl_${img.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Layers className="h-3 w-3" />}
+                            </Button>
+                          )}
+                        </div>
+                        <label className="absolute bottom-3 left-3 flex items-center gap-2 cursor-pointer z-10">
+                          <Checkbox checked={selectedUrls.has(img.url)} onCheckedChange={() => toggleSelect(img.url)} />
+                        </label>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {/* Generated images */}
-          {generatedImages.length > 0 && (
-            <div className="mb-3">
-              <h4 className="text-xs font-medium mb-2 text-muted-foreground">
-                Сгенерированные фото ({generatedImages.length})
-              </h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {generatedImages.map((info) => {
-                  const isSelected = selectedUrls.has(info.url);
-                  const isOptimal = is43(info.width, info.height);
-                  
-                  return (
-                    <div key={info.url} className={`relative border rounded-lg overflow-hidden transition-all ${isSelected ? "ring-2 ring-primary" : "opacity-70"}`}>
-                      <div className="relative aspect-[4/3] bg-muted">
-                        <img src={info.url} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute top-2 left-2">
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => toggleSelect(info.url)}
-                            className="bg-background/80 border-2"
+              {/* Generated images section */}
+              {generatedImages.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold mb-3">
+                    Сгенерированные фото ({generatedImages.length})
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {generatedImages.map((img) => (
+                      <div key={img.url} className="relative group">
+                        <div className="aspect-square bg-muted rounded-lg overflow-hidden border-2 border-primary/50 relative">
+                          <img
+                            src={img.url}
+                            alt="Сгенерировано"
+                            className="w-full h-full object-cover"
                           />
+                          <Badge className="absolute top-2 right-2 bg-primary/80 text-xs">Новое</Badge>
+                          <span className="absolute bottom-1 right-1 text-[10px] bg-background/80 px-1.5 py-0.5 rounded text-muted-foreground">
+                            {img.width}×{img.height}
+                          </span>
                         </div>
-                        <div className="absolute top-2 right-2">
-                          <Badge variant={isOptimal ? "default" : "secondary"} className="text-[10px] px-1.5 py-0.5">
-                            {info.width}×{info.height}
-                          </Badge>
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-lg transition-opacity flex items-center justify-center">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-7"
+                            onClick={() => handleRemoveGenerated(img.url)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
                         </div>
-                        {isOptimal && (
-                          <div className="absolute bottom-2 right-2">
-                            <Badge className="text-[10px] px-1.5 py-0.5 bg-green-600 text-white">4:3 ✓</Badge>
-                          </div>
-                        )}
-                        {/* Remove generated */}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="absolute bottom-2 left-2 h-5 w-5 p-0 bg-destructive/80 hover:bg-destructive text-white rounded-full"
-                          onClick={() => handleRemoveGenerated(info.url)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
+                        <label className="absolute bottom-3 left-3 flex items-center gap-2 cursor-pointer z-10">
+                          <Checkbox checked={selectedUrls.has(img.url)} onCheckedChange={() => toggleSelect(img.url)} />
+                        </label>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {images.length === 0 && (
-            <div className="py-8 text-center text-muted-foreground text-sm">
-              У этого товара нет фотографий
+              {allImages.length === 0 && (
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  Загрузите фото или выберите из товара
+                </div>
+              )}
             </div>
-          )}
-        </ScrollArea>
+          </ScrollArea>
+        </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-3 border-t mt-2">
+        <div className="flex items-center justify-between pt-3 border-t mt-2 flex-shrink-0 px-6 py-3">
           <span className="text-xs text-muted-foreground">
             Выбрано для Авито: {selectedUrls.size} из {allImages.length} фото
           </span>
