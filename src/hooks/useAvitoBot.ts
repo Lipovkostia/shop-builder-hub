@@ -55,15 +55,22 @@ export interface AvitoBotMessage {
 }
 
 const AI_MODELS = [
-  { id: "google/gemini-2.5-flash-lite", label: "Gemini Flash Lite 2.5", desc: "Быстрая и дешёвая. Для простых задач." },
+  { id: "openai/gpt-4.1-nano", label: "GPT 4.1 Nano", desc: "Самая дешёвая и быстрая от OpenAI." },
+  { id: "openai/gpt-4.1-mini", label: "GPT 4.1 Mini", desc: "Лучшее соотношение цены/качества." },
+  { id: "openai/gpt-4.1", label: "GPT 4.1", desc: "Мощная модель от OpenAI." },
+  { id: "openai/gpt-4o-mini", label: "GPT 4o Mini", desc: "Быстрая мультимодальная модель." },
+  { id: "openai/o4-mini", label: "GPT o4 Mini", desc: "Модель с цепочкой рассуждений. В 3-6 раз дороже mini." },
+  { id: "openai/gpt-5.2", label: "GPT 5.2", desc: "Самая продвинутая от OpenAI." },
+  { id: "google/gemini-2.5-flash-lite", label: "Gemini Flash Lite 2.5", desc: "Быстрая и дешёвая." },
   { id: "google/gemini-2.5-flash", label: "Gemini Flash 2.5", desc: "Баланс скорости и качества." },
   { id: "google/gemini-3-flash-preview", label: "Gemini Flash 3", desc: "Быстрая нового поколения." },
   { id: "google/gemini-2.5-pro", label: "Gemini PRO 2.5", desc: "Мощная для сложных задач." },
-  { id: "google/gemini-3.1-pro-preview", label: "Gemini PRO 3.1", desc: "Самая продвинутая от Google." },
-  { id: "openai/gpt-5-nano", label: "GPT 5 Nano", desc: "Дешёвая и быстрая от OpenAI." },
-  { id: "openai/gpt-5-mini", label: "GPT 5 Mini", desc: "Средний баланс цена/качество." },
-  { id: "openai/gpt-5", label: "GPT 5", desc: "Мощная модель от OpenAI." },
-  { id: "openai/gpt-5.2", label: "GPT 5.2", desc: "Самая продвинутая от OpenAI." },
+  { id: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6", desc: "Сильная модель от Anthropic." },
+  { id: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5", desc: "Быстрая и дешёвая от Anthropic." },
+  { id: "deepseek/deepseek-r1", label: "DeepSeek R1", desc: "Модель с рассуждениями." },
+  { id: "deepseek/deepseek-v3", label: "DeepSeek V3", desc: "Универсальная модель." },
+  { id: "qwen/qwen3-235b", label: "Qwen3 235B", desc: "Крупная открытая модель." },
+  { id: "moonshotai/kimi-k2.5", label: "Kimi K2.5", desc: "Продвинутая модель от Moonshot." },
 ];
 
 export { AI_MODELS };
