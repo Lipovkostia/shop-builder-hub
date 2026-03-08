@@ -2277,6 +2277,12 @@ export type Database = {
           packaging_type: string
           price: number
           quantity: number
+          seo_description: string
+          seo_generated_at: string
+          seo_keywords: string[]
+          seo_noindex: boolean
+          seo_schema: Json
+          seo_title: string
           sku: string
           slug: string
           sort_order: number
