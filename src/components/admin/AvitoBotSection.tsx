@@ -234,6 +234,9 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
         max_responses: editingBot.max_responses,
         pro_seller_mode: editingBot.pro_seller_mode || false,
         telegram_notification_format: editingBot.telegram_notification_format || "summary",
+        telegram_debug_notifications: (editingBot as any).telegram_debug_notifications || false,
+        telegram_new_chat_notifications: (editingBot as any).telegram_new_chat_notifications !== false,
+        telegram_lead_notifications: (editingBot as any).telegram_lead_notifications !== false,
         avito_account_id: (editingBot as any).avito_account_id || null,
         telegram_bot_token: (editingBot as any).telegram_bot_token || "",
         telegram_chat_id: (editingBot as any).telegram_chat_id || "",
@@ -1503,10 +1506,72 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
         return (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold mb-1">Формат уведомлений</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {[{ value: "summary", label: "Краткая сводка" }, { value: "full", label: "Полный диалог" }].map(opt => (
-                <button key={opt.value} onClick={() => updateForm({ telegram_notification_format: opt.value })} className={cn("p-3 rounded-lg border-2 text-sm transition-colors", botForm.telegram_notification_format === opt.value ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30")}>{opt.label}</button>
+            <p className="text-sm text-muted-foreground">Выберите, какую информацию получать в Telegram при новых сообщениях.</p>
+            <div className="grid grid-cols-1 gap-3">
+              {[
+                { value: "summary", label: "📩 Краткая сводка", desc: "Имя отправителя и начало сообщения" },
+                { value: "full", label: "💬 Полный диалог", desc: "Сообщение клиента + ответ бота" },
+                { value: "detailed", label: "📊 Расширенная", desc: "Имя, объявление, ссылка, сообщение, ответ бота, статистика чата" },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => updateForm({ telegram_notification_format: opt.value })}
+                  className={cn(
+                    "p-4 rounded-lg border-2 text-left transition-colors",
+                    botForm.telegram_notification_format === opt.value
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-muted-foreground/30"
+                  )}
+                >
+                  <div className="font-medium text-sm">{opt.label}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{opt.desc}</div>
+                </button>
               ))}
+            </div>
+            
+            <Separator />
+            
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold">Дополнительные уведомления</h3>
+              <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30">
+                <Checkbox
+                  checked={(botForm as any).telegram_debug_notifications || false}
+                  onCheckedChange={(v) => updateForm({ telegram_debug_notifications: !!v })}
+                  className="mt-0.5"
+                />
+                <div>
+                  <Label className="text-sm font-medium">🛠 Отладка</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Получать уведомления об ошибках, пропущенных чатах, стоп-командах и другой технической информации
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30">
+                <Checkbox
+                  checked={(botForm as any).telegram_new_chat_notifications !== false}
+                  onCheckedChange={(v) => updateForm({ telegram_new_chat_notifications: !!v })}
+                  className="mt-0.5"
+                />
+                <div>
+                  <Label className="text-sm font-medium">🆕 Новые чаты</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Уведомлять при появлении нового чата (первое сообщение от клиента)
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30">
+                <Checkbox
+                  checked={(botForm as any).telegram_lead_notifications !== false}
+                  onCheckedChange={(v) => updateForm({ telegram_lead_notifications: !!v })}
+                  className="mt-0.5"
+                />
+                <div>
+                  <Label className="text-sm font-medium">🎯 Лиды</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Уведомлять при обнаружении нового лида
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         );
