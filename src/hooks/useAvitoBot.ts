@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 export interface AvitoBot {
   id: string;
   store_id: string;
+  avito_account_id: string | null;
   name: string;
   is_active: boolean;
   mode: "smart" | "pro";
@@ -65,14 +66,13 @@ const AI_MODELS = [
 
 export { AI_MODELS };
 
-export function useAvitoBot(storeId: string | null) {
+export function useAvitoBots(storeId: string | null) {
   const { toast } = useToast();
-  const [bot, setBot] = useState<AvitoBot | null>(null);
-  const [chats, setChats] = useState<AvitoBotChat[]>([]);
+  const [bots, setBots] = useState<AvitoBot[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const fetchBot = useCallback(async () => {
+  const fetchBots = useCallback(async () => {
     if (!storeId) return;
     setLoading(true);
     try {
@@ -80,18 +80,100 @@ export function useAvitoBot(storeId: string | null) {
         .from("avito_bots")
         .select("*")
         .eq("store_id", storeId)
-        .maybeSingle();
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      setBot(data as AvitoBot | null);
+      setBots((data || []) as AvitoBot[]);
     } catch (err: any) {
-      console.error("Error fetching avito bot:", err);
+      console.error("Error fetching avito bots:", err);
     } finally {
       setLoading(false);
     }
   }, [storeId]);
 
-  const fetchChats = useCallback(async () => {
+  useEffect(() => {
+    fetchBots();
+  }, [fetchBots]);
+
+  const createBot = useCallback(async (name: string, avitoAccountId?: string | null) => {
+    if (!storeId) return null;
+    setSaving(true);
+    try {
+      const { data, error } = await (supabase as any)
+        .from("avito_bots")
+        .insert({
+          store_id: storeId,
+          name,
+          avito_account_id: avitoAccountId || null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      setBots(prev => [...prev, data as AvitoBot]);
+      toast({ title: "Бот создан" });
+      return data as AvitoBot;
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  }, [storeId, toast]);
+
+  const saveBot = useCallback(async (botId: string, updates: Partial<AvitoBot>) => {
+    setSaving(true);
+    try {
+      const { error } = await (supabase as any)
+        .from("avito_bots")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", botId);
+      if (error) throw error;
+      setBots(prev => prev.map(b => b.id === botId ? { ...b, ...updates } : b));
+      toast({ title: "Настройки бота сохранены" });
+      return true;
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }, [toast]);
+
+  const deleteBot = useCallback(async (botId: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from("avito_bots")
+        .delete()
+        .eq("id", botId);
+      if (error) throw error;
+      setBots(prev => prev.filter(b => b.id !== botId));
+      toast({ title: "Бот удалён" });
+      return true;
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+      return false;
+    }
+  }, [toast]);
+
+  const toggleBot = useCallback(async (botId: string, active: boolean) => {
+    return saveBot(botId, { is_active: active } as any);
+  }, [saveBot]);
+
+  const processMessages = useCallback(async (botId: string) => {
     if (!storeId) return;
+    try {
+      const { data, error } = await supabase.functions.invoke("avito-bot", {
+        body: { action: "process_messages", store_id: storeId, bot_id: botId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Сообщения обработаны", description: `Обработано: ${data?.processed || 0}` });
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  }, [storeId, toast]);
+
+  const fetchChats = useCallback(async (botId?: string) => {
+    if (!storeId) return [];
     try {
       const { data, error } = await (supabase as any)
         .from("avito_bot_chats")
@@ -99,76 +181,48 @@ export function useAvitoBot(storeId: string | null) {
         .eq("store_id", storeId)
         .order("last_message_at", { ascending: false });
       if (error) throw error;
-      setChats((data || []) as AvitoBotChat[]);
+      return (data || []) as AvitoBotChat[];
     } catch (err: any) {
       console.error("Error fetching bot chats:", err);
+      return [];
     }
   }, [storeId]);
 
+  return {
+    bots,
+    loading,
+    saving,
+    createBot,
+    saveBot,
+    deleteBot,
+    toggleBot,
+    processMessages,
+    fetchChats,
+    refetch: fetchBots,
+  };
+}
+
+// Keep backward compat
+export function useAvitoBot(storeId: string | null) {
+  const multi = useAvitoBots(storeId);
+  const bot = multi.bots[0] || null;
+  const [chats, setChats] = useState<AvitoBotChat[]>([]);
+
   useEffect(() => {
-    fetchBot();
-    fetchChats();
-  }, [fetchBot, fetchChats]);
-
-  const saveBot = useCallback(async (updates: Partial<AvitoBot>) => {
-    if (!storeId) return false;
-    setSaving(true);
-    try {
-      if (bot) {
-        const { error } = await (supabase as any)
-          .from("avito_bots")
-          .update({ ...updates, updated_at: new Date().toISOString() })
-          .eq("id", bot.id);
-        if (error) throw error;
-        setBot(prev => prev ? { ...prev, ...updates } : prev);
-      } else {
-        const { data, error } = await (supabase as any)
-          .from("avito_bots")
-          .insert({ store_id: storeId, ...updates })
-          .select()
-          .single();
-        if (error) throw error;
-        setBot(data as AvitoBot);
-      }
-      toast({ title: "Настройки бота сохранены" });
-      return true;
-    } catch (err: any) {
-      console.error("Error saving bot:", err);
-      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
-      return false;
-    } finally {
-      setSaving(false);
+    if (storeId) {
+      multi.fetchChats().then(setChats);
     }
-  }, [storeId, bot, toast]);
-
-  const toggleBot = useCallback(async (active: boolean) => {
-    return saveBot({ is_active: active });
-  }, [saveBot]);
-
-  const processMessages = useCallback(async () => {
-    if (!storeId) return;
-    try {
-      const { data, error } = await supabase.functions.invoke("avito-bot", {
-        body: { action: "process_messages", store_id: storeId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast({ title: "Сообщения обработаны", description: `Обработано: ${data?.processed || 0}` });
-      await fetchChats();
-    } catch (err: any) {
-      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
-    }
-  }, [storeId, toast, fetchChats]);
+  }, [storeId]);
 
   return {
     bot,
     chats,
-    loading,
-    saving,
-    saveBot,
-    toggleBot,
-    processMessages,
-    refetchBot: fetchBot,
-    refetchChats: fetchChats,
+    loading: multi.loading,
+    saving: multi.saving,
+    saveBot: (updates: Partial<AvitoBot>) => bot ? multi.saveBot(bot.id, updates) : Promise.resolve(false),
+    toggleBot: (active: boolean) => bot ? multi.toggleBot(bot.id, active) : Promise.resolve(false),
+    processMessages: () => bot ? multi.processMessages(bot.id) : Promise.resolve(),
+    refetchBot: multi.refetch,
+    refetchChats: () => multi.fetchChats().then(setChats),
   };
 }
