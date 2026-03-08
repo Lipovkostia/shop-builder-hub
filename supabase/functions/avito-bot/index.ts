@@ -1089,6 +1089,156 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ===== FETCH CHAT MESSAGES =====
+    if (action === "fetch_chat_messages") {
+      const { chat_id } = await req.json().catch(() => ({}));
+      if (!chat_id) throw new Error("chat_id required");
+
+      const { data: messages, error } = await supabase
+        .from("avito_bot_messages")
+        .select("*")
+        .eq("chat_id", chat_id)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+
+      return new Response(
+        JSON.stringify({ success: true, messages: messages || [] }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ===== SEND MESSAGE TO AVITO CHAT =====
+    if (action === "send_avito_message") {
+      if (!store_id) throw new Error("store_id required");
+      const body = await req.json().catch(() => ({}));
+      const { avito_chat_id, text, db_chat_id } = body;
+      if (!avito_chat_id || !text) throw new Error("avito_chat_id and text required");
+
+      // Find account for this store
+      const { data: account, error: accErr } = await supabase
+        .from("avito_accounts")
+        .select("*")
+        .eq("store_id", store_id)
+        .single();
+      if (accErr || !account) throw new Error("Авито аккаунт не найден");
+
+      const token = await getAvitoToken(account.client_id, account.client_secret);
+      const userId = account.avito_user_id;
+      if (!userId) throw new Error("Авито user_id не найден");
+
+      const sendRes = await fetch(
+        `${AVITO_API_BASE}/messenger/v1/accounts/${userId}/chats/${avito_chat_id}/messages`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ message: { text }, type: "text" }),
+        }
+      );
+
+      if (!sendRes.ok) {
+        const t = await sendRes.text();
+        throw new Error(`Ошибка отправки [${sendRes.status}]: ${t}`);
+      }
+
+      // Save to DB
+      if (db_chat_id) {
+        await supabase.from("avito_bot_messages").insert({
+          chat_id: db_chat_id,
+          store_id,
+          role: "seller",
+          content: text,
+        });
+
+        // Mark chat as seller_takeover
+        await supabase
+          .from("avito_bot_chats")
+          .update({
+            is_escalated: true,
+            status: "seller_takeover",
+            last_message_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", db_chat_id);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ===== SYNC CHAT MESSAGES FROM AVITO =====
+    if (action === "sync_chat_messages") {
+      if (!store_id) throw new Error("store_id required");
+      const body = await req.json().catch(() => ({}));
+      const { avito_chat_id, db_chat_id } = body;
+      if (!avito_chat_id || !db_chat_id) throw new Error("avito_chat_id and db_chat_id required");
+
+      const { data: account } = await supabase
+        .from("avito_accounts")
+        .select("*")
+        .eq("store_id", store_id)
+        .single();
+      if (!account) throw new Error("Авито аккаунт не найден");
+
+      const token = await getAvitoToken(account.client_id, account.client_secret);
+      const userId = account.avito_user_id;
+      if (!userId) throw new Error("Авито user_id не найден");
+
+      const msgsRes = await fetch(
+        `${AVITO_API_BASE}/messenger/v3/accounts/${userId}/chats/${avito_chat_id}/messages/?limit=50`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!msgsRes.ok) throw new Error(`Avito messages failed [${msgsRes.status}]`);
+      const msgsData = await msgsRes.json();
+      const avitoMessages = (msgsData.messages || []).reverse();
+
+      // Get existing messages
+      const { data: existing } = await supabase
+        .from("avito_bot_messages")
+        .select("avito_message_id")
+        .eq("chat_id", db_chat_id)
+        .not("avito_message_id", "is", null);
+      const existingIds = new Set((existing || []).map((m: any) => m.avito_message_id));
+
+      const newMessages = [];
+      for (const msg of avitoMessages) {
+        const msgId = String(msg.id);
+        if (existingIds.has(msgId)) continue;
+        const role = String(msg.author_id) === String(userId) ? "assistant" : "user";
+        const text = msg.content?.text || msg.text || "";
+        if (!text) continue;
+        newMessages.push({
+          chat_id: db_chat_id,
+          store_id,
+          role,
+          content: text,
+          avito_message_id: msgId,
+          created_at: msg.created ? new Date(msg.created * 1000).toISOString() : new Date().toISOString(),
+        });
+      }
+
+      if (newMessages.length > 0) {
+        await supabase.from("avito_bot_messages").insert(newMessages);
+      }
+
+      // Fetch all messages for this chat
+      const { data: allMessages } = await supabase
+        .from("avito_bot_messages")
+        .select("*")
+        .eq("chat_id", db_chat_id)
+        .order("created_at", { ascending: true });
+
+      return new Response(
+        JSON.stringify({ success: true, messages: allMessages || [], synced: newMessages.length }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: "Unknown action" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
