@@ -72,6 +72,41 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
   
+  // Chat bot settings
+  const [chatEnabled, setChatEnabled] = useState(false);
+  const [chatBotId, setChatBotId] = useState<string | null>(null);
+  const [availableBots, setAvailableBots] = useState<{ id: string; name: string }[]>([]);
+  const [chatSaving, setChatSaving] = useState(false);
+
+  // Load chat settings and bots
+  React.useEffect(() => {
+    if (!storeId) return;
+    (async () => {
+      const { data: store } = await (supabase as any).from("stores").select("retail_chat_enabled, retail_chat_bot_id").eq("id", storeId).single();
+      if (store) {
+        setChatEnabled(store.retail_chat_enabled || false);
+        setChatBotId(store.retail_chat_bot_id || null);
+      }
+      const { data: bots } = await (supabase as any).from("avito_bots").select("id, name").eq("store_id", storeId);
+      setAvailableBots(bots || []);
+    })();
+  }, [storeId]);
+
+  const saveChatSettings = async (enabled: boolean, botId: string | null) => {
+    if (!storeId) return;
+    setChatSaving(true);
+    try {
+      await (supabase as any).from("stores").update({ retail_chat_enabled: enabled, retail_chat_bot_id: botId }).eq("id", storeId);
+      setChatEnabled(enabled);
+      setChatBotId(botId);
+      sonnerToast.success("Настройки чата сохранены");
+    } catch (err: any) {
+      sonnerToast.error(err.message);
+    } finally {
+      setChatSaving(false);
+    }
+  };
+  
   // Form states
   const [theme, setTheme] = useState<RetailTheme>({});
   const [seoTitle, setSeoTitle] = useState("");
