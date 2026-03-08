@@ -1906,6 +1906,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     removeProductFromFeed={avitoFeed.removeProductFromFeed}
                     feedSearchQuery={feedSearchQuery}
                     feedPriceFilter={feedPriceFilter}
+                    storeId={storeId || ""}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full">
