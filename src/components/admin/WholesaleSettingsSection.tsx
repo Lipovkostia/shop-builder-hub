@@ -92,6 +92,40 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
   const [seoDescription, setSeoDescription] = useState("");
   const [customDomain, setCustomDomain] = useState("");
   const [savingDomain, setSavingDomain] = useState(false);
+
+  // Chat bot settings
+  const [chatEnabled, setChatEnabled] = useState(false);
+  const [chatBotId, setChatBotId] = useState<string | null>(null);
+  const [availableBots, setAvailableBots] = useState<{ id: string; name: string }[]>([]);
+  const [chatSaving, setChatSaving] = useState(false);
+
+  useEffect(() => {
+    if (!storeId) return;
+    (async () => {
+      const { data: store } = await (supabase as any).from("stores").select("wholesale_chat_enabled, wholesale_chat_bot_id").eq("id", storeId).single();
+      if (store) {
+        setChatEnabled(store.wholesale_chat_enabled || false);
+        setChatBotId(store.wholesale_chat_bot_id || null);
+      }
+      const { data: bots } = await (supabase as any).from("avito_bots").select("id, name").eq("store_id", storeId);
+      setAvailableBots(bots || []);
+    })();
+  }, [storeId]);
+
+  const saveChatSettings = async (enabled: boolean, botId: string | null) => {
+    if (!storeId) return;
+    setChatSaving(true);
+    try {
+      await (supabase as any).from("stores").update({ wholesale_chat_enabled: enabled, wholesale_chat_bot_id: botId }).eq("id", storeId);
+      setChatEnabled(enabled);
+      setChatBotId(botId);
+      toast.success("Настройки чата сохранены");
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setChatSaving(false);
+    }
+  };
   
   // Livestream form states
   const [livestreamUrl, setLivestreamUrl] = useState("");
