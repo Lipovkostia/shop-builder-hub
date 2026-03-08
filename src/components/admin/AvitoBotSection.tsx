@@ -2453,9 +2453,9 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
                     <CardContent className="py-4 px-4 space-y-3">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs font-mono">{idx + 1}</Badge>
-                        <Input
+                        <DebouncedInput
                           value={stage.name}
-                          onChange={e => updateSalesStage(stage.id, { name: e.target.value })}
+                          onChange={val => updateSalesStage(stage.id, { name: val })}
                           className="font-semibold h-8"
                           placeholder="Название этапа"
                         />
