@@ -385,7 +385,8 @@ export function AvitoImageEditor({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ScrollArea className="h-full w-full">
           {/* Template section */}
           <div className="mb-4 p-3 rounded-lg border bg-muted/30">
             <div className="flex items-center justify-between mb-2">
