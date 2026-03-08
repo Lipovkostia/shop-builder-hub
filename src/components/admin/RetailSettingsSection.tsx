@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Bot } from "lucide-react";
 import { useRetailSettings, RetailTheme } from "@/hooks/useRetailSettings";
 import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
 import { cn } from "@/lib/utils";
