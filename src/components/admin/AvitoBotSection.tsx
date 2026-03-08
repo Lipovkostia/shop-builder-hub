@@ -99,7 +99,7 @@ interface SalesStage {
 }
 
 type TopLevel = "dashboard" | "bots" | "accounts" | "chats";
-type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug" | "usage_stats" | "sales";
+type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug" | "usage_stats" | "sales" | "ai_settings";
 
 const botSidebarGroups: { label: string; items: { id: BotSection; label: string; icon: React.ElementType; important?: boolean }[] }[] = [
   {
