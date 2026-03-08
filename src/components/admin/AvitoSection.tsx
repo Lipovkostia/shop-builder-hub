@@ -232,7 +232,7 @@ function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
 function AvitoFeedTable({
   feedProducts, storeProducts, storeCategories, selectedFeedProducts, setSelectedFeedProducts,
   aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
-  feedSearchQuery, feedPriceFilter,
+  feedSearchQuery, feedPriceFilter, storeId,
 }: {
   feedProducts: AvitoFeedProduct[];
   storeProducts: Product[];
@@ -248,6 +248,7 @@ function AvitoFeedTable({
   removeProductFromFeed: (id: string) => Promise<void>;
   feedSearchQuery: string;
   feedPriceFilter: string;
+  storeId: string;
 }) {
   const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
 
