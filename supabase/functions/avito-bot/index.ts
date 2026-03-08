@@ -198,7 +198,7 @@ Deno.serve(async (req) => {
         title: item.title || "",
         price: item.price || 0,
         url: item.url || "",
-        image: item.images?.[0]?.640x480 || item.images?.[0]?.default || "",
+        image: item.images?.[0]?.["640x480"] || item.images?.[0]?.["default"] || "",
         category: item.category?.name || "",
       }));
 
