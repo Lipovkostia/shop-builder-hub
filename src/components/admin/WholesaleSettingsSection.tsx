@@ -32,6 +32,7 @@ import { useRetailSettings, RetailTheme } from "@/hooks/useRetailSettings";
 import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
 import { useProductSeo } from "@/hooks/useProductSeo";
 import { useMoyskladAccounts } from "@/hooks/useMoyskladAccounts";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Bot, MessageCircle } from "lucide-react";
