@@ -249,6 +249,8 @@ function AvitoFeedTable({
   feedSearchQuery: string;
   feedPriceFilter: string;
 }) {
+  const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
+
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
     try {
       const saved = localStorage.getItem(AVITO_COL_STORAGE_KEY);
