@@ -29,6 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Product } from "./types";
+import { AvitoImageEditor } from "./AvitoImageEditor";
 import { AvitoFeedProduct, AvitoDefaults } from "@/hooks/useAvitoFeedProducts";
 import { StoreCategory } from "@/hooks/useStoreCategories";
 import * as XLSX from "xlsx";
@@ -231,7 +232,7 @@ function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
 function AvitoFeedTable({
   feedProducts, storeProducts, storeCategories, selectedFeedProducts, setSelectedFeedProducts,
   aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
-  feedSearchQuery, feedPriceFilter,
+  feedSearchQuery, feedPriceFilter, storeId,
 }: {
   feedProducts: AvitoFeedProduct[];
   storeProducts: Product[];
@@ -247,7 +248,10 @@ function AvitoFeedTable({
   removeProductFromFeed: (id: string) => Promise<void>;
   feedSearchQuery: string;
   feedPriceFilter: string;
+  storeId: string;
 }) {
+  const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
+
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
     try {
       const saved = localStorage.getItem(AVITO_COL_STORAGE_KEY);
@@ -484,11 +488,11 @@ function AvitoFeedTable({
                       }}
                     />
                   </div>
-                  <div className="flex-shrink-0 px-1 py-1" style={{ width: colWidths.photo }}>
+                  <div className="flex-shrink-0 px-1 py-1 cursor-pointer" style={{ width: colWidths.photo }} onClick={() => setEditingImageProduct({ id: product.id, name: product.name, images: product.images || [] })}>
                     {imageUrl ? (
-                      <img src={imageUrl} alt="" className="w-9 h-9 rounded object-cover" />
+                      <img src={imageUrl} alt="" className="w-9 h-9 rounded object-cover hover:ring-2 hover:ring-primary transition-all" />
                     ) : (
-                      <div className="w-9 h-9 rounded bg-muted flex items-center justify-center">
+                      <div className="w-9 h-9 rounded bg-muted flex items-center justify-center hover:ring-2 hover:ring-primary transition-all">
                         <Package className="h-3.5 w-3.5 text-muted-foreground" />
                       </div>
                     )}
@@ -678,6 +682,27 @@ function AvitoFeedTable({
           </div>
         </div>
       </div>
+
+      {/* Avito Image Editor Dialog */}
+      {editingImageProduct && (
+        <AvitoImageEditor
+          open={!!editingImageProduct}
+          onOpenChange={(open) => { if (!open) setEditingImageProduct(null); }}
+          productId={editingImageProduct.id}
+          productName={editingImageProduct.name}
+          images={editingImageProduct.images}
+          storeId={storeId}
+          avitoImages={(() => {
+            const fp = feedProducts.find(f => f.product_id === editingImageProduct.id);
+            const params = fp?.avito_params || {};
+            return params.avitoImages || undefined;
+          })()}
+          onSave={(selectedImages) => {
+            handleInlineParamUpdate(editingImageProduct.id, "avitoImages", JSON.stringify(selectedImages));
+            setEditingImageProduct(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1881,6 +1906,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     removeProductFromFeed={avitoFeed.removeProductFromFeed}
                     feedSearchQuery={feedSearchQuery}
                     feedPriceFilter={feedPriceFilter}
+                    storeId={storeId || ""}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full">
