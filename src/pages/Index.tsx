@@ -13,6 +13,7 @@ import LandingProductTable from "@/components/landing/LandingProductTable";
 
 import LandingDemoCart from "@/components/landing/LandingDemoCart";
 import LandingFeaturedCarousel from "@/components/landing/LandingFeaturedCarousel";
+import LandingInfoBlocks from "@/components/landing/LandingInfoBlocks";
 
 interface DemoProduct {
   id: string;
@@ -1094,6 +1095,11 @@ const Index = () => {
       {/* Featured products carousel - full width */}
       <div className="w-full max-w-[100vw] px-4 lg:px-8">
         <LandingFeaturedCarousel />
+      </div>
+
+      {/* Info blocks - full width */}
+      <div className="w-full max-w-[100vw] px-4 lg:px-8">
+        <LandingInfoBlocks />
       </div>
     </div>
     </div>

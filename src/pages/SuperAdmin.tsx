@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image, LayoutDashboard, LogOut, Mail, Lock, Loader2, Package, Sparkles, Link2, Globe, Bot, UserPlus, X } from 'lucide-react';
+import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image, LayoutDashboard, LogOut, Mail, Lock, Loader2, Package, Sparkles, Link2, Globe, Bot, UserPlus, X, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +25,7 @@ import FeaturedProductsManager from '@/components/admin/FeaturedProductsManager'
 import MegacatalogManager from '@/components/admin/MegacatalogManager';
 import TelegramBotSection from '@/components/admin/TelegramBotSection';
 import AiPasswordManager from '@/components/admin/AiPasswordManager';
+import LandingInfoBlocksManager from '@/components/admin/LandingInfoBlocksManager';
 
 interface StoreWithCounts {
   id: string;
@@ -576,6 +577,10 @@ export default function SuperAdmin() {
               <Sparkles className="h-4 w-4" />
               <span className="hidden sm:inline">ИИ</span>
             </TabsTrigger>
+            <TabsTrigger value="infoblocks" className="gap-2">
+              <LayoutGrid className="h-4 w-4" />
+              <span className="hidden sm:inline">Блоки</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
@@ -1080,6 +1085,11 @@ export default function SuperAdmin() {
           {/* AI Settings Tab */}
           <TabsContent value="ai" className="space-y-6">
             <AiPasswordManager />
+          </TabsContent>
+
+          {/* Info Blocks Tab */}
+          <TabsContent value="infoblocks" className="space-y-6">
+            <LandingInfoBlocksManager />
           </TabsContent>
         </Tabs>
       </main>

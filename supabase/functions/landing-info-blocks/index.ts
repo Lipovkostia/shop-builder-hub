@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
 
     const { data, error } = await supabase
       .from("landing_info_blocks")
-      .select("id, title, description, icon")
+      .select("id, title, description, icon, image_url")
       .eq("is_active", true)
       .order("sort_order", { ascending: true });
 
