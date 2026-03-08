@@ -21,6 +21,7 @@ import { WholesaleCartDrawer } from "@/components/wholesale/WholesaleCartDrawer"
 import { WholesaleCategorySidebar } from "@/components/wholesale/WholesaleCategorySidebar";
 import { WholesaleProductTable } from "@/components/wholesale/WholesaleProductTable";
 import { WholesaleProductDetailPanel } from "@/components/wholesale/WholesaleProductDetailPanel";
+import { StorefrontChatWidget } from "@/components/retail/StorefrontChatWidget";
 
 interface WholesaleStoreProps {
   subdomain?: string;
@@ -303,6 +304,9 @@ export default function WholesaleStore({ subdomain: propSubdomain }: WholesaleSt
           minOrderAmount={store.wholesale_min_order_amount}
         />
       )}
+
+      {/* Chat widget */}
+      {store?.id && <StorefrontChatWidget storeId={store.id} channel="wholesale" />}
     </div>
   );
 }

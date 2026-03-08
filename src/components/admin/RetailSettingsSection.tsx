@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Bot } from "lucide-react";
 import { useRetailSettings, RetailTheme } from "@/hooks/useRetailSettings";
 import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,8 @@ import { TelegramIcon } from "@/components/icons/TelegramIcon";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { ReviewsManagementSection } from "./ReviewsManagementSection";
 import { RetailSeoProductsTab } from "./RetailSeoProductsTab";
+import { supabase } from "@/integrations/supabase/client";
+import { toast as sonnerToast } from "sonner";
 
 interface RetailSettingsSectionProps {
   storeId: string | null;
@@ -68,6 +71,41 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
 
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
+  
+  // Chat bot settings
+  const [chatEnabled, setChatEnabled] = useState(false);
+  const [chatBotId, setChatBotId] = useState<string | null>(null);
+  const [availableBots, setAvailableBots] = useState<{ id: string; name: string }[]>([]);
+  const [chatSaving, setChatSaving] = useState(false);
+
+  // Load chat settings and bots
+  React.useEffect(() => {
+    if (!storeId) return;
+    (async () => {
+      const { data: store } = await (supabase as any).from("stores").select("retail_chat_enabled, retail_chat_bot_id").eq("id", storeId).single();
+      if (store) {
+        setChatEnabled(store.retail_chat_enabled || false);
+        setChatBotId(store.retail_chat_bot_id || null);
+      }
+      const { data: bots } = await (supabase as any).from("avito_bots").select("id, name").eq("store_id", storeId);
+      setAvailableBots(bots || []);
+    })();
+  }, [storeId]);
+
+  const saveChatSettings = async (enabled: boolean, botId: string | null) => {
+    if (!storeId) return;
+    setChatSaving(true);
+    try {
+      await (supabase as any).from("stores").update({ retail_chat_enabled: enabled, retail_chat_bot_id: botId }).eq("id", storeId);
+      setChatEnabled(enabled);
+      setChatBotId(botId);
+      sonnerToast.success("Настройки чата сохранены");
+    } catch (err: any) {
+      sonnerToast.error(err.message);
+    } finally {
+      setChatSaving(false);
+    }
+  };
   
   // Form states
   const [theme, setTheme] = useState<RetailTheme>({});
@@ -239,7 +277,7 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-6 mb-6">
+        <TabsList className="w-full grid grid-cols-7 mb-6">
           <TabsTrigger value="general" className="gap-1.5">
             <Store className="h-4 w-4" />
             <span className="hidden sm:inline">Общее</span>
@@ -256,6 +294,10 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
             <MessageSquare className="h-4 w-4" />
             <span className="hidden sm:inline">Отзывы</span>
           </TabsTrigger>
+          <TabsTrigger value="chat" className="gap-1.5">
+            <Bot className="h-4 w-4" />
+            <span className="hidden sm:inline">Чат</span>
+          </TabsTrigger>
           <TabsTrigger value="seo" className="gap-1.5">
             <Search className="h-4 w-4" />
             <span className="hidden sm:inline">SEO</span>
@@ -265,6 +307,55 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
             <span className="hidden sm:inline">Домен</span>
           </TabsTrigger>
         </TabsList>
+
+        {/* Chat Tab */}
+        <TabsContent value="chat" className="space-y-6">
+          <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-1">ИИ-чат на сайте</h3>
+              <p className="text-sm text-muted-foreground">Подключите робота-ассистента к розничному магазину. Покупатели смогут общаться с ним прямо на сайте.</p>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+              <div>
+                <p className="font-medium text-sm">Включить чат</p>
+                <p className="text-xs text-muted-foreground">Виджет появится в правом нижнем углу магазина</p>
+              </div>
+              <Switch
+                checked={chatEnabled}
+                onCheckedChange={(v) => saveChatSettings(v, chatBotId)}
+                disabled={chatSaving}
+              />
+            </div>
+
+            {chatEnabled && (
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Робот для чата</Label>
+                {availableBots.length === 0 ? (
+                  <div className="p-4 border border-dashed rounded-lg text-center text-sm text-muted-foreground">
+                    <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Нет созданных роботов</p>
+                    <p className="text-xs mt-1">Создайте робота во вкладке «Авитобот», затем подключите его здесь</p>
+                  </div>
+                ) : (
+                  <Select value={chatBotId || "none"} onValueChange={v => saveChatSettings(chatEnabled, v === "none" ? null : v)}>
+                    <SelectTrigger><SelectValue placeholder="Выберите робота" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Не выбран</SelectItem>
+                      {availableBots.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+                {chatBotId && (
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-green-500 rounded-full inline-block" />
+                    Робот подключен и готов отвечать покупателям
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </TabsContent>
 
         {/* Products SEO Tab */}
         <TabsContent value="products-seo">

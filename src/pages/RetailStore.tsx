@@ -26,6 +26,7 @@ import { RetailFavoritesDrawer } from "@/components/retail/RetailFavoritesDrawer
 import { CategoryProductsSection } from "@/components/retail/CategoryProductsSection";
 import { FlyToCartAnimation, triggerFlyToCart } from "@/components/retail/FlyToCartAnimation";
 import { useProductReviews } from "@/hooks/useProductReviews";
+import { StorefrontChatWidget } from "@/components/retail/StorefrontChatWidget";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 
@@ -867,6 +868,9 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
 
       {/* Fly to cart animation */}
       <FlyToCartAnimation cartIconRef={isMobile ? mobileCartIconRef : cartIconRef} />
+
+      {/* Chat widget */}
+      {store?.id && <StorefrontChatWidget storeId={store.id} channel="retail" />}
     </div>
   );
 }
