@@ -9,8 +9,64 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { productNames, maxChars = 200, storeId } = await req.json();
-    
+    const body = await req.json();
+    const { productNames, maxChars = 200, storeId, store_id, prompt } = body;
+    const effectiveStoreId = storeId || store_id;
+
+    // Free-form prompt mode (used by smart setup "Improve" button)
+    if (prompt && typeof prompt === "string") {
+      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+      let aiModel = "openai/gpt-4.1-mini";
+      if (effectiveStoreId) {
+        const { data: aiAccess } = await sb
+          .from("store_ai_access")
+          .select("is_unlocked, product_descriptions_enabled, product_descriptions_model")
+          .eq("store_id", effectiveStoreId)
+          .maybeSingle();
+
+        if (!aiAccess?.is_unlocked || !aiAccess?.product_descriptions_enabled) {
+          return new Response(JSON.stringify({ error: "ИИ-функции не активированы. Включите доступ к ИИ в настройках профиля." }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        aiModel = aiAccess.product_descriptions_model || "openai/gpt-4.1-mini";
+      }
+
+      const VSEGPT_API_KEY = Deno.env.get("VSEGPT_API_KEY");
+      if (!VSEGPT_API_KEY) throw new Error("VSEGPT_API_KEY is not configured");
+
+      const response = await fetch("https://api.vsegpt.ru/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${VSEGPT_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: aiModel,
+          messages: [
+            { role: "system", content: "Ты — профессиональный редактор текстов. Улучшай текст, делая его чётким и структурированным. Возвращай ТОЛЬКО улучшенный текст без пояснений." },
+            { role: "user", content: prompt },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const t = await response.text();
+        console.error("AI gateway error:", response.status, t);
+        return new Response(JSON.stringify({ error: "Ошибка AI-сервиса" }), {
+          status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content || "";
+      return new Response(JSON.stringify({ description: text, text }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (!productNames || !Array.isArray(productNames) || productNames.length === 0) {
       return new Response(JSON.stringify({ error: "productNames array is required" }), {
         status: 400,
@@ -23,11 +79,11 @@ serve(async (req) => {
 
     // Check AI access for this store and get model
     let aiModel = "openai/gpt-4.1-mini";
-    if (storeId) {
+    if (effectiveStoreId) {
       const { data: aiAccess } = await sb
         .from("store_ai_access")
         .select("is_unlocked, product_descriptions_enabled, product_descriptions_model")
-        .eq("store_id", storeId)
+        .eq("store_id", effectiveStoreId)
         .maybeSingle();
 
       if (!aiAccess?.is_unlocked || !aiAccess?.product_descriptions_enabled) {
