@@ -52,9 +52,9 @@ function calcPrice(p: any): number {
 
 function buildCatalogContext(products: any[]): string {
   if (!products.length) return "Каталог пуст.";
-  const lines = products.slice(0, 100).map(p => {
+  const lines = products.slice(0, 150).map(p => {
     const price = calcPrice(p);
-    return `- ${p.name}${p.sku ? ` (арт. ${p.sku})` : ""}: ${price > 0 ? price + "₽" : "цена не указана"}${p.unit ? ` / ${p.unit}` : ""}${p.quantity > 0 ? "" : " (нет в наличии)"}`;
+    return `- [ID:${p.id}] ${p.name}${p.sku ? ` (арт. ${p.sku})` : ""}: ${price > 0 ? price + "₽" : "цена не указана"}${p.unit ? ` / ${p.unit}` : ""}${p.quantity > 0 ? "" : " (нет в наличии)"}`;
   });
   return `Каталог товаров (${products.length} позиций):\n${lines.join("\n")}`;
 }
