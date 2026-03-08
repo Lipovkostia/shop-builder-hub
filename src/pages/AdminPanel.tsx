@@ -6435,6 +6435,11 @@ export default function AdminPanel({
                     </div>
                   </div>
 
+                  {/* ИИ-доступ */}
+                  {effectiveStoreId && (
+                    <AiAccessSection storeId={effectiveStoreId} />
+                  )}
+
                   {/* Выход */}
                   <div className="pt-4 border-t border-border">
                     <Button variant="outline" onClick={handleSignOut} className="w-full gap-2">
