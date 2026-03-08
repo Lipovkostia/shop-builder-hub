@@ -70,12 +70,14 @@ interface DashboardStats {
 }
 
 type TopLevel = "dashboard" | "bots" | "accounts" | "chats";
-type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "debug";
+type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug";
 
 const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "Основные", icon: Bot },
   { id: "prompt", label: "Промпт", icon: Sparkles },
   { id: "qa", label: "Вопрос-ответ", icon: HelpCircle },
+  { id: "ad_filter", label: "Объявления", icon: Filter },
+  { id: "handoff", label: "Переключение", icon: Repeat },
   { id: "leads", label: "Лиды", icon: Users },
   { id: "escalation", label: "Эскалация", icon: Shield },
   { id: "completion", label: "Завершение", icon: ChevronRight },
