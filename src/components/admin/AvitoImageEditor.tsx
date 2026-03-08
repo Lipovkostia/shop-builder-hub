@@ -29,6 +29,8 @@ interface AvitoImageEditorProps {
   /** Currently selected avito images from params */
   avitoImages?: string[];
   onSave: (selectedImages: string[]) => void;
+  /** Callback when new images are uploaded to product */
+  onImagesAdded?: (newImageUrls: string[]) => void;
 }
 
 function loadImageDimensions(url: string): Promise<{ width: number; height: number }> {
@@ -133,7 +135,7 @@ function canvasOverlay(imageUrl: string, templateUrl: string, targetW: number, t
 }
 
 export function AvitoImageEditor({
-  open, onOpenChange, productId, productName, images, storeId, avitoImages, onSave,
+  open, onOpenChange, productId, productName, images, storeId, avitoImages, onSave, onImagesAdded,
 }: AvitoImageEditorProps) {
   const { toast } = useToast();
   const [imageInfos, setImageInfos] = useState<ImageInfo[]>([]);
@@ -142,7 +144,10 @@ export function AvitoImageEditor({
   const [processing, setProcessing] = useState<Set<string>>(new Set());
   const [templateUrl, setTemplateUrl] = useState<string | null>(null);
   const [templatePreview, setTemplatePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const templateInputRef = useRef<HTMLInputElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
   // Load image dimensions
@@ -309,6 +314,64 @@ export function AvitoImageEditor({
     setSelectedUrls(prev => { const n = new Set(prev); n.delete(url); return n; });
   };
 
+  const handleUploadPhotos = useCallback(async (files: FileList | File[]) => {
+    const fileArr = Array.from(files).filter(f => f.type.startsWith("image/"));
+    if (fileArr.length === 0) return;
+    setUploading(true);
+    const newUrls: string[] = [];
+    try {
+      for (const file of fileArr) {
+        const ext = file.name.split(".").pop() || "jpg";
+        const fileName = `${storeId}/${productId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error } = await supabase.storage
+          .from("product-images")
+          .upload(fileName, file, { contentType: file.type, upsert: true });
+        if (error) throw error;
+        const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(fileName);
+        newUrls.push(urlData.publicUrl);
+      }
+      // Update product images in DB
+      const currentImages = images || [];
+      const updatedImages = [...currentImages, ...newUrls];
+      const { error: updateError } = await (supabase as any)
+        .from("products")
+        .update({ images: updatedImages })
+        .eq("id", productId);
+      if (updateError) throw updateError;
+
+      // Add to local state
+      for (const url of newUrls) {
+        const dims = await loadImageDimensions(url);
+        setImageInfos(prev => [...prev, { url, ...dims }]);
+        setSelectedUrls(prev => new Set(prev).add(url));
+      }
+      onImagesAdded?.(newUrls);
+      toast({ title: `Загружено ${newUrls.length} фото` });
+    } catch (err: any) {
+      toast({ title: "Ошибка загрузки", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  }, [storeId, productId, images, toast, onImagesAdded]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files.length > 0) {
+      handleUploadPhotos(e.dataTransfer.files);
+    }
+  }, [handleUploadPhotos]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
   const allImages = [...imageInfos, ...generatedImages];
   const is43 = (w: number, h: number) => w > 0 && h > 0 && Math.abs((w / h) - (4 / 3)) < 0.05;
 
@@ -369,6 +432,41 @@ export function AvitoImageEditor({
           <div className="mb-3 flex items-center gap-2 text-[11px] text-muted-foreground">
             <Maximize className="h-3 w-3" />
             Оптимально: 1280×960 (4:3). Допустимо: 1920×1440. JPG/PNG до 30 МБ.
+          </div>
+
+          {/* Upload / Drop zone */}
+          <div
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onClick={() => uploadInputRef.current?.click()}
+            className={`mb-4 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${isDragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
+          >
+            {uploading ? (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Загрузка...
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-1">
+                <Upload className="h-5 w-5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  Перетащите фото сюда или нажмите для выбора
+                </span>
+                <span className="text-[10px] text-muted-foreground/60">JPG, PNG до 30 МБ</span>
+              </div>
+            )}
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) handleUploadPhotos(e.target.files);
+                e.target.value = "";
+              }}
+            />
           </div>
 
           {/* Original images */}
