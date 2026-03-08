@@ -7165,13 +7165,17 @@ export default function AdminPanel({
             <ExchangeSection storeId={effectiveStoreId} />
           )}
 
-          {activeSection === "avito" && (
+           {activeSection === "avito" && (
             <AvitoSection 
               storeId={effectiveStoreId} 
               products={allProducts}
               avitoFeed={avitoFeed}
               storeCategories={storeCategories}
             />
+          )}
+
+          {activeSection === "avito-bot" && (
+            <AvitoBotSection storeId={effectiveStoreId} />
           )}
         </main>
 
