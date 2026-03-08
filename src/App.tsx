@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import ResetPassword from "./pages/ResetPassword";
@@ -86,60 +87,64 @@ const App = () => {
   if (!isPlatformDomain(hostname)) {
     return (
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <CustomDomainHandler hostname={hostname} />
-          </TooltipProvider>
-        </AuthProvider>
+        <HelmetProvider>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <CustomDomainHandler hostname={hostname} />
+            </TooltipProvider>
+          </AuthProvider>
+        </HelmetProvider>
       </QueryClientProvider>
     );
   }
 
   // Standard platform routing
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/auth" element={<Navigate to="/" replace />} />
-              <Route path="/dashboard" element={<Navigate to="/" replace />} />
-              <Route path="/test-store" element={<TestStore />} />
-              <Route path="/admin" element={<AdminPanel />} />
-              <Route path="/super-admin" element={<SuperAdmin />} />
-              {/* Customer routes */}
-              <Route path="/catalog/:accessCode" element={<CatalogAccess />} />
-              <Route path="/catalog/:accessCode/view" element={<GuestCatalogView />} />
-              <Route path="/customer-dashboard" element={<CustomerDashboard />} />
-              {/* Store routes - SellerWorkspace for seamless transitions */}
-              <Route path="/store/:subdomain" element={<SellerWorkspace />} />
-              <Route path="/store/:subdomain/admin" element={<StoreAdminWrapper />} />
-              {/* Retail store routes */}
-              <Route path="/retail/:subdomain" element={<RetailStore />} />
-              <Route path="/retail/:subdomain/p/:slug" element={<RetailProductPage />} />
-              <Route path="/retail/:subdomain/product/:productId" element={<RetailStore />} />
-              <Route path="/retail/:subdomain/checkout" element={<RetailCheckout />} />
-              <Route path="/retail/:subdomain/account" element={<RetailCustomerDashboard />} />
-              {/* Wholesale B2B routes */}
-              <Route path="/wholesale/:subdomain" element={<WholesaleStore />} />
-              <Route path="/wholesale/:subdomain/checkout" element={<WholesaleCheckout />} />
-              <Route path="/wholesale/:subdomain/product/:slug" element={<WholesaleProduct />} />
-              {/* Zakupka mini-service */}
-              <Route path="/zakupka" element={<Zakupka />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  );
+    return (
+      <QueryClientProvider client={queryClient}>
+        <HelmetProvider>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/auth" element={<Navigate to="/" replace />} />
+                  <Route path="/dashboard" element={<Navigate to="/" replace />} />
+                  <Route path="/test-store" element={<TestStore />} />
+                  <Route path="/admin" element={<AdminPanel />} />
+                  <Route path="/super-admin" element={<SuperAdmin />} />
+                  {/* Customer routes */}
+                  <Route path="/catalog/:accessCode" element={<CatalogAccess />} />
+                  <Route path="/catalog/:accessCode/view" element={<GuestCatalogView />} />
+                  <Route path="/customer-dashboard" element={<CustomerDashboard />} />
+                  {/* Store routes - SellerWorkspace for seamless transitions */}
+                  <Route path="/store/:subdomain" element={<SellerWorkspace />} />
+                  <Route path="/store/:subdomain/admin" element={<StoreAdminWrapper />} />
+                  {/* Retail store routes */}
+                  <Route path="/retail/:subdomain" element={<RetailStore />} />
+                  <Route path="/retail/:subdomain/p/:slug" element={<RetailProductPage />} />
+                  <Route path="/retail/:subdomain/product/:productId" element={<RetailStore />} />
+                  <Route path="/retail/:subdomain/checkout" element={<RetailCheckout />} />
+                  <Route path="/retail/:subdomain/account" element={<RetailCustomerDashboard />} />
+                  {/* Wholesale B2B routes */}
+                  <Route path="/wholesale/:subdomain" element={<WholesaleStore />} />
+                  <Route path="/wholesale/:subdomain/checkout" element={<WholesaleCheckout />} />
+                  <Route path="/wholesale/:subdomain/product/:slug" element={<WholesaleProduct />} />
+                  {/* Zakupka mini-service */}
+                  <Route path="/zakupka" element={<Zakupka />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
+          </AuthProvider>
+        </HelmetProvider>
+      </QueryClientProvider>
+    );
 };
 
 export default App;
