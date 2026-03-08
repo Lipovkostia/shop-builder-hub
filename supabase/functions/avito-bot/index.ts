@@ -150,8 +150,8 @@ Deno.serve(async (req) => {
         { role: "user", content: message },
       ];
 
-      const model = bot.ai_model || "google/gemini-3-flash-preview";
-      const aiResponse = await getAIResponse(conversationMessages, model, lovableApiKey);
+      const model = bot.ai_model || "openai/gpt-4.1-mini";
+      const aiResponse = await getAIResponse(conversationMessages, model, vsegptApiKey);
 
       return new Response(
         JSON.stringify({ success: true, response: aiResponse }),
