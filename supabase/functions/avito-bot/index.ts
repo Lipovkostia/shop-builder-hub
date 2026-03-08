@@ -61,16 +61,21 @@ async function getAvitoListingInfo(token: string, userId: number, itemId: string
     const res = await fetch(`${AVITO_API_BASE}/core/v1/accounts/${userId}/items/${itemId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error(`Avito listing fetch failed [${res.status}] for item ${itemId}`);
+      return null;
+    }
     const data = await res.json();
+    const price = data.price || data.price_string || 0;
     return {
       title: data.title || "",
       description: data.description || data.body || "",
-      price: data.price || 0,
+      price: typeof price === "string" ? parseInt(price.replace(/\D/g, ""), 10) || 0 : price,
       category: data.category?.name || "",
-      url: data.url || "",
+      url: data.url || `https://www.avito.ru/${itemId}`,
     };
-  } catch {
+  } catch (err) {
+    console.error("getAvitoListingInfo error:", err);
     return null;
   }
 }
@@ -105,6 +110,39 @@ function buildQAContext(qaItems: Array<{ question: string; answer: string; match
   }).join("\n");
   
   return `\n\n--- БАЗА ВОПРОСОВ И ОТВЕТОВ ---\nКогда клиент задаёт вопрос из списка ниже, используй соответствующий ответ:\n${qaText}\n--- КОНЕЦ БАЗЫ ---\n`;
+}
+
+function buildSmartSetupPrompt(data: any): string {
+  if (!data || typeof data !== "object") return "";
+  const parts: string[] = [];
+  
+  parts.push("Ты — виртуальный ассистент продавца на Авито. Твоя задача — помогать клиентам с информацией о товарах и услугах, отвечать на вопросы и помогать с оформлением заказа.");
+  
+  if (data.company_info) {
+    parts.push(`\n\n--- ИНФОРМАЦИЯ О ПРОДАВЦЕ ---\n${data.company_info}`);
+  }
+  if (data.pricing_info) {
+    parts.push(`\n\n--- ЦЕНООБРАЗОВАНИЕ И СКИДКИ ---\n${data.pricing_info}`);
+  }
+  if (data.delivery_info) {
+    parts.push(`\n\n--- ДОСТАВКА, ОПЛАТА И ГАРАНТИИ ---\n${data.delivery_info}`);
+  }
+  if (data.customer_interaction) {
+    parts.push(`\n\n--- ВЗАИМОДЕЙСТВИЕ С КЛИЕНТОМ ---\n${data.customer_interaction}`);
+  }
+  
+  parts.push("\n\nВАЖНО: Всегда будь вежливым и профессиональным. Отвечай по существу.");
+  return parts.join("");
+}
+
+function getEffectiveSystemPrompt(bot: any): string {
+  // If smart mode and has smart_setup_data with content, build from it
+  if (bot.mode === "smart" && bot.smart_setup_data) {
+    const smartPrompt = buildSmartSetupPrompt(bot.smart_setup_data);
+    if (smartPrompt) return smartPrompt;
+  }
+  // Fall back to manual system_prompt
+  return bot.system_prompt || "Ты — помощник продавца на Авито. Отвечай вежливо и помогай с вопросами о товарах.";
 }
 
 Deno.serve(async (req) => {
@@ -286,7 +324,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      const systemPrompt = (bot.system_prompt || "Ты — помощник продавца на Авито.") + listingContext + qaContext;
+      const systemPrompt = getEffectiveSystemPrompt(bot) + listingContext + qaContext;
       const proSuffix = bot.pro_seller_mode
         ? "\n\nВеди себя как профессиональный продавец. Используй техники продаж."
         : "";
@@ -436,7 +474,7 @@ Deno.serve(async (req) => {
           const msgsData = await msgsRes.json();
           const avitoMessages = (msgsData.messages || []).reverse();
 
-          const basePrompt = bot.system_prompt || "Ты — помощник продавца на Авито. Отвечай вежливо и помогай с вопросами о товарах.";
+          const basePrompt = getEffectiveSystemPrompt(bot);
           const proSuffix = bot.pro_seller_mode
             ? "\n\nВеди себя как профессиональный продавец. Используй техники продаж, задавай уточняющие вопросы."
             : "";

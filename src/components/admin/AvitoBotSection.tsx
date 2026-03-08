@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { TelegramIcon } from "@/components/icons/TelegramIcon";
+import { AvitoBotSmartSetup, SmartSetupData, buildSystemPromptFromSmartSetup } from "./AvitoBotSmartSetup";
 
 interface AvitoBotSectionProps {
   storeId: string | null;
@@ -164,6 +165,7 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
 
   useEffect(() => {
     if (editingBot) {
+      const smartData = (editingBot as any).smart_setup_data || {};
       setBotForm({
         name: editingBot.name || "",
         mode: editingBot.mode || "smart",
@@ -183,7 +185,14 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
         avito_account_id: (editingBot as any).avito_account_id || null,
         telegram_bot_token: (editingBot as any).telegram_bot_token || "",
         telegram_chat_id: (editingBot as any).telegram_chat_id || "",
-      });
+        smart_setup_data: {
+          category: smartData.category || "products",
+          company_info: smartData.company_info || "",
+          pricing_info: smartData.pricing_info || "",
+          delivery_info: smartData.delivery_info || "",
+          customer_interaction: smartData.customer_interaction || "",
+        },
+      } as any);
       loadQAItems(editingBot.id);
     }
   }, [editingBot]);
@@ -933,6 +942,30 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
         );
 
       case "prompt":
+        if (botForm.mode === "smart") {
+          const smartData: SmartSetupData = (botForm as any).smart_setup_data || {
+            category: "products",
+            company_info: "",
+            pricing_info: "",
+            delivery_info: "",
+            customer_interaction: "",
+          };
+          return (
+            <div className="space-y-4">
+              <AvitoBotSmartSetup
+                data={smartData}
+                onChange={(newData) => {
+                  updateForm({ smart_setup_data: newData } as any);
+                  // Auto-build system prompt from smart setup data
+                  const prompt = buildSystemPromptFromSmartSetup(newData);
+                  updateForm({ system_prompt: prompt } as any);
+                }}
+                storeId={storeId}
+                botId={bot.id}
+              />
+            </div>
+          );
+        }
         return (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold mb-1">Что бот должен знать?</h2>
