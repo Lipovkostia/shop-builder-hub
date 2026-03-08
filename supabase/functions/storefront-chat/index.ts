@@ -247,9 +247,10 @@ Deno.serve(async (req) => {
         .eq("is_active", true)
         .order("sort_order");
 
-      // Get products
-      const products = await fetchAllProducts(supabase, (session as any).store_id);
-      const catalogContext = buildCatalogContext(products);
+      // Get products — filter by relevance to user's message
+      const allProducts = await fetchAllProducts(supabase, (session as any).store_id);
+      const relevantProducts = findRelevantProducts(allProducts, message, 80);
+      const catalogContext = buildCatalogContext(relevantProducts, allProducts.length);
       const systemPrompt = buildSystemPrompt(bot, catalogContext, salesStages || []);
 
       // Get conversation history
