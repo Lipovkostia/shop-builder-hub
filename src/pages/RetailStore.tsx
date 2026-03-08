@@ -870,7 +870,20 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
       <FlyToCartAnimation cartIconRef={isMobile ? mobileCartIconRef : cartIconRef} />
 
       {/* Chat widget */}
-      {store?.id && <StorefrontChatWidget storeId={store.id} channel="retail" />}
+      {store?.id && (
+        <StorefrontChatWidget
+          storeId={store.id}
+          channel="retail"
+          onProductClick={(id) => {
+            const p = products.find(pr => pr.id === id);
+            if (p) setSelectedProduct(p);
+          }}
+          onAddToCart={(chatProduct) => {
+            const p = products.find(pr => pr.id === chatProduct.id);
+            if (p) handleAddToCart(p);
+          }}
+        />
+      )}
     </div>
   );
 }
