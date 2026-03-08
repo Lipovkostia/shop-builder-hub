@@ -886,10 +886,55 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
   const [itemsLoading, setItemsLoading] = useState(false);
   const [vsegptModels, setVsegptModels] = useState<VseGPTModel[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
+  const [aiFillingField, setAiFillingField] = useState<string | null>(null);
 
   const debugEndRef = useRef<HTMLDivElement>(null);
 
   const updateForm = (updates: any) => setBotForm((prev: any) => ({ ...prev, ...updates }));
+
+  // AI Fill helper — generates or improves text for a given field
+  const aiFill = async (fieldKey: string, currentValue: string, context: string): Promise<string | null> => {
+    setAiFillingField(fieldKey);
+    try {
+      const isGenerate = !currentValue.trim();
+      const prompt = isGenerate
+        ? `Сгенерируй текст для поля "${context}" для бота-помощника на Авито. Бот называется "${botForm.name || "Помощник"}". Верни ТОЛЬКО текст без пояснений, кратко и по делу.`
+        : `Улучши и дополни следующий текст для настройки бота на Авито. Поле: "${context}". Сделай его более чётким и профессиональным, сохранив смысл. Верни ТОЛЬКО улучшенный текст без пояснений.\n\nИсходный текст:\n${currentValue}`;
+
+      const { data: result, error } = await supabase.functions.invoke("ai-generate-description", {
+        body: { prompt, store_id: storeId },
+      });
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+      const text = result?.description || result?.text || "";
+      if (text) {
+        toast({ title: isGenerate ? "Текст сгенерирован ✨" : "Текст улучшен ✨" });
+        return text;
+      }
+    } catch (err: any) {
+      toast({ title: "Ошибка ИИ", description: err.message, variant: "destructive" });
+    } finally {
+      setAiFillingField(null);
+    }
+    return null;
+  };
+
+  // AI Fill button component
+  const AIFillBtn = ({ fieldKey, value, context, onResult }: { fieldKey: string; value: string; context: string; onResult: (text: string) => void }) => (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="text-primary gap-1 h-7 px-2 text-xs shrink-0"
+      disabled={aiFillingField === fieldKey}
+      onClick={async () => {
+        const result = await aiFill(fieldKey, value, context);
+        if (result) onResult(result);
+      }}
+    >
+      {aiFillingField === fieldKey ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+      {value.trim() ? "Улучшить" : "Заполнить ИИ"}
+    </Button>
+  );
 
   const addListItem = (field: "lead_conditions" | "escalation_rules" | "completion_rules") => {
     const arr = (botForm[field] as string[]) || [];
