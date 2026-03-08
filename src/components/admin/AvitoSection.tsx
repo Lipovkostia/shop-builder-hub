@@ -258,6 +258,9 @@ function AvitoFeedTable({
   const resizingRef = useRef<{ col: string; startX: number; startW: number } | null>(null);
 
   // Column filters state
+  // Image editor state
+  const [imageEditorOpen, setImageEditorOpen] = useState(false);
+  const [imageEditorProduct, setImageEditorProduct] = useState<{ id: string; name: string; images: string[]; storeId: string } | null>(null);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
 
   const setFilter = (col: string, val: string) => {
