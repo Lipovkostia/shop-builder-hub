@@ -41,9 +41,9 @@ serve(async (req) => {
       throw new Error("storeId is required");
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const VSEGPT_API_KEY = Deno.env.get("VSEGPT_API_KEY");
+    if (!VSEGPT_API_KEY) {
+      throw new Error("VSEGPT_API_KEY is not configured");
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
