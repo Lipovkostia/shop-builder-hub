@@ -407,7 +407,8 @@ Deno.serve(async (req) => {
     if (!vsegptApiKey) throw new Error("VSEGPT_API_KEY is not configured");
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const { action, store_id, bot_id, message, item_id, debug_session_id } = await req.json();
+    const reqBody = await req.json();
+    const { action, store_id, bot_id, message, item_id, debug_session_id, avito_chat_id, db_chat_id, chat_id, text } = reqBody;
 
     // Check AI access for this store
     if (store_id && action !== "fetch_models" && action !== "bot_stats") {
