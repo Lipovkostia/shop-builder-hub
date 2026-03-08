@@ -1195,6 +1195,8 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
   const [debugLoading, setDebugLoading] = useState(false);
   const [debugSessionId, setDebugSessionId] = useState<string | null>(null);
   const [debugSessions, setDebugSessions] = useState<{ id: string; created_at: string; avito_user_name: string | null }[]>([]);
+  const [usageLogs, setUsageLogs] = useState<UsageLog[]>([]);
+  const [usageLoading, setUsageLoading] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [avitoItems, setAvitoItems] = useState<AvitoItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
