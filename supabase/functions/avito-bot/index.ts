@@ -407,7 +407,7 @@ Deno.serve(async (req) => {
           if (itemId) {
             const listing = await getAvitoListingInfo(token, userId, String(itemId));
             if (listing) {
-              listingContext = `\n\n--- КОНТЕКСТ ОБЪЯВЛЕНИЯ ---\nНазвание: ${listing.title}\nОписание: ${listing.description}\n--- КОНЕЦ КОНТЕКСТА ---\n`;
+              listingContext = `\n\n--- КОНТЕКСТ ТЕКУЩЕГО ОБЪЯВЛЕНИЯ ---\nНазвание товара: ${listing.title}\nЦена: ${listing.price} ₽\nКатегория: ${listing.category}\nОписание товара:\n${listing.description}\n--- КОНЕЦ КОНТЕКСТА ---\n\nВАЖНО: Клиент пишет по поводу этого конкретного объявления. Отвечай в контексте этого товара. Если спрашивают цену — называй цену из контекста.`;
             }
           }
 
