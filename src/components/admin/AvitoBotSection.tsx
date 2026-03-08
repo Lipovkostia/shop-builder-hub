@@ -101,28 +101,56 @@ interface SalesStage {
 type TopLevel = "dashboard" | "bots" | "accounts" | "chats";
 type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug" | "usage_stats" | "sales";
 
-const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType }[] = [
-  { id: "general", label: "Основные", icon: Bot },
-  { id: "prompt", label: "Промпт", icon: Sparkles },
-  { id: "qa", label: "Вопрос-ответ", icon: HelpCircle },
-  { id: "ad_filter", label: "Объявления", icon: Filter },
-  { id: "handoff", label: "Переключение", icon: Repeat },
-  { id: "sales", label: "Продажа", icon: ShoppingCart },
-  { id: "leads", label: "Лиды", icon: Users },
-  { id: "escalation", label: "Эскалация", icon: Shield },
-  { id: "completion", label: "Завершение", icon: ChevronRight },
-  { id: "schedule", label: "График", icon: Clock },
-  { id: "reactivation", label: "Реактивация", icon: RefreshCw },
-  { id: "model", label: "Модель ИИ", icon: Zap },
-  { id: "delay", label: "Задержка", icon: Clock },
-  { id: "limits", label: "Лимиты", icon: Shield },
-  { id: "pro", label: "Про-режим", icon: Sparkles },
-  { id: "stop_command", label: "Стоп-команда", icon: Hand },
-  { id: "notifications", label: "Уведомления", icon: Bell },
-  { id: "telegram", label: "Telegram", icon: Bell },
-  { id: "usage_stats", label: "Статистика", icon: BarChart3 },
-  { id: "debug", label: "Отладка", icon: PlayCircle },
+const botSidebarGroups: { label: string; items: { id: BotSection; label: string; icon: React.ElementType; important?: boolean }[] }[] = [
+  {
+    label: "⚡ Главное",
+    items: [
+      { id: "general", label: "Основные", icon: Bot, important: true },
+      { id: "prompt", label: "Промпт", icon: Sparkles, important: true },
+      { id: "model", label: "Модель ИИ", icon: Zap, important: true },
+    ],
+  },
+  {
+    label: "🛒 Продажи",
+    items: [
+      { id: "sales", label: "Этапы продажи", icon: ShoppingCart },
+      { id: "qa", label: "Вопрос-ответ", icon: HelpCircle },
+      { id: "leads", label: "Лиды", icon: Users },
+    ],
+  },
+  {
+    label: "⚙️ Поведение",
+    items: [
+      { id: "schedule", label: "График", icon: Clock },
+      { id: "delay", label: "Задержка", icon: Clock },
+      { id: "limits", label: "Лимиты", icon: Shield },
+      { id: "reactivation", label: "Реактивация", icon: RefreshCw },
+      { id: "stop_command", label: "Стоп-команда", icon: Hand },
+    ],
+  },
+  {
+    label: "🔗 Интеграции",
+    items: [
+      { id: "ad_filter", label: "Объявления", icon: Filter },
+      { id: "handoff", label: "Переключение", icon: Repeat },
+      { id: "escalation", label: "Эскалация", icon: Shield },
+      { id: "completion", label: "Завершение", icon: ChevronRight },
+      { id: "notifications", label: "Уведомления", icon: Bell },
+      { id: "telegram", label: "Telegram", icon: Bell },
+    ],
+  },
+  {
+    label: "🔧 Продвинутое",
+    items: [
+      { id: "pro", label: "Про-режим", icon: Sparkles },
+      { id: "usage_stats", label: "Статистика", icon: BarChart3 },
+      { id: "debug", label: "Отладка", icon: PlayCircle },
+    ],
+  },
 ];
+
+// Flat list for backward compat
+const botSidebarItems = botSidebarGroups.flatMap(g => g.items);
 
 // ===== Debounced Q&A Input =====
 function DebouncedInput({ value: externalValue, onChange, ...props }: { value: string; onChange: (val: string) => void } & Omit<React.ComponentProps<typeof Input>, "value" | "onChange">) {
