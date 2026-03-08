@@ -749,8 +749,10 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
   }, []);
 
   // Load avito items
+  const [itemsError, setItemsError] = useState<string | null>(null);
   const loadAvitoItems = useCallback(async () => {
     setItemsLoading(true);
+    setItemsError(null);
     try {
       const { data, error } = await supabase.functions.invoke("avito-bot", {
         body: { action: "list_items", bot_id: bot.id, store_id: storeId || bot.store_id },
@@ -760,7 +762,7 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
       setAvitoItems(data.items || []);
     } catch (err: any) {
       console.error("Failed to load Avito items:", err);
-      // Don't show error toast - items may not be available
+      setItemsError(err.message || "Не удалось загрузить товары");
     } finally {
       setItemsLoading(false);
     }
