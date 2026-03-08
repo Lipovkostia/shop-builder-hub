@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Wand2, Image as ImageIcon, Upload, X, Check, Maximize, Layers, Download, Bookmark,
+  Eraser, ZoomIn, Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -247,6 +248,37 @@ export function AvitoImageEditor({
       toast({ title: "Ошибка AI", description: err.message, variant: "destructive" });
     } finally {
       setProcessing(prev => { const n = new Set(prev); n.delete(`ai_${imageUrl}`); return n; });
+    }
+  }, [storeId, productId, projectId, toast]);
+
+  const handleAiAction = useCallback(async (imageUrl: string, actionType: string, label: string) => {
+    const key = `${actionType}_${imageUrl}`;
+    setProcessing(prev => new Set(prev).add(key));
+    try {
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/avito-image-edit`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: actionType, image_url: imageUrl, store_id: storeId, product_id: productId,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "AI error");
+      const dims = await loadImageDimensions(data.url);
+      const newImg: ImageInfo = { url: data.url, ...dims, isGenerated: true };
+      setGeneratedImages(prev => [...prev, newImg]);
+      setSelectedUrls(prev => new Set(prev).add(data.url));
+      toast({ title: label });
+      setTimeout(() => {
+        scrollViewportRef.current?.scrollTo({ top: scrollViewportRef.current.scrollHeight, behavior: "smooth" });
+      }, 200);
+    } catch (err: any) {
+      toast({ title: "Ошибка AI", description: err.message, variant: "destructive" });
+    } finally {
+      setProcessing(prev => { const n = new Set(prev); n.delete(key); return n; });
     }
   }, [storeId, productId, projectId, toast]);
 
@@ -506,16 +538,16 @@ export function AvitoImageEditor({
                           </span>
                         </div>
                         {/* Action buttons — always visible */}
-                        <div className="flex items-center gap-1 mt-1.5">
+                        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                           <Button
-                            size="sm" variant="outline" className="h-7 text-xs flex-1"
+                            size="sm" variant="outline" className="h-7 text-xs flex-1 min-w-[60px]"
                             onClick={() => handleCanvasResize(img.url)}
                             disabled={processing.has(img.url)}
                           >
                             {processing.has(img.url) ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Maximize className="h-3 w-3 mr-1" />4:3</>}
                           </Button>
                           <Button
-                            size="sm" variant="outline" className="h-7 text-xs flex-1"
+                            size="sm" variant="outline" className="h-7 text-xs flex-1 min-w-[60px]"
                             onClick={() => handleAiResize(img.url)}
                             disabled={processing.has(`ai_${img.url}`)}
                           >
@@ -523,11 +555,34 @@ export function AvitoImageEditor({
                           </Button>
                           <Button
                             size="sm" variant={hasTemplate ? "default" : "outline"}
-                            className="h-7 text-xs flex-1"
+                            className="h-7 text-xs flex-1 min-w-[60px]"
                             onClick={() => handleApplyTemplate(img.url)}
                             disabled={!hasTemplate || processing.has(`tpl_${img.url}`)}
                           >
                             {processing.has(`tpl_${img.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Layers className="h-3 w-3 mr-1" />Шаблон</>}
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-1 mt-1 flex-wrap">
+                          <Button
+                            size="sm" variant="outline" className="h-7 text-xs flex-1 min-w-[60px]"
+                            onClick={() => handleAiAction(img.url, "ai_remove_background", "Фон удалён")}
+                            disabled={processing.has(`ai_remove_background_${img.url}`)}
+                          >
+                            {processing.has(`ai_remove_background_${img.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Eraser className="h-3 w-3 mr-1" />Фон</>}
+                          </Button>
+                          <Button
+                            size="sm" variant="outline" className="h-7 text-xs flex-1 min-w-[60px]"
+                            onClick={() => handleAiAction(img.url, "ai_upscale", "Фото увеличено")}
+                            disabled={processing.has(`ai_upscale_${img.url}`)}
+                          >
+                            {processing.has(`ai_upscale_${img.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <><ZoomIn className="h-3 w-3 mr-1" />Увеличить</>}
+                          </Button>
+                          <Button
+                            size="sm" variant="outline" className="h-7 text-xs flex-1 min-w-[60px]"
+                            onClick={() => handleAiAction(img.url, "ai_enhance", "Качество улучшено")}
+                            disabled={processing.has(`ai_enhance_${img.url}`)}
+                          >
+                            {processing.has(`ai_enhance_${img.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Sparkles className="h-3 w-3 mr-1" />Качество</>}
                           </Button>
                         </div>
                         <label className="absolute top-2 left-2 flex items-center gap-2 cursor-pointer z-10">
@@ -553,16 +608,30 @@ export function AvitoImageEditor({
                             {img.width}×{img.height}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1 mt-1.5">
+                        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                           {hasTemplate && (
                             <Button
-                              size="sm" variant="outline" className="h-7 text-xs flex-1"
+                              size="sm" variant="outline" className="h-7 text-xs flex-1 min-w-[60px]"
                               onClick={() => handleApplyTemplate(img.url)}
                               disabled={processing.has(`tpl_${img.url}`)}
                             >
                               {processing.has(`tpl_${img.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Layers className="h-3 w-3 mr-1" />Шаблон</>}
                             </Button>
                           )}
+                          <Button
+                            size="sm" variant="outline" className="h-7 text-xs min-w-[60px]"
+                            onClick={() => handleAiAction(img.url, "ai_remove_background", "Фон удалён")}
+                            disabled={processing.has(`ai_remove_background_${img.url}`)}
+                          >
+                            {processing.has(`ai_remove_background_${img.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Eraser className="h-3 w-3 mr-1" />Фон</>}
+                          </Button>
+                          <Button
+                            size="sm" variant="outline" className="h-7 text-xs min-w-[60px]"
+                            onClick={() => handleAiAction(img.url, "ai_enhance", "Качество улучшено")}
+                            disabled={processing.has(`ai_enhance_${img.url}`)}
+                          >
+                            {processing.has(`ai_enhance_${img.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Sparkles className="h-3 w-3 mr-1" />Качество</>}
+                          </Button>
                           <Button size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={() => handleRemoveGenerated(img.url)}>
                             <X className="h-3 w-3 mr-1" />Удалить
                           </Button>
