@@ -165,6 +165,50 @@ export type Database = {
           },
         ]
       }
+      avito_bot_qa: {
+        Row: {
+          answer: string
+          bot_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean
+          match_mode: string
+          question: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          answer?: string
+          bot_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          match_mode?: string
+          question?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          answer?: string
+          bot_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          match_mode?: string
+          question?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avito_bot_qa_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "avito_bots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avito_bots: {
         Row: {
           ai_model: string
@@ -185,6 +229,8 @@ export type Database = {
           schedule_mode: string
           store_id: string
           system_prompt: string | null
+          telegram_bot_token: string | null
+          telegram_chat_id: string | null
           telegram_notification_format: string | null
           updated_at: string
           upgrade_after_messages: number | null
@@ -209,6 +255,8 @@ export type Database = {
           schedule_mode?: string
           store_id: string
           system_prompt?: string | null
+          telegram_bot_token?: string | null
+          telegram_chat_id?: string | null
           telegram_notification_format?: string | null
           updated_at?: string
           upgrade_after_messages?: number | null
@@ -233,6 +281,8 @@ export type Database = {
           schedule_mode?: string
           store_id?: string
           system_prompt?: string | null
+          telegram_bot_token?: string | null
+          telegram_chat_id?: string | null
           telegram_notification_format?: string | null
           updated_at?: string
           upgrade_after_messages?: number | null
