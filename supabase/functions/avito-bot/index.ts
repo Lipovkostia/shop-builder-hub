@@ -9,6 +9,7 @@ const corsHeaders = {
 const AVITO_TOKEN_URL = "https://api.avito.ru/token";
 const AVITO_API_BASE = "https://api.avito.ru";
 const AI_GATEWAY = "https://api.vsegpt.ru/v1/chat/completions";
+const VSEGPT_MODELS_URL = "https://api.vsegpt.ru/v1/models";
 
 async function getAvitoToken(clientId: string, clientSecret: string): Promise<string> {
   const res = await fetch(AVITO_TOKEN_URL, {
@@ -54,7 +55,6 @@ async function getAIResponse(
   return data.choices?.[0]?.message?.content || "";
 }
 
-// Fetch listing info from Avito
 async function getAvitoListingInfo(token: string, userId: number, itemId: string): Promise<{ title: string; description: string } | null> {
   try {
     const res = await fetch(`${AVITO_API_BASE}/core/v1/accounts/${userId}/items/${itemId}`, {
@@ -71,7 +71,6 @@ async function getAvitoListingInfo(token: string, userId: number, itemId: string
   }
 }
 
-// Send Telegram notification
 async function sendTelegramNotification(
   botToken: string,
   chatId: string,
@@ -93,7 +92,6 @@ async function sendTelegramNotification(
   }
 }
 
-// Build Q&A context for the prompt
 function buildQAContext(qaItems: Array<{ question: string; answer: string; match_mode: string }>): string {
   if (!qaItems || qaItems.length === 0) return "";
   
@@ -117,13 +115,86 @@ Deno.serve(async (req) => {
     if (!vsegptApiKey) throw new Error("VSEGPT_API_KEY is not configured");
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const { action, store_id, bot_id, message } = await req.json();
+    const { action, store_id, bot_id, message, item_id, debug_session_id } = await req.json();
+
+    // ===== FETCH VSEGPT MODELS =====
+    if (action === "fetch_models") {
+      const res = await fetch(VSEGPT_MODELS_URL, {
+        headers: { Authorization: `Bearer ${vsegptApiKey}` },
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`Models fetch failed [${res.status}]: ${t}`);
+      }
+      const data = await res.json();
+      // Filter to chat models only
+      const models = (data.data || [])
+        .filter((m: any) => m.id && !m.id.startsWith("img-") && !m.id.startsWith("dall-") && !m.id.startsWith("tts-") && !m.id.startsWith("stt-") && !m.id.startsWith("whisper"))
+        .map((m: any) => ({
+          id: m.id,
+          name: m.id,
+          owned_by: m.owned_by || "",
+        }));
+      return new Response(
+        JSON.stringify({ success: true, models }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ===== LIST AVITO ITEMS =====
+    if (action === "list_items") {
+      if (!bot_id) throw new Error("bot_id required");
+
+      const { data: bot, error: botErr } = await supabase
+        .from("avito_bots")
+        .select("*")
+        .eq("id", bot_id)
+        .single();
+      if (botErr || !bot) throw new Error("Бот не найден");
+
+      let accQuery = supabase.from("avito_accounts").select("*");
+      if (bot.avito_account_id) {
+        accQuery = accQuery.eq("id", bot.avito_account_id);
+      } else if (store_id) {
+        accQuery = accQuery.eq("store_id", store_id);
+      } else {
+        throw new Error("Аккаунт Авито не привязан");
+      }
+      const { data: account, error: accErr } = await accQuery.single();
+      if (accErr || !account) throw new Error("Авито аккаунт не найден");
+
+      const token = await getAvitoToken(account.client_id, account.client_secret);
+      const userId = account.avito_user_id;
+      if (!userId) throw new Error("Авито user_id не найден");
+
+      const res = await fetch(
+        `${AVITO_API_BASE}/core/v1/accounts/${userId}/items?per_page=50&status=active`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`Avito items failed [${res.status}]: ${t}`);
+      }
+      const data = await res.json();
+      const items = (data.resources || []).map((item: any) => ({
+        id: String(item.id),
+        title: item.title || "",
+        price: item.price || 0,
+        url: item.url || "",
+        image: item.images?.[0]?.640x480 || item.images?.[0]?.default || "",
+        category: item.category?.name || "",
+      }));
+
+      return new Response(
+        JSON.stringify({ success: true, items }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // ===== DEBUG CHAT =====
     if (action === "debug_chat") {
       if (!bot_id || !message) throw new Error("bot_id and message required");
 
-      // Get bot config
       const { data: bot, error: botErr } = await supabase
         .from("avito_bots")
         .select("*")
@@ -140,18 +211,62 @@ Deno.serve(async (req) => {
         .eq("is_active", true);
 
       const qaContext = buildQAContext(qaItems || []);
-      const systemPrompt = (bot.system_prompt || "Ты — помощник продавца на Авито.") + qaContext;
+
+      // If item_id is provided, fetch listing context
+      let listingContext = "";
+      if (item_id && bot.avito_account_id) {
+        try {
+          let accQuery = supabase.from("avito_accounts").select("*");
+          accQuery = accQuery.eq("id", bot.avito_account_id);
+          const { data: account } = await accQuery.single();
+          if (account && account.avito_user_id) {
+            const token = await getAvitoToken(account.client_id, account.client_secret);
+            const listing = await getAvitoListingInfo(token, account.avito_user_id, item_id);
+            if (listing) {
+              listingContext = `\n\n--- КОНТЕКСТ ОБЪЯВЛЕНИЯ ---\nНазвание: ${listing.title}\nОписание: ${listing.description}\n--- КОНЕЦ КОНТЕКСТА ---\n`;
+            }
+          }
+        } catch (e) {
+          console.error("Failed to fetch listing for debug:", e);
+        }
+      }
+
+      const systemPrompt = (bot.system_prompt || "Ты — помощник продавца на Авито.") + listingContext + qaContext;
       const proSuffix = bot.pro_seller_mode
         ? "\n\nВеди себя как профессиональный продавец. Используй техники продаж."
         : "";
 
-      const conversationMessages = [
+      // Build conversation from debug session history
+      const conversationMessages: { role: string; content: string }[] = [
         { role: "system", content: systemPrompt + proSuffix },
-        { role: "user", content: message },
       ];
+
+      // If debug_session_id provided, load previous messages
+      if (debug_session_id) {
+        const { data: prevMsgs } = await supabase
+          .from("avito_bot_messages")
+          .select("*")
+          .eq("chat_id", debug_session_id)
+          .order("created_at", { ascending: true });
+        if (prevMsgs) {
+          for (const m of prevMsgs) {
+            conversationMessages.push({ role: m.role === "assistant" ? "assistant" : "user", content: m.content });
+          }
+        }
+      }
+
+      conversationMessages.push({ role: "user", content: message });
 
       const model = bot.ai_model || "openai/gpt-4.1-mini";
       const aiResponse = await getAIResponse(conversationMessages, model, vsegptApiKey);
+
+      // Save debug messages to DB if session exists
+      if (debug_session_id) {
+        await supabase.from("avito_bot_messages").insert([
+          { chat_id: debug_session_id, store_id: store_id || bot.store_id, role: "user", content: message },
+          { chat_id: debug_session_id, store_id: store_id || bot.store_id, role: "assistant", content: aiResponse },
+        ]);
+      }
 
       return new Response(
         JSON.stringify({ success: true, response: aiResponse }),
@@ -219,10 +334,8 @@ Deno.serve(async (req) => {
           const lastMsg = chat.last_message;
           const itemId = chat.context?.value?.id;
 
-          // Skip if no messages or last message is from us
           if (!lastMsg || lastMsg.author_id === userId) continue;
 
-          // Check/create chat record
           let { data: dbChat } = await supabase
             .from("avito_bot_chats")
             .select("*")
@@ -248,11 +361,9 @@ Deno.serve(async (req) => {
             dbChat = newChat;
           }
 
-          // Check escalation and limits
           if (dbChat.is_escalated) continue;
           if (bot.max_responses && dbChat.bot_responses_count >= bot.max_responses) continue;
 
-          // Fetch listing info for context
           let listingContext = "";
           if (itemId) {
             const listing = await getAvitoListingInfo(token, userId, String(itemId));
@@ -261,7 +372,6 @@ Deno.serve(async (req) => {
             }
           }
 
-          // Fetch recent messages from Avito for context
           const msgsRes = await fetch(
             `${AVITO_API_BASE}/messenger/v3/accounts/${userId}/chats/${chatId}/messages/?limit=20`,
             { headers: { Authorization: `Bearer ${token}` } }
@@ -271,7 +381,6 @@ Deno.serve(async (req) => {
           const msgsData = await msgsRes.json();
           const avitoMessages = (msgsData.messages || []).reverse();
 
-          // Build conversation history
           const basePrompt = bot.system_prompt || "Ты — помощник продавца на Авито. Отвечай вежливо и помогай с вопросами о товарах.";
           const proSuffix = bot.pro_seller_mode
             ? "\n\nВеди себя как профессиональный продавец. Используй техники продаж, задавай уточняющие вопросы."
@@ -291,17 +400,14 @@ Deno.serve(async (req) => {
             }
           }
 
-          // Select model (with upgrade logic)
           let model = bot.ai_model || "google/gemini-3-flash-preview";
           if (bot.upgrade_after_messages > 0 && bot.upgrade_model && dbChat.bot_responses_count >= bot.upgrade_after_messages) {
             model = bot.upgrade_model;
           }
 
-          // Generate AI response
           const aiResponse = await getAIResponse(conversationMessages, model, vsegptApiKey);
           if (!aiResponse) continue;
 
-          // Send response to Avito
           const sendRes = await fetch(
             `${AVITO_API_BASE}/messenger/v1/accounts/${userId}/chats/${chatId}/messages`,
             {
@@ -323,7 +429,6 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          // Save message to DB
           await supabase.from("avito_bot_messages").insert([
             {
               chat_id: dbChat.id,
@@ -339,7 +444,6 @@ Deno.serve(async (req) => {
             },
           ]);
 
-          // Update chat counters
           await supabase
             .from("avito_bot_chats")
             .update({
@@ -350,7 +454,6 @@ Deno.serve(async (req) => {
             })
             .eq("id", dbChat.id);
 
-          // Send Telegram notification
           if (bot.telegram_bot_token && bot.telegram_chat_id) {
             const userName = chat.users?.[0]?.name || "Пользователь";
             const userMsg = lastMsg.content?.text || lastMsg.text || "";
