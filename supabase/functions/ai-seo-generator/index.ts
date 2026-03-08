@@ -50,6 +50,20 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check AI access for this store
+    const { data: aiAccess } = await supabase
+      .from("store_ai_access")
+      .select("is_unlocked, seo_enabled")
+      .eq("store_id", storeId)
+      .maybeSingle();
+
+    if (!aiAccess?.is_unlocked || !aiAccess?.seo_enabled) {
+      return new Response(
+        JSON.stringify({ error: "ИИ-функции не активированы. Включите доступ к ИИ в настройках профиля." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Fetch products data
     const { data: products, error: productsError } = await supabase
       .from("products")

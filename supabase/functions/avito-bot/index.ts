@@ -121,6 +121,22 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { action, store_id, bot_id, message, item_id, debug_session_id } = await req.json();
 
+    // Check AI access for this store (skip for non-AI actions like fetch_models)
+    if (store_id && action !== "fetch_models") {
+      const { data: aiAccess } = await supabase
+        .from("store_ai_access")
+        .select("is_unlocked, avito_bot_enabled")
+        .eq("store_id", store_id)
+        .maybeSingle();
+
+      if (!aiAccess?.is_unlocked || !aiAccess?.avito_bot_enabled) {
+        return new Response(
+          JSON.stringify({ error: "ИИ-функции не активированы. Включите доступ к ИИ в настройках профиля." }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // ===== FETCH VSEGPT MODELS =====
     if (action === "fetch_models") {
       const res = await fetch(VSEGPT_MODELS_URL, {

@@ -24,6 +24,7 @@ import ProductMatchingSection from '@/components/admin/ProductMatchingSection';
 import FeaturedProductsManager from '@/components/admin/FeaturedProductsManager';
 import MegacatalogManager from '@/components/admin/MegacatalogManager';
 import TelegramBotSection from '@/components/admin/TelegramBotSection';
+import AiPasswordManager from '@/components/admin/AiPasswordManager';
 
 interface StoreWithCounts {
   id: string;
@@ -571,6 +572,10 @@ export default function SuperAdmin() {
               <Bot className="h-4 w-4" />
               <span className="hidden sm:inline">Telegram</span>
             </TabsTrigger>
+            <TabsTrigger value="ai" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline">ИИ</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
@@ -1070,6 +1075,11 @@ export default function SuperAdmin() {
           {/* Telegram Tab */}
           <TabsContent value="telegram" className="space-y-6">
             <TelegramBotSection session={session} />
+          </TabsContent>
+
+          {/* AI Settings Tab */}
+          <TabsContent value="ai" className="space-y-6">
+            <AiPasswordManager />
           </TabsContent>
         </Tabs>
       </main>

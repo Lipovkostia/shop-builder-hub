@@ -9,13 +9,30 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { productNames, maxChars = 200 } = await req.json();
+    const { productNames, maxChars = 200, storeId } = await req.json();
     
     if (!productNames || !Array.isArray(productNames) || productNames.length === 0) {
       return new Response(JSON.stringify({ error: "productNames array is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Check AI access for this store
+    if (storeId) {
+      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { data: aiAccess } = await sb
+        .from("store_ai_access")
+        .select("is_unlocked, product_descriptions_enabled")
+        .eq("store_id", storeId)
+        .maybeSingle();
+
+      if (!aiAccess?.is_unlocked || !aiAccess?.product_descriptions_enabled) {
+        return new Response(JSON.stringify({ error: "ИИ-функции не активированы. Включите доступ к ИИ в настройках профиля." }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

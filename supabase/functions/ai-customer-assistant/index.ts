@@ -140,6 +140,28 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Check AI access for the store that owns this catalog
+    const { data: catalog } = await supabase
+      .from("catalogs")
+      .select("store_id")
+      .eq("id", catalogId)
+      .maybeSingle();
+
+    if (catalog?.store_id) {
+      const { data: aiAccess } = await supabase
+        .from("store_ai_access")
+        .select("is_unlocked, ai_assistant_enabled")
+        .eq("store_id", catalog.store_id)
+        .maybeSingle();
+
+      if (!aiAccess?.is_unlocked || !aiAccess?.ai_assistant_enabled) {
+        return new Response(
+          JSON.stringify({ error: "ИИ-ассистент не активирован для этого магазина." }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // If audio provided, transcribe it first with ElevenLabs
     let recognizedText = query;
     if (audioBlob) {
