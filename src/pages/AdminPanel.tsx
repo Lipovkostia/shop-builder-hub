@@ -86,6 +86,7 @@ import { InlineMultiSelectCell } from "@/components/admin/InlineMultiSelectCell"
 import { InlinePriceCell } from "@/components/admin/InlinePriceCell";
 import { InlineMarkupCell } from "@/components/admin/InlineMarkupCell";
 import { MobileTabNav } from "@/components/admin/MobileTabNav";
+import { AvitoBotSection } from "@/components/admin/AvitoBotSection";
 import { BulkEditPanel } from "@/components/admin/BulkEditPanel";
 import { uploadProductImages, deleteSingleImage, uploadFilesToStorage } from "@/hooks/useProductImages";
 import { ImageGalleryViewer } from "@/components/admin/ImageGalleryViewer";
