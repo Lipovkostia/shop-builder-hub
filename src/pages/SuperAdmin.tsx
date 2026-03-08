@@ -1076,6 +1076,11 @@ export default function SuperAdmin() {
           <TabsContent value="telegram" className="space-y-6">
             <TelegramBotSection session={session} />
           </TabsContent>
+
+          {/* AI Settings Tab */}
+          <TabsContent value="ai" className="space-y-6">
+            <AiPasswordManager />
+          </TabsContent>
         </Tabs>
       </main>
     </div>
