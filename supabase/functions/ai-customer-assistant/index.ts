@@ -150,7 +150,7 @@ serve(async (req) => {
     if (catalog?.store_id) {
       const { data: aiAccess } = await supabase
         .from("store_ai_access")
-        .select("is_unlocked, ai_assistant_enabled")
+        .select("is_unlocked, ai_assistant_enabled, ai_assistant_model")
         .eq("store_id", catalog.store_id)
         .maybeSingle();
 
