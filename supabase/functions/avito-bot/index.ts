@@ -748,8 +748,9 @@ Deno.serve(async (req) => {
         console.error("Failed to fetch product catalog:", e);
       }
 
+      // Fetch recent chats (not just unread) — we track processed state in our DB
       const chatsRes = await fetch(
-        `${AVITO_API_BASE}/messenger/v2/accounts/${userId}/chats?unread_only=true`,
+        `${AVITO_API_BASE}/messenger/v2/accounts/${userId}/chats?unread_only=false&limit=50`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -771,7 +772,13 @@ Deno.serve(async (req) => {
           const lastMsg = chat.last_message;
           const itemId = chat.context?.value?.id;
 
+          // Skip if no message or last message is from seller (us)
           if (!lastMsg || lastMsg.author_id === userId) continue;
+
+          // Skip messages older than 30 minutes to avoid processing stale chats
+          const msgTime = lastMsg.created ? new Date(lastMsg.created * 1000).getTime() : 0;
+          const thirtyMinAgo = Date.now() - 30 * 60 * 1000;
+          if (msgTime > 0 && msgTime < thirtyMinAgo) continue;
 
           // Filter by allowed_item_ids if configured
           const allowedIds = bot.allowed_item_ids;
@@ -806,6 +813,15 @@ Deno.serve(async (req) => {
 
           if (dbChat.is_escalated) continue;
           if (bot.max_responses && dbChat.bot_responses_count >= bot.max_responses) continue;
+
+          // Check if we already responded to this message by comparing timestamps
+          const lastMsgTimestamp = lastMsg.created ? new Date(lastMsg.created * 1000).toISOString() : null;
+          if (dbChat.last_message_at && lastMsgTimestamp) {
+            const dbTime = new Date(dbChat.last_message_at).getTime();
+            const avitoTime = new Date(lastMsgTimestamp).getTime();
+            // If our last recorded activity is after this message, skip (already processed)
+            if (dbTime >= avitoTime) continue;
+          }
 
           // Fetch messages to check for seller stop command
           const msgsRes = await fetch(
