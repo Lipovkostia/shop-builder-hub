@@ -702,11 +702,14 @@ function AvitoFeedTable({
             const fp = feedProducts.find(f => f.product_id === editingImageProduct.id);
             const currentParams = fp?.avito_params || {};
             const newParams = { ...currentParams, avitoImages: selectedImages };
-            // Use handleInlineParamUpdate indirectly - we need to set the full params
-            // Since handleInlineParamUpdate merges single keys, we store as JSON string
-            // But we actually need to call updateProductParams directly, so pass it as prop
             onUpdateProductParams(editingImageProduct.id, newParams);
             setEditingImageProduct(null);
+          }}
+          onImagesAdded={(newUrls) => {
+            setEditingImageProduct(prev => prev ? {
+              ...prev,
+              images: [...(prev.images || []), ...newUrls],
+            } : null);
           }}
         />
       )}
