@@ -682,6 +682,27 @@ function AvitoFeedTable({
           </div>
         </div>
       </div>
+
+      {/* Avito Image Editor Dialog */}
+      {editingImageProduct && (
+        <AvitoImageEditor
+          open={!!editingImageProduct}
+          onOpenChange={(open) => { if (!open) setEditingImageProduct(null); }}
+          productId={editingImageProduct.id}
+          productName={editingImageProduct.name}
+          images={editingImageProduct.images}
+          storeId={storeId}
+          avitoImages={(() => {
+            const fp = feedProducts.find(f => f.product_id === editingImageProduct.id);
+            const params = fp?.avito_params || {};
+            return params.avitoImages || undefined;
+          })()}
+          onSave={(selectedImages) => {
+            handleInlineParamUpdate(editingImageProduct.id, "avitoImages", JSON.stringify(selectedImages));
+            setEditingImageProduct(null);
+          }}
+        />
+      )}
     </div>
   );
 }
