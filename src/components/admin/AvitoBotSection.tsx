@@ -101,28 +101,56 @@ interface SalesStage {
 type TopLevel = "dashboard" | "bots" | "accounts" | "chats";
 type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug" | "usage_stats" | "sales";
 
-const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType }[] = [
-  { id: "general", label: "Основные", icon: Bot },
-  { id: "prompt", label: "Промпт", icon: Sparkles },
-  { id: "qa", label: "Вопрос-ответ", icon: HelpCircle },
-  { id: "ad_filter", label: "Объявления", icon: Filter },
-  { id: "handoff", label: "Переключение", icon: Repeat },
-  { id: "sales", label: "Продажа", icon: ShoppingCart },
-  { id: "leads", label: "Лиды", icon: Users },
-  { id: "escalation", label: "Эскалация", icon: Shield },
-  { id: "completion", label: "Завершение", icon: ChevronRight },
-  { id: "schedule", label: "График", icon: Clock },
-  { id: "reactivation", label: "Реактивация", icon: RefreshCw },
-  { id: "model", label: "Модель ИИ", icon: Zap },
-  { id: "delay", label: "Задержка", icon: Clock },
-  { id: "limits", label: "Лимиты", icon: Shield },
-  { id: "pro", label: "Про-режим", icon: Sparkles },
-  { id: "stop_command", label: "Стоп-команда", icon: Hand },
-  { id: "notifications", label: "Уведомления", icon: Bell },
-  { id: "telegram", label: "Telegram", icon: Bell },
-  { id: "usage_stats", label: "Статистика", icon: BarChart3 },
-  { id: "debug", label: "Отладка", icon: PlayCircle },
+const botSidebarGroups: { label: string; items: { id: BotSection; label: string; icon: React.ElementType; important?: boolean }[] }[] = [
+  {
+    label: "⚡ Главное",
+    items: [
+      { id: "general", label: "Основные", icon: Bot, important: true },
+      { id: "prompt", label: "Промпт", icon: Sparkles, important: true },
+      { id: "model", label: "Модель ИИ", icon: Zap, important: true },
+    ],
+  },
+  {
+    label: "🛒 Продажи",
+    items: [
+      { id: "sales", label: "Этапы продажи", icon: ShoppingCart },
+      { id: "qa", label: "Вопрос-ответ", icon: HelpCircle },
+      { id: "leads", label: "Лиды", icon: Users },
+    ],
+  },
+  {
+    label: "⚙️ Поведение",
+    items: [
+      { id: "schedule", label: "График", icon: Clock },
+      { id: "delay", label: "Задержка", icon: Clock },
+      { id: "limits", label: "Лимиты", icon: Shield },
+      { id: "reactivation", label: "Реактивация", icon: RefreshCw },
+      { id: "stop_command", label: "Стоп-команда", icon: Hand },
+    ],
+  },
+  {
+    label: "🔗 Интеграции",
+    items: [
+      { id: "ad_filter", label: "Объявления", icon: Filter },
+      { id: "handoff", label: "Переключение", icon: Repeat },
+      { id: "escalation", label: "Эскалация", icon: Shield },
+      { id: "completion", label: "Завершение", icon: ChevronRight },
+      { id: "notifications", label: "Уведомления", icon: Bell },
+      { id: "telegram", label: "Telegram", icon: Bell },
+    ],
+  },
+  {
+    label: "🔧 Продвинутое",
+    items: [
+      { id: "pro", label: "Про-режим", icon: Sparkles },
+      { id: "usage_stats", label: "Статистика", icon: BarChart3 },
+      { id: "debug", label: "Отладка", icon: PlayCircle },
+    ],
+  },
 ];
+
+// Flat list for backward compat
+const botSidebarItems = botSidebarGroups.flatMap(g => g.items);
 
 // ===== Debounced Q&A Input =====
 function DebouncedInput({ value: externalValue, onChange, ...props }: { value: string; onChange: (val: string) => void } & Omit<React.ComponentProps<typeof Input>, "value" | "onChange">) {
@@ -1741,6 +1769,37 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
               </CardContent>
             </Card>
 
+            {/* CLARIFYING QUESTIONS */}
+            <Card className={cn("border-2 transition-colors", instructions.clarifying_questions_enabled ? "border-primary/50 bg-primary/5" : "border-border")}>
+              <CardContent className="py-4 px-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", instructions.clarifying_questions_enabled ? "bg-primary/20" : "bg-muted")}>
+                      <HelpCircle className={cn("h-5 w-5", instructions.clarifying_questions_enabled ? "text-primary" : "text-muted-foreground")} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">Уточняющие вопросы</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Если много похожих товаров — бот задаёт 1-3 вопроса, чтобы сузить выбор, прежде чем показать список
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={!!instructions.clarifying_questions_enabled}
+                    onCheckedChange={v => updateForm({ instructions_config: { ...instructions, clarifying_questions_enabled: v } })}
+                  />
+                </div>
+                {instructions.clarifying_questions_enabled && (
+                  <div className="mt-3 ml-13 text-xs text-muted-foreground bg-muted/50 rounded-lg p-3 space-y-1">
+                    <p className="font-medium text-foreground">Как это работает:</p>
+                    <p>• Клиент пишет «хамон» → в каталоге 20+ позиций</p>
+                    <p>• Бот спрашивает: «Вам нарезка, блоком или нога целиком?»</p>
+                    <p>• Клиент отвечает → бот показывает 3-6 подходящих товаров</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <Separator />
 
             {/* Smart setup or raw prompt */}
@@ -2548,15 +2607,27 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
           <div className="mt-1"><BotStatusIndicator bot={bot} account={account} /></div>
         </div>
         <ScrollArea className="h-[calc(100vh-310px)]">
-          <div className="p-2 space-y-0.5">
-            {botSidebarItems.map(item => {
-              const Icon = item.icon;
-              return (
-                <button key={item.id} onClick={() => setBotSection(item.id)} className={cn("w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left", botSection === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
-                  <Icon className="h-4 w-4 flex-shrink-0" />{item.label}
-                </button>
-              );
-            })}
+          <div className="p-2 space-y-3">
+            {botSidebarGroups.map(group => (
+              <div key={group.label}>
+                <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">{group.label}</div>
+                <div className="space-y-0.5">
+                  {group.items.map(item => {
+                    const Icon = item.icon;
+                    return (
+                      <button key={item.id} onClick={() => setBotSection(item.id)} className={cn(
+                        "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left",
+                        botSection === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                        item.important && botSection !== item.id && "font-medium text-foreground"
+                      )}>
+                        <Icon className="h-4 w-4 flex-shrink-0" />{item.label}
+                        {item.important && botSection !== item.id && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </ScrollArea>
         <div className="p-2 border-t border-border">
