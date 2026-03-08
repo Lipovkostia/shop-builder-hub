@@ -714,6 +714,12 @@ Deno.serve(async (req) => {
 
           if (!lastMsg || lastMsg.author_id === userId) continue;
 
+          // Filter by allowed_item_ids if configured
+          const allowedIds = bot.allowed_item_ids;
+          if (Array.isArray(allowedIds) && allowedIds.length > 0 && itemId) {
+            if (!allowedIds.includes(String(itemId))) continue;
+          }
+
           let { data: dbChat } = await supabase
             .from("avito_bot_chats")
             .select("*")
