@@ -183,7 +183,7 @@ function BotStatusIndicator({ bot, account }: { bot: AvitoBot; account?: AvitoAc
 
 export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
   const { toast } = useToast();
-  const { bots, loading, saving, createBot, saveBot, deleteBot, toggleBot, processMessages, fetchChats, refetch } = useAvitoBots(storeId);
+  const { bots, loading, saving, createBot, duplicateBot, saveBot, deleteBot, toggleBot, processMessages, fetchChats, refetch } = useAvitoBots(storeId);
   
   const [topLevel, setTopLevel] = useState<TopLevel>("dashboard");
   const [editingBotId, setEditingBotId] = useState<string | null>(null);
