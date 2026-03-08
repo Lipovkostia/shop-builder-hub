@@ -17,7 +17,8 @@ import {
   Video,
   Radio,
   Database,
-  ShoppingCart
+  ShoppingCart,
+  FolderTree
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
