@@ -264,34 +264,32 @@ export function useRetailStore(subdomain: string | undefined) {
     }
   }, [store?.id, store?.retail_catalog_id, products]);
 
+  const [storeLoaded, setStoreLoaded] = useState(false);
   const [productsLoaded, setProductsLoaded] = useState(false);
 
   useEffect(() => {
     setLoading(true);
+    setStoreLoaded(false);
     setProductsLoaded(false);
-    fetchStore().finally(() => {
-      // Don't set loading=false here; wait for products
-    });
+    fetchStore().finally(() => setStoreLoaded(true));
   }, [fetchStore]);
 
   useEffect(() => {
-    if (store?.id) {
+    if (storeLoaded && store?.id) {
       setProductsLoaded(false);
       fetchProducts().finally(() => setProductsLoaded(true));
-    } else if (store === null && !loading) {
-      // Store fetch completed but no store found
+    } else if (storeLoaded && !store) {
+      // No store found, nothing to load
       setProductsLoaded(true);
     }
-  }, [store?.id, fetchProducts]);
+  }, [storeLoaded, store?.id, fetchProducts]);
 
-  // Loading is done only when both store and products are loaded
+  // Loading completes when both store and products are loaded
   useEffect(() => {
-    if (store !== null && productsLoaded) {
-      setLoading(false);
-    } else if (error) {
+    if (storeLoaded && productsLoaded) {
       setLoading(false);
     }
-  }, [store, productsLoaded, error]);
+  }, [storeLoaded, productsLoaded]);
 
   useEffect(() => {
     if (store?.id) {
