@@ -17,7 +17,8 @@ import {
   Video,
   Radio,
   Database,
-  ShoppingCart
+  ShoppingCart,
+  FolderTree
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Bot, MessageCircle } from "lucide-react";
+import { WholesaleCategoryMapping } from "./WholesaleCategoryMapping";
 
 interface MoyskladProduct {
   id: string;
@@ -326,10 +328,14 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-7 mb-6">
+        <TabsList className="w-full grid grid-cols-8 mb-6">
           <TabsTrigger value="general" className="gap-1.5">
             <Store className="h-4 w-4" />
             <span className="hidden sm:inline">Общее</span>
+          </TabsTrigger>
+          <TabsTrigger value="categories" className="gap-1.5">
+            <FolderTree className="h-4 w-4" />
+            <span className="hidden sm:inline">Категории</span>
           </TabsTrigger>
           <TabsTrigger value="livestream" className="gap-1.5">
             <Video className="h-4 w-4" />
@@ -356,6 +362,16 @@ export function WholesaleSettingsSection({ storeId, storeName }: WholesaleSettin
             <span className="hidden sm:inline">Товары</span>
           </TabsTrigger>
         </TabsList>
+
+        {/* Categories Tab */}
+        <TabsContent value="categories" className="space-y-6">
+          <div className="bg-card border border-border rounded-lg p-6">
+            <WholesaleCategoryMapping
+              storeId={storeId}
+              catalogId={settings.wholesale_catalog_id}
+            />
+          </div>
+        </TabsContent>
 
         {/* Chat Tab */}
         <TabsContent value="chat" className="space-y-6">
