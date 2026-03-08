@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { TelegramIcon } from "@/components/icons/TelegramIcon";
+import { AvitoBotSmartSetup, SmartSetupData, buildSystemPromptFromSmartSetup } from "./AvitoBotSmartSetup";
 
 interface AvitoBotSectionProps {
   storeId: string | null;
