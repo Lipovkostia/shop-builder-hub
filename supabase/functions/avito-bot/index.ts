@@ -35,6 +35,52 @@ async function fetchAllProducts(supabase: any, storeId: string, columns: string)
   return allData;
 }
 
+// Search products relevant to a query (fuzzy match by keywords)
+function findRelevantProducts(allProducts: any[], query: string, maxResults = 30): any[] {
+  if (!query || !allProducts.length) return allProducts.slice(0, maxResults);
+  
+  const queryNorm = normalizeForMatch(query);
+  const queryTokens = queryNorm.split(" ").filter(t => t.length > 2);
+  
+  if (queryTokens.length === 0) return allProducts.slice(0, maxResults);
+  
+  const scored = allProducts.map(p => {
+    const nameNorm = normalizeForMatch(p.name || "");
+    let score = 0;
+    // Exact substring match
+    if (nameNorm.includes(queryNorm) || queryNorm.includes(nameNorm)) score += 100;
+    // Token matches
+    for (const token of queryTokens) {
+      if (nameNorm.includes(token)) score += 20;
+      // Check description too but with lower weight
+      if (p.description && normalizeForMatch(p.description).includes(token)) score += 5;
+    }
+    return { product: p, score };
+  });
+  
+  // Return top matches + always include some products for general context
+  scored.sort((a, b) => b.score - a.score);
+  const relevant = scored.filter(s => s.score > 0).slice(0, maxResults);
+  
+  // If few relevant matches, add some general products for context
+  if (relevant.length < 10) {
+    const remaining = scored.filter(s => s.score === 0).slice(0, maxResults - relevant.length);
+    relevant.push(...remaining);
+  }
+  
+  return relevant.map(s => s.product);
+}
+
+// Build compact catalog context from products array
+function buildCatalogContext(products: any[], totalCount: number): string {
+  if (!products.length) return "";
+  const productLines = products.map((p: any, i: number) => {
+    const price = p.price || p.buy_price || 0;
+    return `${i + 1}. ${p.name} — ${price}₽${p.unit ? ` (${p.unit})` : ""}${p.sku ? ` [${p.sku}]` : ""}`;
+  }).join("\n");
+  return `\n\n--- КАТАЛОГ ТОВАРОВ (показано ${products.length} из ${totalCount}) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\nВАЖНО: Ищи ПОХОЖИЕ названия (частичное совпадение, сокращения). НИКОГДА не говори «нет в каталоге» если есть хоть частичное совпадение. Называй точные цены.\n`;
+}
+
 async function getAvitoToken(clientId: string, clientSecret: string): Promise<string> {
   const res = await fetch(AVITO_TOKEN_URL, {
     method: "POST",
@@ -587,18 +633,12 @@ Deno.serve(async (req) => {
 
       const qaContext = buildQAContext(qaItems || []);
 
-      // Build full product catalog context (all store products)
+      // Build product catalog context — only relevant products to save tokens
       let catalogContext = "";
       try {
-        const allProducts = await fetchAllProducts(supabase, bot.store_id, "name, description, price, buy_price, unit, sku, category_id, images");
-
-        if (allProducts && allProducts.length > 0) {
-          const productLines = allProducts.map((p: any, i: number) => {
-            const price = p.price || p.buy_price || 0;
-            return `${i + 1}. ${p.name} — ${price} ₽${p.unit ? ` (${p.unit})` : ""}${p.sku ? ` [Артикул: ${p.sku}]` : ""}${p.description ? `\n   ${p.description.substring(0, 150)}` : ""}`;
-          }).join("\n");
-          catalogContext = `\n\n--- КАТАЛОГ ТОВАРОВ МАГАЗИНА (${allProducts.length} шт.) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\n\nВАЖНО:\n- Ты знаешь ВСЕ товары магазина из каталога выше.\n- Если клиент спрашивает о товаре — ищи ПОХОЖИЕ названия в каталоге (частичное совпадение, сокращения, ключевые слова).\n- Например, если клиент пишет «ландана с лавандой», найди «Сыр Landana с лавандой 4,5кг» в каталоге.\n- НИКОГДА не говори «товара нет в каталоге», если есть хотя бы частичное совпадение по ключевым словам.\n- Называй точные цены из каталога.\n`;
-        }
+        const allProducts = await fetchAllProducts(supabase, bot.store_id, "name, description, price, buy_price, unit, sku");
+        const relevantProducts = findRelevantProducts(allProducts, message, 30);
+        catalogContext = buildCatalogContext(relevantProducts, allProducts.length);
       } catch (e) {
         console.error("Failed to fetch product catalog:", e);
       }
@@ -664,9 +704,11 @@ Deno.serve(async (req) => {
           .from("avito_bot_messages")
           .select("*")
           .eq("chat_id", debug_session_id)
-          .order("created_at", { ascending: true });
+          .order("created_at", { ascending: false })
+          .limit(20);
         if (prevMsgs) {
-          for (const m of prevMsgs) {
+          // Reverse to chronological order, take last 20 messages
+          for (const m of prevMsgs.reverse()) {
             conversationMessages.push({ role: m.role === "assistant" ? "assistant" : "user", content: m.content });
           }
         }
@@ -733,18 +775,10 @@ Deno.serve(async (req) => {
 
       const qaContext = buildQAContext(qaItems || []);
 
-      // Load full product catalog for context
-      let catalogContext = "";
+      // Load all products once — we'll filter per-chat for relevant ones
+      let allProducts: any[] = [];
       try {
-        const allProducts = await fetchAllProducts(supabase, store_id, "name, description, price, buy_price, unit, sku");
-
-        if (allProducts && allProducts.length > 0) {
-          const productLines = allProducts.map((p: any, i: number) => {
-            const price = p.price || p.buy_price || 0;
-            return `${i + 1}. ${p.name} — ${price} ₽${p.unit ? ` (${p.unit})` : ""}${p.sku ? ` [${p.sku}]` : ""}${p.description ? ` | ${p.description.substring(0, 100)}` : ""}`;
-          }).join("\n");
-          catalogContext = `\n\n--- КАТАЛОГ ТОВАРОВ (${allProducts.length} шт.) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\nВАЖНО: Ты знаешь ВСЕ товары. Ищи ПОХОЖИЕ названия (частичное совпадение, сокращения, ключевые слова). НИКОГДА не говори «нет в каталоге» если есть частичное совпадение. Называй точные цены.\n`;
-        }
+        allProducts = await fetchAllProducts(supabase, store_id, "name, price, buy_price, unit, sku");
       } catch (e) {
         console.error("Failed to fetch product catalog:", e);
       }
@@ -824,9 +858,9 @@ Deno.serve(async (req) => {
             if (dbTime >= avitoTime) continue;
           }
 
-          // Fetch messages to check for seller stop command
+          // Fetch only last 10 messages (not 20) to reduce token usage
           const msgsRes = await fetch(
-            `${AVITO_API_BASE}/messenger/v3/accounts/${userId}/chats/${chatId}/messages/?limit=20`,
+            `${AVITO_API_BASE}/messenger/v3/accounts/${userId}/chats/${chatId}/messages/?limit=10`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
 
@@ -852,28 +886,37 @@ Deno.serve(async (req) => {
             continue;
           }
 
+          // Get user's last message text for relevance search
+          const userMessageText = lastMsg.content?.text || lastMsg.text || "";
+          const itemTitle = chat.context?.value?.title || chat.item?.title || "";
+          const searchQuery = `${userMessageText} ${itemTitle}`.trim();
+
+          // Build per-chat catalog context with only RELEVANT products
+          const relevantProducts = findRelevantProducts(allProducts, searchQuery, 30);
+          const catalogContext = buildCatalogContext(relevantProducts, allProducts.length);
+
           let listingContext = "";
           if (itemId) {
             const localListing = await getLocalListingInfo(
               supabase,
               store_id,
               String(itemId),
-              chat.context?.value?.title || chat.item?.title || ""
+              itemTitle
             );
             const apiListing = await getAvitoListingInfo(token, userId, String(itemId));
             const listing = mergeListingInfo(localListing, apiListing);
 
             if (listing) {
-              listingContext = `\n\n--- КОНТЕКСТ ТЕКУЩЕГО ОБЪЯВЛЕНИЯ ---\nНазвание товара: ${listing.title}\nЦена: ${listing.price} ₽\nКатегория: ${listing.category}\nОписание товара:\n${listing.description}\n--- КОНЕЦ КОНТЕКСТА ---\n\nВАЖНО: Клиент пишет по поводу этого конкретного объявления. Отвечай в контексте этого товара. Если спрашивают цену — называй цену из контекста.`;
+              listingContext = `\n\n--- КОНТЕКСТ ОБЪЯВЛЕНИЯ ---\nНазвание: ${listing.title}\nЦена: ${listing.price} ₽\nКатегория: ${listing.category}\nОписание:\n${listing.description.substring(0, 300)}\n--- КОНЕЦ ---`;
             }
           }
 
           const basePrompt = getEffectiveSystemPrompt(bot);
           const charLimitSuffix = bot.max_response_chars
-            ? `\n\nВАЖНО: Ограничивай длину каждого ответа до ${bot.max_response_chars} символов. Будь лаконичным. Если информации много — выбери самое важное. Не перечисляй весь каталог, а предложи уточнить запрос.`
+            ? `\n\nВАЖНО: Ограничивай длину ответа до ${bot.max_response_chars} символов.`
             : "";
           const proSuffix = bot.pro_seller_mode
-            ? "\n\nВеди себя как профессиональный продавец. Используй техники продаж, задавай уточняющие вопросы."
+            ? "\n\nВеди себя как профессиональный продавец."
             : "";
 
           const systemPrompt = basePrompt + catalogContext + listingContext + qaContext + charLimitSuffix + proSuffix;
@@ -882,7 +925,9 @@ Deno.serve(async (req) => {
             { role: "system", content: systemPrompt },
           ];
 
-          for (const msg of avitoMessages) {
+          // Only use last 10 messages for conversation context
+          const recentMessages = avitoMessages.slice(-10);
+          for (const msg of recentMessages) {
             const role = String(msg.author_id) === String(userId) ? "assistant" : "user";
             const text = msg.content?.text || msg.text || "";
             if (text) {
