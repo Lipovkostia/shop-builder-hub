@@ -942,6 +942,30 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
         );
 
       case "prompt":
+        if (botForm.mode === "smart") {
+          const smartData: SmartSetupData = (botForm as any).smart_setup_data || {
+            category: "products",
+            company_info: "",
+            pricing_info: "",
+            delivery_info: "",
+            customer_interaction: "",
+          };
+          return (
+            <div className="space-y-4">
+              <AvitoBotSmartSetup
+                data={smartData}
+                onChange={(newData) => {
+                  updateForm({ smart_setup_data: newData } as any);
+                  // Auto-build system prompt from smart setup data
+                  const prompt = buildSystemPromptFromSmartSetup(newData);
+                  updateForm({ system_prompt: prompt } as any);
+                }}
+                storeId={storeId}
+                botId={bot.id}
+              />
+            </div>
+          );
+        }
         return (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold mb-1">Что бот должен знать?</h2>
