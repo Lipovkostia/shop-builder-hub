@@ -8,13 +8,8 @@ import { Sparkles } from "lucide-react";
  */
 export function AdminOnboardingBanner() {
   const onboarding = useOnboardingSafe();
-
-  // Если провайдер не подключен — тихо пропускаем баннер, не ломая страницу
-  if (!onboarding) {
-    return null;
-  }
-
-  const { currentStep, isActive, nextStep } = onboarding;
+  const currentStep = onboarding?.currentStep;
+  const isActive = onboarding?.isActive ?? false;
 
   // Добавляем пульсацию на элемент
   useEffect(() => {
@@ -38,6 +33,13 @@ export function AdminOnboardingBanner() {
       }
     };
   }, [isActive, currentStep?.pulsatingSelector]);
+
+  // Если провайдер не подключен — тихо пропускаем баннер, не ломая страницу
+  if (!onboarding) {
+    return null;
+  }
+
+  const { nextStep } = onboarding;
 
   // Показываем только для шага explore-admin
   if (!isActive || !currentStep || currentStep.id !== 'explore-admin') {
