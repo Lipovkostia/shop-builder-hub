@@ -1111,8 +1111,7 @@ Deno.serve(async (req) => {
     // ===== SEND MESSAGE TO AVITO CHAT =====
     if (action === "send_avito_message") {
       if (!store_id) throw new Error("store_id required");
-      const body = await req.json().catch(() => ({}));
-      const { avito_chat_id, text, db_chat_id } = body;
+      if (!avito_chat_id || !text) throw new Error("avito_chat_id and text required");
       if (!avito_chat_id || !text) throw new Error("avito_chat_id and text required");
 
       // Find account for this store
