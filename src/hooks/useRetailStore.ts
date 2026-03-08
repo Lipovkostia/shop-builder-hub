@@ -275,6 +275,10 @@ export function useRetailStore(subdomain: string | undefined) {
     
     const loadAll = async () => {
       setLoading(true);
+      setError(null);
+      setStore(null);
+      setProducts([]);
+      setCategories([]);
       try {
         // Fetch store first
         const { data, error: storeError } = await supabase

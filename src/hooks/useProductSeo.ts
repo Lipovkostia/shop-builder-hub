@@ -47,17 +47,37 @@ export function useProductSeo(storeId: string | null, storeName?: string, storeT
         },
       });
 
+      const errorCode = (error as any)?.context?.status;
+      const errorMessage = (error as any)?.message || "Ошибка генерации SEO";
+
+      if (errorCode === 402) {
+        toast.error("ИИ-кредиты закончились: пополните баланс в Workspace Usage");
+        return false;
+      }
+
+      if (errorCode === 429) {
+        toast.error("Слишком много запросов к ИИ, попробуйте чуть позже");
+        return false;
+      }
+
       if (error) throw error;
 
-      if (!data?.success) {
-        throw new Error(data?.error || "Ошибка генерации SEO");
+      if (!data?.success || !data?.processed) {
+        throw new Error(data?.error || "ИИ не сгенерировал SEO для товара");
       }
 
       toast.success("SEO-метаданные сгенерированы");
       return true;
     } catch (err) {
       console.error("Error generating SEO:", err);
-      toast.error("Ошибка генерации SEO");
+      const message = err instanceof Error ? err.message : "Ошибка генерации SEO";
+      if (message.includes("402")) {
+        toast.error("ИИ-кредиты закончились: пополните баланс в Workspace Usage");
+      } else if (message.includes("429")) {
+        toast.error("Слишком много запросов к ИИ, попробуйте чуть позже");
+      } else {
+        toast.error("Ошибка генерации SEO");
+      }
       return false;
     } finally {
       setGenerating(false);
@@ -89,8 +109,25 @@ export function useProductSeo(storeId: string | null, storeName?: string, storeT
           },
         });
 
+        const errorCode = (error as any)?.context?.status;
+
+        if (errorCode === 402) {
+          toast.error("ИИ-кредиты закончились: пополните баланс в Workspace Usage");
+          break;
+        }
+
+        if (errorCode === 429) {
+          toast.error("Слишком много запросов к ИИ, попробуйте чуть позже");
+          break;
+        }
+
         if (error) {
           console.error("Batch error:", error);
+          continue;
+        }
+
+        if (!data?.success) {
+          console.error("Batch generation failed:", data?.error);
           continue;
         }
 
@@ -104,6 +141,11 @@ export function useProductSeo(storeId: string | null, storeName?: string, storeT
         if (i + batchSize < productIds.length) {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
+      }
+
+      if (results.length === 0) {
+        toast.error("ИИ не сгенерировал SEO для выбранных товаров");
+        return null;
       }
 
       toast.success(`SEO сгенерировано для ${results.length} из ${productIds.length} товаров`);
