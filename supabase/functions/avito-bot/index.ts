@@ -113,8 +113,8 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableApiKey) throw new Error("LOVABLE_API_KEY is not configured");
+    const vsegptApiKey = Deno.env.get("VSEGPT_API_KEY");
+    if (!vsegptApiKey) throw new Error("VSEGPT_API_KEY is not configured");
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { action, store_id, bot_id, message } = await req.json();
