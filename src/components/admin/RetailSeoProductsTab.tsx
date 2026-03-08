@@ -104,8 +104,44 @@ export function RetailSeoProductsTab({ storeId, storeName, subdomain, retailCata
               <h3 className="font-semibold text-foreground">SEO товаров</h3>
               <p className="text-xs text-muted-foreground">
                 {productsWithSeo} из {retailProducts.length} товаров с SEO
+                {onlyRetailCatalog && retailCatalogId && (
+                  <span className="ml-1 text-primary">(только розница)</span>
+                )}
               </p>
             </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleBulkGenerate}
+              disabled={generating || filteredProducts.length === 0}
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  {progress ? `${progress.current}/${progress.total}` : "..."}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-1" />
+                  SEO для всех
+                </>
+              )}
+            </Button>
+          </div>
+          {retailCatalogId && (
+            <div className="flex items-center gap-2 bg-muted/50 rounded-md px-3 py-2">
+              <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+              <Label htmlFor="retail-filter" className="text-xs font-medium cursor-pointer">
+                Только товары розничного магазина
+              </Label>
+              <Switch
+                id="retail-filter"
+                checked={onlyRetailCatalog}
+                onCheckedChange={setOnlyRetailCatalog}
+                className="ml-auto"
+              />
+            </div>
+          )}
             <Button
               size="sm"
               variant="outline"
