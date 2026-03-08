@@ -1769,6 +1769,37 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
               </CardContent>
             </Card>
 
+            {/* CLARIFYING QUESTIONS */}
+            <Card className={cn("border-2 transition-colors", instructions.clarifying_questions_enabled ? "border-primary/50 bg-primary/5" : "border-border")}>
+              <CardContent className="py-4 px-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", instructions.clarifying_questions_enabled ? "bg-primary/20" : "bg-muted")}>
+                      <HelpCircle className={cn("h-5 w-5", instructions.clarifying_questions_enabled ? "text-primary" : "text-muted-foreground")} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">Уточняющие вопросы</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Если много похожих товаров — бот задаёт 1-3 вопроса, чтобы сузить выбор, прежде чем показать список
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={!!instructions.clarifying_questions_enabled}
+                    onCheckedChange={v => updateForm({ instructions_config: { ...instructions, clarifying_questions_enabled: v } })}
+                  />
+                </div>
+                {instructions.clarifying_questions_enabled && (
+                  <div className="mt-3 ml-13 text-xs text-muted-foreground bg-muted/50 rounded-lg p-3 space-y-1">
+                    <p className="font-medium text-foreground">Как это работает:</p>
+                    <p>• Клиент пишет «хамон» → в каталоге 20+ позиций</p>
+                    <p>• Бот спрашивает: «Вам нарезка, блоком или нога целиком?»</p>
+                    <p>• Клиент отвечает → бот показывает 3-6 подходящих товаров</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <Separator />
 
             {/* Smart setup or raw prompt */}
