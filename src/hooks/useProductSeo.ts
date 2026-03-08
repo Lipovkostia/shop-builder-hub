@@ -84,6 +84,7 @@ export function useProductSeo(storeId: string | null, storeName?: string, storeT
             productIds: batch,
             storeId,
             storeName,
+            storeType,
             mode: "bulk",
           },
         });
