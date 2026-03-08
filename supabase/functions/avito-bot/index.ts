@@ -1,4 +1,4 @@
-// Avito Bot Edge Function v2
+// Avito Bot Edge Function v3
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -242,7 +242,6 @@ function buildSmartSetupPrompt(data: any): string {
     parts.push(`\n\n--- ВЗАИМОДЕЙСТВИЕ С КЛИЕНТОМ ---\n${data.customer_interaction}`);
   }
   
-  // Include custom knowledge blocks
   if (Array.isArray(data.custom_blocks)) {
     for (const block of data.custom_blocks) {
       if (block?.content?.trim()) {
@@ -257,13 +256,63 @@ function buildSmartSetupPrompt(data: any): string {
 }
 
 function getEffectiveSystemPrompt(bot: any): string {
-  // If smart mode and has smart_setup_data with content, build from it
   if (bot.mode === "smart" && bot.smart_setup_data) {
     const smartPrompt = buildSmartSetupPrompt(bot.smart_setup_data);
     if (smartPrompt) return smartPrompt;
   }
-  // Fall back to manual system_prompt
   return bot.system_prompt || "Ты — помощник продавца на Авито. Отвечай вежливо и помогай с вопросами о товарах.";
+}
+
+// Check if bot should work right now based on schedule
+function isBotWithinSchedule(bot: any): boolean {
+  if (!bot.schedule_mode || bot.schedule_mode === "24/7") return true;
+  
+  const config = bot.schedule_config;
+  if (!config || typeof config !== "object") return true;
+  
+  const now = new Date();
+  // Use Moscow time (UTC+3) as default
+  const offset = config.timezone_offset ?? 3;
+  const utcHours = now.getUTCHours();
+  const localHours = (utcHours + offset + 24) % 24;
+  const localMinutes = now.getUTCMinutes();
+  const currentTime = localHours * 60 + localMinutes;
+  
+  const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const dayOfWeek = now.getUTCDay();
+  // Adjust day if timezone offset shifts the day
+  const localDay = dayNames[dayOfWeek];
+  
+  if (bot.schedule_mode === "schedule" && config.days) {
+    const dayConfig = config.days[localDay];
+    if (!dayConfig || !dayConfig.enabled) return false;
+    
+    const startParts = (dayConfig.start || "09:00").split(":");
+    const endParts = (dayConfig.end || "18:00").split(":");
+    const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1] || "0");
+    const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1] || "0");
+    
+    return currentTime >= startMinutes && currentTime <= endMinutes;
+  }
+  
+  return true;
+}
+
+// Check if seller sent stop command in this chat
+function hasSellerStopCommand(messages: any[], sellerId: number | string, stopCommand: string): boolean {
+  if (!stopCommand) return false;
+  const cmd = stopCommand.trim().toLowerCase();
+  if (!cmd) return false;
+  
+  // Check last 10 messages from seller for stop command
+  const sellerMsgs = messages
+    .filter(m => String(m.author_id) === String(sellerId))
+    .slice(-10);
+  
+  return sellerMsgs.some(m => {
+    const text = (m.content?.text || m.text || "").trim().toLowerCase();
+    return text === cmd || text.startsWith(cmd + " ");
+  });
 }
 
 Deno.serve(async (req) => {
@@ -280,8 +329,8 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { action, store_id, bot_id, message, item_id, debug_session_id } = await req.json();
 
-    // Check AI access for this store (skip for non-AI actions like fetch_models)
-    if (store_id && action !== "fetch_models") {
+    // Check AI access for this store
+    if (store_id && action !== "fetch_models" && action !== "bot_stats") {
       const { data: aiAccess } = await supabase
         .from("store_ai_access")
         .select("is_unlocked, avito_bot_enabled")
@@ -296,6 +345,59 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ===== BOT STATS (for dashboard) =====
+    if (action === "bot_stats") {
+      if (!store_id) throw new Error("store_id required");
+      
+      const { data: bots } = await supabase
+        .from("avito_bots")
+        .select("id, name, is_active, ai_model, avito_account_id, schedule_mode, seller_stop_command, created_at")
+        .eq("store_id", store_id);
+      
+      const { data: chats } = await supabase
+        .from("avito_bot_chats")
+        .select("id, avito_user_name, messages_count, bot_responses_count, is_lead, is_escalated, last_message_at, status, store_id")
+        .eq("store_id", store_id)
+        .order("last_message_at", { ascending: false })
+        .limit(100);
+      
+      const { data: accounts } = await supabase
+        .from("avito_accounts")
+        .select("id, profile_name, client_id, avito_user_id")
+        .eq("store_id", store_id);
+      
+      // Count total messages
+      const { count: totalMessages } = await supabase
+        .from("avito_bot_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("store_id", store_id);
+
+      // Filter out debug chats for real stats
+      const realChats = (chats || []).filter(c => !c.avito_user_name?.startsWith("Отладка"));
+      const totalBotResponses = realChats.reduce((sum, c) => sum + (c.bot_responses_count || 0), 0);
+      const totalLeads = realChats.filter(c => c.is_lead).length;
+      const totalEscalated = realChats.filter(c => c.is_escalated).length;
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          stats: {
+            bots_total: (bots || []).length,
+            bots_active: (bots || []).filter(b => b.is_active).length,
+            accounts_total: (accounts || []).length,
+            accounts_connected: (accounts || []).filter(a => a.avito_user_id).length,
+            chats_total: realChats.length,
+            messages_total: totalMessages || 0,
+            bot_responses_total: totalBotResponses,
+            leads_total: totalLeads,
+            escalated_total: totalEscalated,
+          },
+          recent_chats: realChats.slice(0, 10),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // ===== FETCH VSEGPT MODELS =====
     if (action === "fetch_models") {
       const res = await fetch(VSEGPT_MODELS_URL, {
@@ -306,7 +408,6 @@ Deno.serve(async (req) => {
         throw new Error(`Models fetch failed [${res.status}]: ${t}`);
       }
       const data = await res.json();
-      // Filter to chat models only
       const models = (data.data || [])
         .filter((m: any) => m.id && !m.id.startsWith("img-") && !m.id.startsWith("dall-") && !m.id.startsWith("tts-") && !m.id.startsWith("stt-") && !m.id.startsWith("whisper"))
         .map((m: any) => ({
@@ -345,7 +446,6 @@ Deno.serve(async (req) => {
       const token = await getAvitoToken(account.client_id, account.client_secret);
       let userId = account.avito_user_id;
       
-      // Auto-fetch user_id if missing
       if (!userId) {
         try {
           const selfRes = await fetch(`${AVITO_API_BASE}/core/v1/accounts/self`, {
@@ -398,7 +498,6 @@ Deno.serve(async (req) => {
 
       if (botErr || !bot) throw new Error("Бот не найден");
 
-      // Get Q&A items
       const { data: qaItems } = await supabase
         .from("avito_bot_qa")
         .select("*")
@@ -407,7 +506,6 @@ Deno.serve(async (req) => {
 
       const qaContext = buildQAContext(qaItems || []);
 
-      // If item_id is provided, fetch listing context (prefer local service data)
       let listingContext = "";
       if (item_id) {
         try {
@@ -456,12 +554,10 @@ Deno.serve(async (req) => {
         ? "\n\nВеди себя как профессиональный продавец. Используй техники продаж."
         : "";
 
-      // Build conversation from debug session history
       const conversationMessages: { role: string; content: string }[] = [
         { role: "system", content: systemPrompt + proSuffix },
       ];
 
-      // If debug_session_id provided, load previous messages
       if (debug_session_id) {
         const { data: prevMsgs } = await supabase
           .from("avito_bot_messages")
@@ -480,7 +576,6 @@ Deno.serve(async (req) => {
       const model = bot.ai_model || "openai/gpt-4.1-mini";
       const aiResponse = await getAIResponse(conversationMessages, model, vsegptApiKey);
 
-      // Save debug messages to DB if session exists
       if (debug_session_id) {
         await supabase.from("avito_bot_messages").insert([
           { chat_id: debug_session_id, store_id: store_id || bot.store_id, role: "user", content: message },
@@ -496,7 +591,6 @@ Deno.serve(async (req) => {
 
     // ===== PROCESS MESSAGES =====
     if (action === "process_messages") {
-      // 1. Get bot config
       let botQuery = supabase.from("avito_bots").select("*");
       if (bot_id) {
         botQuery = botQuery.eq("id", bot_id);
@@ -508,7 +602,14 @@ Deno.serve(async (req) => {
       if (botErr || !bot) throw new Error("Бот не найден. Сначала создайте и сохраните настройки бота.");
       if (!bot.is_active) throw new Error("Бот выключен. Включите бота в настройках.");
 
-      // 2. Get Avito credentials
+      // Check schedule
+      if (!isBotWithinSchedule(bot)) {
+        return new Response(
+          JSON.stringify({ success: true, processed: 0, total_chats: 0, skipped_reason: "outside_schedule" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       let accQuery = supabase.from("avito_accounts").select("*");
       if (bot.avito_account_id) {
         accQuery = accQuery.eq("id", bot.avito_account_id);
@@ -523,7 +624,6 @@ Deno.serve(async (req) => {
       const userId = account.avito_user_id;
       if (!userId) throw new Error("Авито user_id не найден. Переподключите аккаунт.");
 
-      // 3. Get Q&A items for this bot
       const { data: qaItems } = await supabase
         .from("avito_bot_qa")
         .select("*")
@@ -532,7 +632,6 @@ Deno.serve(async (req) => {
 
       const qaContext = buildQAContext(qaItems || []);
 
-      // 4. Fetch chats from Avito
       const chatsRes = await fetch(
         `${AVITO_API_BASE}/messenger/v2/accounts/${userId}/chats?unread_only=true`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -546,8 +645,10 @@ Deno.serve(async (req) => {
       const chatsData = await chatsRes.json();
       const avitoChats = chatsData.chats || [];
       let processed = 0;
+      let skippedStopCommand = 0;
 
-      // 5. Process each chat with unread messages
+      const stopCommand = bot.seller_stop_command || "/stop";
+
       for (const chat of avitoChats) {
         try {
           const chatId = chat.id;
@@ -584,6 +685,28 @@ Deno.serve(async (req) => {
           if (dbChat.is_escalated) continue;
           if (bot.max_responses && dbChat.bot_responses_count >= bot.max_responses) continue;
 
+          // Fetch messages to check for seller stop command
+          const msgsRes = await fetch(
+            `${AVITO_API_BASE}/messenger/v3/accounts/${userId}/chats/${chatId}/messages/?limit=20`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+
+          if (!msgsRes.ok) continue;
+          const msgsData = await msgsRes.json();
+          const avitoMessages = (msgsData.messages || []).reverse();
+
+          // Check if seller sent stop command in this chat
+          if (hasSellerStopCommand(avitoMessages, userId, stopCommand)) {
+            // Mark as escalated so bot doesn't respond anymore
+            await supabase
+              .from("avito_bot_chats")
+              .update({ is_escalated: true, status: "seller_takeover", updated_at: new Date().toISOString() })
+              .eq("id", dbChat.id);
+            skippedStopCommand++;
+            console.log(`Chat ${chatId}: seller stop command detected, marking as escalated`);
+            continue;
+          }
+
           let listingContext = "";
           if (itemId) {
             const localListing = await getLocalListingInfo(
@@ -599,15 +722,6 @@ Deno.serve(async (req) => {
               listingContext = `\n\n--- КОНТЕКСТ ТЕКУЩЕГО ОБЪЯВЛЕНИЯ ---\nНазвание товара: ${listing.title}\nЦена: ${listing.price} ₽\nКатегория: ${listing.category}\nОписание товара:\n${listing.description}\n--- КОНЕЦ КОНТЕКСТА ---\n\nВАЖНО: Клиент пишет по поводу этого конкретного объявления. Отвечай в контексте этого товара. Если спрашивают цену — называй цену из контекста.`;
             }
           }
-
-          const msgsRes = await fetch(
-            `${AVITO_API_BASE}/messenger/v3/accounts/${userId}/chats/${chatId}/messages/?limit=20`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-
-          if (!msgsRes.ok) continue;
-          const msgsData = await msgsRes.json();
-          const avitoMessages = (msgsData.messages || []).reverse();
 
           const basePrompt = getEffectiveSystemPrompt(bot);
           const proSuffix = bot.pro_seller_mode
@@ -635,6 +749,11 @@ Deno.serve(async (req) => {
 
           const aiResponse = await getAIResponse(conversationMessages, model, vsegptApiKey);
           if (!aiResponse) continue;
+
+          // Apply response delay
+          if (bot.response_delay_seconds > 0) {
+            await new Promise(resolve => setTimeout(resolve, Math.min(bot.response_delay_seconds * 1000, 30000)));
+          }
 
           const sendRes = await fetch(
             `${AVITO_API_BASE}/messenger/v1/accounts/${userId}/chats/${chatId}/messages`,
@@ -706,7 +825,7 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ success: true, processed, total_chats: avitoChats.length }),
+        JSON.stringify({ success: true, processed, total_chats: avitoChats.length, skipped_stop_command: skippedStopCommand }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
