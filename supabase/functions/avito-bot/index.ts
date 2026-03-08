@@ -56,7 +56,7 @@ async function getAIResponse(
   return data.choices?.[0]?.message?.content || "";
 }
 
-async function getAvitoListingInfo(token: string, userId: number, itemId: string): Promise<{ title: string; description: string } | null> {
+async function getAvitoListingInfo(token: string, userId: number, itemId: string): Promise<{ title: string; description: string; price: number; category: string; url: string } | null> {
   try {
     const res = await fetch(`${AVITO_API_BASE}/core/v1/accounts/${userId}/items/${itemId}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -65,7 +65,10 @@ async function getAvitoListingInfo(token: string, userId: number, itemId: string
     const data = await res.json();
     return {
       title: data.title || "",
-      description: data.description || "",
+      description: data.description || data.body || "",
+      price: data.price || 0,
+      category: data.category?.name || "",
+      url: data.url || "",
     };
   } catch {
     return null;

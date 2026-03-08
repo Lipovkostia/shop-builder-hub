@@ -689,8 +689,10 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
 
   // Scroll to bottom of debug chat
   useEffect(() => {
-    debugEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [debugMessages]);
+    setTimeout(() => {
+      debugEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 100);
+  }, [debugMessages, debugLoading]);
 
   // Load debug sessions
   const loadDebugSessions = useCallback(async () => {
