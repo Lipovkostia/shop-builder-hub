@@ -232,7 +232,7 @@ function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
 function AvitoFeedTable({
   feedProducts, storeProducts, storeCategories, selectedFeedProducts, setSelectedFeedProducts,
   aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
-  feedSearchQuery, feedPriceFilter, storeId,
+  feedSearchQuery, feedPriceFilter, storeId, onUpdateProductParams,
 }: {
   feedProducts: AvitoFeedProduct[];
   storeProducts: Product[];
