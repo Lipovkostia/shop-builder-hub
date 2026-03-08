@@ -965,19 +965,112 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
       case "general":
         return (
           <div className="space-y-6">
+            {/* ===== BIG STATUS & ACTIVATION CARD ===== */}
+            <Card className={cn(
+              "border-2 transition-colors",
+              bot.is_active ? "border-green-400 bg-green-50/30" : "border-muted bg-muted/20"
+            )}>
+              <CardContent className="py-5 px-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-12 h-12 rounded-full flex items-center justify-center",
+                      bot.is_active ? "bg-green-100" : "bg-muted"
+                    )}>
+                      {bot.is_active ? (
+                        <span className="relative flex h-5 w-5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-5 w-5 bg-green-500"></span>
+                        </span>
+                      ) : (
+                        <Power className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold">
+                        {bot.is_active ? "Робот активен" : "Робот выключен"}
+                      </h2>
+                      <p className="text-sm text-muted-foreground">
+                        {bot.is_active 
+                          ? "Автоматически отвечает на сообщения клиентов каждые 2 минуты" 
+                          : "Включите робота, чтобы он начал отвечать клиентам"}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="lg"
+                    variant={bot.is_active ? "outline" : "default"}
+                    onClick={() => onToggle(!bot.is_active)}
+                    className={cn(
+                      "min-w-[200px] h-12 text-base font-semibold",
+                      bot.is_active 
+                        ? "border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground" 
+                        : "bg-green-600 hover:bg-green-700 text-white"
+                    )}
+                  >
+                    <Power className="h-5 w-5 mr-2" />
+                    {bot.is_active ? "Выключить робота" : "Запустить робота"}
+                  </Button>
+                </div>
+                <BotStatusIndicator bot={bot} account={account} />
+              </CardContent>
+            </Card>
+
+            {/* ===== WORK MODE ===== */}
             <div>
-              <h2 className="text-lg font-semibold mb-1">Назовите бота</h2>
-              <p className="text-sm text-muted-foreground mb-3">Название поможет различать ботов.</p>
+              <h2 className="text-lg font-semibold mb-1 flex items-center gap-2">
+                <Clock className="h-5 w-5 text-primary" /> Режим работы
+              </h2>
+              <p className="text-sm text-muted-foreground mb-3">Выберите, когда робот должен отвечать на сообщения</p>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { value: "24/7", icon: "🕐", label: "Круглосуточно", desc: "24/7 без перерывов", active: (botForm.schedule_mode || "24/7") === "24/7" },
+                  { value: "schedule", icon: "📅", label: "По расписанию", desc: "Настройте дни и часы", active: botForm.schedule_mode === "schedule" },
+                  { value: "no_response", icon: "✋", label: "Только вручную", desc: "Бот не отвечает сам", active: botForm.schedule_mode === "no_response" },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => updateForm({ schedule_mode: opt.value })}
+                    className={cn(
+                      "p-4 rounded-xl border-2 text-left transition-all",
+                      opt.active 
+                        ? "border-primary bg-primary/5 shadow-sm" 
+                        : "border-border hover:border-muted-foreground/30"
+                    )}
+                  >
+                    <span className="text-2xl block mb-1">{opt.icon}</span>
+                    <span className="font-semibold text-sm block">{opt.label}</span>
+                    <span className="text-xs text-muted-foreground">{opt.desc}</span>
+                    {opt.active && <Badge className="mt-2 bg-primary/20 text-primary text-xs">Выбрано</Badge>}
+                  </button>
+                ))}
+              </div>
+              {botForm.schedule_mode === "schedule" && (
+                <Card className="mt-3">
+                  <CardContent className="pt-4">
+                    <Button variant="ghost" size="sm" onClick={() => setBotSection("schedule")} className="text-primary">
+                      <Settings className="h-4 w-4 mr-1" /> Настроить график работы →
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* ===== BOT NAME ===== */}
+            <div>
+              <h2 className="text-lg font-semibold mb-1">Имя робота</h2>
               <Input value={botForm.name || ""} onChange={e => updateForm({ name: e.target.value })} placeholder="Мой Авитобот" />
             </div>
 
+            {/* ===== ACCOUNT ===== */}
             <div>
               <h2 className="text-lg font-semibold mb-1">Аккаунт Авито</h2>
-              <p className="text-sm text-muted-foreground mb-3">Привяжите робота к аккаунту.</p>
               {!(botForm as any).avito_account_id || (botForm as any).avito_account_id === "none" ? (
                 <div className="mb-3 p-3 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 text-sm flex items-center gap-2">
                   <KeyRound className="h-4 w-4 flex-shrink-0" />
-                  Робот не привязан к аккаунту. Без привязки отладка и автоответы не будут работать.
+                  Робот не привязан к аккаунту. Без привязки автоответы не будут работать.
                 </div>
               ) : null}
               <Select value={(botForm as any).avito_account_id || "none"} onValueChange={v => updateForm({ avito_account_id: v === "none" ? null : v })}>
@@ -989,19 +1082,9 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
               </Select>
             </div>
 
-            <div>
-              <h2 className="text-lg font-semibold mb-1">Статус бота</h2>
-              <div className="flex items-center gap-3 mt-2">
-                <Switch checked={bot.is_active} onCheckedChange={onToggle} />
-                <span className="text-sm">{bot.is_active ? "Бот активен" : "Бот выключен"}</span>
-              </div>
-              <div className="mt-2">
-                <BotStatusIndicator bot={bot} account={account} />
-              </div>
-            </div>
-
             <Separator />
 
+            {/* ===== SETUP MODE ===== */}
             <div>
               <h2 className="text-lg font-semibold mb-1">Режим настройки</h2>
               <div className="grid grid-cols-2 gap-3">
@@ -1018,8 +1101,8 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
 
             <Separator />
             <div className="flex items-center gap-2">
-              <Button onClick={onProcess} variant="outline" size="sm"><RefreshCw className="h-4 w-4 mr-1" /> Проверить сообщения</Button>
-              <span className="text-xs text-muted-foreground">Запустить обработку новых сообщений вручную</span>
+              <Button onClick={onProcess} variant="outline" size="sm"><RefreshCw className="h-4 w-4 mr-1" /> Проверить сообщения сейчас</Button>
+              <span className="text-xs text-muted-foreground">Принудительная проверка (обычно автоматически каждые 2 мин.)</span>
             </div>
           </div>
         );
