@@ -506,6 +506,44 @@ function DashboardView({ stats, recentChats, loading, bots, accounts, onRefresh,
         <StatCard icon={Users} label="Лиды" value={stats?.leads_total ?? 0} sub={`${stats?.escalated_total ?? 0} эскалировано`} color="text-green-600" />
       </div>
 
+      {/* Usage / Cost Stats */}
+      {(stats?.total_requests ?? 0) > 0 && (
+        <div>
+          <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" /> Статистика расхода ИИ
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Card>
+              <CardContent className="py-3 px-4">
+                <div className="text-xs text-muted-foreground mb-1">Запросов к ИИ</div>
+                <div className="text-2xl font-bold">{stats?.total_requests ?? 0}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="py-3 px-4">
+                <div className="text-xs text-muted-foreground mb-1">Общая стоимость</div>
+                <div className="text-2xl font-bold">{(stats?.total_cost ?? 0).toFixed(4)} ₽</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="py-3 px-4">
+                <div className="text-xs text-muted-foreground mb-1">Средняя цена / ответ</div>
+                <div className="text-2xl font-bold">{(stats?.avg_cost_per_message ?? 0).toFixed(4)} ₽</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="py-3 px-4">
+                <div className="text-xs text-muted-foreground mb-1">Всего токенов</div>
+                <div className="text-2xl font-bold">{((stats?.total_tokens ?? 0) / 1000).toFixed(1)}K</div>
+                <div className="text-xs text-muted-foreground">
+                  Вход: {((stats?.total_prompt_tokens ?? 0) / 1000).toFixed(1)}K · Выход: {((stats?.total_completion_tokens ?? 0) / 1000).toFixed(1)}K
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
       {/* Auto-processing status */}
       {bots.some(b => b.is_active) ? (
         <Card className="border-green-300 bg-green-50/50">
