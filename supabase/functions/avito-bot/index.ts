@@ -842,7 +842,7 @@ Deno.serve(async (req) => {
             ? "\n\nВеди себя как профессиональный продавец. Используй техники продаж, задавай уточняющие вопросы."
             : "";
 
-          const systemPrompt = basePrompt + listingContext + qaContext + proSuffix;
+          const systemPrompt = basePrompt + catalogContext + listingContext + qaContext + proSuffix;
 
           const conversationMessages: { role: string; content: string }[] = [
             { role: "system", content: systemPrompt },
