@@ -35,6 +35,52 @@ async function fetchAllProducts(supabase: any, storeId: string, columns: string)
   return allData;
 }
 
+// Search products relevant to a query (fuzzy match by keywords)
+function findRelevantProducts(allProducts: any[], query: string, maxResults = 30): any[] {
+  if (!query || !allProducts.length) return allProducts.slice(0, maxResults);
+  
+  const queryNorm = normalizeForMatch(query);
+  const queryTokens = queryNorm.split(" ").filter(t => t.length > 2);
+  
+  if (queryTokens.length === 0) return allProducts.slice(0, maxResults);
+  
+  const scored = allProducts.map(p => {
+    const nameNorm = normalizeForMatch(p.name || "");
+    let score = 0;
+    // Exact substring match
+    if (nameNorm.includes(queryNorm) || queryNorm.includes(nameNorm)) score += 100;
+    // Token matches
+    for (const token of queryTokens) {
+      if (nameNorm.includes(token)) score += 20;
+      // Check description too but with lower weight
+      if (p.description && normalizeForMatch(p.description).includes(token)) score += 5;
+    }
+    return { product: p, score };
+  });
+  
+  // Return top matches + always include some products for general context
+  scored.sort((a, b) => b.score - a.score);
+  const relevant = scored.filter(s => s.score > 0).slice(0, maxResults);
+  
+  // If few relevant matches, add some general products for context
+  if (relevant.length < 10) {
+    const remaining = scored.filter(s => s.score === 0).slice(0, maxResults - relevant.length);
+    relevant.push(...remaining);
+  }
+  
+  return relevant.map(s => s.product);
+}
+
+// Build compact catalog context from products array
+function buildCatalogContext(products: any[], totalCount: number): string {
+  if (!products.length) return "";
+  const productLines = products.map((p: any, i: number) => {
+    const price = p.price || p.buy_price || 0;
+    return `${i + 1}. ${p.name} — ${price}₽${p.unit ? ` (${p.unit})` : ""}${p.sku ? ` [${p.sku}]` : ""}`;
+  }).join("\n");
+  return `\n\n--- КАТАЛОГ ТОВАРОВ (показано ${products.length} из ${totalCount}) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\nВАЖНО: Ищи ПОХОЖИЕ названия (частичное совпадение, сокращения). НИКОГДА не говори «нет в каталоге» если есть хоть частичное совпадение. Называй точные цены.\n`;
+}
+
 async function getAvitoToken(clientId: string, clientSecret: string): Promise<string> {
   const res = await fetch(AVITO_TOKEN_URL, {
     method: "POST",
