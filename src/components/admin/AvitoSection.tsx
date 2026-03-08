@@ -407,6 +407,7 @@ function AvitoFeedTable({
 
   return (
     <>
+    <div className="border rounded-lg overflow-hidden">
       {/* Active filters bar */}
       {activeFilterCount > 0 && (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 border-b text-xs flex-wrap">
