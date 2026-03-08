@@ -950,6 +950,7 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
             pricing_info: "",
             delivery_info: "",
             customer_interaction: "",
+            custom_blocks: [],
           };
           return (
             <div className="space-y-4">
