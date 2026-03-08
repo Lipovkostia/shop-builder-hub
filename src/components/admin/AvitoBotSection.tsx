@@ -2716,6 +2716,8 @@ function AISettingsPanel({ botForm, setBotForm, onSave, storeId }: {
   const [loading, setLoading] = useState(false);
   const [changedFields, setChangedFields] = useState<Set<string>>(new Set());
   const [agentModel, setAgentModel] = useState("openai/gpt-4.1-mini");
+  const [editingProposals, setEditingProposals] = useState<Record<string, string>>({});
+  const [expandedChanges, setExpandedChanges] = useState<Record<string, boolean>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
