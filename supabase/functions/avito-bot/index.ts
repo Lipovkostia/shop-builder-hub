@@ -1006,8 +1006,8 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Debug summary notification
-      if (bot.telegram_debug_notifications && bot.telegram_bot_token && bot.telegram_chat_id) {
+      // Debug summary notification — only when something actually happened
+      if (bot.telegram_bot_token && bot.telegram_chat_id && (processed > 0 || skippedStopCommand > 0)) {
         const debugMsg = `🛠 <b>Отладка — итог обработки</b>\n\n` +
           `🤖 Бот: ${bot.name}\n` +
           `📨 Всего чатов: ${avitoChats.length}\n` +
