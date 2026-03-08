@@ -254,6 +254,7 @@ export function useAvitoBots(storeId: string | null) {
     loading,
     saving,
     createBot,
+    duplicateBot,
     saveBot,
     deleteBot,
     toggleBot,
