@@ -1829,24 +1829,36 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
             {/* Right Area - Table */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              {/* Bulk actions bar */}
-              {avitoFeed && avitoFeed.feedProducts.length > 0 && selectedFeedProducts.size > 0 && (
+              {/* Bulk actions bar - always visible when there are products */}
+              {avitoFeed && avitoFeed.feedProducts.length > 0 && (
                 <div className="flex items-center gap-2 bg-primary/5 border-b border-primary/20 px-3 py-1.5 flex-shrink-0">
-                  <span className="text-xs font-medium">Выбрано: {selectedFeedProducts.size}</span>
+                  <span className="text-xs font-medium">
+                    {selectedFeedProducts.size > 0 ? `Выбрано: ${selectedFeedProducts.size}` : `Товаров: ${avitoFeed.feedProducts.length}`}
+                  </span>
                   <div className="flex gap-1.5 ml-auto">
-                    <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => openAiForProducts(Array.from(selectedFeedProducts), "title")}>
-                      <Wand2 className="h-3 w-3" /> AI название
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => openAiForProducts(Array.from(selectedFeedProducts), "description")}>
-                      <Sparkles className="h-3 w-3" /> AI описание
-                    </Button>
-                    <Button size="sm" variant="destructive" className="h-6 text-[10px]" onClick={async () => {
-                      await avitoFeed!.removeProductsFromFeed(Array.from(selectedFeedProducts));
-                      setSelectedFeedProducts(new Set());
+                    <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => {
+                      const ids = selectedFeedProducts.size > 0 ? Array.from(selectedFeedProducts) : avitoFeed!.feedProducts.map(fp => fp.product_id);
+                      openAiForProducts(ids, "title");
                     }}>
-                      <X className="h-3 w-3 mr-0.5" /> Убрать
+                      <Wand2 className="h-3 w-3" /> AI название {selectedFeedProducts.size > 0 ? `(${selectedFeedProducts.size})` : "(все)"}
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setSelectedFeedProducts(new Set())}>Сбросить</Button>
+                    <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => {
+                      const ids = selectedFeedProducts.size > 0 ? Array.from(selectedFeedProducts) : avitoFeed!.feedProducts.map(fp => fp.product_id);
+                      openAiForProducts(ids, "description");
+                    }}>
+                      <Sparkles className="h-3 w-3" /> AI описание {selectedFeedProducts.size > 0 ? `(${selectedFeedProducts.size})` : "(все)"}
+                    </Button>
+                    {selectedFeedProducts.size > 0 && (
+                      <>
+                        <Button size="sm" variant="destructive" className="h-6 text-[10px]" onClick={async () => {
+                          await avitoFeed!.removeProductsFromFeed(Array.from(selectedFeedProducts));
+                          setSelectedFeedProducts(new Set());
+                        }}>
+                          <X className="h-3 w-3 mr-0.5" /> Убрать
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setSelectedFeedProducts(new Set())}>Сбросить</Button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
