@@ -232,13 +232,15 @@ Deno.serve(async (req) => {
       // If item_id is provided, fetch listing context
       let listingContext = "";
       if (item_id) {
-        let accQuery = supabase.from("avito_accounts").select("*");
-        if (bot.avito_account_id) {
-          accQuery = accQuery.eq("id", bot.avito_account_id);
-        } else {
-          accQuery = accQuery.eq("store_id", bot.store_id);
-        }
-        const { data: account } = await accQuery.single();
+        try {
+          let accQuery = supabase.from("avito_accounts").select("*");
+          if (bot.avito_account_id) {
+            accQuery = accQuery.eq("id", bot.avito_account_id);
+          } else {
+            accQuery = accQuery.eq("store_id", bot.store_id);
+          }
+          const { data: account } = await accQuery.single();
+          if (account) {
             const token = await getAvitoToken(account.client_id, account.client_secret);
             let uid = account.avito_user_id;
             if (!uid) {
