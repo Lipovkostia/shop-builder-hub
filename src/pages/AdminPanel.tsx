@@ -86,6 +86,7 @@ import { InlineMultiSelectCell } from "@/components/admin/InlineMultiSelectCell"
 import { InlinePriceCell } from "@/components/admin/InlinePriceCell";
 import { InlineMarkupCell } from "@/components/admin/InlineMarkupCell";
 import { MobileTabNav } from "@/components/admin/MobileTabNav";
+import { AvitoBotSection } from "@/components/admin/AvitoBotSection";
 import { BulkEditPanel } from "@/components/admin/BulkEditPanel";
 import { uploadProductImages, deleteSingleImage, uploadFilesToStorage } from "@/hooks/useProductImages";
 import { ImageGalleryViewer } from "@/components/admin/ImageGalleryViewer";
@@ -311,7 +312,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings" | "exchange" | "avito";
+type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings" | "exchange" | "avito" | "avito-bot";
 type ImportView = "accounts" | "catalog" | "counterparties";
 type ImportSource = "select" | "moysklad" | "excel" | "google-sheets";
 type CatalogView = "list" | "detail";
@@ -700,7 +701,7 @@ export default function AdminPanel({
     }
     
     const section = searchParams.get('section');
-    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients' || section === 'help' || section === 'category-settings' || section === 'profile' || section === 'history' || section === 'trash' || section === 'retail' || section === 'wholesale' || section === 'avito' || section === 'showcase' || section === 'megacatalog' || section === 'exchange') {
+    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients' || section === 'help' || section === 'category-settings' || section === 'profile' || section === 'history' || section === 'trash' || section === 'retail' || section === 'wholesale' || section === 'avito' || section === 'showcase' || section === 'megacatalog' || section === 'exchange' || section === 'avito-bot') {
       setActiveSection(section);
     }
   }, [searchParams, workspaceMode, initialSection]);
@@ -7164,13 +7165,17 @@ export default function AdminPanel({
             <ExchangeSection storeId={effectiveStoreId} />
           )}
 
-          {activeSection === "avito" && (
+           {activeSection === "avito" && (
             <AvitoSection 
               storeId={effectiveStoreId} 
               products={allProducts}
               avitoFeed={avitoFeed}
               storeCategories={storeCategories}
             />
+          )}
+
+          {activeSection === "avito-bot" && (
+            <AvitoBotSection storeId={effectiveStoreId} />
           )}
         </main>
 
