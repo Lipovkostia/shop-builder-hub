@@ -17,16 +17,7 @@ interface WholesaleCategorySidebarProps {
   selectedCategory: string | null;
   onSelectCategory: (categoryId: string | null) => void;
   totalProductsCount: number;
-  medieval?: boolean;
 }
-
-const med = {
-  text: "#e8d5b0",
-  textSelected: "#f5d678",
-  textMuted: "#8a7a60",
-  hover: "#c9a96e",
-  font: "'Georgia', serif",
-};
 
 function buildTree(categories: SidebarCategory[]): SidebarCategory[] {
   const map = new Map<string, SidebarCategory>();
@@ -51,13 +42,11 @@ function CategoryNode({
   selectedCategory,
   onSelectCategory,
   depth = 0,
-  medieval,
 }: {
   category: SidebarCategory;
   selectedCategory: string | null;
   onSelectCategory: (id: string | null) => void;
   depth?: number;
-  medieval?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const hasChildren = category.children && category.children.length > 0;
@@ -71,26 +60,16 @@ function CategoryNode({
           if (hasChildren) setOpen((o) => !o);
         }}
         className={cn(
-          "w-full flex items-center gap-1 py-1.5 text-sm transition-colors",
-          !medieval && (isSelected ? "text-primary font-semibold" : "text-foreground hover:text-primary"),
+          "w-full flex items-center gap-1 py-1.5 text-sm transition-colors hover:text-primary",
+          isSelected ? "text-primary font-semibold" : "text-foreground",
         )}
-        style={{
-          paddingLeft: `${depth * 16 + 4}px`,
-          ...(medieval ? {
-            fontFamily: med.font,
-            color: isSelected ? med.textSelected : med.text,
-            fontWeight: isSelected ? 600 : 400,
-            textShadow: isSelected ? "0 0 8px rgba(245, 214, 120, 0.3)" : "none",
-          } : {}),
-        }}
-        onMouseEnter={medieval && !isSelected ? (e) => { (e.currentTarget as HTMLElement).style.color = med.hover; } : undefined}
-        onMouseLeave={medieval && !isSelected ? (e) => { (e.currentTarget as HTMLElement).style.color = med.text; } : undefined}
+        style={{ paddingLeft: `${depth * 16 + 4}px` }}
       >
         {hasChildren ? (
           open ? (
-            <ChevronDown className="h-3.5 w-3.5 shrink-0" style={medieval ? { color: med.textMuted } : {}} />
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           ) : (
-            <ChevronRight className="h-3.5 w-3.5 shrink-0" style={medieval ? { color: med.textMuted } : {}} />
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           )
         ) : (
           <span className="w-3.5 shrink-0" />
@@ -106,7 +85,6 @@ function CategoryNode({
               selectedCategory={selectedCategory}
               onSelectCategory={onSelectCategory}
               depth={depth + 1}
-              medieval={medieval}
             />
           ))}
         </div>
@@ -120,7 +98,6 @@ export function WholesaleCategorySidebar({
   selectedCategory,
   onSelectCategory,
   totalProductsCount,
-  medieval,
 }: WholesaleCategorySidebarProps) {
   const tree = buildTree(categories as SidebarCategory[]);
 
@@ -129,15 +106,9 @@ export function WholesaleCategorySidebar({
       <button
         onClick={() => onSelectCategory(null)}
         className={cn(
-          "w-full text-left py-1.5 px-1 font-medium transition-colors",
-          !medieval && (!selectedCategory ? "text-primary font-semibold" : "text-foreground hover:text-primary"),
+          "w-full text-left py-1.5 px-1 font-medium transition-colors hover:text-primary",
+          !selectedCategory ? "text-primary font-semibold" : "text-foreground",
         )}
-        style={medieval ? {
-          fontFamily: med.font,
-          color: !selectedCategory ? med.textSelected : med.text,
-          fontWeight: !selectedCategory ? 600 : 500,
-          textShadow: !selectedCategory ? "0 0 8px rgba(245, 214, 120, 0.3)" : "none",
-        } : {}}
       >
         Товары и услуги
       </button>
@@ -148,7 +119,6 @@ export function WholesaleCategorySidebar({
             category={cat}
             selectedCategory={selectedCategory}
             onSelectCategory={onSelectCategory}
-            medieval={medieval}
           />
         ))}
       </div>
