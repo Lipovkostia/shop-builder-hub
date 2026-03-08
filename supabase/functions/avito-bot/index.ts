@@ -732,13 +732,7 @@ Deno.serve(async (req) => {
       // Load full product catalog for context
       let catalogContext = "";
       try {
-        const { data: allProducts } = await supabase
-          .from("products")
-          .select("name, description, price, buy_price, unit, sku")
-          .eq("store_id", store_id)
-          .eq("is_active", true)
-          .is("deleted_at", null)
-          .limit(200);
+        const allProducts = await fetchAllProducts(supabase, store_id, "name, description, price, buy_price, unit, sku");
 
         if (allProducts && allProducts.length > 0) {
           const productLines = allProducts.map((p: any, i: number) => {
