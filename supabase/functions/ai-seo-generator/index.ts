@@ -131,14 +131,14 @@ serve(async (req) => {
 }`;
 
       try {
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const response = await fetch("https://api.vsegpt.ru/v1/chat/completions", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            Authorization: `Bearer ${VSEGPT_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-3-flash-preview",
+            model: "openai/gpt-4.1-mini",
             messages: [
               { role: "system", content: "Ты SEO-эксперт. Отвечай ТОЛЬКО валидным JSON без markdown форматирования." },
               { role: "user", content: prompt },

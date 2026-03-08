@@ -70,14 +70,14 @@ ${userInstruction}
         userPrompt = `Сгенерируй описания для следующих товаров для Авито. Верни JSON объект, где ключ — ID товара, значение — описание.\n\n${productList}`;
       }
 
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const response = await fetch("https://api.vsegpt.ru/v1/chat/completions", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          Authorization: `Bearer ${VSEGPT_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "openai/gpt-4.1-mini",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
