@@ -911,8 +911,13 @@ Deno.serve(async (req) => {
           }
 
           processed++;
-        } catch (chatErr) {
+        } catch (chatErr: any) {
           console.error("Error processing chat:", chatErr);
+          // Debug notification
+          if (bot.telegram_debug_notifications && bot.telegram_bot_token && bot.telegram_chat_id) {
+            await sendTelegramNotification(bot.telegram_bot_token, bot.telegram_chat_id,
+              `🛠 <b>Отладка — ошибка</b>\n\n❌ Ошибка при обработке чата:\n<code>${(chatErr.message || String(chatErr)).substring(0, 200)}</code>`);
+          }
         }
       }
 
