@@ -927,6 +927,17 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Debug summary notification
+      if (bot.telegram_debug_notifications && bot.telegram_bot_token && bot.telegram_chat_id) {
+        const debugMsg = `🛠 <b>Отладка — итог обработки</b>\n\n` +
+          `🤖 Бот: ${bot.name}\n` +
+          `📨 Всего чатов: ${avitoChats.length}\n` +
+          `✅ Обработано: ${processed}\n` +
+          `🛑 Стоп-команд: ${skippedStopCommand}\n` +
+          `🕐 ${new Date().toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })}`;
+        await sendTelegramNotification(bot.telegram_bot_token, bot.telegram_chat_id, debugMsg);
+      }
+
       return new Response(
         JSON.stringify({ success: true, processed, total_chats: avitoChats.length, skipped_stop_command: skippedStopCommand }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
