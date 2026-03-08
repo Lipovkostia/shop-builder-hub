@@ -135,6 +135,7 @@ export function AvitoImageEditor({
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const templateInputRef = useRef<HTMLInputElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
   // Load saved templates from storage
