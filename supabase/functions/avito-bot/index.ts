@@ -107,6 +107,39 @@ function buildQAContext(qaItems: Array<{ question: string; answer: string; match
   return `\n\n--- БАЗА ВОПРОСОВ И ОТВЕТОВ ---\nКогда клиент задаёт вопрос из списка ниже, используй соответствующий ответ:\n${qaText}\n--- КОНЕЦ БАЗЫ ---\n`;
 }
 
+function buildSmartSetupPrompt(data: any): string {
+  if (!data || typeof data !== "object") return "";
+  const parts: string[] = [];
+  
+  parts.push("Ты — виртуальный ассистент продавца на Авито. Твоя задача — помогать клиентам с информацией о товарах и услугах, отвечать на вопросы и помогать с оформлением заказа.");
+  
+  if (data.company_info) {
+    parts.push(`\n\n--- ИНФОРМАЦИЯ О ПРОДАВЦЕ ---\n${data.company_info}`);
+  }
+  if (data.pricing_info) {
+    parts.push(`\n\n--- ЦЕНООБРАЗОВАНИЕ И СКИДКИ ---\n${data.pricing_info}`);
+  }
+  if (data.delivery_info) {
+    parts.push(`\n\n--- ДОСТАВКА, ОПЛАТА И ГАРАНТИИ ---\n${data.delivery_info}`);
+  }
+  if (data.customer_interaction) {
+    parts.push(`\n\n--- ВЗАИМОДЕЙСТВИЕ С КЛИЕНТОМ ---\n${data.customer_interaction}`);
+  }
+  
+  parts.push("\n\nВАЖНО: Всегда будь вежливым и профессиональным. Отвечай по существу.");
+  return parts.join("");
+}
+
+function getEffectiveSystemPrompt(bot: any): string {
+  // If smart mode and has smart_setup_data with content, build from it
+  if (bot.mode === "smart" && bot.smart_setup_data) {
+    const smartPrompt = buildSmartSetupPrompt(bot.smart_setup_data);
+    if (smartPrompt) return smartPrompt;
+  }
+  // Fall back to manual system_prompt
+  return bot.system_prompt || "Ты — помощник продавца на Авито. Отвечай вежливо и помогай с вопросами о товарах.";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
