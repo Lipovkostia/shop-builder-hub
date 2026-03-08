@@ -2055,39 +2055,54 @@ export type Database = {
       store_ai_access: {
         Row: {
           ai_assistant_enabled: boolean
+          ai_assistant_model: string | null
           avito_bot_enabled: boolean
+          avito_bot_model: string | null
           avito_descriptions_enabled: boolean
+          avito_descriptions_model: string | null
           created_at: string
           id: string
           is_unlocked: boolean
           product_descriptions_enabled: boolean
+          product_descriptions_model: string | null
           seo_enabled: boolean
+          seo_model: string | null
           store_id: string
           unlocked_at: string | null
           updated_at: string
         }
         Insert: {
           ai_assistant_enabled?: boolean
+          ai_assistant_model?: string | null
           avito_bot_enabled?: boolean
+          avito_bot_model?: string | null
           avito_descriptions_enabled?: boolean
+          avito_descriptions_model?: string | null
           created_at?: string
           id?: string
           is_unlocked?: boolean
           product_descriptions_enabled?: boolean
+          product_descriptions_model?: string | null
           seo_enabled?: boolean
+          seo_model?: string | null
           store_id: string
           unlocked_at?: string | null
           updated_at?: string
         }
         Update: {
           ai_assistant_enabled?: boolean
+          ai_assistant_model?: string | null
           avito_bot_enabled?: boolean
+          avito_bot_model?: string | null
           avito_descriptions_enabled?: boolean
+          avito_descriptions_model?: string | null
           created_at?: string
           id?: string
           is_unlocked?: boolean
           product_descriptions_enabled?: boolean
+          product_descriptions_model?: string | null
           seo_enabled?: boolean
+          seo_model?: string | null
           store_id?: string
           unlocked_at?: string | null
           updated_at?: string

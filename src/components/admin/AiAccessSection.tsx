@@ -32,10 +32,10 @@ const AI_FEATURES = [
   },
   {
     key: "avito_bot_enabled",
-    modelKey: "avito_bot_model",
+    modelKey: null, // Model is configured per-bot in Avito Bot settings
     feature: "avito_bot",
     label: "Авито-бот",
-    description: "AI-чатбот для автоматических ответов на Авито",
+    description: "AI-чатбот для автоматических ответов на Авито (модель настраивается в разделе Авито-бот)",
     icon: Bot,
   },
   {
@@ -160,11 +160,11 @@ export function AiAccessSection({ storeId }: AiAccessSectionProps) {
                     className="shrink-0 ml-2"
                   />
                 </div>
-                {enabled && (
+                {enabled && feat.modelKey && (
                   <div className="pl-6">
                     <Select
                       value={currentModel}
-                      onValueChange={(value) => updateModel(feat.modelKey, value)}
+                      onValueChange={(value) => updateModel(feat.modelKey!, value)}
                     >
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue placeholder="Выберите модель" />
