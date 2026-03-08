@@ -646,7 +646,10 @@ Deno.serve(async (req) => {
         }
       }
 
-      const systemPrompt = getEffectiveSystemPrompt(bot) + catalogContext + listingContext + qaContext;
+      const charLimitSuffix = bot.max_response_chars
+        ? `\n\nВАЖНО: Ограничивай длину каждого ответа до ${bot.max_response_chars} символов. Будь лаконичным. Если информации много — выбери самое важное. Не перечисляй весь каталог, а предложи уточнить запрос.`
+        : "";
+      const systemPrompt = getEffectiveSystemPrompt(bot) + catalogContext + listingContext + qaContext + charLimitSuffix;
       const proSuffix = bot.pro_seller_mode
         ? "\n\nВеди себя как профессиональный продавец. Используй техники продаж."
         : "";
