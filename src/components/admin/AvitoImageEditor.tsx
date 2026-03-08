@@ -434,6 +434,41 @@ export function AvitoImageEditor({
             Оптимально: 1280×960 (4:3). Допустимо: 1920×1440. JPG/PNG до 30 МБ.
           </div>
 
+          {/* Upload / Drop zone */}
+          <div
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onClick={() => uploadInputRef.current?.click()}
+            className={`mb-4 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${isDragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
+          >
+            {uploading ? (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Загрузка...
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-1">
+                <Upload className="h-5 w-5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  Перетащите фото сюда или нажмите для выбора
+                </span>
+                <span className="text-[10px] text-muted-foreground/60">JPG, PNG до 30 МБ</span>
+              </div>
+            )}
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) handleUploadPhotos(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          </div>
+
           {/* Original images */}
           {imageInfos.length > 0 && (
             <div className="mb-3">
