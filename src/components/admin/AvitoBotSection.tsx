@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Bot, MessageCircle, Settings, Users, Sparkles, Power, Save, Plus, Trash2, Clock, Shield, Bell, Zap, ChevronRight, RefreshCw } from "lucide-react";
+import { Bot, MessageCircle, Settings, Users, Sparkles, Power, Save, Plus, Trash2, Clock, Shield, Bell, Zap, ChevronRight, RefreshCw, KeyRound, ArrowLeft, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,16 +10,29 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useAvitoBot, AI_MODELS, AvitoBot } from "@/hooks/useAvitoBot";
+import { useAvitoBots, AI_MODELS, AvitoBot, AvitoBotChat } from "@/hooks/useAvitoBot";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 interface AvitoBotSectionProps {
   storeId: string | null;
 }
 
-type SidebarSection = "general" | "prompt" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "chats";
+// Avito account type
+interface AvitoAccount {
+  id: string;
+  store_id: string;
+  client_id: string;
+  client_secret: string;
+  avito_user_id: number | null;
+  profile_name: string | null;
+}
 
-const sidebarItems: { id: SidebarSection; label: string; icon: React.ElementType }[] = [
+type TopLevel = "bots" | "accounts" | "chats";
+type BotSection = "general" | "prompt" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications";
+
+const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "Основные", icon: Bot },
   { id: "prompt", label: "Промпт", icon: Sparkles },
   { id: "leads", label: "Лиды", icon: Users },
@@ -32,104 +45,518 @@ const sidebarItems: { id: SidebarSection; label: string; icon: React.ElementType
   { id: "limits", label: "Лимиты", icon: Shield },
   { id: "pro", label: "Про-режим", icon: Sparkles },
   { id: "notifications", label: "Уведомления", icon: Bell },
-  { id: "chats", label: "Чаты", icon: MessageCircle },
 ];
 
 export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
-  const { bot, chats, loading, saving, saveBot, toggleBot, processMessages } = useAvitoBot(storeId);
-  const [activeSection, setActiveSection] = useState<SidebarSection>("general");
+  const { toast } = useToast();
+  const { bots, loading, saving, createBot, saveBot, deleteBot, toggleBot, processMessages, fetchChats, refetch } = useAvitoBots(storeId);
+  
+  const [topLevel, setTopLevel] = useState<TopLevel>("bots");
+  const [editingBotId, setEditingBotId] = useState<string | null>(null);
+  const [botSection, setBotSection] = useState<BotSection>("general");
+  
+  // Accounts
+  const [accounts, setAccounts] = useState<AvitoAccount[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [newAccountClientId, setNewAccountClientId] = useState("");
+  const [newAccountClientSecret, setNewAccountClientSecret] = useState("");
+  const [newAccountName, setNewAccountName] = useState("");
+  
+  // New bot dialog
+  const [showNewBot, setShowNewBot] = useState(false);
+  const [newBotName, setNewBotName] = useState("");
+  const [newBotAccountId, setNewBotAccountId] = useState<string>("");
 
-  // Local state for editing
-  const [name, setName] = useState("");
-  const [mode, setMode] = useState<"smart" | "pro">("smart");
-  const [systemPrompt, setSystemPrompt] = useState("");
-  const [leadConditions, setLeadConditions] = useState<string[]>([]);
-  const [escalationRules, setEscalationRules] = useState<string[]>([]);
-  const [completionRules, setCompletionRules] = useState<string[]>([]);
-  const [scheduleMode, setScheduleMode] = useState<"24/7" | "no_response" | "schedule">("24/7");
-  const [reactivationMessages, setReactivationMessages] = useState<{ delay_minutes: number; message: string }[]>([]);
-  const [aiModel, setAiModel] = useState("google/gemini-3-flash-preview");
-  const [upgradeAfter, setUpgradeAfter] = useState(0);
-  const [upgradeModel, setUpgradeModel] = useState<string | null>(null);
-  const [responseDelay, setResponseDelay] = useState(60);
-  const [maxResponses, setMaxResponses] = useState<number | null>(null);
-  const [proSellerMode, setProSellerMode] = useState(false);
-  const [notificationFormat, setNotificationFormat] = useState("summary");
+  // Chats
+  const [chats, setChats] = useState<AvitoBotChat[]>([]);
 
-  // Sync from bot
-  useEffect(() => {
-    if (bot) {
-      setName(bot.name || "");
-      setMode(bot.mode as "smart" | "pro" || "smart");
-      setSystemPrompt(bot.system_prompt || "");
-      setLeadConditions(Array.isArray(bot.lead_conditions) ? bot.lead_conditions : []);
-      setEscalationRules(Array.isArray(bot.escalation_rules) ? bot.escalation_rules : []);
-      setCompletionRules(Array.isArray(bot.completion_rules) ? bot.completion_rules : []);
-      setScheduleMode(bot.schedule_mode as any || "24/7");
-      setReactivationMessages(Array.isArray(bot.reactivation_messages) ? bot.reactivation_messages : []);
-      setAiModel(bot.ai_model || "google/gemini-3-flash-preview");
-      setUpgradeAfter(bot.upgrade_after_messages || 0);
-      setUpgradeModel(bot.upgrade_model || null);
-      setResponseDelay(bot.response_delay_seconds || 60);
-      setMaxResponses(bot.max_responses);
-      setProSellerMode(bot.pro_seller_mode || false);
-      setNotificationFormat(bot.telegram_notification_format || "summary");
+  // Bot editing state
+  const [botForm, setBotForm] = useState<Partial<AvitoBot>>({});
+
+  const editingBot = bots.find(b => b.id === editingBotId) || null;
+
+  // Fetch accounts
+  const loadAccounts = async () => {
+    if (!storeId) return;
+    setAccountsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("avito_accounts")
+        .select("*")
+        .eq("store_id", storeId);
+      if (error) throw error;
+      setAccounts((data || []) as AvitoAccount[]);
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setAccountsLoading(false);
     }
-  }, [bot]);
-
-  const handleSave = async () => {
-    await saveBot({
-      name,
-      mode,
-      system_prompt: systemPrompt,
-      lead_conditions: leadConditions,
-      escalation_rules: escalationRules,
-      completion_rules: completionRules,
-      schedule_mode: scheduleMode,
-      reactivation_messages: reactivationMessages,
-      ai_model: aiModel,
-      upgrade_after_messages: upgradeAfter,
-      upgrade_model: upgradeModel,
-      response_delay_seconds: responseDelay,
-      max_responses: maxResponses,
-      pro_seller_mode: proSellerMode,
-      telegram_notification_format: notificationFormat,
-    });
   };
 
-  const addListItem = (setter: React.Dispatch<React.SetStateAction<string[]>>) => {
-    setter(prev => [...prev, ""]);
+  useEffect(() => {
+    loadAccounts();
+  }, [storeId]);
+
+  // Sync bot form when editing bot changes
+  useEffect(() => {
+    if (editingBot) {
+      setBotForm({
+        name: editingBot.name || "",
+        mode: editingBot.mode || "smart",
+        system_prompt: editingBot.system_prompt || "",
+        lead_conditions: Array.isArray(editingBot.lead_conditions) ? editingBot.lead_conditions : [],
+        escalation_rules: Array.isArray(editingBot.escalation_rules) ? editingBot.escalation_rules : [],
+        completion_rules: Array.isArray(editingBot.completion_rules) ? editingBot.completion_rules : [],
+        schedule_mode: (editingBot.schedule_mode as any) || "24/7",
+        reactivation_messages: Array.isArray(editingBot.reactivation_messages) ? editingBot.reactivation_messages : [],
+        ai_model: editingBot.ai_model || "google/gemini-3-flash-preview",
+        upgrade_after_messages: editingBot.upgrade_after_messages || 0,
+        upgrade_model: editingBot.upgrade_model || null,
+        response_delay_seconds: editingBot.response_delay_seconds || 60,
+        max_responses: editingBot.max_responses,
+        pro_seller_mode: editingBot.pro_seller_mode || false,
+        telegram_notification_format: editingBot.telegram_notification_format || "summary",
+        avito_account_id: (editingBot as any).avito_account_id || null,
+      });
+    }
+  }, [editingBot]);
+
+  const handleSaveBot = async () => {
+    if (!editingBotId) return;
+    await saveBot(editingBotId, botForm);
   };
 
-  const updateListItem = (setter: React.Dispatch<React.SetStateAction<string[]>>, index: number, value: string) => {
-    setter(prev => prev.map((item, i) => i === index ? value : item));
+  const handleCreateBot = async () => {
+    if (!newBotName.trim()) return;
+    const bot = await createBot(newBotName.trim(), newBotAccountId || null);
+    if (bot) {
+      setShowNewBot(false);
+      setNewBotName("");
+      setNewBotAccountId("");
+      setEditingBotId(bot.id);
+      setBotSection("general");
+    }
   };
 
-  const removeListItem = (setter: React.Dispatch<React.SetStateAction<string[]>>, index: number) => {
-    setter(prev => prev.filter((_, i) => i !== index));
+  const handleAddAccount = async () => {
+    if (!storeId || !newAccountClientId || !newAccountClientSecret) return;
+    try {
+      const { error } = await supabase
+        .from("avito_accounts")
+        .insert({
+          store_id: storeId,
+          client_id: newAccountClientId,
+          client_secret: newAccountClientSecret,
+          profile_name: newAccountName || null,
+        } as any);
+      if (error) throw error;
+      toast({ title: "Аккаунт добавлен" });
+      setNewAccountClientId("");
+      setNewAccountClientSecret("");
+      setNewAccountName("");
+      loadAccounts();
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
   };
+
+  const handleDeleteAccount = async (id: string) => {
+    try {
+      const { error } = await supabase.from("avito_accounts").delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Аккаунт удалён" });
+      loadAccounts();
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const loadChats = async () => {
+    const c = await fetchChats();
+    setChats(c);
+  };
+
+  useEffect(() => {
+    if (topLevel === "chats") loadChats();
+  }, [topLevel]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Загрузка...</div>;
   }
 
+  // ========== EDITING A SPECIFIC BOT ==========
+  if (editingBotId && editingBot) {
+    return <BotEditor
+      bot={editingBot}
+      botForm={botForm}
+      setBotForm={setBotForm}
+      botSection={botSection}
+      setBotSection={setBotSection}
+      saving={saving}
+      accounts={accounts}
+      onSave={handleSaveBot}
+      onBack={() => { setEditingBotId(null); refetch(); }}
+      onToggle={(active) => toggleBot(editingBotId, active)}
+      onProcess={() => processMessages(editingBotId)}
+      onDelete={async () => { await deleteBot(editingBotId); setEditingBotId(null); }}
+    />;
+  }
+
+  // ========== TOP LEVEL VIEW ==========
+  return (
+    <div className="flex gap-0 -mx-4 -mt-4 min-h-[calc(100vh-180px)]">
+      {/* Left Sidebar - Top level */}
+      <div className="w-56 flex-shrink-0 border-r border-border bg-muted/30">
+        <div className="p-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Bot className="h-5 w-5 text-primary" />
+            <span className="font-semibold text-sm">Авито Боты</span>
+          </div>
+        </div>
+        <div className="p-2 space-y-0.5">
+          {[
+            { id: "bots" as TopLevel, label: "Роботы", icon: Bot },
+            { id: "accounts" as TopLevel, label: "Аккаунты Авито", icon: KeyRound },
+            { id: "chats" as TopLevel, label: "Чаты", icon: MessageCircle },
+          ].map(item => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setTopLevel(item.id)}
+                className={cn(
+                  "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left",
+                  topLevel === item.id
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Icon className="h-4 w-4 flex-shrink-0" />
+                {item.label}
+                {item.id === "bots" && bots.length > 0 && (
+                  <Badge variant="secondary" className="ml-auto text-xs">{bots.length}</Badge>
+                )}
+                {item.id === "accounts" && accounts.length > 0 && (
+                  <Badge variant="secondary" className="ml-auto text-xs">{accounts.length}</Badge>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Right Content */}
+      <div className="flex-1">
+        <ScrollArea className="h-[calc(100vh-180px)]">
+          <div className="max-w-3xl p-6">
+            {topLevel === "bots" && (
+              <BotsListView
+                bots={bots}
+                accounts={accounts}
+                showNewBot={showNewBot}
+                setShowNewBot={setShowNewBot}
+                newBotName={newBotName}
+                setNewBotName={setNewBotName}
+                newBotAccountId={newBotAccountId}
+                setNewBotAccountId={setNewBotAccountId}
+                onCreateBot={handleCreateBot}
+                onEditBot={(id) => { setEditingBotId(id); setBotSection("general"); }}
+                onToggle={toggleBot}
+              />
+            )}
+            {topLevel === "accounts" && (
+              <AccountsView
+                accounts={accounts}
+                loading={accountsLoading}
+                newName={newAccountName}
+                setNewName={setNewAccountName}
+                newClientId={newAccountClientId}
+                setNewClientId={setNewAccountClientId}
+                newClientSecret={newAccountClientSecret}
+                setNewClientSecret={setNewAccountClientSecret}
+                onAdd={handleAddAccount}
+                onDelete={handleDeleteAccount}
+              />
+            )}
+            {topLevel === "chats" && (
+              <ChatsView chats={chats} onRefresh={loadChats} />
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+    </div>
+  );
+}
+
+// ===== BOTS LIST =====
+function BotsListView({ bots, accounts, showNewBot, setShowNewBot, newBotName, setNewBotName, newBotAccountId, setNewBotAccountId, onCreateBot, onEditBot, onToggle }: {
+  bots: AvitoBot[];
+  accounts: AvitoAccount[];
+  showNewBot: boolean;
+  setShowNewBot: (v: boolean) => void;
+  newBotName: string;
+  setNewBotName: (v: string) => void;
+  newBotAccountId: string;
+  setNewBotAccountId: (v: string) => void;
+  onCreateBot: () => void;
+  onEditBot: (id: string) => void;
+  onToggle: (id: string, active: boolean) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold">Роботы</h2>
+          <p className="text-sm text-muted-foreground">Создавайте и настраивайте роботов для автоматических ответов на Авито</p>
+        </div>
+        <Button onClick={() => setShowNewBot(true)}>
+          <Plus className="h-4 w-4 mr-1" /> Новый робот
+        </Button>
+      </div>
+
+      {showNewBot && (
+        <Card>
+          <CardContent className="pt-4 space-y-3">
+            <div>
+              <Label>Имя робота</Label>
+              <Input value={newBotName} onChange={e => setNewBotName(e.target.value)} placeholder="Например: Помощница Вероника" />
+            </div>
+            <div>
+              <Label>Привязать к аккаунту Авито</Label>
+              <Select value={newBotAccountId} onValueChange={setNewBotAccountId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите аккаунт (необязательно)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Без привязки</SelectItem>
+                  {accounts.map(a => (
+                    <SelectItem key={a.id} value={a.id}>{a.profile_name || a.client_id}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={onCreateBot} disabled={!newBotName.trim()}>Создать</Button>
+              <Button variant="outline" onClick={() => setShowNewBot(false)}>Отмена</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {bots.length === 0 && !showNewBot ? (
+        <Card className="py-12 text-center">
+          <Bot className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
+          <p className="text-muted-foreground">У вас пока нет роботов</p>
+          <p className="text-sm text-muted-foreground">Создайте первого робота, чтобы начать автоматизировать ответы на Авито</p>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {bots.map(bot => {
+            const account = accounts.find(a => a.id === (bot as any).avito_account_id);
+            return (
+              <Card key={bot.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => onEditBot(bot.id)}>
+                <CardContent className="py-3 px-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", bot.is_active ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground")}>
+                      <Bot className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm flex items-center gap-2">
+                        {bot.name || "Без имени"}
+                        {bot.is_active && <Badge className="bg-green-500/20 text-green-700 border-green-300 text-xs">Активен</Badge>}
+                      </div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-2">
+                        <span>{AI_MODELS.find(m => m.id === bot.ai_model)?.label || bot.ai_model}</span>
+                        {account && (
+                          <>
+                            <span>•</span>
+                            <span>{account.profile_name || account.client_id}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                    <Switch checked={bot.is_active} onCheckedChange={active => onToggle(bot.id, active)} />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===== ACCOUNTS VIEW =====
+function AccountsView({ accounts, loading, newName, setNewName, newClientId, setNewClientId, newClientSecret, setNewClientSecret, onAdd, onDelete }: {
+  accounts: AvitoAccount[];
+  loading: boolean;
+  newName: string;
+  setNewName: (v: string) => void;
+  newClientId: string;
+  setNewClientId: (v: string) => void;
+  newClientSecret: string;
+  setNewClientSecret: (v: string) => void;
+  onAdd: () => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-semibold">Аккаунты Авито</h2>
+        <p className="text-sm text-muted-foreground">Подключайте несколько аккаунтов Авито и привязывайте к ним роботов</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Добавить аккаунт</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label>Название (для себя)</Label>
+            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Магазин электроники" />
+          </div>
+          <div>
+            <Label>Client ID</Label>
+            <Input value={newClientId} onChange={e => setNewClientId(e.target.value)} placeholder="Авито Client ID" />
+          </div>
+          <div>
+            <Label>Client Secret</Label>
+            <Input type="password" value={newClientSecret} onChange={e => setNewClientSecret(e.target.value)} placeholder="Авито Client Secret" />
+          </div>
+          <Button onClick={onAdd} disabled={!newClientId || !newClientSecret}>
+            <Plus className="h-4 w-4 mr-1" /> Добавить аккаунт
+          </Button>
+        </CardContent>
+      </Card>
+
+      {accounts.length > 0 && (
+        <div className="space-y-2">
+          {accounts.map(acc => (
+            <Card key={acc.id}>
+              <CardContent className="py-3 px-4 flex items-center justify-between">
+                <div>
+                  <div className="font-medium text-sm">{acc.profile_name || "Аккаунт"}</div>
+                  <div className="text-xs text-muted-foreground">Client ID: {acc.client_id}</div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => onDelete(acc.id)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===== CHATS VIEW =====
+function ChatsView({ chats, onRefresh }: { chats: AvitoBotChat[]; onRefresh: () => void }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Чаты</h2>
+        <Button variant="outline" size="sm" onClick={onRefresh}>
+          <RefreshCw className="h-4 w-4 mr-1" /> Обновить
+        </Button>
+      </div>
+      {chats.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">
+          Чатов пока нет. Включите робота и он начнёт обрабатывать сообщения с Авито.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {chats.map(chat => (
+            <Card key={chat.id} className="p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-medium text-sm">{chat.avito_user_name || "Пользователь"}</span>
+                  <div className="flex gap-2 mt-1">
+                    <Badge variant="outline" className="text-xs">Сообщений: {chat.messages_count}</Badge>
+                    <Badge variant="outline" className="text-xs">Ответов бота: {chat.bot_responses_count}</Badge>
+                    {chat.is_lead && <Badge className="bg-green-500/20 text-green-700 text-xs">Лид</Badge>}
+                    {chat.is_escalated && <Badge variant="destructive" className="text-xs">Эскалация</Badge>}
+                  </div>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {chat.last_message_at ? new Date(chat.last_message_at).toLocaleString("ru-RU") : "—"}
+                </span>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===== BOT EDITOR (dual pane) =====
+function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving, accounts, onSave, onBack, onToggle, onProcess, onDelete }: {
+  bot: AvitoBot;
+  botForm: Partial<AvitoBot>;
+  setBotForm: React.Dispatch<React.SetStateAction<Partial<AvitoBot>>>;
+  botSection: BotSection;
+  setBotSection: (s: BotSection) => void;
+  saving: boolean;
+  accounts: AvitoAccount[];
+  onSave: () => void;
+  onBack: () => void;
+  onToggle: (active: boolean) => void;
+  onProcess: () => void;
+  onDelete: () => void;
+}) {
+  const updateForm = (updates: Partial<AvitoBot>) => setBotForm(prev => ({ ...prev, ...updates }));
+
+  const addListItem = (field: "lead_conditions" | "escalation_rules" | "completion_rules") => {
+    const arr = (botForm[field] as string[]) || [];
+    updateForm({ [field]: [...arr, ""] } as any);
+  };
+  const updateListItem = (field: "lead_conditions" | "escalation_rules" | "completion_rules", index: number, value: string) => {
+    const arr = [...((botForm[field] as string[]) || [])];
+    arr[index] = value;
+    updateForm({ [field]: arr } as any);
+  };
+  const removeListItem = (field: "lead_conditions" | "escalation_rules" | "completion_rules", index: number) => {
+    const arr = ((botForm[field] as string[]) || []).filter((_, i) => i !== index);
+    updateForm({ [field]: arr } as any);
+  };
+
   const renderSection = () => {
-    switch (activeSection) {
+    switch (botSection) {
       case "general":
         return (
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-semibold mb-1">Назовите бота</h2>
-              <p className="text-sm text-muted-foreground mb-3">Название поможет различать ботов, когда у вас их будет много.</p>
-              <Input value={name} onChange={e => setName(e.target.value)} placeholder="Мой Авитобот" />
+              <p className="text-sm text-muted-foreground mb-3">Название поможет различать ботов.</p>
+              <Input value={botForm.name || ""} onChange={e => updateForm({ name: e.target.value })} placeholder="Мой Авитобот" />
+            </div>
+
+            <div>
+              <h2 className="text-lg font-semibold mb-1">Аккаунт Авито</h2>
+              <Select value={(botForm as any).avito_account_id || "none"} onValueChange={v => updateForm({ avito_account_id: v === "none" ? null : v } as any)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите аккаунт" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Не привязан</SelectItem>
+                  {accounts.map(a => (
+                    <SelectItem key={a.id} value={a.id}>{a.profile_name || a.client_id}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
               <h2 className="text-lg font-semibold mb-1">Статус бота</h2>
               <div className="flex items-center gap-3 mt-2">
-                <Switch checked={bot?.is_active || false} onCheckedChange={active => toggleBot(active)} />
-                <span className="text-sm">{bot?.is_active ? "Бот активен" : "Бот выключен"}</span>
-                {bot?.is_active && <Badge className="bg-green-500/20 text-green-700 border-green-300">Работает</Badge>}
+                <Switch checked={bot.is_active} onCheckedChange={onToggle} />
+                <span className="text-sm">{bot.is_active ? "Бот активен" : "Бот выключен"}</span>
+                {bot.is_active && <Badge className="bg-green-500/20 text-green-700 border-green-300">Работает</Badge>}
               </div>
             </div>
 
@@ -137,27 +564,13 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
 
             <div>
               <h2 className="text-lg font-semibold mb-1">Режим настройки</h2>
-              <p className="text-sm text-muted-foreground mb-3">
-                Умная настройка подойдет для всех пользователей. Опытные пользователи могут попробовать режим для профессионалов.
-              </p>
+              <p className="text-sm text-muted-foreground mb-3">Умная настройка подойдет для всех. Опытные могут попробовать режим для профессионалов.</p>
               <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setMode("smart")}
-                  className={cn(
-                    "p-4 rounded-lg border-2 text-left transition-colors",
-                    mode === "smart" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
-                  )}
-                >
+                <button onClick={() => updateForm({ mode: "smart" } as any)} className={cn("p-4 rounded-lg border-2 text-left transition-colors", botForm.mode === "smart" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30")}>
                   <span className="text-2xl mb-2 block">🐱</span>
                   <span className="font-medium">Умная настройка</span>
                 </button>
-                <button
-                  onClick={() => setMode("pro")}
-                  className={cn(
-                    "p-4 rounded-lg border-2 text-left transition-colors",
-                    mode === "pro" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
-                  )}
-                >
+                <button onClick={() => updateForm({ mode: "pro" } as any)} className={cn("p-4 rounded-lg border-2 text-left transition-colors", botForm.mode === "pro" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30")}>
                   <span className="text-2xl mb-2 block">💻</span>
                   <span className="font-medium">Для профессионалов</span>
                 </button>
@@ -165,9 +578,8 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
             </div>
 
             <Separator />
-
             <div className="flex items-center gap-2">
-              <Button onClick={() => processMessages()} variant="outline" size="sm">
+              <Button onClick={onProcess} variant="outline" size="sm">
                 <RefreshCw className="h-4 w-4 mr-1" /> Проверить сообщения
               </Button>
               <span className="text-xs text-muted-foreground">Запустить обработку новых сообщений вручную</span>
@@ -178,136 +590,32 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
       case "prompt":
         return (
           <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold mb-1">Что бот должен знать?</h2>
-              <p className="text-sm text-muted-foreground mb-3">
-                Введите или надиктуйте, что должен знать бот, чтобы быть вашим продавцом. Вот примерная схема промпта:
-              </p>
-              <ul className="text-sm text-muted-foreground list-disc pl-5 mb-3 space-y-1">
-                <li>Ключевые задачи</li>
-                <li>Техники убеждения</li>
-                <li>Ограничения</li>
-                <li>Персона бота</li>
-                <li>Примеры успешных диалогов</li>
-              </ul>
-            </div>
-            <Textarea
-              value={systemPrompt}
-              onChange={e => setSystemPrompt(e.target.value)}
-              placeholder="Ты — продавец на Авито. Твоя задача — помочь клиенту с выбором товара и оформить заказ..."
-              className="min-h-[300px]"
-            />
+            <h2 className="text-lg font-semibold mb-1">Что бот должен знать?</h2>
+            <p className="text-sm text-muted-foreground mb-3">Введите, что должен знать бот. Схема: ключевые задачи, техники убеждения, ограничения, персона бота, примеры диалогов.</p>
+            <Textarea value={botForm.system_prompt || ""} onChange={e => updateForm({ system_prompt: e.target.value })} placeholder="Ты — продавец на Авито..." className="min-h-[300px]" />
           </div>
         );
 
       case "leads":
-        return (
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold mb-1">Когда создавать лид?</h2>
-              <p className="text-sm text-muted-foreground mb-3">
-                По умолчанию, бот создает лид как только клиент отправил любой из трех своих контактов: email, телефон или Телеграм. 
-                Здесь вы можете изменить условия создания лида.
-              </p>
-            </div>
-            {leadConditions.map((cond, i) => (
-              <div key={i} className="flex gap-2">
-                <Input
-                  value={cond}
-                  onChange={e => updateListItem(setLeadConditions, i, e.target.value)}
-                  placeholder="Условие создания лида..."
-                />
-                <Button variant="ghost" size="icon" onClick={() => removeListItem(setLeadConditions, i)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            <Button variant="outline" size="sm" onClick={() => addListItem(setLeadConditions)}>
-              <Plus className="h-4 w-4 mr-1" /> Добавить
-            </Button>
-          </div>
-        );
+        return <ListEditor title="Когда создавать лид?" desc="По умолчанию лид создаётся при получении контакта клиента." items={(botForm.lead_conditions as string[]) || []} onAdd={() => addListItem("lead_conditions")} onUpdate={(i, v) => updateListItem("lead_conditions", i, v)} onRemove={(i) => removeListItem("lead_conditions", i)} placeholder="Условие создания лида..." />;
 
       case "escalation":
-        return (
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold mb-1">Когда бот должен попросить помощи?</h2>
-              <p className="text-sm text-muted-foreground mb-3">
-                По умолчанию, при недостатке информации для ответа бот просит помощи оператора. 
-                Вы можете дополнительно указать, в каких случаях бот обязан передать диалог человеку.
-              </p>
-            </div>
-            {escalationRules.map((rule, i) => (
-              <div key={i} className="flex gap-2">
-                <Input
-                  value={rule}
-                  onChange={e => updateListItem(setEscalationRules, i, e.target.value)}
-                  placeholder="Правило эскалации..."
-                />
-                <Button variant="ghost" size="icon" onClick={() => removeListItem(setEscalationRules, i)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            <Button variant="outline" size="sm" onClick={() => addListItem(setEscalationRules)}>
-              <Plus className="h-4 w-4 mr-1" /> Добавить
-            </Button>
-          </div>
-        );
+        return <ListEditor title="Когда бот должен попросить помощи?" desc="Укажите случаи, когда бот обязан передать диалог человеку." items={(botForm.escalation_rules as string[]) || []} onAdd={() => addListItem("escalation_rules")} onUpdate={(i, v) => updateListItem("escalation_rules", i, v)} onRemove={(i) => removeListItem("escalation_rules", i)} placeholder="Правило эскалации..." />;
 
       case "completion":
-        return (
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold mb-1">Когда считать диалог завершённым?</h2>
-              <p className="text-sm text-muted-foreground mb-3">
-                При необходимости опишите признаки завершённого диалога — то есть не требующего последующих ответов от бота.
-              </p>
-            </div>
-            {completionRules.map((rule, i) => (
-              <div key={i} className="flex gap-2">
-                <Input
-                  value={rule}
-                  onChange={e => updateListItem(setCompletionRules, i, e.target.value)}
-                  placeholder="Признак завершения..."
-                />
-                <Button variant="ghost" size="icon" onClick={() => removeListItem(setCompletionRules, i)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            <Button variant="outline" size="sm" onClick={() => addListItem(setCompletionRules)}>
-              <Plus className="h-4 w-4 mr-1" /> Добавить
-            </Button>
-          </div>
-        );
+        return <ListEditor title="Когда считать диалог завершённым?" desc="Опишите признаки завершённого диалога." items={(botForm.completion_rules as string[]) || []} onAdd={() => addListItem("completion_rules")} onUpdate={(i, v) => updateListItem("completion_rules", i, v)} onRemove={(i) => removeListItem("completion_rules", i)} placeholder="Признак завершения..." />;
 
       case "schedule":
         return (
           <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold mb-1">График работы бота</h2>
-              <p className="text-sm text-muted-foreground mb-3">
-                Установите время, в которое бот будет отвечать клиентам.
-              </p>
-            </div>
+            <h2 className="text-lg font-semibold mb-1">График работы бота</h2>
             <div className="grid grid-cols-3 gap-3">
               {[
                 { value: "24/7", label: "В режиме 24/7", icon: "🕐" },
                 { value: "no_response", label: "Если вы не отвечаете...", icon: "💤" },
                 { value: "schedule", label: "По графику", icon: "📅" },
               ].map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => setScheduleMode(opt.value as any)}
-                  className={cn(
-                    "p-3 rounded-lg border-2 text-left text-sm transition-colors",
-                    scheduleMode === opt.value
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground/30"
-                  )}
-                >
+                <button key={opt.value} onClick={() => updateForm({ schedule_mode: opt.value as any })} className={cn("p-3 rounded-lg border-2 text-left text-sm transition-colors", botForm.schedule_mode === opt.value ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30")}>
                   <span className="text-lg block mb-1">{opt.icon}</span>
                   {opt.label}
                 </button>
@@ -316,126 +624,68 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
           </div>
         );
 
-      case "reactivation":
+      case "reactivation": {
+        const msgs = (botForm.reactivation_messages as any[]) || [];
         return (
           <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold mb-1">Реактивация замерших диалогов</h2>
-              <p className="text-sm text-muted-foreground mb-3">
-                Серия сообщений для попытки вернуть клиента в диалог после того как он перестал отвечать.
-              </p>
-            </div>
-            {reactivationMessages.map((msg, i) => (
+            <h2 className="text-lg font-semibold mb-1">Реактивация замерших диалогов</h2>
+            <p className="text-sm text-muted-foreground mb-3">Серия сообщений для возврата клиента в диалог.</p>
+            {msgs.map((msg, i) => (
               <div key={i} className="flex gap-2 items-start">
                 <div className="flex-1 space-y-2">
                   <div className="flex gap-2 items-center">
                     <Label className="text-xs whitespace-nowrap">Через (мин):</Label>
-                    <Input
-                      type="number"
-                      value={msg.delay_minutes}
-                      onChange={e => {
-                        const updated = [...reactivationMessages];
-                        updated[i] = { ...msg, delay_minutes: parseInt(e.target.value) || 0 };
-                        setReactivationMessages(updated);
-                      }}
-                      className="w-24"
-                    />
+                    <Input type="number" value={msg.delay_minutes} onChange={e => { const u = [...msgs]; u[i] = { ...msg, delay_minutes: parseInt(e.target.value) || 0 }; updateForm({ reactivation_messages: u } as any); }} className="w-24" />
                   </div>
-                  <Textarea
-                    value={msg.message}
-                    onChange={e => {
-                      const updated = [...reactivationMessages];
-                      updated[i] = { ...msg, message: e.target.value };
-                      setReactivationMessages(updated);
-                    }}
-                    placeholder="Сообщение для клиента..."
-                    className="min-h-[60px]"
-                  />
+                  <Textarea value={msg.message} onChange={e => { const u = [...msgs]; u[i] = { ...msg, message: e.target.value }; updateForm({ reactivation_messages: u } as any); }} placeholder="Сообщение..." className="min-h-[60px]" />
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => setReactivationMessages(prev => prev.filter((_, idx) => idx !== i))}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <Button variant="ghost" size="icon" onClick={() => updateForm({ reactivation_messages: msgs.filter((_, idx) => idx !== i) } as any)}><Trash2 className="h-4 w-4" /></Button>
               </div>
             ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setReactivationMessages(prev => [...prev, { delay_minutes: 60, message: "" }])}
-            >
+            <Button variant="outline" size="sm" onClick={() => updateForm({ reactivation_messages: [...msgs, { delay_minutes: 60, message: "" }] } as any)}>
               <Plus className="h-4 w-4 mr-1" /> Добавить сообщение
             </Button>
           </div>
         );
+      }
 
       case "model":
         return (
           <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold mb-1">Модель искусственного интеллекта</h2>
-              <p className="text-sm text-muted-foreground mb-3">
-                Чем сложнее взаимодействие с клиентом, тем более продвинутую модель ИИ стоит выбрать.
-              </p>
-            </div>
+            <h2 className="text-lg font-semibold mb-1">Модель искусственного интеллекта</h2>
+            <p className="text-sm text-muted-foreground mb-3">Чем сложнее взаимодействие, тем более продвинутую модель стоит выбрать.</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {AI_MODELS.map(m => (
-                <button
-                  key={m.id}
-                  onClick={() => setAiModel(m.id)}
-                  className={cn(
-                    "p-3 rounded-lg border-2 text-left text-sm transition-colors",
-                    aiModel === m.id
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground/30"
-                  )}
-                >
+                <button key={m.id} onClick={() => updateForm({ ai_model: m.id })} className={cn("p-3 rounded-lg border-2 text-left text-sm transition-colors", botForm.ai_model === m.id ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30")}>
                   <span className="font-medium block">{m.label}</span>
                   <span className="text-xs text-muted-foreground">{m.desc}</span>
                 </button>
               ))}
             </div>
-
             <Separator />
-
             <div>
               <h2 className="text-lg font-semibold mb-1">Делать бота умнее после нескольких сообщений</h2>
-              <p className="text-sm text-muted-foreground mb-3">
-                Первые сообщения обычно простые — для них можно использовать дешёвую модель, а потом переключиться на продвинутую.
-              </p>
               <div className="flex items-center gap-3">
-                <Select value={upgradeAfter > 0 ? "upgrade" : "none"} onValueChange={v => setUpgradeAfter(v === "none" ? 0 : 5)}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={(botForm.upgrade_after_messages || 0) > 0 ? "upgrade" : "none"} onValueChange={v => updateForm({ upgrade_after_messages: v === "none" ? 0 : 5 })}>
+                  <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Не делать</SelectItem>
                     <SelectItem value="upgrade">Переключить модель после</SelectItem>
                   </SelectContent>
                 </Select>
-                {upgradeAfter > 0 && (
+                {(botForm.upgrade_after_messages || 0) > 0 && (
                   <>
-                    <Input
-                      type="number"
-                      value={upgradeAfter}
-                      onChange={e => setUpgradeAfter(parseInt(e.target.value) || 0)}
-                      className="w-20"
-                      min={1}
-                    />
+                    <Input type="number" value={botForm.upgrade_after_messages || 0} onChange={e => updateForm({ upgrade_after_messages: parseInt(e.target.value) || 0 })} className="w-20" min={1} />
                     <span className="text-sm text-muted-foreground">сообщений</span>
                   </>
                 )}
               </div>
-              {upgradeAfter > 0 && (
+              {(botForm.upgrade_after_messages || 0) > 0 && (
                 <div className="mt-3">
                   <Label className="text-sm mb-1 block">Модель для продвинутых сообщений:</Label>
-                  <Select value={upgradeModel || ""} onValueChange={v => setUpgradeModel(v || null)}>
-                    <SelectTrigger className="w-64">
-                      <SelectValue placeholder="Выберите модель" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {AI_MODELS.map(m => (
-                        <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select value={botForm.upgrade_model || ""} onValueChange={v => updateForm({ upgrade_model: v || null })}>
+                    <SelectTrigger className="w-64"><SelectValue placeholder="Выберите модель" /></SelectTrigger>
+                    <SelectContent>{AI_MODELS.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
               )}
@@ -446,22 +696,10 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
       case "delay":
         return (
           <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold mb-1">Задержка ответов</h2>
-              <p className="text-sm text-muted-foreground mb-3">
-                Задержка ответов поможет, если вы не хотите, чтобы ваш клиент догадался, что общается с ботом. 
-                Она также полезна, если человек пишет короткими фразами — бот дождётся, пока клиент сформулирует мысль полностью. 
-                Рекомендуемая задержка: 1 минута и более.
-              </p>
-            </div>
+            <h2 className="text-lg font-semibold mb-1">Задержка ответов</h2>
+            <p className="text-sm text-muted-foreground mb-3">Рекомендуемая задержка: 1 минута и более.</p>
             <div className="flex items-center gap-3">
-              <Input
-                type="number"
-                value={responseDelay}
-                onChange={e => setResponseDelay(parseInt(e.target.value) || 0)}
-                className="w-24"
-                min={0}
-              />
+              <Input type="number" value={botForm.response_delay_seconds || 0} onChange={e => updateForm({ response_delay_seconds: parseInt(e.target.value) || 0 })} className="w-24" min={0} />
               <span className="text-sm text-muted-foreground">секунд</span>
             </div>
           </div>
@@ -470,22 +708,10 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
       case "limits":
         return (
           <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold mb-1">Максимальное количество ответов</h2>
-              <p className="text-sm text-muted-foreground mb-3">
-                Количество ответов, которое бот может отправить в одном диалоге. Помогает уменьшить количество сжигаемых токенов. 
-                При достижении лимита бот будет поставлен на паузу.
-              </p>
-            </div>
+            <h2 className="text-lg font-semibold mb-1">Максимальное количество ответов</h2>
+            <p className="text-sm text-muted-foreground mb-3">Помогает уменьшить количество сжигаемых токенов.</p>
             <div className="flex items-center gap-3">
-              <Input
-                type="number"
-                value={maxResponses || ""}
-                onChange={e => setMaxResponses(e.target.value ? parseInt(e.target.value) : null)}
-                className="w-24"
-                min={1}
-                placeholder="∞"
-              />
+              <Input type="number" value={botForm.max_responses || ""} onChange={e => updateForm({ max_responses: e.target.value ? parseInt(e.target.value) : null })} className="w-24" min={1} placeholder="∞" />
               <span className="text-sm text-muted-foreground">ответов (пусто = без ограничений)</span>
             </div>
           </div>
@@ -498,13 +724,10 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
               <h2 className="text-lg font-semibold">Режим профессионального продавца</h2>
               <Badge variant="secondary">Бета</Badge>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Экспериментальный режим, в котором бот начинает вести себя как продавец. 
-              Этот режим может как улучшить, так и ухудшить ваши продажи: всё зависит от настроек выше.
-            </p>
+            <p className="text-sm text-muted-foreground">Экспериментальный режим продавца. Может как улучшить, так и ухудшить продажи.</p>
             <div className="flex items-center gap-3">
-              <Switch checked={proSellerMode} onCheckedChange={setProSellerMode} />
-              <span className="text-sm">{proSellerMode ? "Включён" : "Выключен"}</span>
+              <Switch checked={botForm.pro_seller_mode || false} onCheckedChange={v => updateForm({ pro_seller_mode: v })} />
+              <span className="text-sm">{botForm.pro_seller_mode ? "Включён" : "Выключен"}</span>
             </div>
           </div>
         );
@@ -512,69 +735,14 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
       case "notifications":
         return (
           <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold mb-1">Как формировать уведомление в Telegram?</h2>
-              <p className="text-sm text-muted-foreground mb-3">
-                Как вы хотели бы получать информацию о лидах и диалогах бота?
-              </p>
-            </div>
+            <h2 className="text-lg font-semibold mb-1">Уведомления в Telegram</h2>
             <div className="grid grid-cols-2 gap-3">
-              {[
-                { value: "summary", label: "Краткая сводка" },
-                { value: "full", label: "Полный диалог" },
-              ].map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => setNotificationFormat(opt.value)}
-                  className={cn(
-                    "p-3 rounded-lg border-2 text-sm transition-colors",
-                    notificationFormat === opt.value
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground/30"
-                  )}
-                >
+              {[{ value: "summary", label: "Краткая сводка" }, { value: "full", label: "Полный диалог" }].map(opt => (
+                <button key={opt.value} onClick={() => updateForm({ telegram_notification_format: opt.value })} className={cn("p-3 rounded-lg border-2 text-sm transition-colors", botForm.telegram_notification_format === opt.value ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30")}>
                   {opt.label}
                 </button>
               ))}
             </div>
-          </div>
-        );
-
-      case "chats":
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Чаты бота</h2>
-              <Button variant="outline" size="sm" onClick={() => processMessages()}>
-                <RefreshCw className="h-4 w-4 mr-1" /> Обновить
-              </Button>
-            </div>
-            {chats.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">
-                Чатов пока нет. Включите бота и он начнёт обрабатывать сообщения с Авито.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {chats.map(chat => (
-                  <Card key={chat.id} className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="font-medium text-sm">{chat.avito_user_name || "Пользователь"}</span>
-                        <div className="flex gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">Сообщений: {chat.messages_count}</Badge>
-                          <Badge variant="outline" className="text-xs">Ответов бота: {chat.bot_responses_count}</Badge>
-                          {chat.is_lead && <Badge className="bg-green-500/20 text-green-700 text-xs">Лид</Badge>}
-                          {chat.is_escalated && <Badge variant="destructive" className="text-xs">Эскалация</Badge>}
-                        </div>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(chat.last_message_at).toLocaleString("ru-RU")}
-                      </span>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
           </div>
         );
 
@@ -588,26 +756,20 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
       {/* Left Sidebar */}
       <div className="w-56 flex-shrink-0 border-r border-border bg-muted/30">
         <div className="p-3 border-b border-border">
+          <button onClick={onBack} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2">
+            <ArrowLeft className="h-4 w-4" /> Назад к роботам
+          </button>
           <div className="flex items-center gap-2">
             <Bot className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-sm">Авитобот</span>
+            <span className="font-semibold text-sm truncate">{bot.name || "Робот"}</span>
           </div>
         </div>
-        <ScrollArea className="h-[calc(100vh-240px)]">
+        <ScrollArea className="h-[calc(100vh-280px)]">
           <div className="p-2 space-y-0.5">
-            {sidebarItems.map(item => {
+            {botSidebarItems.map(item => {
               const Icon = item.icon;
               return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveSection(item.id)}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left",
-                    activeSection === item.id
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
+                <button key={item.id} onClick={() => setBotSection(item.id)} className={cn("w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left", botSection === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
                   <Icon className="h-4 w-4 flex-shrink-0" />
                   {item.label}
                 </button>
@@ -615,29 +777,51 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
             })}
           </div>
         </ScrollArea>
+        <div className="p-2 border-t border-border">
+          <Button variant="ghost" size="sm" className="w-full text-destructive hover:text-destructive" onClick={onDelete}>
+            <Trash2 className="h-4 w-4 mr-1" /> Удалить робота
+          </Button>
+        </div>
       </div>
 
       {/* Right Content */}
       <div className="flex-1 flex flex-col">
         <ScrollArea className="flex-1">
-          <div className="max-w-2xl p-6">
-            {renderSection()}
-          </div>
+          <div className="max-w-2xl p-6">{renderSection()}</div>
         </ScrollArea>
-
-        {/* Bottom bar */}
-        {activeSection !== "chats" && (
-          <div className="border-t border-border p-3 flex items-center justify-between bg-card">
-            <span className="text-sm text-muted-foreground">
-              Заполните все необходимые поля и сохраните изменения
-            </span>
-            <Button onClick={handleSave} disabled={saving}>
-              <Save className="h-4 w-4 mr-1" />
-              {saving ? "Сохранение..." : "Сохранить"}
-            </Button>
-          </div>
-        )}
+        <div className="border-t border-border p-3 flex items-center justify-between bg-card">
+          <span className="text-sm text-muted-foreground">Заполните все необходимые поля и сохраните изменения</span>
+          <Button onClick={onSave} disabled={saving}>
+            <Save className="h-4 w-4 mr-1" />
+            {saving ? "Сохранение..." : "Сохранить"}
+          </Button>
+        </div>
       </div>
+    </div>
+  );
+}
+
+// ===== Reusable List Editor =====
+function ListEditor({ title, desc, items, onAdd, onUpdate, onRemove, placeholder }: {
+  title: string; desc: string; items: string[];
+  onAdd: () => void; onUpdate: (i: number, v: string) => void; onRemove: (i: number) => void;
+  placeholder: string;
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold mb-1">{title}</h2>
+        <p className="text-sm text-muted-foreground mb-3">{desc}</p>
+      </div>
+      {items.map((item, i) => (
+        <div key={i} className="flex gap-2">
+          <Input value={item} onChange={e => onUpdate(i, e.target.value)} placeholder={placeholder} />
+          <Button variant="ghost" size="icon" onClick={() => onRemove(i)}><Trash2 className="h-4 w-4" /></Button>
+        </div>
+      ))}
+      <Button variant="outline" size="sm" onClick={onAdd}>
+        <Plus className="h-4 w-4 mr-1" /> Добавить
+      </Button>
     </div>
   );
 }
