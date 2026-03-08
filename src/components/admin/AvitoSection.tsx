@@ -1914,6 +1914,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     feedSearchQuery={feedSearchQuery}
                     feedPriceFilter={feedPriceFilter}
                     storeId={storeId || ""}
+                    onUpdateProductParams={avitoFeed.updateProductParams}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full">
