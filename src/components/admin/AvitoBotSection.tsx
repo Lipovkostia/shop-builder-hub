@@ -2665,6 +2665,20 @@ interface AISettingsMessage {
   proposal?: { explanation: string; changes: { field: string; old_value: string; new_value: string }[] } | null;
 }
 
+const AGENT_MODELS = [
+  { id: "openai/gpt-4.1-nano", label: "GPT 4.1 Nano", desc: "Самая дешёвая и быстрая" },
+  { id: "openai/gpt-4.1-mini", label: "GPT 4.1 Mini", desc: "Лучшее соотношение цены/качества" },
+  { id: "openai/gpt-4.1", label: "GPT 4.1", desc: "Мощная модель" },
+  { id: "openai/gpt-4o-mini", label: "GPT 4o Mini", desc: "Быстрая мультимодальная" },
+  { id: "openai/o4-mini", label: "GPT o4 Mini", desc: "С цепочкой рассуждений" },
+  { id: "google/gemini-2.5-flash", label: "Gemini Flash 2.5", desc: "Баланс скорости и качества" },
+  { id: "google/gemini-2.5-pro", label: "Gemini PRO 2.5", desc: "Мощная для сложных задач" },
+  { id: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6", desc: "Сильная от Anthropic" },
+  { id: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5", desc: "Быстрая от Anthropic" },
+  { id: "deepseek/deepseek-r1", label: "DeepSeek R1", desc: "С рассуждениями" },
+  { id: "deepseek/deepseek-v3", label: "DeepSeek V3", desc: "Универсальная" },
+];
+
 const SETTINGS_LABELS: Record<string, string> = {
   name: "Имя бота",
   mode: "Режим",
