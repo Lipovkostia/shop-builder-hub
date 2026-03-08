@@ -238,6 +238,11 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
         telegram_bot_token: (editingBot as any).telegram_bot_token || "",
         telegram_chat_id: (editingBot as any).telegram_chat_id || "",
         seller_stop_command: (editingBot as any).seller_stop_command || "/stop",
+        personality_config: (editingBot as any).personality_config || { bot_name: "", character_traits: "", communication_style: "", tone: "", emoji_usage: "", greeting_style: "" },
+        instructions_config: (editingBot as any).instructions_config || { main_goal: "", responsibilities: "", forbidden_actions: "", response_format: "", knowledge_boundaries: "" },
+        rules_list: Array.isArray((editingBot as any).rules_list) ? (editingBot as any).rules_list : [],
+        allowed_item_ids: (editingBot as any).allowed_item_ids || null,
+        handoff_rules: Array.isArray((editingBot as any).handoff_rules) ? (editingBot as any).handoff_rules : [],
         smart_setup_data: {
           category: smartData.category || "products",
           company_info: smartData.company_info || "",
