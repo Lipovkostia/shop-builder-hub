@@ -2819,13 +2819,29 @@ function AISettingsPanel({ botForm, setBotForm, onSave, storeId }: {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Sparkles className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-semibold">AI корректировка настроек</h2>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">AI-агент настроек</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            Агент анализирует настройки робота и вносит правки по вашему запросу через VseGPT.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-muted-foreground whitespace-nowrap">Модель агента:</label>
+          <select
+            value={agentModel}
+            onChange={e => setAgentModel(e.target.value)}
+            className="text-xs border border-border rounded-md px-2 py-1.5 bg-background text-foreground max-w-[200px]"
+          >
+            {AGENT_MODELS.map(m => (
+              <option key={m.id} value={m.id}>{m.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Опишите что хотите изменить в настройках бота. AI проанализирует текущие настройки и предложит конкретные правки.
-      </p>
 
       <div className="flex gap-4" style={{ height: "calc(100vh - 360px)" }}>
         {/* Chat panel */}
