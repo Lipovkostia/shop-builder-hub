@@ -135,7 +135,7 @@ function canvasOverlay(imageUrl: string, templateUrl: string, targetW: number, t
 }
 
 export function AvitoImageEditor({
-  open, onOpenChange, productId, productName, images, storeId, avitoImages, onSave,
+  open, onOpenChange, productId, productName, images, storeId, avitoImages, onSave, onImagesAdded,
 }: AvitoImageEditorProps) {
   const { toast } = useToast();
   const [imageInfos, setImageInfos] = useState<ImageInfo[]>([]);
@@ -144,7 +144,10 @@ export function AvitoImageEditor({
   const [processing, setProcessing] = useState<Set<string>>(new Set());
   const [templateUrl, setTemplateUrl] = useState<string | null>(null);
   const [templatePreview, setTemplatePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const templateInputRef = useRef<HTMLInputElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
   // Load image dimensions
