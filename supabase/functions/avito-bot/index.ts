@@ -498,7 +498,7 @@ Deno.serve(async (req) => {
     const { action, store_id, bot_id, message, item_id, debug_session_id, avito_chat_id, db_chat_id, chat_id, text } = reqBody;
 
     // Check AI access for this store
-    if (store_id && action !== "fetch_models" && action !== "bot_stats") {
+    if (store_id && action !== "fetch_models" && action !== "bot_stats" && action !== "usage_stats") {
       const { data: aiAccess } = await supabase
         .from("store_ai_access")
         .select("is_unlocked, avito_bot_enabled")
