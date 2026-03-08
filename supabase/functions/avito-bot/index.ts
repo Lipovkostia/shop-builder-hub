@@ -563,6 +563,29 @@ Deno.serve(async (req) => {
 
       const qaContext = buildQAContext(qaItems || []);
 
+      // Build full product catalog context (all store products)
+      let catalogContext = "";
+      try {
+        const { data: allProducts } = await supabase
+          .from("products")
+          .select("name, description, price, buy_price, unit, sku, category_id, images")
+          .eq("store_id", bot.store_id)
+          .eq("is_active", true)
+          .is("deleted_at", null)
+          .limit(200);
+
+        if (allProducts && allProducts.length > 0) {
+          const productLines = allProducts.map((p: any, i: number) => {
+            const price = p.price || p.buy_price || 0;
+            return `${i + 1}. ${p.name} — ${price} ₽${p.unit ? ` (${p.unit})` : ""}${p.sku ? ` [Артикул: ${p.sku}]` : ""}${p.description ? `\n   ${p.description.substring(0, 150)}` : ""}`;
+          }).join("\n");
+          catalogContext = `\n\n--- КАТАЛОГ ТОВАРОВ МАГАЗИНА (${allProducts.length} шт.) ---\n${productLines}\n--- КОНЕЦ КАТАЛОГА ---\n\nВАЖНО: Ты знаешь ВСЕ товары магазина. Если клиент спрашивает о любом товаре из каталога — используй информацию выше. Называй точные цены из каталога.\n`;
+        }
+      } catch (e) {
+        console.error("Failed to fetch product catalog:", e);
+      }
+
+      // Build specific item context if selected
       let listingContext = "";
       if (item_id) {
         try {
@@ -599,14 +622,14 @@ Deno.serve(async (req) => {
 
           const listing = mergeListingInfo(localListing, apiListing);
           if (listing) {
-            listingContext = `\n\n--- КОНТЕКСТ ТЕКУЩЕГО ОБЪЯВЛЕНИЯ (клиент спрашивает именно про этот товар) ---\nНазвание товара: ${listing.title}\nЦена: ${listing.price} ₽\nКатегория: ${listing.category}\nОписание товара:\n${listing.description}\n${listing.url ? `Ссылка: ${listing.url}\n` : ""}--- КОНЕЦ КОНТЕКСТА ОБЪЯВЛЕНИЯ ---\n\nВАЖНО: Клиент пишет тебе по поводу этого конкретного объявления. Отвечай в контексте этого товара, знай его название, цену и описание. Если спрашивают цену — называй цену из контекста.`;
+            listingContext = `\n\n--- КОНТЕКСТ ТЕКУЩЕГО ОБЪЯВЛЕНИЯ (клиент пишет именно по этому товару) ---\nНазвание: ${listing.title}\nЦена: ${listing.price} ₽\nКатегория: ${listing.category}\nОписание:\n${listing.description}\n${listing.url ? `Ссылка: ${listing.url}\n` : ""}--- КОНЕЦ КОНТЕКСТА ОБЪЯВЛЕНИЯ ---\n`;
           }
         } catch (e) {
           console.error("Failed to fetch listing for debug:", e);
         }
       }
 
-      const systemPrompt = getEffectiveSystemPrompt(bot) + listingContext + qaContext;
+      const systemPrompt = getEffectiveSystemPrompt(bot) + catalogContext + listingContext + qaContext;
       const proSuffix = bot.pro_seller_mode
         ? "\n\nВеди себя как профессиональный продавец. Используй техники продаж."
         : "";
