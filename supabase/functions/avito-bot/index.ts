@@ -80,6 +80,117 @@ async function getAvitoListingInfo(token: string, userId: number, itemId: string
   }
 }
 
+function normalizeForMatch(value: string): string {
+  return (value || "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function scoreTitleMatch(candidate: string, query: string): number {
+  const c = normalizeForMatch(candidate);
+  const q = normalizeForMatch(query);
+  if (!c || !q) return 0;
+  if (c === q) return 100;
+  if (c.includes(q) || q.includes(c)) return 80;
+
+  const qTokens = q.split(" ").filter(Boolean);
+  if (qTokens.length === 0) return 0;
+  const hitCount = qTokens.filter((t) => c.includes(t)).length;
+  return Math.round((hitCount / qTokens.length) * 60);
+}
+
+async function getLocalListingInfo(
+  supabase: ReturnType<typeof createClient>,
+  storeId: string,
+  itemId?: string,
+  itemTitle?: string
+): Promise<{ title: string; description: string; price: number; category: string; url: string } | null> {
+  try {
+    const { data, error } = await supabase
+      .from("avito_feed_products")
+      .select("product_id, avito_category, avito_params, products(name, description, price)")
+      .eq("store_id", storeId)
+      .limit(1000);
+
+    if (error || !data?.length) return null;
+
+    const normalizedItemId = (itemId || "").trim();
+    const normalizedTitle = normalizeForMatch(itemTitle || "");
+
+    type Candidate = {
+      title: string;
+      description: string;
+      price: number;
+      category: string;
+      score: number;
+    };
+
+    let best: Candidate | null = null;
+
+    for (const row of data as any[]) {
+      const params = (row.avito_params && typeof row.avito_params === "object") ? row.avito_params : {};
+      const product = row.products || {};
+
+      const title = String(params.title || product.name || "").trim();
+      const description = String(params.description || product.description || "").trim();
+      const rawPrice = params.Price ?? params.price ?? product.price ?? 0;
+      const price = typeof rawPrice === "string"
+        ? parseInt(rawPrice.replace(/\D/g, ""), 10) || 0
+        : Number(rawPrice) || 0;
+      const category = String(row.avito_category || params.category || "").trim();
+
+      const avitoIdCandidates = [
+        String(params.avitoNumber || "").trim(),
+        String(params.AvitoId || "").trim(),
+        String(params.avitoId || "").trim(),
+        String(params.Id || "").trim(),
+        String(params.itemId || "").trim(),
+      ].filter(Boolean);
+
+      let score = 0;
+      if (normalizedItemId && avitoIdCandidates.includes(normalizedItemId)) {
+        score = 200;
+      } else if (normalizedTitle) {
+        score = scoreTitleMatch(title, normalizedTitle);
+      }
+
+      if (!best || score > best.score) {
+        best = { title, description, price, category, score };
+      }
+    }
+
+    if (!best || best.score <= 0) return null;
+
+    return {
+      title: best.title,
+      description: best.description,
+      price: best.price,
+      category: best.category,
+      url: "",
+    };
+  } catch (err) {
+    console.error("getLocalListingInfo error:", err);
+    return null;
+  }
+}
+
+function mergeListingInfo(
+  localListing: { title: string; description: string; price: number; category: string; url: string } | null,
+  apiListing: { title: string; description: string; price: number; category: string; url: string } | null
+): { title: string; description: string; price: number; category: string; url: string } | null {
+  if (!localListing && !apiListing) return null;
+
+  return {
+    title: localListing?.title || apiListing?.title || "",
+    description: localListing?.description || apiListing?.description || "",
+    price: (localListing?.price && localListing.price > 0) ? localListing.price : (apiListing?.price || 0),
+    category: localListing?.category || apiListing?.category || "",
+    url: apiListing?.url || localListing?.url || "",
+  };
+}
+
 async function sendTelegramNotification(
   botToken: string,
   chatId: string,
@@ -296,16 +407,20 @@ Deno.serve(async (req) => {
 
       const qaContext = buildQAContext(qaItems || []);
 
-      // If item_id is provided, fetch listing context
+      // If item_id is provided, fetch listing context (prefer local service data)
       let listingContext = "";
       if (item_id) {
         try {
+          const localListing = await getLocalListingInfo(supabase, bot.store_id, String(item_id));
+
+          let apiListing: { title: string; description: string; price: number; category: string; url: string } | null = null;
           let accQuery = supabase.from("avito_accounts").select("*");
           if (bot.avito_account_id) {
             accQuery = accQuery.eq("id", bot.avito_account_id);
           } else {
             accQuery = accQuery.eq("store_id", bot.store_id);
           }
+
           const { data: account } = await accQuery.single();
           if (account) {
             const token = await getAvitoToken(account.client_id, account.client_secret);
@@ -323,11 +438,13 @@ Deno.serve(async (req) => {
               } catch {}
             }
             if (uid) {
-              const listing = await getAvitoListingInfo(token, uid, item_id);
-              if (listing) {
-                listingContext = `\n\n--- КОНТЕКСТ ТЕКУЩЕГО ОБЪЯВЛЕНИЯ (клиент спрашивает именно про этот товар) ---\nНазвание товара: ${listing.title}\nЦена: ${listing.price} ₽\nКатегория: ${listing.category}\nОписание товара:\n${listing.description}\nСсылка: ${listing.url}\n--- КОНЕЦ КОНТЕКСТА ОБЪЯВЛЕНИЯ ---\n\nВАЖНО: Клиент пишет тебе по поводу этого конкретного объявления. Отвечай в контексте этого товара, знай его название, цену и описание. Если спрашивают цену — называй цену из контекста.`;
-              }
+              apiListing = await getAvitoListingInfo(token, uid, item_id);
             }
+          }
+
+          const listing = mergeListingInfo(localListing, apiListing);
+          if (listing) {
+            listingContext = `\n\n--- КОНТЕКСТ ТЕКУЩЕГО ОБЪЯВЛЕНИЯ (клиент спрашивает именно про этот товар) ---\nНазвание товара: ${listing.title}\nЦена: ${listing.price} ₽\nКатегория: ${listing.category}\nОписание товара:\n${listing.description}\n${listing.url ? `Ссылка: ${listing.url}\n` : ""}--- КОНЕЦ КОНТЕКСТА ОБЪЯВЛЕНИЯ ---\n\nВАЖНО: Клиент пишет тебе по поводу этого конкретного объявления. Отвечай в контексте этого товара, знай его название, цену и описание. Если спрашивают цену — называй цену из контекста.`;
           }
         } catch (e) {
           console.error("Failed to fetch listing for debug:", e);
@@ -469,7 +586,15 @@ Deno.serve(async (req) => {
 
           let listingContext = "";
           if (itemId) {
-            const listing = await getAvitoListingInfo(token, userId, String(itemId));
+            const localListing = await getLocalListingInfo(
+              supabase,
+              store_id,
+              String(itemId),
+              chat.context?.value?.title || chat.item?.title || ""
+            );
+            const apiListing = await getAvitoListingInfo(token, userId, String(itemId));
+            const listing = mergeListingInfo(localListing, apiListing);
+
             if (listing) {
               listingContext = `\n\n--- КОНТЕКСТ ТЕКУЩЕГО ОБЪЯВЛЕНИЯ ---\nНазвание товара: ${listing.title}\nЦена: ${listing.price} ₽\nКатегория: ${listing.category}\nОписание товара:\n${listing.description}\n--- КОНЕЦ КОНТЕКСТА ---\n\nВАЖНО: Клиент пишет по поводу этого конкретного объявления. Отвечай в контексте этого товара. Если спрашивают цену — называй цену из контекста.`;
             }
