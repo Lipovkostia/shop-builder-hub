@@ -185,7 +185,7 @@ Deno.serve(async (req) => {
       if (!userId) throw new Error("Не удалось определить Авито user_id. Проверьте API-ключи аккаунта.");
 
       const res = await fetch(
-        `${AVITO_API_BASE}/core/v1/accounts/${userId}/items?per_page=50&status=active`,
+        `${AVITO_API_BASE}/core/v1/items?per_page=50&status=active`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) {
