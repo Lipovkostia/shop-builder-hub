@@ -867,18 +867,47 @@ Deno.serve(async (req) => {
           if (bot.telegram_bot_token && bot.telegram_chat_id) {
             const userName = chat.users?.[0]?.name || "Пользователь";
             const userMsg = lastMsg.content?.text || lastMsg.text || "";
+            const itemId = chat.context?.value?.id;
+            const itemTitle = chat.context?.value?.title || chat.item?.title || "";
+            const itemUrl = itemId ? `https://www.avito.ru/${itemId}` : "";
+            const isNewChat = dbChat.messages_count <= 1;
             let notifText = "";
             
-            if (bot.telegram_notification_format === "full") {
+            if (bot.telegram_notification_format === "detailed") {
+              notifText = `💬 <b>Авито — сообщение</b>\n\n` +
+                `👤 <b>Клиент:</b> ${userName}\n`;
+              if (itemTitle) notifText += `📦 <b>Объявление:</b> ${itemTitle}\n`;
+              if (itemUrl) notifText += `🔗 <a href="${itemUrl}">Открыть на Авито</a>\n`;
+              notifText += `\n📝 <b>Сообщение:</b>\n${userMsg}\n\n` +
+                `🤖 <b>Ответ бота:</b>\n${aiResponse}\n\n` +
+                `📊 <b>Статистика чата:</b> ${(dbChat.messages_count || 0) + 1} сообщ. / ${(dbChat.bot_responses_count || 0) + 1} ответов бота`;
+              if (isNewChat) notifText = `🆕 <b>НОВЫЙ ЧАТ</b>\n\n` + notifText;
+            } else if (bot.telegram_notification_format === "full") {
               notifText = `💬 <b>Новое сообщение на Авито</b>\n\n` +
-                `👤 <b>От:</b> ${userName}\n` +
-                `📝 <b>Сообщение:</b> ${userMsg}\n\n` +
+                `👤 <b>От:</b> ${userName}\n`;
+              if (itemTitle) notifText += `📦 <b>Объявление:</b> ${itemTitle}\n`;
+              if (itemUrl) notifText += `🔗 <a href="${itemUrl}">Открыть на Авито</a>\n`;
+              notifText += `\n📝 <b>Сообщение:</b> ${userMsg}\n\n` +
                 `🤖 <b>Ответ бота:</b> ${aiResponse}`;
             } else {
-              notifText = `💬 Новое сообщение от ${userName}:\n"${userMsg.substring(0, 100)}${userMsg.length > 100 ? '...' : ''}"`;
+              notifText = `💬 Новое сообщение от ${userName}`;
+              if (itemTitle) notifText += ` (${itemTitle})`;
+              notifText += `:\n"${userMsg.substring(0, 100)}${userMsg.length > 100 ? '...' : ''}"`;
+              if (itemUrl) notifText += `\n🔗 ${itemUrl}`;
             }
             
             await sendTelegramNotification(bot.telegram_bot_token, bot.telegram_chat_id, notifText);
+
+            // New chat notification
+            if (isNewChat && bot.telegram_new_chat_notifications !== false) {
+              // Already included in detailed format above, skip duplicate
+              if (bot.telegram_notification_format !== "detailed") {
+                const newChatMsg = `🆕 <b>Новый чат на Авито!</b>\n\n👤 ${userName}` +
+                  (itemTitle ? `\n📦 ${itemTitle}` : "") +
+                  (itemUrl ? `\n🔗 <a href="${itemUrl}">Открыть</a>` : "");
+                await sendTelegramNotification(bot.telegram_bot_token, bot.telegram_chat_id, newChatMsg);
+              }
+            }
           }
 
           processed++;
