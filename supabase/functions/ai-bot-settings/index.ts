@@ -9,9 +9,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, bot_settings } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const { messages, bot_settings, agent_model } = await req.json();
+    const VSEGPT_API_KEY = Deno.env.get("VSEGPT_API_KEY");
+    if (!VSEGPT_API_KEY) throw new Error("VSEGPT_API_KEY не настроен. Добавьте ключ VseGPT.");
+
+    const model = agent_model || "openai/gpt-4.1-mini";
 
     const settingsDescription = Object.entries(bot_settings || {}).map(([key, value]) => {
       let display = value;
@@ -20,7 +22,7 @@ serve(async (req) => {
       return `${key}: ${display}`;
     }).join("\n");
 
-    const systemPrompt = `Ты — AI-ассистент для настройки бота на Авито. Твоя задача — помочь пользователю корректировать настройки его бота через естественный язык.
+    const systemPrompt = `Ты — AI-агент, который управляет настройками бота на Авито. Ты видишь все текущие настройки бота и можешь их анализировать и менять по запросу пользователя.
 
 ТЕКУЩИЕ НАСТРОЙКИ БОТА:
 ${settingsDescription}
@@ -32,11 +34,13 @@ ${settingsDescription}
 4. Если запрос неясен — уточни у пользователя.
 5. Можно менять несколько полей одновременно.
 6. Отвечай на русском языке, кратко и по делу.
+7. Ты можешь анализировать текущие настройки и давать рекомендации по улучшению.
+8. Если пользователь спрашивает о текущих настройках — расскажи что видишь.
 
 ДОСТУПНЫЕ ПОЛЯ ДЛЯ ИЗМЕНЕНИЯ:
 - name: имя бота
 - system_prompt: системный промпт бота
-- ai_model: модель ИИ
+- ai_model: модель ИИ для ответов клиентам
 - response_delay_seconds: задержка ответа (секунды)
 - max_responses: максимум ответов на чат (null = без лимита)
 - max_response_chars: максимум символов в ответе (null = без лимита)
@@ -55,14 +59,14 @@ ${settingsDescription}
 - handoff_rules: массив правил переключения
 - telegram_notification_format: формат уведомлений (summary/full)`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.vsegpt.ru/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${VSEGPT_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model,
         messages: [
           { role: "system", content: systemPrompt },
           ...messages,
@@ -90,12 +94,10 @@ ${settingsDescription}
                         new_value: { type: "string", description: "Новое значение (строкой, для объектов/массивов — JSON)" },
                       },
                       required: ["field", "old_value", "new_value"],
-                      additionalProperties: false,
                     },
                   },
                 },
                 required: ["explanation", "changes"],
-                additionalProperties: false,
               },
             },
           },
@@ -106,24 +108,23 @@ ${settingsDescription}
     if (!response.ok) {
       const status = response.status;
       const text = await response.text();
+      console.error("VseGPT error:", status, text);
       if (status === 429) {
-        return new Response(JSON.stringify({ error: "Слишком много запросов, попробуйте позже" }), {
+        return new Response(JSON.stringify({ error: "Слишком много запросов к VseGPT, попробуйте позже" }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (status === 402) {
-        return new Response(JSON.stringify({ error: "Требуется пополнение баланса AI" }), {
+      if (status === 402 || status === 401) {
+        return new Response(JSON.stringify({ error: "Проблема с ключом VseGPT. Проверьте баланс или ключ." }), {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      console.error("AI gateway error:", status, text);
-      throw new Error(`AI gateway error: ${status}`);
+      throw new Error(`VseGPT error: ${status} — ${text.substring(0, 200)}`);
     }
 
     const data = await response.json();
     const choice = data.choices?.[0];
     
-    // Check if the model used tool calling
     if (choice?.message?.tool_calls?.length > 0) {
       const toolCall = choice.message.tool_calls[0];
       if (toolCall.function?.name === "propose_settings_change") {
@@ -144,7 +145,6 @@ ${settingsDescription}
       }
     }
 
-    // Regular text response (clarification, etc.)
     return new Response(JSON.stringify({
       type: "message",
       content: choice?.message?.content || "Не удалось получить ответ",
