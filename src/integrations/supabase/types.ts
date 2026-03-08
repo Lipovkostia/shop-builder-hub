@@ -233,19 +233,24 @@ export type Database = {
       avito_bots: {
         Row: {
           ai_model: string
+          allowed_item_ids: string[] | null
           avito_account_id: string | null
           completion_rules: Json | null
           created_at: string
           escalation_rules: Json | null
+          handoff_rules: Json | null
           id: string
+          instructions_config: Json | null
           is_active: boolean
           lead_conditions: Json | null
           max_responses: number | null
           mode: string
           name: string
+          personality_config: Json | null
           pro_seller_mode: boolean
           reactivation_messages: Json | null
           response_delay_seconds: number
+          rules_list: Json | null
           schedule_config: Json | null
           schedule_mode: string
           seller_stop_command: string | null
@@ -261,19 +266,24 @@ export type Database = {
         }
         Insert: {
           ai_model?: string
+          allowed_item_ids?: string[] | null
           avito_account_id?: string | null
           completion_rules?: Json | null
           created_at?: string
           escalation_rules?: Json | null
+          handoff_rules?: Json | null
           id?: string
+          instructions_config?: Json | null
           is_active?: boolean
           lead_conditions?: Json | null
           max_responses?: number | null
           mode?: string
           name?: string
+          personality_config?: Json | null
           pro_seller_mode?: boolean
           reactivation_messages?: Json | null
           response_delay_seconds?: number
+          rules_list?: Json | null
           schedule_config?: Json | null
           schedule_mode?: string
           seller_stop_command?: string | null
@@ -289,19 +299,24 @@ export type Database = {
         }
         Update: {
           ai_model?: string
+          allowed_item_ids?: string[] | null
           avito_account_id?: string | null
           completion_rules?: Json | null
           created_at?: string
           escalation_rules?: Json | null
+          handoff_rules?: Json | null
           id?: string
+          instructions_config?: Json | null
           is_active?: boolean
           lead_conditions?: Json | null
           max_responses?: number | null
           mode?: string
           name?: string
+          personality_config?: Json | null
           pro_seller_mode?: boolean
           reactivation_messages?: Json | null
           response_delay_seconds?: number
+          rules_list?: Json | null
           schedule_config?: Json | null
           schedule_mode?: string
           seller_stop_command?: string | null
