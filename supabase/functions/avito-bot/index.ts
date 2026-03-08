@@ -220,7 +220,7 @@ async function getLocalListingInfo(
   try {
     const { data, error } = await supabase
       .from("avito_feed_products")
-      .select("product_id, avito_category, avito_params, products(name, description, price)")
+      .select("product_id, avito_category, avito_params, products(name, description, price, buy_price, markup_type, markup_value, is_fixed_price)")
       .eq("store_id", storeId)
       .limit(1000);
 
