@@ -697,8 +697,12 @@ function AvitoFeedTable({
             const params = fp?.avito_params || {};
             return params.avitoImages || undefined;
           })()}
-          onSave={(selectedImages) => {
-            handleInlineParamUpdate(editingImageProduct.id, "avitoImages", JSON.stringify(selectedImages));
+          onSave={async (selectedImages) => {
+            if (!avitoFeed) return;
+            const fp = avitoFeed.feedProducts.find(f => f.product_id === editingImageProduct.id);
+            const currentParams = fp?.avito_params || {};
+            const newParams = { ...currentParams, avitoImages: selectedImages };
+            await avitoFeed.updateProductParams(editingImageProduct.id, newParams);
             setEditingImageProduct(null);
           }}
         />
