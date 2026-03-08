@@ -848,8 +848,9 @@ function ScheduleEditor({ scheduleMode, scheduleConfig, onUpdate }: {
 }
 
 // ===== BOT EDITOR (dual pane) =====
-function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving, accounts, storeId, qaItems, qaLoading, onAddQA, onUpdateQA, onDeleteQA, onSave, onBack, onToggle, onProcess, onDelete }: {
+function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, saving, accounts, storeId, qaItems, qaLoading, onAddQA, onUpdateQA, onDeleteQA, onSave, onBack, onToggle, onProcess, onDelete }: {
   bot: AvitoBot;
+  bots: AvitoBot[];
   botForm: Partial<AvitoBot> & { telegram_bot_token?: string; telegram_chat_id?: string; seller_stop_command?: string; schedule_config?: any };
   setBotForm: React.Dispatch<React.SetStateAction<any>>;
   botSection: BotSection;
