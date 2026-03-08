@@ -26,7 +26,7 @@ interface GenerationResult {
   }>;
 }
 
-export function useProductSeo(storeId: string | null, storeName?: string) {
+export function useProductSeo(storeId: string | null, storeName?: string, storeType: "retail" | "wholesale" = "wholesale") {
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
