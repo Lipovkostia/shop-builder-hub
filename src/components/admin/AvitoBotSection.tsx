@@ -867,6 +867,13 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
 
             <div>
               <h2 className="text-lg font-semibold mb-1">Аккаунт Авито</h2>
+              <p className="text-sm text-muted-foreground mb-3">Привяжите робота к аккаунту Авито, чтобы он мог отвечать на сообщения и загружать товары в отладке.</p>
+              {!(botForm as any).avito_account_id || (botForm as any).avito_account_id === "none" ? (
+                <div className="mb-3 p-3 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 text-sm flex items-center gap-2">
+                  <KeyRound className="h-4 w-4 flex-shrink-0" />
+                  Робот не привязан к аккаунту. Без привязки отладка и автоответы не будут работать.
+                </div>
+              ) : null}
               <Select value={(botForm as any).avito_account_id || "none"} onValueChange={v => updateForm({ avito_account_id: v === "none" ? null : v } as any)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите аккаунт" />
@@ -878,6 +885,11 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
                   ))}
                 </SelectContent>
               </Select>
+              {accounts.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  У вас нет аккаунтов Авито. Перейдите в раздел «Аккаунты Авито» в боковом меню, чтобы добавить.
+                </p>
+              )}
             </div>
 
             <div>
