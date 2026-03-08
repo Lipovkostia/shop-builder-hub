@@ -245,6 +245,7 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
         instructions_config: (editingBot as any).instructions_config || { main_goal: "", responsibilities: "", forbidden_actions: "", response_format: "", knowledge_boundaries: "" },
         rules_list: Array.isArray((editingBot as any).rules_list) ? (editingBot as any).rules_list : [],
         allowed_item_ids: (editingBot as any).allowed_item_ids || null,
+        max_response_chars: (editingBot as any).max_response_chars || null,
         handoff_rules: Array.isArray((editingBot as any).handoff_rules) ? (editingBot as any).handoff_rules : [],
         smart_setup_data: {
           category: smartData.category || "products",
