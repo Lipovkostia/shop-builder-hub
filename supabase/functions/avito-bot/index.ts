@@ -232,14 +232,27 @@ Deno.serve(async (req) => {
       let listingContext = "";
       if (item_id && bot.avito_account_id) {
         try {
-          let accQuery = supabase.from("avito_accounts").select("*");
-          accQuery = accQuery.eq("id", bot.avito_account_id);
-          const { data: account } = await accQuery.single();
-          if (account && account.avito_user_id) {
+          const { data: account } = await supabase.from("avito_accounts").select("*").eq("id", bot.avito_account_id).single();
+          if (account) {
             const token = await getAvitoToken(account.client_id, account.client_secret);
-            const listing = await getAvitoListingInfo(token, account.avito_user_id, item_id);
-            if (listing) {
-              listingContext = `\n\n--- КОНТЕКСТ ОБЪЯВЛЕНИЯ ---\nНазвание: ${listing.title}\nОписание: ${listing.description}\n--- КОНЕЦ КОНТЕКСТА ---\n`;
+            let uid = account.avito_user_id;
+            if (!uid) {
+              try {
+                const selfRes = await fetch(`${AVITO_API_BASE}/core/v1/accounts/self`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                if (selfRes.ok) {
+                  const selfData = await selfRes.json();
+                  uid = selfData.id;
+                  if (uid) await supabase.from("avito_accounts").update({ avito_user_id: uid }).eq("id", account.id);
+                }
+              } catch {}
+            }
+            if (uid) {
+              const listing = await getAvitoListingInfo(token, uid, item_id);
+              if (listing) {
+                listingContext = `\n\n--- КОНТЕКСТ ОБЪЯВЛЕНИЯ ---\nНазвание: ${listing.title}\nОписание: ${listing.description}\n--- КОНЕЦ КОНТЕКСТА ---\n`;
+              }
             }
           }
         } catch (e) {
