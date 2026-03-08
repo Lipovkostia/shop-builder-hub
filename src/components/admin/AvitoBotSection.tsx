@@ -2426,6 +2426,107 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
           </div>
         );
 
+      case "sales":
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold flex items-center gap-2"><ShoppingCart className="h-5 w-5 text-primary" /> Этапы продажи</h2>
+                <p className="text-sm text-muted-foreground mt-1">Настройте алгоритм продажи. Робот будет следовать этим этапам при оформлении заказа.</p>
+              </div>
+              <Button onClick={addSalesStage} size="sm"><Plus className="h-4 w-4 mr-1" /> Добавить этап</Button>
+            </div>
+
+            {salesLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center"><Loader2 className="h-5 w-5 animate-spin" />Загрузка...</div>
+            ) : salesStages.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
+                  <p className="text-muted-foreground mb-2">Нет этапов продажи</p>
+                  <p className="text-sm text-muted-foreground mb-4">Создайте этапы, по которым робот будет вести клиента к покупке</p>
+                  <Button onClick={addSalesStage}><Plus className="h-4 w-4 mr-1" /> Создать первый этап</Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {salesStages.map((stage, idx) => (
+                  <Card key={stage.id} className={cn("transition-colors", stage.is_active ? "border-border" : "border-border opacity-60")}>
+                    <CardContent className="py-4 px-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs font-mono">{idx + 1}</Badge>
+                        <Input
+                          value={stage.name}
+                          onChange={e => updateSalesStage(stage.id, { name: e.target.value })}
+                          className="font-semibold h-8"
+                          placeholder="Название этапа"
+                        />
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveSalesStage(stage.id, "up")} disabled={idx === 0}>
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveSalesStage(stage.id, "down")} disabled={idx === salesStages.length - 1}>
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </Button>
+                          <Switch checked={stage.is_active} onCheckedChange={v => updateSalesStage(stage.id, { is_active: v })} />
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteSalesStage(stage.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">Инструкции для робота на этом этапе</Label>
+                        <Textarea
+                          value={stage.instructions}
+                          onChange={e => updateSalesStage(stage.id, { instructions: e.target.value })}
+                          placeholder="Опишите, что робот должен делать на этом этапе. Например: Уточни у клиента, какой товар его интересует. Предложи варианты из каталога."
+                          rows={3}
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">Действие</Label>
+                        <Select value={stage.action_type} onValueChange={v => updateSalesStage(stage.id, { action_type: v })}>
+                          <SelectTrigger className="h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Без действия (только диалог)</SelectItem>
+                            <SelectItem value="collect_contact">📋 Собрать контакты (имя, телефон, адрес)</SelectItem>
+                            <SelectItem value="create_order">🛒 Создать заказ в сервисе</SelectItem>
+                            <SelectItem value="confirm_order">✅ Подтвердить заказ</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {stage.action_type === "collect_contact" && (
+                          <p className="text-xs text-muted-foreground mt-1">Робот запросит имя, номер телефона и адрес доставки у клиента</p>
+                        )}
+                        {stage.action_type === "create_order" && (
+                          <p className="text-xs text-muted-foreground mt-1">Робот создаст заказ в вашем сервисе. Заказ появится во вкладке «Заказы». Вам придёт уведомление.</p>
+                        )}
+                        {stage.action_type === "confirm_order" && (
+                          <p className="text-xs text-muted-foreground mt-1">Робот подтвердит заказ и сообщит клиенту итоговую информацию</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground space-y-2">
+                  <p className="font-medium text-foreground">💡 Как это работает</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Когда клиент хочет купить товар, робот переходит к этапам продажи</li>
+                    <li>На каждом этапе робот следует вашим инструкциям</li>
+                    <li>Этап «Собрать контакты» — робот запросит имя, телефон и адрес</li>
+                    <li>Этап «Создать заказ» — заказ автоматически появится в вашей системе</li>
+                    <li>Вы получите уведомление о новом заказе</li>
+                  </ol>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
       default:
         return null;
     }
