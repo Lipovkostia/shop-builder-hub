@@ -35,6 +35,8 @@ import { TelegramIcon } from "@/components/icons/TelegramIcon";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { ReviewsManagementSection } from "./ReviewsManagementSection";
 import { RetailSeoProductsTab } from "./RetailSeoProductsTab";
+import { supabase } from "@/integrations/supabase/client";
+import { toast as sonnerToast } from "sonner";
 
 interface RetailSettingsSectionProps {
   storeId: string | null;
