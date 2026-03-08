@@ -460,6 +460,7 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
                   onCreateBot={handleCreateBot}
                   onEditBot={(id) => { setEditingBotId(id); setBotSection("general"); }}
                   onToggle={toggleBot}
+                  onDuplicate={async (id) => { await duplicateBot(id); }}
                 />
               </div>
             )}
