@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Bot, MessageCircle, Settings, Users, Sparkles, Power, Save, Plus, Trash2, Clock, Shield, Bell, Zap, ChevronRight, RefreshCw, KeyRound, ArrowLeft, Edit, HelpCircle, PlayCircle, Send, Loader2, Package, MessageSquarePlus, History, Activity, BarChart3, AlertTriangle, CheckCircle2, XCircle, Hand } from "lucide-react";
+import { Bot, MessageCircle, Settings, Users, Sparkles, Power, Save, Plus, Trash2, Clock, Shield, Bell, Zap, ChevronRight, RefreshCw, KeyRound, ArrowLeft, Edit, HelpCircle, PlayCircle, Send, Loader2, Package, MessageSquarePlus, History, Activity, BarChart3, AlertTriangle, CheckCircle2, XCircle, Hand, User, FileText, ListChecks, Filter, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { TelegramIcon } from "@/components/icons/TelegramIcon";
 import { AvitoBotSmartSetup, SmartSetupData, buildSystemPromptFromSmartSetup } from "./AvitoBotSmartSetup";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface AvitoBotSectionProps {
   storeId: string | null;
@@ -68,12 +70,14 @@ interface DashboardStats {
 }
 
 type TopLevel = "dashboard" | "bots" | "accounts" | "chats";
-type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "debug";
+type BotSection = "general" | "prompt" | "qa" | "leads" | "escalation" | "completion" | "schedule" | "reactivation" | "model" | "delay" | "limits" | "pro" | "notifications" | "telegram" | "stop_command" | "ad_filter" | "handoff" | "debug";
 
 const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "Основные", icon: Bot },
   { id: "prompt", label: "Промпт", icon: Sparkles },
   { id: "qa", label: "Вопрос-ответ", icon: HelpCircle },
+  { id: "ad_filter", label: "Объявления", icon: Filter },
+  { id: "handoff", label: "Переключение", icon: Repeat },
   { id: "leads", label: "Лиды", icon: Users },
   { id: "escalation", label: "Эскалация", icon: Shield },
   { id: "completion", label: "Завершение", icon: ChevronRight },
@@ -234,6 +238,11 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
         telegram_bot_token: (editingBot as any).telegram_bot_token || "",
         telegram_chat_id: (editingBot as any).telegram_chat_id || "",
         seller_stop_command: (editingBot as any).seller_stop_command || "/stop",
+        personality_config: (editingBot as any).personality_config || { bot_name: "", character_traits: "", communication_style: "", tone: "", emoji_usage: "", greeting_style: "" },
+        instructions_config: (editingBot as any).instructions_config || { main_goal: "", responsibilities: "", forbidden_actions: "", response_format: "", knowledge_boundaries: "" },
+        rules_list: Array.isArray((editingBot as any).rules_list) ? (editingBot as any).rules_list : [],
+        allowed_item_ids: (editingBot as any).allowed_item_ids || null,
+        handoff_rules: Array.isArray((editingBot as any).handoff_rules) ? (editingBot as any).handoff_rules : [],
         smart_setup_data: {
           category: smartData.category || "products",
           company_info: smartData.company_info || "",
@@ -333,6 +342,7 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
   if (editingBotId && editingBot) {
     return <BotEditor
       bot={editingBot}
+      bots={bots}
       botForm={botForm}
       setBotForm={setBotForm}
       botSection={botSection}
@@ -349,7 +359,10 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
       onBack={() => { setEditingBotId(null); refetch(); }}
       onToggle={(active) => toggleBot(editingBotId, active)}
       onProcess={() => processMessages(editingBotId)}
-      onDelete={async () => { await deleteBot(editingBotId); setEditingBotId(null); }}
+      onDelete={async () => {
+        if (!window.confirm("Вы уверены, что хотите удалить этого робота? Это действие нельзя отменить.")) return;
+        await deleteBot(editingBotId); setEditingBotId(null);
+      }}
     />;
   }
 
@@ -835,8 +848,9 @@ function ScheduleEditor({ scheduleMode, scheduleConfig, onUpdate }: {
 }
 
 // ===== BOT EDITOR (dual pane) =====
-function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving, accounts, storeId, qaItems, qaLoading, onAddQA, onUpdateQA, onDeleteQA, onSave, onBack, onToggle, onProcess, onDelete }: {
+function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, saving, accounts, storeId, qaItems, qaLoading, onAddQA, onUpdateQA, onDeleteQA, onSave, onBack, onToggle, onProcess, onDelete }: {
   bot: AvitoBot;
+  bots: AvitoBot[];
   botForm: Partial<AvitoBot> & { telegram_bot_token?: string; telegram_chat_id?: string; seller_stop_command?: string; schedule_config?: any };
   setBotForm: React.Dispatch<React.SetStateAction<any>>;
   botSection: BotSection;
@@ -1116,10 +1130,135 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
             </div>
           );
         }
+        // Pro mode — structured prompt with personality, instructions, rules + raw prompt
+        const personality = (botForm as any).personality_config || {};
+        const instructions = (botForm as any).instructions_config || {};
+        const rulesList: string[] = (botForm as any).rules_list || [];
         return (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold mb-1">Что бот должен знать?</h2>
-            <Textarea value={botForm.system_prompt || ""} onChange={e => updateForm({ system_prompt: e.target.value })} placeholder="Ты — продавец на Авито..." className="min-h-[300px]" />
+          <div className="space-y-6">
+            {/* PERSONALITY */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2"><User className="h-4 w-4 text-primary" /> Личность робота</CardTitle>
+                <CardDescription className="text-xs">Определите характер и стиль общения робота</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label className="text-sm">Как зовут робота?</Label>
+                  <Input value={personality.bot_name || ""} onChange={e => updateForm({ personality_config: { ...personality, bot_name: e.target.value } })} placeholder="Например: Анна, Помощник Алексей" />
+                  <p className="text-xs text-muted-foreground mt-1">Имя, которым робот представляется клиентам</p>
+                </div>
+                <div>
+                  <Label className="text-sm">Черты характера</Label>
+                  <Textarea value={personality.character_traits || ""} onChange={e => updateForm({ personality_config: { ...personality, character_traits: e.target.value } })} placeholder="Дружелюбный, профессиональный, внимательный к деталям, терпеливый" className="min-h-[60px]" />
+                  <p className="text-xs text-muted-foreground mt-1">Какие качества проявляет робот в общении?</p>
+                </div>
+                <div>
+                  <Label className="text-sm">Стиль общения</Label>
+                  <Textarea value={personality.communication_style || ""} onChange={e => updateForm({ personality_config: { ...personality, communication_style: e.target.value } })} placeholder="Деловой но тёплый, без канцеляризмов, простыми словами" className="min-h-[60px]" />
+                  <p className="text-xs text-muted-foreground mt-1">Как робот формулирует мысли? Формально или дружески?</p>
+                </div>
+                <div>
+                  <Label className="text-sm">Тон и настроение</Label>
+                  <Input value={personality.tone || ""} onChange={e => updateForm({ personality_config: { ...personality, tone: e.target.value } })} placeholder="Позитивный, уверенный, готовый помочь" />
+                </div>
+                <div>
+                  <Label className="text-sm">Использование эмодзи</Label>
+                  <Select value={personality.emoji_usage || "moderate"} onValueChange={v => updateForm({ personality_config: { ...personality, emoji_usage: v } })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Не использовать</SelectItem>
+                      <SelectItem value="minimal">Минимально (1-2 в сообщении)</SelectItem>
+                      <SelectItem value="moderate">Умеренно</SelectItem>
+                      <SelectItem value="frequent">Часто</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm">Как робот приветствует клиента?</Label>
+                  <Textarea value={personality.greeting_style || ""} onChange={e => updateForm({ personality_config: { ...personality, greeting_style: e.target.value } })} placeholder="Здравствуйте! Меня зовут Анна, я помогу вам с выбором. Чем могу быть полезна?" className="min-h-[60px]" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* INSTRUCTIONS */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Должностные инструкции</CardTitle>
+                <CardDescription className="text-xs">Что робот должен делать и знать</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label className="text-sm">Главная цель робота</Label>
+                  <Textarea value={instructions.main_goal || ""} onChange={e => updateForm({ instructions_config: { ...instructions, main_goal: e.target.value } })} placeholder="Помочь клиенту выбрать товар, ответить на вопросы и довести до покупки" className="min-h-[60px]" />
+                  <p className="text-xs text-muted-foreground mt-1">Какой основной результат должен достигать робот?</p>
+                </div>
+                <div>
+                  <Label className="text-sm">Обязанности и зона ответственности</Label>
+                  <Textarea value={instructions.responsibilities || ""} onChange={e => updateForm({ instructions_config: { ...instructions, responsibilities: e.target.value } })} placeholder="Отвечать на вопросы о товарах, ценах, доставке. Предлагать аналоги если нужного нет в наличии." className="min-h-[80px]" />
+                  <p className="text-xs text-muted-foreground mt-1">Перечислите конкретные задачи робота</p>
+                </div>
+                <div>
+                  <Label className="text-sm">Что робот НЕ должен делать</Label>
+                  <Textarea value={instructions.forbidden_actions || ""} onChange={e => updateForm({ instructions_config: { ...instructions, forbidden_actions: e.target.value } })} placeholder="Не давать скидки без согласования, не обсуждать конкурентов, не давать личные контакты" className="min-h-[60px]" />
+                </div>
+                <div>
+                  <Label className="text-sm">Формат ответов</Label>
+                  <Textarea value={instructions.response_format || ""} onChange={e => updateForm({ instructions_config: { ...instructions, response_format: e.target.value } })} placeholder="Короткие ответы до 3 предложений. Всегда задавать уточняющий вопрос." className="min-h-[60px]" />
+                  <p className="text-xs text-muted-foreground mt-1">Длина ответов, структура, стиль</p>
+                </div>
+                <div>
+                  <Label className="text-sm">Границы знаний</Label>
+                  <Textarea value={instructions.knowledge_boundaries || ""} onChange={e => updateForm({ instructions_config: { ...instructions, knowledge_boundaries: e.target.value } })} placeholder="Если не знает ответ — предложить связаться с менеджером. Не выдумывать характеристики товара." className="min-h-[60px]" />
+                  <p className="text-xs text-muted-foreground mt-1">Что делать, если робот не знает ответа?</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* RULES */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2"><ListChecks className="h-4 w-4 text-primary" /> Правила работы</CardTitle>
+                <CardDescription className="text-xs">Список конкретных правил, которым робот должен следовать</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {rulesList.map((rule: string, i: number) => (
+                  <div key={i} className="flex gap-2 items-start">
+                    <span className="text-xs text-muted-foreground mt-2.5 w-6 flex-shrink-0">{i + 1}.</span>
+                    <Input value={rule} onChange={e => {
+                      const newRules = [...rulesList];
+                      newRules[i] = e.target.value;
+                      updateForm({ rules_list: newRules });
+                    }} placeholder="Правило..." className="flex-1" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => updateForm({ rules_list: rulesList.filter((_: any, idx: number) => idx !== i) })}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button variant="outline" size="sm" onClick={() => updateForm({ rules_list: [...rulesList, ""] })}>
+                  <Plus className="h-4 w-4 mr-1" /> Добавить правило
+                </Button>
+                {rulesList.length === 0 && (
+                  <div className="text-xs text-muted-foreground space-y-1 mt-2 p-3 rounded-lg bg-muted/50">
+                    <p className="font-medium">Примеры правил:</p>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      <li>Всегда называть цену из объявления</li>
+                      <li>При вопросе о скидке предложить оптовую покупку</li>
+                      <li>Не отвечать на политические вопросы</li>
+                      <li>Всегда благодарить за обращение</li>
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Separator />
+
+            <div>
+              <h2 className="text-lg font-semibold mb-1">Произвольный промпт (дополнительно)</h2>
+              <p className="text-sm text-muted-foreground mb-2">Все блоки выше автоматически формируют промпт. Здесь можете дополнить его вручную.</p>
+              <Textarea value={botForm.system_prompt || ""} onChange={e => updateForm({ system_prompt: e.target.value })} placeholder="Дополнительные инструкции..." className="min-h-[200px]" />
+            </div>
           </div>
         );
 
@@ -1389,6 +1528,185 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
             {botForm.telegram_bot_token && botForm.telegram_chat_id && <Badge className="bg-green-500/20 text-green-700 border-green-300">✓ Подключён</Badge>}
           </div>
         );
+
+      case "ad_filter": {
+        const allowedIds: string[] = (botForm as any).allowed_item_ids || [];
+        const hasFilter = allowedIds.length > 0;
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Фильтр по объявлениям</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Укажите номера объявлений (ID), на которые этот робот должен отвечать. Если оставить пустым — робот отвечает на все объявления аккаунта.
+            </p>
+            
+            <Card className="bg-blue-50/50 border-blue-200">
+              <CardContent className="pt-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Совет:</strong> Создайте несколько роботов и распределите объявления по группам. 
+                  Каждый робот будет обрабатывать только свои объявления с соответствующей настройкой.
+                </p>
+              </CardContent>
+            </Card>
+
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={hasFilter}
+                onCheckedChange={(v) => {
+                  if (!v) updateForm({ allowed_item_ids: null });
+                  else updateForm({ allowed_item_ids: [] });
+                }}
+              />
+              <span className="text-sm">{hasFilter ? "Фильтр включён — только выбранные объявления" : "Фильтр выключен — все объявления"}</span>
+            </div>
+
+            {hasFilter && (
+              <div className="space-y-3">
+                <Label className="text-sm">ID объявлений (по одному на строку)</Label>
+                <Textarea
+                  value={allowedIds.join("\n")}
+                  onChange={e => {
+                    const ids = e.target.value.split("\n").map(s => s.trim()).filter(Boolean);
+                    updateForm({ allowed_item_ids: ids });
+                  }}
+                  placeholder={"123456789\n987654321\n..."}
+                  className="min-h-[120px] font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Введено: {allowedIds.length} объявлений. ID можно найти в URL объявления или в разделе «Отладка».
+                </p>
+
+                {avitoItems.length > 0 && (
+                  <div className="mt-3">
+                    <Label className="text-sm mb-2 block">Или выберите из загруженных объявлений:</Label>
+                    <div className="max-h-[300px] overflow-y-auto space-y-1 border rounded-lg p-2">
+                      {avitoItems.map(item => {
+                        const isChecked = allowedIds.includes(item.id);
+                        return (
+                          <label key={item.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer text-sm">
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={(checked) => {
+                                if (checked) updateForm({ allowed_item_ids: [...allowedIds, item.id] });
+                                else updateForm({ allowed_item_ids: allowedIds.filter((id: string) => id !== item.id) });
+                              }}
+                            />
+                            <div className="flex items-center gap-2 min-w-0">
+                              {item.image && <img src={item.image} className="w-8 h-8 rounded object-cover flex-shrink-0" alt="" />}
+                              <div className="min-w-0">
+                                <span className="block truncate">{item.title}</span>
+                                <span className="text-xs text-muted-foreground">ID: {item.id} • {item.price > 0 ? `${item.price.toLocaleString()} ₽` : ""}</span>
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {avitoItems.length === 0 && (
+                  <Button variant="outline" size="sm" onClick={loadAvitoItems} disabled={itemsLoading}>
+                    <RefreshCw className={cn("h-4 w-4 mr-1", itemsLoading && "animate-spin")} /> Загрузить объявления с Авито
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      case "handoff": {
+        const handoffRules: Array<{ target_bot_id: string; trigger_topics: string[]; description: string; return_back: boolean }> = (botForm as any).handoff_rules || [];
+        const otherBots = bots.filter(b => b.id !== bot.id);
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Repeat className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Переключение на другого робота</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Настройте автоматическое переключение разговора на другого робота, когда клиент задаёт определённые вопросы. 
+              Контекст беседы сохраняется — новый робот видит всю историю переписки.
+            </p>
+
+            {otherBots.length === 0 && (
+              <Card className="bg-amber-50/50 border-amber-200">
+                <CardContent className="pt-4">
+                  <p className="text-sm text-amber-800">Для переключения нужен минимум один другой робот. Создайте ещё одного робота.</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {handoffRules.map((rule, i) => (
+              <Card key={i} className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="text-xs">Правило #{i + 1}</Badge>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateForm({ handoff_rules: handoffRules.filter((_: any, idx: number) => idx !== i) })}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div>
+                  <Label className="text-sm">Переключить на робота</Label>
+                  <Select value={rule.target_bot_id || ""} onValueChange={v => {
+                    const newRules = [...handoffRules];
+                    newRules[i] = { ...rule, target_bot_id: v };
+                    updateForm({ handoff_rules: newRules });
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="Выберите робота" /></SelectTrigger>
+                    <SelectContent>
+                      {otherBots.map(b => <SelectItem key={b.id} value={b.id}>{b.name || "Робот"}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm">Триггерные темы / вопросы</Label>
+                  <Textarea
+                    value={(rule.trigger_topics || []).join("\n")}
+                    onChange={e => {
+                      const newRules = [...handoffRules];
+                      newRules[i] = { ...rule, trigger_topics: e.target.value.split("\n").map(s => s.trim()).filter(Boolean) };
+                      updateForm({ handoff_rules: newRules });
+                    }}
+                    placeholder={"гарантия\nвозврат товара\nрекламация"}
+                    className="min-h-[80px]"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">По одной теме на строку. Если клиент задаёт вопрос на эту тему — происходит переключение.</p>
+                </div>
+                <div>
+                  <Label className="text-sm">Описание (для ИИ)</Label>
+                  <Input
+                    value={rule.description || ""}
+                    onChange={e => {
+                      const newRules = [...handoffRules];
+                      newRules[i] = { ...rule, description: e.target.value };
+                      updateForm({ handoff_rules: newRules });
+                    }}
+                    placeholder="Этот робот специализируется на гарантийных вопросах"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={rule.return_back !== false}
+                    onCheckedChange={v => {
+                      const newRules = [...handoffRules];
+                      newRules[i] = { ...rule, return_back: v };
+                      updateForm({ handoff_rules: newRules });
+                    }}
+                  />
+                  <span className="text-sm">Вернуть клиента обратно после завершения</span>
+                </div>
+              </Card>
+            ))}
+
+            <Button variant="outline" onClick={() => updateForm({ handoff_rules: [...handoffRules, { target_bot_id: "", trigger_topics: [], description: "", return_back: true }] })} disabled={otherBots.length === 0}>
+              <Plus className="h-4 w-4 mr-1" /> Добавить правило переключения
+            </Button>
+          </div>
+        );
+      }
 
       case "debug":
         return (

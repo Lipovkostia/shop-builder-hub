@@ -255,12 +255,69 @@ function buildSmartSetupPrompt(data: any): string {
   return parts.join("");
 }
 
+function buildPersonalityPrompt(bot: any): string {
+  const parts: string[] = [];
+  const p = bot.personality_config;
+  const ins = bot.instructions_config;
+  const rules: string[] = bot.rules_list || [];
+
+  if (p && typeof p === "object") {
+    const pParts: string[] = [];
+    if (p.bot_name) pParts.push(`Тебя зовут ${p.bot_name}.`);
+    if (p.character_traits) pParts.push(`Твои черты характера: ${p.character_traits}.`);
+    if (p.communication_style) pParts.push(`Стиль общения: ${p.communication_style}.`);
+    if (p.tone) pParts.push(`Тон: ${p.tone}.`);
+    if (p.emoji_usage) {
+      const emojiMap: Record<string, string> = { none: "Не используй эмодзи.", minimal: "Используй эмодзи очень умеренно, 1-2 на сообщение.", moderate: "Можешь умеренно использовать эмодзи.", frequent: "Активно используй эмодзи." };
+      pParts.push(emojiMap[p.emoji_usage] || "");
+    }
+    if (p.greeting_style) pParts.push(`Приветствуй клиента так: "${p.greeting_style}"`);
+    if (pParts.length > 0) parts.push(`\n\n--- ЛИЧНОСТЬ ---\n${pParts.join(" ")}`);
+  }
+
+  if (ins && typeof ins === "object") {
+    const iParts: string[] = [];
+    if (ins.main_goal) iParts.push(`Главная цель: ${ins.main_goal}`);
+    if (ins.responsibilities) iParts.push(`Обязанности: ${ins.responsibilities}`);
+    if (ins.forbidden_actions) iParts.push(`Запрещено: ${ins.forbidden_actions}`);
+    if (ins.response_format) iParts.push(`Формат ответов: ${ins.response_format}`);
+    if (ins.knowledge_boundaries) iParts.push(`Границы знаний: ${ins.knowledge_boundaries}`);
+    if (iParts.length > 0) parts.push(`\n\n--- ДОЛЖНОСТНЫЕ ИНСТРУКЦИИ ---\n${iParts.join("\n")}`);
+  }
+
+  if (rules.length > 0) {
+    const rulesText = rules.map((r: string, i: number) => `${i + 1}. ${r}`).join("\n");
+    parts.push(`\n\n--- ПРАВИЛА ---\nСтрого следуй этим правилам:\n${rulesText}`);
+  }
+
+  return parts.join("");
+}
+
 function getEffectiveSystemPrompt(bot: any): string {
+  let base = "";
   if (bot.mode === "smart" && bot.smart_setup_data) {
     const smartPrompt = buildSmartSetupPrompt(bot.smart_setup_data);
-    if (smartPrompt) return smartPrompt;
+    if (smartPrompt) base = smartPrompt;
   }
-  return bot.system_prompt || "Ты — помощник продавца на Авито. Отвечай вежливо и помогай с вопросами о товарах.";
+  if (!base) {
+    base = bot.system_prompt || "Ты — помощник продавца на Авито. Отвечай вежливо и помогай с вопросами о товарах.";
+  }
+  // Append personality, instructions, rules from structured config
+  base += buildPersonalityPrompt(bot);
+
+  // Append handoff instructions if handoff_rules exist
+  const handoffRules = bot.handoff_rules;
+  if (Array.isArray(handoffRules) && handoffRules.length > 0) {
+    const handoffText = handoffRules
+      .filter((r: any) => r.target_bot_id && r.trigger_topics?.length > 0)
+      .map((r: any, i: number) => `${i + 1}. Темы: ${r.trigger_topics.join(", ")} → ${r.description || "переключить на специалиста"}`)
+      .join("\n");
+    if (handoffText) {
+      base += `\n\n--- ПЕРЕКЛЮЧЕНИЕ НА ДРУГОГО СПЕЦИАЛИСТА ---\nЕсли клиент задаёт вопрос на одну из этих тем, ответь: "[HANDOFF:номер_правила]" в начале ответа, а затем вежливо сообщи что передаёшь клиента специалисту.\n${handoffText}\n--- КОНЕЦ ПРАВИЛ ПЕРЕКЛЮЧЕНИЯ ---`;
+    }
+  }
+
+  return base;
 }
 
 // Check if bot should work right now based on schedule
@@ -656,6 +713,12 @@ Deno.serve(async (req) => {
           const itemId = chat.context?.value?.id;
 
           if (!lastMsg || lastMsg.author_id === userId) continue;
+
+          // Filter by allowed_item_ids if configured
+          const allowedIds = bot.allowed_item_ids;
+          if (Array.isArray(allowedIds) && allowedIds.length > 0 && itemId) {
+            if (!allowedIds.includes(String(itemId))) continue;
+          }
 
           let { data: dbChat } = await supabase
             .from("avito_bot_chats")
