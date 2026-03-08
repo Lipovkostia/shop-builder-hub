@@ -29,6 +29,8 @@ interface AvitoImageEditorProps {
   /** Currently selected avito images from params */
   avitoImages?: string[];
   onSave: (selectedImages: string[]) => void;
+  /** Callback when new images are uploaded to product */
+  onImagesAdded?: (newImageUrls: string[]) => void;
 }
 
 function loadImageDimensions(url: string): Promise<{ width: number; height: number }> {
