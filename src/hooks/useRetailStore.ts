@@ -264,32 +264,42 @@ export function useRetailStore(subdomain: string | undefined) {
     }
   }, [store?.id, store?.retail_catalog_id, products]);
 
-  const [storeLoaded, setStoreLoaded] = useState(false);
-  const [productsLoaded, setProductsLoaded] = useState(false);
-
+  // Single sequential load: store first, then products
   useEffect(() => {
-    setLoading(true);
-    setStoreLoaded(false);
-    setProductsLoaded(false);
-    fetchStore().finally(() => setStoreLoaded(true));
-  }, [fetchStore]);
-
-  useEffect(() => {
-    if (storeLoaded && store?.id) {
-      setProductsLoaded(false);
-      fetchProducts().finally(() => setProductsLoaded(true));
-    } else if (storeLoaded && !store) {
-      // No store found, nothing to load
-      setProductsLoaded(true);
-    }
-  }, [storeLoaded, store?.id, fetchProducts]);
-
-  // Loading completes when both store and products are loaded
-  useEffect(() => {
-    if (storeLoaded && productsLoaded) {
+    if (!subdomain) {
       setLoading(false);
+      return;
     }
-  }, [storeLoaded, productsLoaded]);
+    
+    let cancelled = false;
+    
+    const loadAll = async () => {
+      setLoading(true);
+      await fetchStore();
+    };
+    
+    loadAll();
+    
+    return () => { cancelled = true; };
+  }, [subdomain, fetchStore]);
+
+  // Fetch products after store is loaded
+  useEffect(() => {
+    if (!store?.id) return;
+    
+    let cancelled = false;
+    
+    const loadProducts = async () => {
+      await fetchProducts();
+      if (!cancelled) {
+        setLoading(false);
+      }
+    };
+    
+    loadProducts();
+    
+    return () => { cancelled = true; };
+  }, [store?.id, store?.retail_catalog_id, fetchProducts]);
 
   useEffect(() => {
     if (store?.id) {
