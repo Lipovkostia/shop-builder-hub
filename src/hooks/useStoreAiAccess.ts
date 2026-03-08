@@ -23,6 +23,23 @@ const defaultAccess: Omit<StoreAiAccess, "store_id"> = {
   unlocked_at: null,
 };
 
+// Helper to bypass generated types for new tables
+async function queryAiAccess(storeId: string) {
+  const { data, error } = await (supabase as any)
+    .from("store_ai_access")
+    .select("*")
+    .eq("store_id", storeId)
+    .maybeSingle();
+  return { data, error };
+}
+
+async function upsertAiAccess(storeId: string, updates: Record<string, unknown>, isNew: boolean) {
+  if (isNew) {
+    return await (supabase as any).from("store_ai_access").insert({ store_id: storeId, ...updates });
+  }
+  return await (supabase as any).from("store_ai_access").update(updates).eq("store_id", storeId);
+}
+
 export function useStoreAiAccess(storeId: string | null) {
   const [access, setAccess] = useState<StoreAiAccess | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,16 +51,9 @@ export function useStoreAiAccess(storeId: string | null) {
       setLoading(false);
       return;
     }
-
     try {
-      const { data, error } = await supabase
-        .from("store_ai_access")
-        .select("*")
-        .eq("store_id", storeId)
-        .maybeSingle();
-
+      const { data, error } = await queryAiAccess(storeId);
       if (error) throw error;
-
       if (data) {
         setAccess({
           id: data.id,
@@ -76,35 +86,25 @@ export function useStoreAiAccess(storeId: string | null) {
       if (!storeId) return false;
       setVerifying(true);
       try {
-        const { data, error } = await supabase.rpc("verify_ai_password", {
+        // Use raw RPC call to bypass types
+        const { data, error } = await (supabase as any).rpc("verify_ai_password", {
           _password: password,
         });
         if (error) throw error;
         if (!data) return false;
 
-        // Password correct — upsert store_ai_access
-        const { data: existing } = await supabase
-          .from("store_ai_access")
-          .select("id")
-          .eq("store_id", storeId)
-          .maybeSingle();
+        // Check if row exists
+        const { data: existing } = await queryAiAccess(storeId);
 
-        if (existing) {
-          await supabase
-            .from("store_ai_access")
-            .update({
-              is_unlocked: true,
-              unlocked_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .eq("store_id", storeId);
-        } else {
-          await supabase.from("store_ai_access").insert({
-            store_id: storeId,
+        await upsertAiAccess(
+          storeId,
+          {
             is_unlocked: true,
             unlocked_at: new Date().toISOString(),
-          });
-        }
+            updated_at: new Date().toISOString(),
+          },
+          !existing
+        );
 
         await fetchAccess();
         return true;
@@ -122,29 +122,12 @@ export function useStoreAiAccess(storeId: string | null) {
     async (feature: string, enabled: boolean) => {
       if (!storeId) return;
       try {
-        const { data: existing } = await supabase
-          .from("store_ai_access")
-          .select("id")
-          .eq("store_id", storeId)
-          .maybeSingle();
-
-        const updateData: Record<string, unknown> = {
-          [feature]: enabled,
-          updated_at: new Date().toISOString(),
-        };
-
-        if (existing) {
-          await supabase
-            .from("store_ai_access")
-            .update(updateData)
-            .eq("store_id", storeId);
-        } else {
-          await supabase.from("store_ai_access").insert({
-            store_id: storeId,
-            ...updateData,
-          });
-        }
-
+        const { data: existing } = await queryAiAccess(storeId);
+        await upsertAiAccess(
+          storeId,
+          { [feature]: enabled, updated_at: new Date().toISOString() },
+          !existing
+        );
         await fetchAccess();
       } catch (err) {
         console.error("Error updating AI feature:", err);
@@ -156,7 +139,7 @@ export function useStoreAiAccess(storeId: string | null) {
   const disableAi = useCallback(async () => {
     if (!storeId) return;
     try {
-      await supabase
+      await (supabase as any)
         .from("store_ai_access")
         .update({
           is_unlocked: false,
