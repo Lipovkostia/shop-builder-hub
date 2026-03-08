@@ -97,6 +97,7 @@ const botSidebarItems: { id: BotSection; label: string; icon: React.ElementType 
   { id: "qa", label: "Вопрос-ответ", icon: HelpCircle },
   { id: "ad_filter", label: "Объявления", icon: Filter },
   { id: "handoff", label: "Переключение", icon: Repeat },
+  { id: "sales", label: "Продажа", icon: ShoppingCart },
   { id: "leads", label: "Лиды", icon: Users },
   { id: "escalation", label: "Эскалация", icon: Shield },
   { id: "completion", label: "Завершение", icon: ChevronRight },
