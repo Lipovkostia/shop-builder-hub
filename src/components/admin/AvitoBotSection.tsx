@@ -1182,24 +1182,35 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
                 <CardTitle className="text-base flex items-center gap-2"><User className="h-4 w-4 text-primary" /> Личность робота</CardTitle>
                 <CardDescription className="text-xs">Определите характер и стиль общения робота</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+               <CardContent className="space-y-3">
                 <div>
-                  <Label className="text-sm">Как зовут робота?</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Как зовут робота?</Label>
+                  </div>
                   <Input value={personality.bot_name || ""} onChange={e => updateForm({ personality_config: { ...personality, bot_name: e.target.value } })} placeholder="Например: Анна, Помощник Алексей" />
                   <p className="text-xs text-muted-foreground mt-1">Имя, которым робот представляется клиентам</p>
                 </div>
                 <div>
-                  <Label className="text-sm">Черты характера</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Черты характера</Label>
+                    <AIFillBtn fieldKey="p_traits" value={personality.character_traits || ""} context="Черты характера робота-помощника на Авито" onResult={v => updateForm({ personality_config: { ...personality, character_traits: v } })} />
+                  </div>
                   <Textarea value={personality.character_traits || ""} onChange={e => updateForm({ personality_config: { ...personality, character_traits: e.target.value } })} placeholder="Дружелюбный, профессиональный, внимательный к деталям, терпеливый" className="min-h-[60px]" />
                   <p className="text-xs text-muted-foreground mt-1">Какие качества проявляет робот в общении?</p>
                 </div>
                 <div>
-                  <Label className="text-sm">Стиль общения</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Стиль общения</Label>
+                    <AIFillBtn fieldKey="p_style" value={personality.communication_style || ""} context="Стиль общения робота на Авито (формальный/дружеский)" onResult={v => updateForm({ personality_config: { ...personality, communication_style: v } })} />
+                  </div>
                   <Textarea value={personality.communication_style || ""} onChange={e => updateForm({ personality_config: { ...personality, communication_style: e.target.value } })} placeholder="Деловой но тёплый, без канцеляризмов, простыми словами" className="min-h-[60px]" />
                   <p className="text-xs text-muted-foreground mt-1">Как робот формулирует мысли? Формально или дружески?</p>
                 </div>
                 <div>
-                  <Label className="text-sm">Тон и настроение</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Тон и настроение</Label>
+                    <AIFillBtn fieldKey="p_tone" value={personality.tone || ""} context="Тон и настроение робота-помощника" onResult={v => updateForm({ personality_config: { ...personality, tone: v } })} />
+                  </div>
                   <Input value={personality.tone || ""} onChange={e => updateForm({ personality_config: { ...personality, tone: e.target.value } })} placeholder="Позитивный, уверенный, готовый помочь" />
                 </div>
                 <div>
@@ -1215,7 +1226,10 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-sm">Как робот приветствует клиента?</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Как робот приветствует клиента?</Label>
+                    <AIFillBtn fieldKey="p_greeting" value={personality.greeting_style || ""} context="Приветствие робота для клиентов на Авито" onResult={v => updateForm({ personality_config: { ...personality, greeting_style: v } })} />
+                  </div>
                   <Textarea value={personality.greeting_style || ""} onChange={e => updateForm({ personality_config: { ...personality, greeting_style: e.target.value } })} placeholder="Здравствуйте! Меня зовут Анна, я помогу вам с выбором. Чем могу быть полезна?" className="min-h-[60px]" />
                 </div>
               </CardContent>
@@ -1229,26 +1243,41 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <Label className="text-sm">Главная цель робота</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Главная цель робота</Label>
+                    <AIFillBtn fieldKey="i_goal" value={instructions.main_goal || ""} context="Главная цель робота-помощника на Авито" onResult={v => updateForm({ instructions_config: { ...instructions, main_goal: v } })} />
+                  </div>
                   <Textarea value={instructions.main_goal || ""} onChange={e => updateForm({ instructions_config: { ...instructions, main_goal: e.target.value } })} placeholder="Помочь клиенту выбрать товар, ответить на вопросы и довести до покупки" className="min-h-[60px]" />
                   <p className="text-xs text-muted-foreground mt-1">Какой основной результат должен достигать робот?</p>
                 </div>
                 <div>
-                  <Label className="text-sm">Обязанности и зона ответственности</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Обязанности и зона ответственности</Label>
+                    <AIFillBtn fieldKey="i_resp" value={instructions.responsibilities || ""} context="Обязанности и зона ответственности робота на Авито" onResult={v => updateForm({ instructions_config: { ...instructions, responsibilities: v } })} />
+                  </div>
                   <Textarea value={instructions.responsibilities || ""} onChange={e => updateForm({ instructions_config: { ...instructions, responsibilities: e.target.value } })} placeholder="Отвечать на вопросы о товарах, ценах, доставке. Предлагать аналоги если нужного нет в наличии." className="min-h-[80px]" />
                   <p className="text-xs text-muted-foreground mt-1">Перечислите конкретные задачи робота</p>
                 </div>
                 <div>
-                  <Label className="text-sm">Что робот НЕ должен делать</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Что робот НЕ должен делать</Label>
+                    <AIFillBtn fieldKey="i_forbidden" value={instructions.forbidden_actions || ""} context="Запреты и ограничения для робота на Авито" onResult={v => updateForm({ instructions_config: { ...instructions, forbidden_actions: v } })} />
+                  </div>
                   <Textarea value={instructions.forbidden_actions || ""} onChange={e => updateForm({ instructions_config: { ...instructions, forbidden_actions: e.target.value } })} placeholder="Не давать скидки без согласования, не обсуждать конкурентов, не давать личные контакты" className="min-h-[60px]" />
                 </div>
                 <div>
-                  <Label className="text-sm">Формат ответов</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Формат ответов</Label>
+                    <AIFillBtn fieldKey="i_format" value={instructions.response_format || ""} context="Формат и стиль ответов робота на Авито" onResult={v => updateForm({ instructions_config: { ...instructions, response_format: v } })} />
+                  </div>
                   <Textarea value={instructions.response_format || ""} onChange={e => updateForm({ instructions_config: { ...instructions, response_format: e.target.value } })} placeholder="Короткие ответы до 3 предложений. Всегда задавать уточняющий вопрос." className="min-h-[60px]" />
                   <p className="text-xs text-muted-foreground mt-1">Длина ответов, структура, стиль</p>
                 </div>
                 <div>
-                  <Label className="text-sm">Границы знаний</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Границы знаний</Label>
+                    <AIFillBtn fieldKey="i_boundaries" value={instructions.knowledge_boundaries || ""} context="Границы знаний робота — что делать если не знает ответа" onResult={v => updateForm({ instructions_config: { ...instructions, knowledge_boundaries: v } })} />
+                  </div>
                   <Textarea value={instructions.knowledge_boundaries || ""} onChange={e => updateForm({ instructions_config: { ...instructions, knowledge_boundaries: e.target.value } })} placeholder="Если не знает ответ — предложить связаться с менеджером. Не выдумывать характеристики товара." className="min-h-[60px]" />
                   <p className="text-xs text-muted-foreground mt-1">Что делать, если робот не знает ответа?</p>
                 </div>
