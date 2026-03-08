@@ -248,6 +248,7 @@ export type Database = {
           response_delay_seconds: number
           schedule_config: Json | null
           schedule_mode: string
+          seller_stop_command: string | null
           smart_setup_data: Json | null
           store_id: string
           system_prompt: string | null
@@ -275,6 +276,7 @@ export type Database = {
           response_delay_seconds?: number
           schedule_config?: Json | null
           schedule_mode?: string
+          seller_stop_command?: string | null
           smart_setup_data?: Json | null
           store_id: string
           system_prompt?: string | null
@@ -302,6 +304,7 @@ export type Database = {
           response_delay_seconds?: number
           schedule_config?: Json | null
           schedule_mode?: string
+          seller_stop_command?: string | null
           smart_setup_data?: Json | null
           store_id?: string
           system_prompt?: string | null
