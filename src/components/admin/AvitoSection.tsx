@@ -488,11 +488,11 @@ function AvitoFeedTable({
                       }}
                     />
                   </div>
-                  <div className="flex-shrink-0 px-1 py-1" style={{ width: colWidths.photo }}>
+                  <div className="flex-shrink-0 px-1 py-1 cursor-pointer" style={{ width: colWidths.photo }} onClick={() => setEditingImageProduct({ id: product.id, name: product.name, images: product.images || [] })}>
                     {imageUrl ? (
-                      <img src={imageUrl} alt="" className="w-9 h-9 rounded object-cover" />
+                      <img src={imageUrl} alt="" className="w-9 h-9 rounded object-cover hover:ring-2 hover:ring-primary transition-all" />
                     ) : (
-                      <div className="w-9 h-9 rounded bg-muted flex items-center justify-center">
+                      <div className="w-9 h-9 rounded bg-muted flex items-center justify-center hover:ring-2 hover:ring-primary transition-all">
                         <Package className="h-3.5 w-3.5 text-muted-foreground" />
                       </div>
                     )}
