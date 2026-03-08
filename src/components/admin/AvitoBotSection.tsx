@@ -504,7 +504,7 @@ function DashboardView({ stats, recentChats, loading, bots, accounts, onRefresh,
             </div>
           </CardContent>
         </Card>
-      )
+      )}
 
       {/* Bots Overview */}
       <div>
