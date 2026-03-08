@@ -86,19 +86,14 @@ export function useAvitoFeedProducts(storeId: string | null) {
   }, [storeId]);
 
   const fetchFeedProducts = useCallback(async () => {
-    if (!storeId) {
-      console.warn("[AvitoFeed] No storeId, skipping fetch");
-      return;
-    }
+    if (!storeId) return;
     setLoading(true);
-    console.log("[AvitoFeed] Fetching feed products for store:", storeId);
     try {
-      const { data, error, count } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from("avito_feed_products")
-        .select("*", { count: "exact" })
+        .select("*")
         .eq("store_id", storeId)
         .order("created_at", { ascending: false });
-      console.log("[AvitoFeed] Result:", { dataLength: data?.length, error, count });
       if (error) throw error;
       setFeedProducts((data || []) as AvitoFeedProduct[]);
     } catch (err: any) {
