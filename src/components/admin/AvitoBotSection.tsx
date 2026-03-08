@@ -1332,8 +1332,13 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
               </div>
             ) : (
               <div>
-                <h2 className="text-lg font-semibold mb-1">Произвольный промпт (дополнительно)</h2>
-                <p className="text-sm text-muted-foreground mb-2">Все блоки выше автоматически формируют промпт. Здесь можете дополнить его вручную.</p>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h2 className="text-lg font-semibold mb-1">Произвольный промпт (дополнительно)</h2>
+                    <p className="text-sm text-muted-foreground">Все блоки выше автоматически формируют промпт. Здесь можете дополнить его вручную.</p>
+                  </div>
+                  <AIFillBtn fieldKey="system_prompt" value={botForm.system_prompt || ""} context="Системный промпт для бота-помощника на Авито" onResult={v => updateForm({ system_prompt: v })} />
+                </div>
                 <Textarea value={botForm.system_prompt || ""} onChange={e => updateForm({ system_prompt: e.target.value })} placeholder="Дополнительные инструкции..." className="min-h-[200px]" />
               </div>
             )}
