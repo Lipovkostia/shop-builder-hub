@@ -259,6 +259,9 @@ export type Database = {
           system_prompt: string | null
           telegram_bot_token: string | null
           telegram_chat_id: string | null
+          telegram_debug_notifications: boolean | null
+          telegram_lead_notifications: boolean | null
+          telegram_new_chat_notifications: boolean | null
           telegram_notification_format: string | null
           updated_at: string
           upgrade_after_messages: number | null
@@ -292,6 +295,9 @@ export type Database = {
           system_prompt?: string | null
           telegram_bot_token?: string | null
           telegram_chat_id?: string | null
+          telegram_debug_notifications?: boolean | null
+          telegram_lead_notifications?: boolean | null
+          telegram_new_chat_notifications?: boolean | null
           telegram_notification_format?: string | null
           updated_at?: string
           upgrade_after_messages?: number | null
@@ -325,6 +331,9 @@ export type Database = {
           system_prompt?: string | null
           telegram_bot_token?: string | null
           telegram_chat_id?: string | null
+          telegram_debug_notifications?: boolean | null
+          telegram_lead_notifications?: boolean | null
+          telegram_new_chat_notifications?: boolean | null
           telegram_notification_format?: string | null
           updated_at?: string
           upgrade_after_messages?: number | null
