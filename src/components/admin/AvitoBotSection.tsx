@@ -165,6 +165,7 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
 
   useEffect(() => {
     if (editingBot) {
+      const smartData = (editingBot as any).smart_setup_data || {};
       setBotForm({
         name: editingBot.name || "",
         mode: editingBot.mode || "smart",
@@ -184,7 +185,14 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
         avito_account_id: (editingBot as any).avito_account_id || null,
         telegram_bot_token: (editingBot as any).telegram_bot_token || "",
         telegram_chat_id: (editingBot as any).telegram_chat_id || "",
-      });
+        smart_setup_data: {
+          category: smartData.category || "products",
+          company_info: smartData.company_info || "",
+          pricing_info: smartData.pricing_info || "",
+          delivery_info: smartData.delivery_info || "",
+          customer_interaction: smartData.customer_interaction || "",
+        },
+      } as any);
       loadQAItems(editingBot.id);
     }
   }, [editingBot]);
