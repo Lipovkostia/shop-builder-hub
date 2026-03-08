@@ -13,6 +13,7 @@ import LandingProductTable from "@/components/landing/LandingProductTable";
 
 import LandingDemoCart from "@/components/landing/LandingDemoCart";
 import LandingFeaturedCarousel from "@/components/landing/LandingFeaturedCarousel";
+import LandingInfoBlocks from "@/components/landing/LandingInfoBlocks";
 
 interface DemoProduct {
   id: string;
