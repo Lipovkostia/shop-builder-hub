@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { useOnboarding } from "@/contexts/OnboardingContext";
+import { useOnboardingSafe } from "@/contexts/OnboardingContext";
 import { Sparkles } from "lucide-react";
 
 /**
@@ -7,7 +7,14 @@ import { Sparkles } from "lucide-react";
  * Градиентный фон, иконка, компактный размер.
  */
 export function AdminOnboardingBanner() {
-  const { currentStep, isActive, nextStep } = useOnboarding();
+  const onboarding = useOnboardingSafe();
+
+  // Если провайдер не подключен — тихо пропускаем баннер, не ломая страницу
+  if (!onboarding) {
+    return null;
+  }
+
+  const { currentStep, isActive, nextStep } = onboarding;
 
   // Добавляем пульсацию на элемент
   useEffect(() => {
