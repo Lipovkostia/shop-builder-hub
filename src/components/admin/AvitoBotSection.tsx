@@ -1394,7 +1394,14 @@ function BotEditor({ bot, botForm, setBotForm, botSection, setBotSection, saving
                   ) : avitoItems.length === 0 ? (
                     <div className="text-center text-muted-foreground text-xs py-4">
                       <Package className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                      Нет товаров или аккаунт не привязан
+                      {itemsError ? (
+                        <p className="text-destructive">{itemsError}</p>
+                      ) : (
+                        <p>Нет товаров или аккаунт не привязан</p>
+                      )}
+                      <Button variant="outline" size="sm" className="mt-2" onClick={loadAvitoItems}>
+                        <RefreshCw className="h-3 w-3 mr-1" /> Повторить
+                      </Button>
                     </div>
                   ) : (
                     <div className="space-y-1.5">
