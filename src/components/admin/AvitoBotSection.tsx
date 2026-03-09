@@ -771,6 +771,7 @@ function BotsListView({ bots, accounts, showNewBot, setShowNewBot, newBotName, s
                     <div>
                       <div className="font-medium text-sm flex items-center gap-2">
                         {bot.name || "Без имени"}
+                        <span className="text-[10px] text-muted-foreground font-mono">#{getBotNumber(bot.id)}</span>
                       </div>
                       <BotStatusIndicator bot={bot} account={account} />
                       <div className="text-xs mt-0.5 flex items-center gap-1.5">
