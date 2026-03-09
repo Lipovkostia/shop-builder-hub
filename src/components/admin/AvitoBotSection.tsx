@@ -19,6 +19,15 @@ import { AvitoBotSmartSetup, SmartSetupData, buildSystemPromptFromSmartSetup } f
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 
+// Generate a stable 6-digit number from a UUID
+function getBotNumber(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
+  }
+  return String(Math.abs(hash) % 900000 + 100000);
+}
+
 interface AvitoBotSectionProps {
   storeId: string | null;
 }
@@ -646,7 +655,10 @@ function DashboardView({ stats, recentChats, loading, bots, accounts, onRefresh,
                         <div className={cn("w-8 h-8 rounded-full flex items-center justify-center", bot.is_active ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground")}>
                           <Bot className="h-4 w-4" />
                         </div>
-                        <span className="font-medium text-sm">{bot.name || "Без имени"}</span>
+                        <div>
+                          <span className="font-medium text-sm">{bot.name || "Без имени"}</span>
+                          <span className="ml-2 text-[10px] text-muted-foreground font-mono">#{getBotNumber(bot.id)}</span>
+                        </div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
@@ -768,6 +780,7 @@ function BotsListView({ bots, accounts, showNewBot, setShowNewBot, newBotName, s
                     <div>
                       <div className="font-medium text-sm flex items-center gap-2">
                         {bot.name || "Без имени"}
+                        <span className="text-[10px] text-muted-foreground font-mono">#{getBotNumber(bot.id)}</span>
                       </div>
                       <BotStatusIndicator bot={bot} account={account} />
                       <div className="text-xs mt-0.5 flex items-center gap-1.5">

@@ -1135,10 +1135,10 @@ Deno.serve(async (req) => {
           // Skip if no message or last message is from seller (us)
           if (!lastMsg || lastMsg.author_id === userId) continue;
 
-          // Skip messages older than 30 minutes to avoid processing stale chats
+          // Skip messages older than 2 hours to avoid processing very stale chats
           const msgTime = lastMsg.created ? new Date(lastMsg.created * 1000).getTime() : 0;
-          const thirtyMinAgo = Date.now() - 30 * 60 * 1000;
-          if (msgTime > 0 && msgTime < thirtyMinAgo) continue;
+          const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
+          if (msgTime > 0 && msgTime < twoHoursAgo) continue;
 
           // Filter by allowed_item_ids if configured
           const allowedIds = bot.allowed_item_ids;
@@ -1161,6 +1161,7 @@ Deno.serve(async (req) => {
                 avito_chat_id: String(chatId),
                 avito_user_id: String(lastMsg.author_id),
                 avito_user_name: chat.users?.[0]?.name || "",
+                last_message_at: new Date(0).toISOString(), // Set to epoch so first message is always processed
               })
               .select()
               .single();
@@ -1174,13 +1175,24 @@ Deno.serve(async (req) => {
           if (dbChat.is_escalated) continue;
           if (bot.max_responses && dbChat.bot_responses_count >= bot.max_responses) continue;
 
-          // Check if we already responded to this message by comparing timestamps
-          const lastMsgTimestamp = lastMsg.created ? new Date(lastMsg.created * 1000).toISOString() : null;
-          if (dbChat.last_message_at && lastMsgTimestamp) {
-            const dbTime = new Date(dbChat.last_message_at).getTime();
-            const avitoTime = new Date(lastMsgTimestamp).getTime();
-            // If our last recorded activity is after this message, skip (already processed)
-            if (dbTime >= avitoTime) continue;
+          // Check if we already responded to this message using Avito message ID
+          const lastMsgId = String(lastMsg.id || "");
+          if (lastMsgId) {
+            const { data: existingMsg } = await supabase
+              .from("avito_bot_messages")
+              .select("id")
+              .eq("chat_id", dbChat.id)
+              .eq("avito_message_id", lastMsgId)
+              .maybeSingle();
+            if (existingMsg) continue; // Already processed this exact message
+          } else {
+            // Fallback: timestamp comparison with 5-second tolerance
+            const lastMsgTimestamp = lastMsg.created ? new Date(lastMsg.created * 1000).toISOString() : null;
+            if (dbChat.last_message_at && lastMsgTimestamp) {
+              const dbTime = new Date(dbChat.last_message_at).getTime();
+              const avitoTime = new Date(lastMsgTimestamp).getTime();
+              if (dbTime >= avitoTime + 5000) continue;
+            }
           }
 
           // Fetch only last 10 messages (not 20) to reduce token usage
@@ -1358,6 +1370,7 @@ Deno.serve(async (req) => {
               store_id,
               role: "user",
               content: lastMsg.content?.text || lastMsg.text || "",
+              avito_message_id: String(lastMsg.id || ""),
             },
             {
               chat_id: dbChat.id,
