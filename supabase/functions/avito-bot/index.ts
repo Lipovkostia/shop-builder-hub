@@ -1370,6 +1370,7 @@ Deno.serve(async (req) => {
               store_id,
               role: "user",
               content: lastMsg.content?.text || lastMsg.text || "",
+              avito_message_id: String(lastMsg.id || ""),
             },
             {
               chat_id: dbChat.id,
