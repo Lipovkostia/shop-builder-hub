@@ -19,7 +19,15 @@ import { AvitoBotSmartSetup, SmartSetupData, buildSystemPromptFromSmartSetup } f
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 
-interface AvitoBotSectionProps {
+// Generate a stable 6-digit number from a UUID
+function getBotNumber(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
+  }
+  return String(Math.abs(hash) % 900000 + 100000);
+}
+
   storeId: string | null;
 }
 
