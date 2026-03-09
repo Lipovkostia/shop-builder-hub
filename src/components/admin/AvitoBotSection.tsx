@@ -646,7 +646,10 @@ function DashboardView({ stats, recentChats, loading, bots, accounts, onRefresh,
                         <div className={cn("w-8 h-8 rounded-full flex items-center justify-center", bot.is_active ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground")}>
                           <Bot className="h-4 w-4" />
                         </div>
-                        <span className="font-medium text-sm">{bot.name || "Без имени"}</span>
+                        <div>
+                          <span className="font-medium text-sm">{bot.name || "Без имени"}</span>
+                          <span className="ml-2 text-[10px] text-muted-foreground font-mono">#{getBotNumber(bot.id)}</span>
+                        </div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
