@@ -28,6 +28,7 @@ function getBotNumber(id: string): string {
   return String(Math.abs(hash) % 900000 + 100000);
 }
 
+interface AvitoBotSectionProps {
   storeId: string | null;
 }
 
