@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { getSupportedAudioMimeType } from "@/lib/audioUtils";
 import { 
   Sparkles, 
@@ -19,6 +19,11 @@ import {
   Upload,
   ChevronDown,
   BookOpen,
+  Save,
+  LayoutTemplate,
+  ArrowRight,
+  Plus,
+  RefreshCw,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -26,6 +31,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useAIAssistant, FoundProduct, AssistantState } from "@/hooks/useAIAssistant";
 import { useCatalogProductSettings } from "@/hooks/useCatalogProductSettings";
 import { useStoreCatalogs } from "@/hooks/useStoreCatalogs";
@@ -84,6 +97,41 @@ const quickCommands = [
   },
 ];
 
+// Import templates
+interface ImportTemplate {
+  id: string;
+  name: string;
+  mapping: ColumnMapping;
+  hideNotInFile: boolean;
+}
+
+const DEFAULT_TEMPLATES: ImportTemplate[] = [
+  {
+    id: 'default-template',
+    name: 'Мой шаблон',
+    mapping: {
+      identifierType: 'sku',
+      identifierColumn: 1, // колонка 2 (0-indexed)
+      fieldsToUpdate: {
+        buyPrice: null,
+        price: 9, // колонка 10 (0-indexed)
+        unit: null,
+        name: 5, // колонка 6 (0-indexed)
+        description: null,
+        group: null,
+        volume: null,
+        photos: null,
+      }
+    },
+    hideNotInFile: true,
+  }
+];
+
+function formatPrice(price: number | null | undefined): string {
+  if (price === undefined || price === null || isNaN(price) || price === 0) return '—';
+  return new Intl.NumberFormat('ru-RU').format(price) + ' ₽';
+}
+
 export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catalogName }: AIAssistantPanelProps) {
   const { toast } = useToast();
   const [query, setQuery] = useState("");
@@ -106,7 +154,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
   const [importProgress, setImportProgress] = useState<PriceListImportProgress | null>(null);
   const [importStatus, setImportStatus] = useState<string>('');
   
-  // Column mapping state - using extended mapping interface
+  // Column mapping state
   const [excelPreview, setExcelPreview] = useState<ExcelPreviewData | null>(null);
   const [columnMapping, setColumnMapping] = useState<ColumnMapping>({
     identifierType: 'name',
@@ -132,6 +180,18 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
   const [productAnalysis, setProductAnalysis] = useState<ProductAnalysis | null>(null);
   const [parsedProducts, setParsedProducts] = useState<PriceListProduct[]>([]);
   
+  // Preview table state (after column mapping confirmed)
+  const [showPreviewTable, setShowPreviewTable] = useState(false);
+  const [previewAnalysis, setPreviewAnalysis] = useState<ProductAnalysis | null>(null);
+  const [previewProducts, setPreviewProducts] = useState<PriceListProduct[]>([]);
+  
+  // Templates
+  const [templates] = useState<ImportTemplate[]>(DEFAULT_TEMPLATES);
+  const [showTemplates, setShowTemplates] = useState(false);
+  
+  // Full-screen mode when file is loaded
+  const isFullScreen = !!(excelPreview || showPreviewTable || isImporting);
+  
   const {
     state,
     setState,
@@ -148,9 +208,9 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
 
   const { catalogs, refetch: refetchCatalogs } = useStoreCatalogs(storeId);
   const { updateProductSettings } = useCatalogProductSettings(storeId);
-  const { updateProduct, refetch: refetchProducts } = useStoreProducts(storeId);
+  const { updateProduct, refetch: refetchProducts, products: storeProducts } = useStoreProducts(storeId);
   
-  // Effective catalog values (internal state or from props)
+  // Effective catalog values
   const effectiveCatalogId = selectedCatalogId;
   const effectiveCatalogName = selectedCatalogName;
   
@@ -185,16 +245,18 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     }
   }), []);
 
-  // Handle catalog change (reset import state)
+  // Handle catalog change
   const handleChangeCatalog = useCallback(() => {
     setShowCatalogSelector(true);
-    // Reset any in-progress import
     setExcelPreview(null);
     setColumnMapping(getDefaultColumnMapping());
     setSelectedFile(null);
     setShowNewProductsDialog(false);
     setProductAnalysis(null);
     setParsedProducts([]);
+    setShowPreviewTable(false);
+    setPreviewAnalysis(null);
+    setPreviewProducts([]);
   }, [getDefaultColumnMapping]);
 
   // Reset on close
@@ -214,7 +276,10 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       setShowNewProductsDialog(false);
       setProductAnalysis(null);
       setParsedProducts([]);
-      // Reset catalog selection only if no catalogId prop was passed
+      setShowPreviewTable(false);
+      setPreviewAnalysis(null);
+      setPreviewProducts([]);
+      setShowTemplates(false);
       if (!catalogId) {
         setSelectedCatalogId(null);
         setSelectedCatalogName('');
@@ -299,8 +364,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     setSelectedCommand(cmd);
   }, []);
 
-  const { products: storeProducts } = useStoreProducts(storeId);
-
   const handleApply = useCallback(async () => {
     if (!response || selectedProducts.size === 0) return;
 
@@ -315,22 +378,18 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
           if (response.action === "hide" || response.action === "show") {
             const newStatus = response.action === "hide" ? "hidden" : "in_stock";
             
-            // Update in all catalogs
             for (const catalog of catalogs) {
               await updateProductSettings(catalog.id, product.id, { status: newStatus });
             }
             successCount++;
           } else if (response.action === "update_prices") {
-            // Цены обновляем в catalog_product_settings для текущего каталога
             if (product.target_price !== undefined && product.target_price !== null) {
-              // Если указана целевая цена, сохраняем как фиксированную для этого каталога
               await updateProductSettings(effectiveCatalogId!, product.id, {
                 fixed_price: product.target_price,
                 is_fixed_price: true,
-              }, false); // false = не синхронизировать в другие каталоги
+              }, false);
               successCount++;
             } else {
-              // Если указана наценка, обновляем наценку в настройках каталога
               let markupType = product.new_markup_type;
               let markupValue = product.new_markup_value;
 
@@ -340,7 +399,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                   markup_value: markupValue,
                   is_fixed_price: false,
                   fixed_price: null,
-                }, false); // false = не синхронизировать в другие каталоги
+                }, false);
                 successCount++;
               }
             }
@@ -371,7 +430,19 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     }
   }, [response, selectedProducts, catalogs, effectiveCatalogId, updateProductSettings, toast, setState, onOpenChange]);
 
-  // Excel file selection handler - shows column mapping
+  // Apply template
+  const handleApplyTemplate = useCallback((template: ImportTemplate) => {
+    if (!excelPreview) return;
+    setColumnMapping(template.mapping);
+    setHideNotInFile(template.hideNotInFile);
+    setShowTemplates(false);
+    toast({
+      title: "Шаблон применён",
+      description: `Настройки из «${template.name}» загружены`,
+    });
+  }, [excelPreview, toast]);
+
+  // Excel file selection handler
   const handleExcelFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -413,11 +484,13 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     setExcelPreview(null);
     setColumnMapping(getDefaultColumnMapping());
     setSelectedFile(null);
+    setShowPreviewTable(false);
+    setPreviewAnalysis(null);
+    setPreviewProducts([]);
   }, [getDefaultColumnMapping]);
 
-  // Confirm column mapping and analyze products
+  // Confirm column mapping → show preview table
   const handleConfirmMapping = useCallback(async () => {
-    // Check if catalog is selected
     if (!effectiveCatalogId) {
       toast({
         title: "Не выбран прайс-лист",
@@ -427,31 +500,18 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       return;
     }
     
-    if (!storeId) {
-      toast({
-        title: "Ошибка",
-        description: "Не определён магазин",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!excelPreview || !selectedFile) return;
+    if (!storeId || !excelPreview || !selectedFile) return;
     if (columnMapping.identifierColumn === null) return;
     
-    // Check that at least one update field is selected
     const { fieldsToUpdate } = columnMapping;
     const hasFieldToUpdate = fieldsToUpdate.buyPrice !== null || fieldsToUpdate.price !== null || fieldsToUpdate.unit !== null || fieldsToUpdate.name !== null || fieldsToUpdate.photos !== null;
     if (!hasFieldToUpdate) return;
     
-    // Show parsing status
     setIsParsing(true);
     setImportStatus('Чтение данных из файла...');
     
-    // Small delay to ensure UI updates
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    // Parse products with the extended mapping
     const products = parseProductsWithExtendedMapping(excelPreview, columnMapping);
     
     if (products.length === 0) {
@@ -468,23 +528,15 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     setImportStatus('Анализ товаров...');
     
     try {
-      // Analyze products - find matching and new
       const analysis = await analyzeProductsForImport(products, storeId, columnMapping.identifierType);
       
+      setPreviewProducts(products);
+      setPreviewAnalysis(analysis);
       setParsedProducts(products);
       setProductAnalysis(analysis);
       setExcelPreview(null);
       setIsParsing(false);
-      
-      // If there are new products, show confirmation dialog
-      if (analysis.newProducts.length > 0) {
-        setImportStatus(`Найдено ${analysis.matchingProducts.length} совпадений, ${analysis.newProducts.length} новых`);
-        setShowNewProductsDialog(true);
-      } else {
-        // No new products - proceed with import directly
-        setImportStatus(`Обновление ${analysis.matchingProducts.length} товаров...`);
-        await startImport(products, true);
-      }
+      setShowPreviewTable(true);
     } catch (err) {
       setIsParsing(false);
       setImportStatus('');
@@ -500,15 +552,22 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
   const startImport = useCallback(async (products: PriceListProduct[], includeNew: boolean) => {
     if (!storeId || !effectiveCatalogId) return;
     
-    // Filter products if not including new
     let productsToImport = products;
     if (!includeNew && productAnalysis) {
       const matchingNames = new Set(
-        productAnalysis.matchingProducts.map(m => m.excel.name.toLowerCase().trim())
+        productAnalysis.matchingProducts.map(m => {
+          if (columnMapping.identifierType === 'sku' && m.excel.sku) {
+            return m.excel.sku.toLowerCase().trim();
+          }
+          return m.excel.name.toLowerCase().trim();
+        })
       );
-      productsToImport = products.filter(p => 
-        matchingNames.has(p.name.toLowerCase().trim())
-      );
+      productsToImport = products.filter(p => {
+        const key = columnMapping.identifierType === 'sku' && p.sku
+          ? p.sku.toLowerCase().trim()
+          : p.name.toLowerCase().trim();
+        return matchingNames.has(key);
+      });
     }
     
     if (productsToImport.length === 0) {
@@ -519,10 +578,12 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       setSelectedFile(null);
       setParsedProducts([]);
       setProductAnalysis(null);
+      setShowPreviewTable(false);
       return;
     }
     
     setShowNewProductsDialog(false);
+    setShowPreviewTable(false);
     setIsImporting(true);
     setImportStatus(`Импорт ${productsToImport.length} товаров...`);
     setImportProgress({
@@ -538,7 +599,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       photosTotal: 0,
     });
     
-    // Determine which fields to update based on mapping
     const fieldsToUpdateArray: ('buyPrice' | 'price' | 'unit' | 'name' | 'photos')[] = [];
     if (columnMapping.fieldsToUpdate.buyPrice !== null) fieldsToUpdateArray.push('buyPrice');
     if (columnMapping.fieldsToUpdate.price !== null) fieldsToUpdateArray.push('price');
@@ -596,8 +656,21 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
       setSelectedFile(null);
       setParsedProducts([]);
       setProductAnalysis(null);
+      setPreviewAnalysis(null);
+      setPreviewProducts([]);
     }
-  }, [storeId, effectiveCatalogId, productAnalysis, toast, onOpenChange, refetchProducts, refetchCatalogs]);
+  }, [storeId, effectiveCatalogId, productAnalysis, columnMapping, toast, onOpenChange, refetchProducts, refetchCatalogs, hideNotInFile]);
+
+  // Handle preview table import confirmation
+  const handlePreviewImport = useCallback(() => {
+    if (!previewAnalysis || !parsedProducts.length) return;
+    
+    if (previewAnalysis.newProducts.length > 0) {
+      setShowNewProductsDialog(true);
+    } else {
+      startImport(parsedProducts, true);
+    }
+  }, [previewAnalysis, parsedProducts, startImport]);
 
   // Handle dialog actions
   const handleAddAllAndImport = useCallback(() => {
@@ -633,6 +706,53 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     }
   };
 
+  // Build preview table rows from analysis
+  const previewRows = useMemo(() => {
+    if (!previewAnalysis) return [];
+    
+    const rows: Array<{
+      type: 'update' | 'new';
+      name: string;
+      sku?: string;
+      currentPrice?: number | null;
+      newPrice?: number | null;
+      currentName?: string;
+      newName?: string;
+      priceChanged: boolean;
+      nameChanged: boolean;
+    }> = [];
+    
+    for (const match of previewAnalysis.matchingProducts) {
+      const priceChanged = match.excel.price !== undefined && match.excel.price !== match.existing.buy_price;
+      const nameChanged = match.excel.name && columnMapping.identifierType === 'sku' && match.excel.name !== match.existing.name;
+      rows.push({
+        type: 'update',
+        name: match.existing.name,
+        sku: match.existing.sku || match.excel.sku,
+        currentPrice: match.existing.buy_price,
+        newPrice: match.excel.price ?? match.excel.buyPrice,
+        currentName: match.existing.name,
+        newName: nameChanged ? match.excel.name : undefined,
+        priceChanged: !!priceChanged,
+        nameChanged: !!nameChanged,
+      });
+    }
+    
+    for (const np of previewAnalysis.newProducts) {
+      rows.push({
+        type: 'new',
+        name: np.name,
+        sku: np.sku,
+        currentPrice: null,
+        newPrice: np.price ?? np.buyPrice,
+        priceChanged: false,
+        nameChanged: false,
+      });
+    }
+    
+    return rows;
+  }, [previewAnalysis, columnMapping]);
+
   return (
     <>
     {/* New Products Confirmation Dialog */}
@@ -647,25 +767,33 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     />
     
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-lg p-0 flex flex-col max-w-[100dvw] overflow-x-hidden">
-        <SheetHeader className="px-6 py-4 border-b">
+      <SheetContent 
+        side="right" 
+        className={cn(
+          "p-0 flex flex-col max-w-[100dvw] overflow-x-hidden transition-all",
+          isFullScreen 
+            ? "w-full sm:max-w-[100vw] md:max-w-[90vw] lg:max-w-[80vw]" 
+            : "w-full sm:max-w-lg"
+        )}
+      >
+        <SheetHeader className="px-6 py-4 border-b shrink-0">
           <SheetTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             AI Помощник
           </SheetTitle>
         </SheetHeader>
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Catalog Selection Step - shown when no catalog selected or user wants to change */}
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+          {/* Catalog Selection Step */}
           {(!effectiveCatalogId || showCatalogSelector) && !isImporting && !isParsing && (
-            <div className="px-6 py-6 flex-1 flex flex-col">
+            <div className="px-6 py-6 flex-1 flex flex-col overflow-auto">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                   <BookOpen className="h-8 w-8 text-primary" />
                 </div>
                 <h3 className="font-semibold text-lg mb-2">Выберите прайс-лист</h3>
                 <p className="text-sm text-muted-foreground">
-                  Для работы AI помощника выберите прайс-лист, в котором будут производиться изменения
+                  Для работы AI помощника выберите прайс-лист
                 </p>
               </div>
               
@@ -674,7 +802,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                   {catalogs.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <p>Прайс-листы не найдены</p>
-                      <p className="text-xs mt-1">Сначала создайте прайс-лист</p>
                     </div>
                   ) : (
                     catalogs.map((catalog) => (
@@ -701,32 +828,23 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
               </ScrollArea>
               
               {showCatalogSelector && effectiveCatalogId && (
-                <Button
-                  variant="ghost"
-                  className="mt-4"
-                  onClick={() => setShowCatalogSelector(false)}
-                >
+                <Button variant="ghost" className="mt-4" onClick={() => setShowCatalogSelector(false)}>
                   Отмена
                 </Button>
               )}
             </div>
           )}
           
-          {/* Selected catalog indicator - shown when catalog is selected and not in selector mode */}
-          {effectiveCatalogId && !showCatalogSelector && !isImporting && !isParsing && !excelPreview && (
-            <div className="px-6 py-2 border-b bg-muted/30">
+          {/* Selected catalog indicator */}
+          {effectiveCatalogId && !showCatalogSelector && !isImporting && !isParsing && !excelPreview && !showPreviewTable && (
+            <div className="px-6 py-2 border-b bg-muted/30 shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm">
                   <BookOpen className="h-4 w-4 text-primary" />
                   <span className="text-muted-foreground">Работа в:</span>
                   <span className="font-medium">{effectiveCatalogName}</span>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={handleChangeCatalog}
-                >
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleChangeCatalog}>
                   <ChevronDown className="h-3 w-3 mr-1" />
                   Сменить
                 </Button>
@@ -734,19 +852,74 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
             </div>
           )}
           
-        {/* Column Mapping Step */}
+          {/* Column Mapping Step */}
           {excelPreview && selectedFile && (
-            <div>
-              <ExcelColumnMapping
-                columns={excelPreview.columns}
-                mapping={columnMapping}
-                onMappingChange={setColumnMapping}
-                onConfirm={handleConfirmMapping}
-                onCancel={handleCancelMapping}
-                fileName={selectedFile.name}
-                rowCount={excelPreview.rowCount}
-              />
-              <div className="px-4 pb-3">
+            <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+              {/* Templates button row */}
+              <div className="px-4 py-2 border-b bg-muted/20 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2 text-sm">
+                  <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                  <span className="font-medium truncate">{selectedFile.name}</span>
+                  <span className="text-muted-foreground text-xs">
+                    {excelPreview.rowCount} строк · {excelPreview.columns.length} колонок
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5"
+                  onClick={() => setShowTemplates(!showTemplates)}
+                >
+                  <LayoutTemplate className="h-3.5 w-3.5" />
+                  Шаблоны
+                </Button>
+              </div>
+              
+              {/* Templates dropdown */}
+              {showTemplates && (
+                <div className="px-4 py-3 border-b bg-muted/10 shrink-0">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Выберите шаблон:</p>
+                  <div className="space-y-1.5">
+                    {templates.map((template) => (
+                      <Button
+                        key={template.id}
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-start gap-2 h-auto py-2"
+                        onClick={() => handleApplyTemplate(template)}
+                      >
+                        <Save className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <div className="text-left">
+                          <p className="font-medium text-sm">{template.name}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {template.mapping.identifierType === 'sku' ? 'По артикулу' : 'По названию'}
+                            {' · '}
+                            Колонки: {[
+                              template.mapping.identifierColumn !== null ? `ID:${(template.mapping.identifierColumn) + 1}` : null,
+                              template.mapping.fieldsToUpdate.price !== null ? `Цена:${(template.mapping.fieldsToUpdate.price) + 1}` : null,
+                              template.mapping.fieldsToUpdate.buyPrice !== null ? `Себест:${(template.mapping.fieldsToUpdate.buyPrice) + 1}` : null,
+                              template.mapping.fieldsToUpdate.name !== null ? `Назв:${(template.mapping.fieldsToUpdate.name) + 1}` : null,
+                            ].filter(Boolean).join(', ')}
+                          </p>
+                        </div>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex-1 overflow-auto min-h-0">
+                <ExcelColumnMapping
+                  columns={excelPreview.columns}
+                  mapping={columnMapping}
+                  onMappingChange={setColumnMapping}
+                  onConfirm={handleConfirmMapping}
+                  onCancel={handleCancelMapping}
+                  fileName={selectedFile.name}
+                  rowCount={excelPreview.rowCount}
+                />
+              </div>
+              <div className="px-4 py-3 border-t shrink-0">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
                     checked={hideNotInFile}
@@ -760,9 +933,158 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
             </div>
           )}
 
-          {/* Excel Import Section - compact design */}
-          {effectiveCatalogId && !showCatalogSelector && state === "idle" && !isImporting && !excelPreview && (
-            <div className="px-4 py-3 border-b">
+          {/* Preview Table Step - Full Data Table */}
+          {showPreviewTable && previewAnalysis && (
+            <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+              {/* Header */}
+              <div className="px-4 py-3 border-b bg-muted/20 shrink-0">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                    <Check className="h-4 w-4 text-emerald-600" />
+                    Предпросмотр импорта в «{effectiveCatalogName}»
+                  </h3>
+                  <Button variant="ghost" size="sm" onClick={() => {
+                    setShowPreviewTable(false);
+                    // Go back to mapping
+                    if (selectedFile) {
+                      previewPriceListExcel(selectedFile).then(preview => {
+                        setExcelPreview(preview);
+                      });
+                    }
+                  }}>
+                    ← Назад
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="gap-1.5 py-1">
+                    <RefreshCw className="h-3.5 w-3.5 text-blue-500" />
+                    Обновить: {previewAnalysis.matchingProducts.length}
+                  </Badge>
+                  {previewAnalysis.newProducts.length > 0 && (
+                    <Badge variant="outline" className="gap-1.5 py-1 border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-400">
+                      <Plus className="h-3.5 w-3.5" />
+                      Новых: {previewAnalysis.newProducts.length}
+                    </Badge>
+                  )}
+                  {hideNotInFile && (
+                    <Badge variant="outline" className="gap-1.5 py-1 border-orange-300 text-orange-700 dark:border-orange-700 dark:text-orange-400">
+                      <EyeOff className="h-3.5 w-3.5" />
+                      Скроются остальные
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              
+              {/* Table */}
+              <div className="flex-1 min-h-0 overflow-auto">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableRow>
+                      <TableHead className="w-10 text-center">#</TableHead>
+                      <TableHead>Действие</TableHead>
+                      {columnMapping.identifierType === 'sku' && <TableHead className="w-[120px]">Артикул</TableHead>}
+                      <TableHead>Товар</TableHead>
+                      {(columnMapping.fieldsToUpdate.price !== null || columnMapping.fieldsToUpdate.buyPrice !== null) && (
+                        <TableHead className="w-[200px]">Цена</TableHead>
+                      )}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {previewRows.map((row, idx) => (
+                      <TableRow 
+                        key={idx} 
+                        className={cn(
+                          "h-10",
+                          row.type === 'new' && "bg-emerald-50/60 dark:bg-emerald-950/20 border-l-2 border-l-emerald-500",
+                          row.priceChanged && row.type === 'update' && "bg-blue-50/40 dark:bg-blue-950/10",
+                        )}
+                      >
+                        <TableCell className="text-center text-xs text-muted-foreground">{idx + 1}</TableCell>
+                        <TableCell>
+                          {row.type === 'new' ? (
+                            <Badge className="text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700 py-0.5">
+                              <Plus className="h-2.5 w-2.5" />
+                              Новый
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-[10px] gap-1 py-0.5">
+                              <RefreshCw className="h-2.5 w-2.5" />
+                              Обновить
+                            </Badge>
+                          )}
+                        </TableCell>
+                        {columnMapping.identifierType === 'sku' && (
+                          <TableCell className="text-xs font-mono text-muted-foreground">
+                            {row.sku || '—'}
+                          </TableCell>
+                        )}
+                        <TableCell>
+                          <span className="text-sm font-medium">{row.nameChanged ? row.newName : row.name}</span>
+                          {row.nameChanged && (
+                            <span className="text-[10px] text-muted-foreground ml-1">(было: {row.currentName})</span>
+                          )}
+                        </TableCell>
+                        {(columnMapping.fieldsToUpdate.price !== null || columnMapping.fieldsToUpdate.buyPrice !== null) && (
+                          <TableCell>
+                            {row.type === 'new' ? (
+                              <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                                {formatPrice(row.newPrice)}
+                              </span>
+                            ) : row.priceChanged ? (
+                              <span className="flex items-center gap-1 text-xs">
+                                <span className="text-muted-foreground line-through">
+                                  {formatPrice(row.currentPrice)}
+                                </span>
+                                <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                <span className="font-medium text-blue-600 dark:text-blue-400">
+                                  {formatPrice(row.newPrice)}
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                {formatPrice(row.currentPrice)} (без изм.)
+                              </span>
+                            )}
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                    {previewRows.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          Нет данных для предпросмотра
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {/* Footer actions */}
+              <div className="px-4 py-3 border-t flex gap-2 shrink-0 bg-background">
+                <Button variant="outline" onClick={() => {
+                  setShowPreviewTable(false);
+                  setPreviewAnalysis(null);
+                  setPreviewProducts([]);
+                  handleCancelMapping();
+                }}>
+                  Отмена
+                </Button>
+                <Button 
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={handlePreviewImport}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Импортировать
+                  {previewAnalysis.newProducts.length > 0 && ` (+${previewAnalysis.newProducts.length} новых)`}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Excel Import Section */}
+          {effectiveCatalogId && !showCatalogSelector && state === "idle" && !isImporting && !excelPreview && !showPreviewTable && (
+            <div className="px-4 py-3 border-b shrink-0">
               <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 p-3">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
@@ -814,7 +1136,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                 <FileSpreadsheet className="h-5 w-5 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
               </div>
               
-              {/* Status message */}
               <p className="font-semibold text-lg">{importStatus || 'Импорт...'}</p>
               
               {importProgress && (
@@ -823,7 +1144,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                     {importProgress.currentProduct || 'Обработка товаров...'}
                   </p>
                   
-                  {/* Progress bar */}
                   <div className="w-full max-w-xs mt-4">
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div 
@@ -836,7 +1156,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                     </p>
                   </div>
                   
-                  {/* Stats */}
                   <div className="mt-6 grid grid-cols-3 gap-6 text-center">
                     <div className="flex flex-col items-center">
                       <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-1">
@@ -862,16 +1181,12 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                   </div>
                 </>
               )}
-              
-              {!importProgress && (
-                <p className="text-sm text-muted-foreground mt-2">Подготовка к импорту...</p>
-              )}
             </div>
           )}
 
           {/* Quick commands */}
-          {effectiveCatalogId && !showCatalogSelector && state === "idle" && !isImporting && !isParsing && !excelPreview && (
-            <div className="px-6 py-4 border-b">
+          {effectiveCatalogId && !showCatalogSelector && state === "idle" && !isImporting && !isParsing && !excelPreview && !showPreviewTable && (
+            <div className="px-6 py-4 border-b shrink-0">
               <p className="text-sm text-muted-foreground mb-3">Быстрые команды:</p>
               <div className="flex flex-wrap gap-2">
                 {quickCommands.map((cmd) => (
@@ -896,9 +1211,8 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
           )}
 
           {/* Input area */}
-          {effectiveCatalogId && !showCatalogSelector && (state === "idle" || state === "error") && !excelPreview && !isParsing && !isImporting && (
-            <div className="px-6 py-4 border-b space-y-3">
-              {/* Micro-description for selected command */}
+          {effectiveCatalogId && !showCatalogSelector && (state === "idle" || state === "error") && !excelPreview && !isParsing && !isImporting && !showPreviewTable && (
+            <div className="px-6 py-4 border-b space-y-3 shrink-0">
               {selectedCommand && (
                 <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 rounded-lg border border-primary/20">
                   <selectedCommand.icon className="h-4 w-4 text-primary shrink-0" />
@@ -941,7 +1255,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                   Выполнить
                 </Button>
 
-                {/* Push-to-talk microphone button */}
                 <div className="relative group">
                   <Button
                     variant="outline"
@@ -977,7 +1290,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                       <Mic className="h-4 w-4 text-destructive" />
                     )}
                     
-                    {/* Recording indicator */}
                     {isRecording && (
                       <>
                         <span className="absolute -top-2 -right-2 flex h-5 w-5">
@@ -991,23 +1303,19 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                     )}
                   </Button>
                   
-                  {/* Tooltip hint */}
                   {!isRecording && (
                     <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                       <div className="bg-popover text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg border whitespace-nowrap">
                         <p className="font-medium">Голосовой ввод</p>
                         <p className="text-muted-foreground">Зажмите и говорите</p>
                       </div>
-                      <div className="absolute bottom-0 right-4 transform translate-y-1/2 rotate-45 w-2 h-2 bg-popover border-r border-b"></div>
                     </div>
                   )}
                 </div>
               </div>
               
-              {/* Recording status with animated waveform */}
               {isRecording && (
                 <div className="flex items-center justify-center gap-3 py-3 px-4 bg-destructive/10 rounded-lg border border-destructive/30">
-                  {/* Animated waveform bars */}
                   <div className="flex items-center gap-1 h-6">
                     {[...Array(12)].map((_, i) => (
                       <div
@@ -1027,7 +1335,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                 </div>
               )}
               
-              {/* CSS for waveform animation */}
               <style>{`
                 @keyframes soundWave {
                   0%, 100% { transform: scaleY(0.3); }
@@ -1053,16 +1360,14 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
           {/* Results / Confirmation */}
           {(state === "confirming" || state === "applying" || state === "done") && response && (
             <>
-              {/* Recognized text if from voice */}
               {response.recognized_text && (
-                <div className="px-6 py-3 border-b bg-muted/30">
+                <div className="px-6 py-3 border-b bg-muted/30 shrink-0">
                   <p className="text-sm text-muted-foreground">Распознано:</p>
                   <p className="text-sm font-medium">"{response.recognized_text}"</p>
                 </div>
               )}
 
-              {/* Summary */}
-              <div className="px-6 py-3 border-b">
+              <div className="px-6 py-3 border-b shrink-0">
                 <div className="flex items-center gap-2 mb-2">
                   {React.createElement(getActionIcon(response.action), { className: "h-4 w-4 text-primary" })}
                   <Badge variant="secondary">{getActionLabel(response.action)}</Badge>
@@ -1073,9 +1378,8 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                 <p className="text-sm">{response.summary}</p>
               </div>
 
-              {/* Selection controls */}
               {state === "confirming" && response.products.length > 0 && (
-                <div className="px-6 py-2 border-b flex items-center justify-between">
+                <div className="px-6 py-2 border-b flex items-center justify-between shrink-0">
                   <span className="text-sm text-muted-foreground">
                     Выбрано: {selectedProducts.size} из {response.products.length}
                   </span>
@@ -1092,7 +1396,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                 </div>
               )}
 
-              {/* Products list */}
               <ScrollArea className="flex-1 w-full max-w-full overflow-x-hidden">
                 <div className="px-6 py-3 space-y-2 w-full max-w-full overflow-hidden">
                   {response.products.map((product) => (
@@ -1106,7 +1409,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                       )}
                     >
                       <div className="grid grid-cols-[20px_minmax(0,1fr)] gap-3 items-start w-full">
-                        {/* Checkbox/Icon column */}
                         <div className="flex-shrink-0 pt-0.5">
                           {state === "confirming" && (
                             <Checkbox
@@ -1128,7 +1430,6 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                           )}
                         </div>
                         
-                        {/* Content column */}
                         <div className="min-w-0 flex flex-col gap-0.5">
                           <p className="font-medium text-sm truncate">{product.name}</p>
                           <p className="text-xs text-muted-foreground truncate">{product.reason}</p>
@@ -1173,9 +1474,8 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
                 </div>
               </ScrollArea>
 
-              {/* Action buttons */}
               {state === "confirming" && response.products.length > 0 && (
-                <div className="px-6 py-4 border-t flex gap-2">
+                <div className="px-6 py-4 border-t flex gap-2 shrink-0">
                   <Button variant="outline" onClick={reset} className="flex-1">
                     <X className="h-4 w-4 mr-2" />
                     Отмена
@@ -1192,7 +1492,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
               )}
 
               {state === "applying" && (
-                <div className="px-6 py-4 border-t">
+                <div className="px-6 py-4 border-t shrink-0">
                   <Button disabled className="w-full">
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Применяю изменения...
@@ -1201,7 +1501,7 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
               )}
 
               {state === "done" && (
-                <div className="px-6 py-4 border-t">
+                <div className="px-6 py-4 border-t shrink-0">
                   <div className="flex items-center justify-center gap-2 text-green-600">
                     <Check className="h-5 w-5" />
                     <span className="font-medium">Готово!</span>
