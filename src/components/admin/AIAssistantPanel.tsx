@@ -747,14 +747,14 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
 
   return (
     <>
-    {/* New Products Confirmation Dialog */}
+    {/* New Products Confirmation Dialog - kept as fallback */}
     <NewProductsConfirmDialog
       open={showNewProductsDialog}
       onOpenChange={setShowNewProductsDialog}
       newProducts={productAnalysis?.newProducts || []}
       matchingCount={productAnalysis?.matchingProducts.length || 0}
-      onAddAllAndImport={handleAddAllAndImport}
-      onUpdateExistingOnly={handleUpdateExistingOnly}
+      onAddAllAndImport={handleImportAll}
+      onUpdateExistingOnly={handleImportUpdateOnly}
       catalogName={effectiveCatalogName}
     />
     
