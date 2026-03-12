@@ -865,23 +865,19 @@ export async function importProductsToCatalogExtended(
           }
           
           // Add to catalog visibility
-          await supabase
+          const { error: visError } = await supabase
             .from('product_catalog_visibility')
             .insert({
               product_id: newProduct.id,
               catalog_id: catalogId
             });
           
+          if (visError) {
+            console.error(`[PriceList] Visibility insert error for "${excelProduct.name}":`, visError);
+          }
+          
           // Set catalog settings with catalog-specific fixed price
-          const newProductSettings: {
-            product_id: string;
-            catalog_id: string;
-            status: string;
-            markup_type: string;
-            markup_value: number;
-            fixed_price?: number;
-            is_fixed_price?: boolean;
-          } = {
+          const newProductSettings: Record<string, unknown> = {
             product_id: newProduct.id,
             catalog_id: catalogId,
             status: 'in_stock',
@@ -895,7 +891,7 @@ export async function importProductsToCatalogExtended(
             newProductSettings.is_fixed_price = true;
           }
           
-          await supabase
+          const { error: settingsError } = await supabase
             .from('catalog_product_settings')
             .insert(newProductSettings);
         }
