@@ -533,10 +533,27 @@ export async function analyzeProductsForImport(
   identifierType: 'sku' | 'name' = 'name'
 ): Promise<ProductAnalysis> {
   // Fetch existing products for the store
-  const { data: existingProducts, error: fetchError } = await supabase
-    .from('products')
-    .select('id, name, sku, buy_price, unit')
-    .eq('store_id', storeId);
+  // Fetch ALL products (bypass default 1000 limit)
+  let allProducts: { id: string; name: string; sku: string | null; buy_price: number | null; unit: string | null }[] = [];
+  let fetchOffset = 0;
+  const fetchLimit = 1000;
+  let fetchError: Error | null = null;
+  
+  while (true) {
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, name, sku, buy_price, unit')
+      .eq('store_id', storeId)
+      .is('deleted_at', null)
+      .range(fetchOffset, fetchOffset + fetchLimit - 1);
+    
+    if (error) { fetchError = error; break; }
+    if (!data || data.length === 0) break;
+    allProducts = allProducts.concat(data);
+    if (data.length < fetchLimit) break;
+    fetchOffset += fetchLimit;
+  }
+  const existingProducts = allProducts;
   
   if (fetchError) throw fetchError;
   
