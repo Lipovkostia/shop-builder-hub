@@ -643,10 +643,27 @@ export async function importProductsToCatalogExtended(
     }
     
     // Fetch existing products for the store
-    const { data: existingProducts, error: fetchError } = await supabase
-      .from('products')
-      .select('id, name, sku, buy_price, unit, images')
-      .eq('store_id', storeId);
+    // Fetch ALL products (bypass default 1000 limit)
+    let allExistingProducts: { id: string; name: string; sku: string | null; buy_price: number | null; unit: string | null; images: string[] | null }[] = [];
+    let offset = 0;
+    const pageSize = 1000;
+    let fetchError: Error | null = null;
+    
+    while (true) {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, sku, buy_price, unit, images')
+        .eq('store_id', storeId)
+        .is('deleted_at', null)
+        .range(offset, offset + pageSize - 1);
+      
+      if (error) { fetchError = error; break; }
+      if (!data || data.length === 0) break;
+      allExistingProducts = allExistingProducts.concat(data);
+      if (data.length < pageSize) break;
+      offset += pageSize;
+    }
+    const existingProducts = allExistingProducts;
     
     if (fetchError) throw fetchError;
     
