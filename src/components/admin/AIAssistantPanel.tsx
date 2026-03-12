@@ -661,24 +661,16 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     }
   }, [storeId, effectiveCatalogId, productAnalysis, columnMapping, toast, onOpenChange, refetchProducts, refetchCatalogs, hideNotInFile]);
 
-  // Handle preview table import confirmation
-  const handlePreviewImport = useCallback(() => {
-    if (!previewAnalysis || !parsedProducts.length) return;
-    
-    if (previewAnalysis.newProducts.length > 0) {
-      setShowNewProductsDialog(true);
-    } else {
-      startImport(parsedProducts, true);
-    }
-  }, [previewAnalysis, parsedProducts, startImport]);
-
-  // Handle dialog actions
-  const handleAddAllAndImport = useCallback(() => {
-    startImport(parsedProducts, true);
+  // Handle preview table import - update existing only
+  const handleImportUpdateOnly = useCallback(() => {
+    if (!parsedProducts.length) return;
+    startImport(parsedProducts, false);
   }, [parsedProducts, startImport]);
 
-  const handleUpdateExistingOnly = useCallback(() => {
-    startImport(parsedProducts, false);
+  // Handle preview table import - update + add new
+  const handleImportAll = useCallback(() => {
+    if (!parsedProducts.length) return;
+    startImport(parsedProducts, true);
   }, [parsedProducts, startImport]);
 
   const formatTime = (seconds: number) => {
