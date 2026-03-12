@@ -877,7 +877,15 @@ export async function importProductsToCatalogExtended(
           }
           
           // Set catalog settings with catalog-specific fixed price
-          const newProductSettings: Record<string, unknown> = {
+          const newProductSettings: {
+            product_id: string;
+            catalog_id: string;
+            status: string;
+            markup_type: string;
+            markup_value: number;
+            fixed_price?: number;
+            is_fixed_price?: boolean;
+          } = {
             product_id: newProduct.id,
             catalog_id: catalogId,
             status: 'in_stock',
