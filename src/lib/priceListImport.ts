@@ -808,7 +808,9 @@ export async function importProductsToCatalogExtended(
           continue;
         }
         
-        const slug = generateSlug(excelProduct.name) + '-' + Date.now().toString(36);
+        const slug = generateSlug(excelProduct.name) + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+        
+        const newPrice = excelProduct.price ?? excelProduct.buyPrice ?? 0;
         
         const { data: newProduct, error: createError } = await supabase
           .from('products')
@@ -817,14 +819,14 @@ export async function importProductsToCatalogExtended(
             name: excelProduct.name,
             sku: excelProduct.sku || null,
             slug: slug,
-            price: excelProduct.buyPrice ?? 0, // Базовая цена = себестоимость (если указана)
+            price: newPrice,
             buy_price: excelProduct.buyPrice || null,
             markup_type: 'percent',
             markup_value: 0,
             is_active: true,
             quantity: 0,
             unit: excelProduct.unit || 'кг',
-            is_fixed_price: false  // Фикс.цена теперь в catalog_product_settings
+            is_fixed_price: false
           })
           .select('id')
           .single();
