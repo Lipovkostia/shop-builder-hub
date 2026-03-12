@@ -661,24 +661,16 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
     }
   }, [storeId, effectiveCatalogId, productAnalysis, columnMapping, toast, onOpenChange, refetchProducts, refetchCatalogs, hideNotInFile]);
 
-  // Handle preview table import confirmation
-  const handlePreviewImport = useCallback(() => {
-    if (!previewAnalysis || !parsedProducts.length) return;
-    
-    if (previewAnalysis.newProducts.length > 0) {
-      setShowNewProductsDialog(true);
-    } else {
-      startImport(parsedProducts, true);
-    }
-  }, [previewAnalysis, parsedProducts, startImport]);
-
-  // Handle dialog actions
-  const handleAddAllAndImport = useCallback(() => {
-    startImport(parsedProducts, true);
+  // Handle preview table import - update existing only
+  const handleImportUpdateOnly = useCallback(() => {
+    if (!parsedProducts.length) return;
+    startImport(parsedProducts, false);
   }, [parsedProducts, startImport]);
 
-  const handleUpdateExistingOnly = useCallback(() => {
-    startImport(parsedProducts, false);
+  // Handle preview table import - update + add new
+  const handleImportAll = useCallback(() => {
+    if (!parsedProducts.length) return;
+    startImport(parsedProducts, true);
   }, [parsedProducts, startImport]);
 
   const formatTime = (seconds: number) => {
@@ -755,14 +747,14 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
 
   return (
     <>
-    {/* New Products Confirmation Dialog */}
+    {/* New Products Confirmation Dialog - kept as fallback */}
     <NewProductsConfirmDialog
       open={showNewProductsDialog}
       onOpenChange={setShowNewProductsDialog}
       newProducts={productAnalysis?.newProducts || []}
       matchingCount={productAnalysis?.matchingProducts.length || 0}
-      onAddAllAndImport={handleAddAllAndImport}
-      onUpdateExistingOnly={handleUpdateExistingOnly}
+      onAddAllAndImport={handleImportAll}
+      onUpdateExistingOnly={handleImportUpdateOnly}
       catalogName={effectiveCatalogName}
     />
     
@@ -1061,23 +1053,45 @@ export function AIAssistantPanel({ open, onOpenChange, storeId, catalogId, catal
               </div>
               
               {/* Footer actions */}
-              <div className="px-4 py-3 border-t flex gap-2 shrink-0 bg-background">
-                <Button variant="outline" onClick={() => {
-                  setShowPreviewTable(false);
-                  setPreviewAnalysis(null);
-                  setPreviewProducts([]);
-                  handleCancelMapping();
-                }}>
-                  Отмена
-                </Button>
-                <Button 
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-                  onClick={handlePreviewImport}
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Импортировать
-                  {previewAnalysis.newProducts.length > 0 && ` (+${previewAnalysis.newProducts.length} новых)`}
-                </Button>
+              <div className="px-4 py-3 border-t flex flex-col gap-2 shrink-0 bg-background">
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => {
+                    setShowPreviewTable(false);
+                    setPreviewAnalysis(null);
+                    setPreviewProducts([]);
+                    handleCancelMapping();
+                  }}>
+                    Отмена
+                  </Button>
+                  
+                  {previewAnalysis.newProducts.length > 0 ? (
+                    <>
+                      <Button 
+                        variant="outline"
+                        className="flex-1"
+                        onClick={handleImportUpdateOnly}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Только обновить ({previewAnalysis.matchingProducts.length})
+                      </Button>
+                      <Button 
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={handleImportAll}
+                      >
+                        <Check className="h-4 w-4 mr-2" />
+                        Обновить + добавить новые ({previewAnalysis.matchingProducts.length + previewAnalysis.newProducts.length})
+                      </Button>
+                    </>
+                  ) : (
+                    <Button 
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={handleImportAll}
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      Импортировать ({previewAnalysis.matchingProducts.length})
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           )}

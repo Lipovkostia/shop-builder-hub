@@ -533,10 +533,27 @@ export async function analyzeProductsForImport(
   identifierType: 'sku' | 'name' = 'name'
 ): Promise<ProductAnalysis> {
   // Fetch existing products for the store
-  const { data: existingProducts, error: fetchError } = await supabase
-    .from('products')
-    .select('id, name, sku, buy_price, unit')
-    .eq('store_id', storeId);
+  // Fetch ALL products (bypass default 1000 limit)
+  let allProducts: { id: string; name: string; sku: string | null; buy_price: number | null; unit: string | null }[] = [];
+  let fetchOffset = 0;
+  const fetchLimit = 1000;
+  let fetchError: Error | null = null;
+  
+  while (true) {
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, name, sku, buy_price, unit')
+      .eq('store_id', storeId)
+      .is('deleted_at', null)
+      .range(fetchOffset, fetchOffset + fetchLimit - 1);
+    
+    if (error) { fetchError = error; break; }
+    if (!data || data.length === 0) break;
+    allProducts = allProducts.concat(data);
+    if (data.length < fetchLimit) break;
+    fetchOffset += fetchLimit;
+  }
+  const existingProducts = allProducts;
   
   if (fetchError) throw fetchError;
   
@@ -626,10 +643,27 @@ export async function importProductsToCatalogExtended(
     }
     
     // Fetch existing products for the store
-    const { data: existingProducts, error: fetchError } = await supabase
-      .from('products')
-      .select('id, name, sku, buy_price, unit, images')
-      .eq('store_id', storeId);
+    // Fetch ALL products (bypass default 1000 limit)
+    let allExistingProducts: { id: string; name: string; sku: string | null; buy_price: number | null; unit: string | null; images: string[] | null }[] = [];
+    let offset = 0;
+    const pageSize = 1000;
+    let fetchError: Error | null = null;
+    
+    while (true) {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, sku, buy_price, unit, images')
+        .eq('store_id', storeId)
+        .is('deleted_at', null)
+        .range(offset, offset + pageSize - 1);
+      
+      if (error) { fetchError = error; break; }
+      if (!data || data.length === 0) break;
+      allExistingProducts = allExistingProducts.concat(data);
+      if (data.length < pageSize) break;
+      offset += pageSize;
+    }
+    const existingProducts = allExistingProducts;
     
     if (fetchError) throw fetchError;
     
@@ -774,7 +808,9 @@ export async function importProductsToCatalogExtended(
           continue;
         }
         
-        const slug = generateSlug(excelProduct.name) + '-' + Date.now().toString(36);
+        const slug = generateSlug(excelProduct.name) + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+        
+        const newPrice = excelProduct.price ?? excelProduct.buyPrice ?? 0;
         
         const { data: newProduct, error: createError } = await supabase
           .from('products')
@@ -783,14 +819,14 @@ export async function importProductsToCatalogExtended(
             name: excelProduct.name,
             sku: excelProduct.sku || null,
             slug: slug,
-            price: excelProduct.buyPrice ?? 0, // Базовая цена = себестоимость (если указана)
+            price: newPrice,
             buy_price: excelProduct.buyPrice || null,
             markup_type: 'percent',
             markup_value: 0,
             is_active: true,
             quantity: 0,
             unit: excelProduct.unit || 'кг',
-            is_fixed_price: false  // Фикс.цена теперь в catalog_product_settings
+            is_fixed_price: false
           })
           .select('id')
           .single();
@@ -829,12 +865,16 @@ export async function importProductsToCatalogExtended(
           }
           
           // Add to catalog visibility
-          await supabase
+          const { error: visError } = await supabase
             .from('product_catalog_visibility')
             .insert({
               product_id: newProduct.id,
               catalog_id: catalogId
             });
+          
+          if (visError) {
+            console.error(`[PriceList] Visibility insert error for "${excelProduct.name}":`, visError);
+          }
           
           // Set catalog settings with catalog-specific fixed price
           const newProductSettings: {
@@ -859,7 +899,7 @@ export async function importProductsToCatalogExtended(
             newProductSettings.is_fixed_price = true;
           }
           
-          await supabase
+          const { error: settingsError } = await supabase
             .from('catalog_product_settings')
             .insert(newProductSettings);
         }
