@@ -1866,7 +1866,7 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
         );
 
       case "leads":
-        return <LeadsSection botId={editingBotId!} storeId={storeId!} leadConditions={(botForm.lead_conditions as string[]) || []} onAddCondition={() => addListItem("lead_conditions")} onUpdateCondition={(i, v) => updateListItem("lead_conditions", i, v)} onRemoveCondition={(i) => removeListItem("lead_conditions", i)} onAiFill={async () => {
+        return <LeadsSection botId={bot.id} storeId={storeId!} leadConditions={(botForm.lead_conditions as string[]) || []} onAddCondition={() => addListItem("lead_conditions")} onUpdateCondition={(i, v) => updateListItem("lead_conditions", i, v)} onRemoveCondition={(i) => removeListItem("lead_conditions", i)} onAiFill={async () => {
           const result = await aiFill("leads_gen", ((botForm.lead_conditions as string[]) || []).join("; "), "Условия для создания лида в чат-боте на Авито (список через точку с запятой)");
           if (result) { const items = result.split(/[;\n]/).map((s: string) => s.replace(/^\d+\.\s*/, "").trim()).filter(Boolean); updateForm({ lead_conditions: items }); }
         }} aiFillingField={aiFillingField} />;
