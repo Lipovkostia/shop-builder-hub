@@ -1221,6 +1221,247 @@ function ScheduleEditor({ scheduleMode, scheduleConfig, onUpdate }: {
   );
 }
 
+// ===== LEADS SECTION =====
+interface LeadRecord {
+  id: string;
+  bot_id: string;
+  store_id: string;
+  chat_id: string | null;
+  avito_chat_id: string | null;
+  client_name: string | null;
+  contact_type: string;
+  contact_value: string;
+  source: string;
+  matched_condition: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdateCondition, onRemoveCondition, onAiFill, aiFillingField }: {
+  botId: string;
+  storeId: string;
+  leadConditions: string[];
+  onAddCondition: () => void;
+  onUpdateCondition: (i: number, v: string) => void;
+  onRemoveCondition: (i: number) => void;
+  onAiFill: () => void;
+  aiFillingField: string | null;
+}) {
+  const { toast } = useToast();
+  const [leads, setLeads] = useState<LeadRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [addingLead, setAddingLead] = useState(false);
+  const [newLead, setNewLead] = useState({ client_name: "", contact_type: "phone", contact_value: "", notes: "" });
+
+  const loadLeads = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await (supabase as any)
+        .from("avito_bot_leads")
+        .select("*")
+        .eq("bot_id", botId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setLeads(data || []);
+    } catch (err: any) {
+      console.error("Error loading leads:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [botId]);
+
+  useEffect(() => { loadLeads(); }, [loadLeads]);
+
+  const handleAddLead = async () => {
+    if (!newLead.contact_value.trim()) {
+      toast({ title: "Укажите контакт", variant: "destructive" });
+      return;
+    }
+    try {
+      const { error } = await (supabase as any).from("avito_bot_leads").insert({
+        bot_id: botId,
+        store_id: storeId,
+        client_name: newLead.client_name || null,
+        contact_type: newLead.contact_type,
+        contact_value: newLead.contact_value,
+        source: "manual",
+        notes: newLead.notes || null,
+      });
+      if (error) throw error;
+      toast({ title: "Лид добавлен" });
+      setNewLead({ client_name: "", contact_type: "phone", contact_value: "", notes: "" });
+      setAddingLead(false);
+      loadLeads();
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteLead = async (id: string) => {
+    try {
+      await (supabase as any).from("avito_bot_leads").delete().eq("id", id);
+      setLeads(prev => prev.filter(l => l.id !== id));
+      toast({ title: "Лид удалён" });
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const contactTypeLabels: Record<string, string> = {
+    phone: "📞 Телефон",
+    email: "📧 Email",
+    telegram: "💬 Telegram",
+    whatsapp: "💬 WhatsApp",
+    link: "🔗 Ссылка",
+    condition: "📋 Условие",
+    other: "📝 Другое",
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Lead conditions */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h3 className="text-base font-semibold">Когда создавать лид?</h3>
+            <p className="text-sm text-muted-foreground">По умолчанию лид создаётся при получении контакта.</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={onAiFill} disabled={aiFillingField === "leads_gen"}>
+            <Sparkles className="h-3 w-3 mr-1" />
+            Улучшить ИИ
+          </Button>
+        </div>
+        <div className="space-y-2">
+          {leadConditions.map((cond, i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <Input value={cond} onChange={e => onUpdateCondition(i, e.target.value)} placeholder="Условие..." className="flex-1" />
+              <Button size="icon" variant="ghost" onClick={() => onRemoveCondition(i)}><Trash2 className="h-4 w-4" /></Button>
+            </div>
+          ))}
+          <Button variant="outline" size="sm" onClick={onAddCondition}><Plus className="h-4 w-4 mr-1" /> Добавить</Button>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Leads table */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-base font-semibold">Собранные лиды</h3>
+            <p className="text-sm text-muted-foreground">{leads.length} контактов</p>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={loadLeads} disabled={loading}>
+              <RefreshCw className={cn("h-3 w-3 mr-1", loading && "animate-spin")} /> Обновить
+            </Button>
+            <Button size="sm" onClick={() => setAddingLead(true)}>
+              <Plus className="h-3 w-3 mr-1" /> Добавить лид
+            </Button>
+          </div>
+        </div>
+
+        {addingLead && (
+          <Card className="mb-4">
+            <CardContent className="pt-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Имя клиента</Label>
+                  <Input value={newLead.client_name} onChange={e => setNewLead(p => ({ ...p, client_name: e.target.value }))} placeholder="Имя" />
+                </div>
+                <div>
+                  <Label className="text-xs">Тип контакта</Label>
+                  <Select value={newLead.contact_type} onValueChange={v => setNewLead(p => ({ ...p, contact_type: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="phone">Телефон</SelectItem>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="telegram">Telegram</SelectItem>
+                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                      <SelectItem value="link">Ссылка</SelectItem>
+                      <SelectItem value="other">Другое</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Контакт *</Label>
+                <Input value={newLead.contact_value} onChange={e => setNewLead(p => ({ ...p, contact_value: e.target.value }))} placeholder="+7 999 123-45-67" />
+              </div>
+              <div>
+                <Label className="text-xs">Заметка</Label>
+                <Input value={newLead.notes} onChange={e => setNewLead(p => ({ ...p, notes: e.target.value }))} placeholder="Дополнительная информация" />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" size="sm" onClick={() => setAddingLead(false)}>Отмена</Button>
+                <Button size="sm" onClick={handleAddLead}>Сохранить</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-8 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin mr-2" /> Загрузка...
+          </div>
+        ) : leads.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
+            <p>Пока нет собранных лидов</p>
+            <p className="text-xs mt-1">Бот автоматически записывает контакты клиентов</p>
+          </div>
+        ) : (
+          <div className="border rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Дата</th>
+                    <th className="px-3 py-2 text-left font-medium">Имя</th>
+                    <th className="px-3 py-2 text-left font-medium">Тип</th>
+                    <th className="px-3 py-2 text-left font-medium">Контакт</th>
+                    <th className="px-3 py-2 text-left font-medium">Источник</th>
+                    <th className="px-3 py-2 text-left font-medium">Заметка</th>
+                    <th className="px-3 py-2 text-right font-medium w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leads.map(lead => (
+                    <tr key={lead.id} className="border-t hover:bg-muted/30">
+                      <td className="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground">
+                        {new Date(lead.created_at).toLocaleDateString("ru-RU")}
+                      </td>
+                      <td className="px-3 py-2">{lead.client_name || <span className="text-muted-foreground">—</span>}</td>
+                      <td className="px-3 py-2">
+                        <Badge variant="outline" className="text-xs">{contactTypeLabels[lead.contact_type] || lead.contact_type}</Badge>
+                      </td>
+                      <td className="px-3 py-2 font-mono text-xs">{lead.contact_value}</td>
+                      <td className="px-3 py-2">
+                        <Badge variant={lead.source === "auto" ? "secondary" : "default"} className="text-xs">
+                          {lead.source === "auto" ? "Авто" : "Вручную"}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground max-w-[200px] truncate">
+                        {lead.matched_condition || lead.notes || "—"}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDeleteLead(lead.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ===== BOT EDITOR (dual pane) =====
 function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, saving, accounts, storeId, qaItems, qaLoading, onAddQA, onUpdateQA, onDeleteQA, onSave, onBack, onToggle, onProcess, onDelete }: {
   bot: AvitoBot;
@@ -1866,7 +2107,7 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
         );
 
       case "leads":
-        return <ListEditor title="Когда создавать лид?" desc="По умолчанию лид создаётся при получении контакта." items={(botForm.lead_conditions as string[]) || []} onAdd={() => addListItem("lead_conditions")} onUpdate={(i, v) => updateListItem("lead_conditions", i, v)} onRemove={(i) => removeListItem("lead_conditions", i)} placeholder="Условие..." onAiFill={async () => {
+        return <LeadsSection botId={bot.id} storeId={storeId!} leadConditions={(botForm.lead_conditions as string[]) || []} onAddCondition={() => addListItem("lead_conditions")} onUpdateCondition={(i, v) => updateListItem("lead_conditions", i, v)} onRemoveCondition={(i) => removeListItem("lead_conditions", i)} onAiFill={async () => {
           const result = await aiFill("leads_gen", ((botForm.lead_conditions as string[]) || []).join("; "), "Условия для создания лида в чат-боте на Авито (список через точку с запятой)");
           if (result) { const items = result.split(/[;\n]/).map((s: string) => s.replace(/^\d+\.\s*/, "").trim()).filter(Boolean); updateForm({ lead_conditions: items }); }
         }} aiFillingField={aiFillingField} />;

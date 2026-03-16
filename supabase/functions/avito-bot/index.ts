@@ -465,6 +465,52 @@ async function updateLeadStatus(
     })
     .eq("id", chatId);
 
+  // Save each contact to avito_bot_leads table (deduplicate by value per bot+chat)
+  for (const contact of detection.contacts) {
+    const { data: existing } = await supabase
+      .from("avito_bot_leads")
+      .select("id")
+      .eq("bot_id", bot.id)
+      .eq("contact_value", contact.value)
+      .maybeSingle();
+    if (!existing) {
+      await supabase.from("avito_bot_leads").insert({
+        bot_id: bot.id,
+        store_id: bot.store_id,
+        chat_id: chatId,
+        client_name: userName || null,
+        contact_type: contact.type,
+        contact_value: contact.value,
+        source: "auto",
+        matched_condition: detection.matchedConditions.length > 0 ? detection.matchedConditions.join(", ") : null,
+      });
+    }
+  }
+
+  // Also save matched conditions without contacts as leads
+  if (detection.contacts.length === 0 && detection.matchedConditions.length > 0) {
+    const condKey = detection.matchedConditions.join("|");
+    const { data: existing } = await supabase
+      .from("avito_bot_leads")
+      .select("id")
+      .eq("bot_id", bot.id)
+      .eq("chat_id", chatId)
+      .eq("contact_type", "condition")
+      .maybeSingle();
+    if (!existing) {
+      await supabase.from("avito_bot_leads").insert({
+        bot_id: bot.id,
+        store_id: bot.store_id,
+        chat_id: chatId,
+        client_name: userName || null,
+        contact_type: "condition",
+        contact_value: detection.matchedConditions.join(", "),
+        source: "auto",
+        matched_condition: detection.matchedConditions.join(", "),
+      });
+    }
+  }
+
   // Send Telegram notification for NEW leads only
   if (!wasLead && bot.telegram_lead_notifications !== false && bot.telegram_bot_token && bot.telegram_chat_id) {
     const contactsStr = allContacts.map((c: any) => `${c.type}: ${c.value}`).join(", ");
