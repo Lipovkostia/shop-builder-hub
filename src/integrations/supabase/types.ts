@@ -141,6 +141,76 @@ export type Database = {
           },
         ]
       }
+      avito_bot_leads: {
+        Row: {
+          avito_chat_id: string | null
+          bot_id: string
+          chat_id: string | null
+          client_name: string | null
+          contact_type: string
+          contact_value: string
+          created_at: string
+          id: string
+          matched_condition: string | null
+          notes: string | null
+          source: string | null
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          avito_chat_id?: string | null
+          bot_id: string
+          chat_id?: string | null
+          client_name?: string | null
+          contact_type?: string
+          contact_value: string
+          created_at?: string
+          id?: string
+          matched_condition?: string | null
+          notes?: string | null
+          source?: string | null
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          avito_chat_id?: string | null
+          bot_id?: string
+          chat_id?: string | null
+          client_name?: string | null
+          contact_type?: string
+          contact_value?: string
+          created_at?: string
+          id?: string
+          matched_condition?: string | null
+          notes?: string | null
+          source?: string | null
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avito_bot_leads_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "avito_bots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avito_bot_leads_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "avito_bot_chats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avito_bot_leads_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avito_bot_messages: {
         Row: {
           avito_message_id: string | null
