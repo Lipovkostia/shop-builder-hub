@@ -1515,6 +1515,9 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
       },
     };
 
+    // Keep latest config in sync immediately to avoid stale merges on rapid sequential changes
+    latestMsConfigRef.current = nextConfig;
+
     onUpdateMoyskladConfig(nextConfig);
 
     if (msSaveTimeoutRef.current) {
