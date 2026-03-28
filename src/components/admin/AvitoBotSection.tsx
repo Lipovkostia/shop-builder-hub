@@ -486,7 +486,11 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
         moysklad_lead_config: (editingBot as any).moysklad_lead_config || null,
         smart_setup_data: {
           category: smartData.category || "products",
-...
+          company_info: smartData.company_info || "",
+          pricing_info: smartData.pricing_info || "",
+          delivery_info: smartData.delivery_info || "",
+          customer_interaction: smartData.customer_interaction || "",
+          custom_blocks: smartData.custom_blocks || [],
         },
       } as any);
       loadQAItems(editingBot.id);
