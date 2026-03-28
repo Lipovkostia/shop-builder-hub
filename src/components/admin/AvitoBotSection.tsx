@@ -1470,12 +1470,11 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
                     </div>
                     <div>
                       <Label className="text-xs">Контрагент по умолчанию *</Label>
-                      <Select value={msConfig.defaults.counterparty_id} onValueChange={v => updateMsConfig({ defaults: { ...msConfig.defaults, counterparty_id: v } })}>
-                        <SelectTrigger className="text-sm"><SelectValue placeholder="Выберите контрагента" /></SelectTrigger>
-                        <SelectContent>
-                          {msCounterparties.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <CounterpartySearchSelect
+                        counterparties={msCounterparties}
+                        value={msConfig.defaults.counterparty_id}
+                        onChange={v => updateMsConfig({ defaults: { ...msConfig.defaults, counterparty_id: v } })}
+                      />
                     </div>
                   </div>
                 )}
