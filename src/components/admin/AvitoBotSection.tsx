@@ -1578,6 +1578,9 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
                         counterparties={msCounterparties}
                         value={msConfig.defaults.counterparty_id}
                         onChange={v => updateMsConfig({ defaults: { ...msConfig.defaults, counterparty_id: v } })}
+                        storeId={storeId}
+                        moyskladLogin={msAccounts.find(a => msConfig.account_ids.includes(a.id))?.login}
+                        moyskladPassword={msAccounts.find(a => msConfig.account_ids.includes(a.id))?.password}
                       />
                     </div>
                   </div>
