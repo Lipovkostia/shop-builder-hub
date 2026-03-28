@@ -1411,6 +1411,81 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
         </div>
       </div>
 
+      {/* MoySklad integration */}
+      <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30">
+        <Switch
+          checked={msConfig.enabled}
+          onCheckedChange={(v) => updateMsConfig({ enabled: v })}
+          disabled={msAccounts.length === 0}
+        />
+        <div className="flex-1">
+          <Label className="text-sm font-medium">📦 Отправлять лиды в МойСклад</Label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {msAccounts.length === 0
+              ? "Подключите аккаунт МойСклад в настройках магазина"
+              : "При создании лида автоматически формируется заказ покупателя в МойСклад с контактами и запросом клиента"}
+          </p>
+        </div>
+      </div>
+
+      {msConfig.enabled && msAccounts.length > 0 && (
+        <Card className="border-dashed">
+          <CardContent className="pt-4 space-y-4">
+            <div>
+              <Label className="text-xs font-medium mb-1.5 block">Аккаунты МойСклад</Label>
+              <div className="space-y-2">
+                {msAccounts.map(acc => (
+                  <label key={acc.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={msConfig.account_ids.includes(acc.id)}
+                      onCheckedChange={(checked) => {
+                        const ids = checked
+                          ? [...msConfig.account_ids, acc.id]
+                          : msConfig.account_ids.filter(id => id !== acc.id);
+                        updateMsConfig({ account_ids: ids });
+                      }}
+                    />
+                    {acc.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {msConfig.account_ids.length > 0 && (
+              <>
+                {msLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Загрузка данных из МойСклад...
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Организация *</Label>
+                      <Select value={msConfig.defaults.organization_id} onValueChange={v => updateMsConfig({ defaults: { ...msConfig.defaults, organization_id: v } })}>
+                        <SelectTrigger className="text-sm"><SelectValue placeholder="Выберите организацию" /></SelectTrigger>
+                        <SelectContent>
+                          {msOrgs.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Контрагент по умолчанию *</Label>
+                      <Select value={msConfig.defaults.counterparty_id} onValueChange={v => updateMsConfig({ defaults: { ...msConfig.defaults, counterparty_id: v } })}>
+                        <SelectTrigger className="text-sm"><SelectValue placeholder="Выберите контрагента" /></SelectTrigger>
+                        <SelectContent>
+                          {msCounterparties.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">Организация и контрагент будут использоваться при создании заказа покупателя в МойСклад.</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <Separator />
 
       {/* Leads table */}
