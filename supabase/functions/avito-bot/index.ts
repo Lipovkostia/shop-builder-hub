@@ -515,7 +515,25 @@ async function updateLeadStatus(
   if (!wasLead && bot.telegram_lead_notifications !== false && bot.telegram_bot_token && bot.telegram_chat_id) {
     const contactsStr = allContacts.map((c: any) => `${c.type}: ${c.value}`).join(", ");
     const condStr = detection.matchedConditions.length > 0 ? `\n📋 Условия: ${detection.matchedConditions.join(", ")}` : "";
-    const leadMsg = `🔥 <b>Новый лид!</b>\n\n👤 ${userName || "Клиент"}${condStr}\n📞 Контакты: ${contactsStr || "по условиям"}`;
+    
+    // Get last few user messages for context about what the client wanted
+    let contextStr = "";
+    try {
+      const { data: recentMsgs } = await supabase
+        .from("avito_bot_messages")
+        .select("content")
+        .eq("chat_id", chatId)
+        .eq("role", "user")
+        .order("created_at", { ascending: false })
+        .limit(3);
+      if (recentMsgs && recentMsgs.length > 0) {
+        const summary = recentMsgs.reverse().map((m: any) => m.content).join(" → ");
+        const trimmed = summary.length > 200 ? summary.slice(0, 200) + "…" : summary;
+        contextStr = `\n💬 Запрос: ${trimmed}`;
+      }
+    } catch (_) { /* ignore */ }
+    
+    const leadMsg = `🔥 <b>Новый лид!</b>\n\n👤 ${userName || "Клиент"}${condStr}\n📞 Контакты: ${contactsStr || "по условиям"}${contextStr}`;
     await sendTelegramNotification(bot.telegram_bot_token, bot.telegram_chat_id, leadMsg);
   }
 }

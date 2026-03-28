@@ -1238,7 +1238,7 @@ interface LeadRecord {
   updated_at: string;
 }
 
-function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdateCondition, onRemoveCondition, onAiFill, aiFillingField }: {
+function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdateCondition, onRemoveCondition, onAiFill, aiFillingField, telegramLeadNotifications, hasTelegram, onToggleTelegramLeads }: {
   botId: string;
   storeId: string;
   leadConditions: string[];
@@ -1247,6 +1247,9 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
   onRemoveCondition: (i: number) => void;
   onAiFill: () => void;
   aiFillingField: string | null;
+  telegramLeadNotifications: boolean;
+  hasTelegram: boolean;
+  onToggleTelegramLeads: (v: boolean) => void;
 }) {
   const { toast } = useToast();
   const [leads, setLeads] = useState<LeadRecord[]>([]);
@@ -1340,6 +1343,25 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
             </div>
           ))}
           <Button variant="outline" size="sm" onClick={onAddCondition}><Plus className="h-4 w-4 mr-1" /> Добавить</Button>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Telegram notification toggle */}
+      <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30">
+        <Switch
+          checked={telegramLeadNotifications}
+          onCheckedChange={onToggleTelegramLeads}
+          disabled={!hasTelegram}
+        />
+        <div className="flex-1">
+          <Label className="text-sm font-medium">📲 Отправлять лиды в Telegram</Label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {hasTelegram
+              ? "При обнаружении нового лида бот отправит имя, контакт и краткую информацию о запросе клиента в Telegram"
+              : "Настройте Telegram-бота в разделе «Telegram» для получения уведомлений о лидах"}
+          </p>
         </div>
       </div>
 
@@ -2110,7 +2132,7 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
         return <LeadsSection botId={bot.id} storeId={storeId!} leadConditions={(botForm.lead_conditions as string[]) || []} onAddCondition={() => addListItem("lead_conditions")} onUpdateCondition={(i, v) => updateListItem("lead_conditions", i, v)} onRemoveCondition={(i) => removeListItem("lead_conditions", i)} onAiFill={async () => {
           const result = await aiFill("leads_gen", ((botForm.lead_conditions as string[]) || []).join("; "), "Условия для создания лида в чат-боте на Авито (список через точку с запятой)");
           if (result) { const items = result.split(/[;\n]/).map((s: string) => s.replace(/^\d+\.\s*/, "").trim()).filter(Boolean); updateForm({ lead_conditions: items }); }
-        }} aiFillingField={aiFillingField} />;
+        }} aiFillingField={aiFillingField} telegramLeadNotifications={(botForm as any).telegram_lead_notifications !== false} hasTelegram={!!(botForm as any).telegram_bot_token && !!(botForm as any).telegram_chat_id} onToggleTelegramLeads={(v) => updateForm({ telegram_lead_notifications: v })} />;
 
       case "escalation":
         return <ListEditor title="Когда передать человеку?" desc="Случаи передачи диалога." items={(botForm.escalation_rules as string[]) || []} onAdd={() => addListItem("escalation_rules")} onUpdate={(i, v) => updateListItem("escalation_rules", i, v)} onRemove={(i) => removeListItem("escalation_rules", i)} placeholder="Правило..." onAiFill={async () => {
