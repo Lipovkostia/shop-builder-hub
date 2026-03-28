@@ -1556,8 +1556,10 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
               <>
                 {msLoading ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Загрузка данных из МойСклад...
+                    <Loader2 className="h-4 w-4 animate-spin" /> Загрузка организаций...
                   </div>
+                ) : msOrgs.length === 0 ? (
+                  <div className="text-sm text-muted-foreground py-2">Организации не найдены. Проверьте аккаунт МойСклад.</div>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
                     <div>
