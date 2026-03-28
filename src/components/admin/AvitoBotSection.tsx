@@ -1411,6 +1411,10 @@ interface MoyskladLeadConfig {
   defaults: { organization_id: string; counterparty_id: string };
 }
 
+type MoyskladLeadConfigPatch = Omit<Partial<MoyskladLeadConfig>, "defaults"> & {
+  defaults?: Partial<MoyskladLeadConfig["defaults"]>;
+};
+
 interface MsAccount { id: string; name: string; login: string; password: string; }
 interface MsOrg { id: string; name: string; }
 interface MsCounterparty { id: string; name: string; phone?: string; email?: string; }
@@ -1499,7 +1503,7 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
     }
   }, [botId, toast]);
 
-  const updateMsConfig = (partial: Partial<MoyskladLeadConfig>, options?: { immediateSave?: boolean }) => {
+  const updateMsConfig = (partial: MoyskladLeadConfigPatch, options?: { immediateSave?: boolean }) => {
     const base = latestMsConfigRef.current;
     const nextConfig: MoyskladLeadConfig = {
       ...base,
