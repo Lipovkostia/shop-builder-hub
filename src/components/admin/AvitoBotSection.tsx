@@ -87,6 +87,46 @@ function CounterpartySearchSelect({ counterparties, value, onChange, storeId, mo
     if (option) setSelectedOption(option);
   }, [value, counterparties, serverResults, cacheById]);
 
+  // Resolve selected counterparty label by id on reopen (when list is loaded lazily)
+  useEffect(() => {
+    if (!value || selected || !moyskladLogin || !moyskladPassword) return;
+
+    let cancelled = false;
+
+    const resolveSelectedCounterparty = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("moysklad", {
+          body: {
+            action: "get_counterparty_by_id",
+            login: moyskladLogin,
+            password: moyskladPassword,
+            counterpartyId: value,
+          },
+        });
+
+        if (cancelled || error || !data?.counterparty) return;
+
+        const option: CounterpartyOption = {
+          id: data.counterparty.id,
+          name: data.counterparty.name,
+          phone: data.counterparty.phone || undefined,
+          email: data.counterparty.email || undefined,
+        };
+
+        setSelectedOption(option);
+        setCacheById((prev) => ({ ...prev, [option.id]: option }));
+      } catch (e) {
+        console.error("Failed to resolve selected counterparty by id:", e);
+      }
+    };
+
+    void resolveSelectedCounterparty();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [value, selected, moyskladLogin, moyskladPassword]);
+
   // Server-side search when typing
   useEffect(() => {
     if (!search.trim() || search.trim().length < 2) {
@@ -1514,6 +1554,9 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
         ...(partial.defaults || {}),
       },
     };
+
+    // Keep latest config in sync immediately to avoid stale merges on rapid sequential changes
+    latestMsConfigRef.current = nextConfig;
 
     onUpdateMoyskladConfig(nextConfig);
 
