@@ -347,7 +347,7 @@ serve(async (req) => {
       const requestedLimit = Number(counterpartyLimit);
       const safeLimit = Math.min(
         Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.floor(requestedLimit) : 100,
-        20
+        1000
       );
       const safeOffset = Number.isFinite(Number(counterpartyOffset)) ? Math.max(0, Number(counterpartyOffset)) : 0;
       console.log(`Fetching counterparties from MoySklad... limit=${safeLimit}, offset=${safeOffset}`);

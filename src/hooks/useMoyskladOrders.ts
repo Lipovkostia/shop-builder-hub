@@ -95,7 +95,7 @@ export function useMoyskladOrders(login: string | null, password: string | null)
 
       const allCounterparties: MoyskladCounterparty[] = [];
       let offset = 0;
-      const pageLimit = 20;
+      const pageLimit = 1000;
       let hasMore = true;
 
       while (hasMore) {

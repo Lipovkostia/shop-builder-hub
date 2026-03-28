@@ -29,15 +29,57 @@ function getBotNumber(id: string): string {
 }
 
 
-function CounterpartySearchSelect({ counterparties, value, onChange }: { counterparties: { id: string; name: string }[]; value: string; onChange: (v: string) => void }) {
+function CounterpartySearchSelect({ counterparties, value, onChange, storeId, moyskladLogin, moyskladPassword }: { counterparties: { id: string; name: string }[]; value: string; onChange: (v: string) => void; storeId?: string | null; moyskladLogin?: string | null; moyskladPassword?: string | null }) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
-  const selected = counterparties.find(c => c.id === value);
-  const filtered = useMemo(() => {
+  const [serverResults, setServerResults] = useState<{ id: string; name: string }[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const selected = counterparties.find(c => c.id === value) || serverResults?.find(c => c.id === value);
+
+  // Server-side search when typing
+  useEffect(() => {
+    if (!search.trim() || search.trim().length < 2) {
+      setServerResults(null);
+      return;
+    }
+    if (!moyskladLogin || !moyskladPassword) {
+      // fallback to local filter
+      setServerResults(null);
+      return;
+    }
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("moysklad", {
+          body: {
+            action: "get_counterparties",
+            login: moyskladLogin,
+            password: moyskladPassword,
+            search: search.trim(),
+            counterpartyLimit: 50,
+            counterpartyOffset: 0,
+          },
+        });
+        if (!error && data?.counterparties) {
+          setServerResults(data.counterparties);
+        }
+      } catch (e) {
+        console.error("Server counterparty search error:", e);
+      } finally {
+        setSearching(false);
+      }
+    }, 400);
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
+  }, [search, moyskladLogin, moyskladPassword]);
+
+  const displayList = useMemo(() => {
+    if (serverResults) return serverResults;
     if (!search.trim()) return counterparties;
     const q = search.toLowerCase();
     return counterparties.filter(c => c.name.toLowerCase().includes(q));
-  }, [counterparties, search]);
+  }, [counterparties, search, serverResults]);
 
   return (
     <div className="relative">
@@ -63,10 +105,12 @@ function CounterpartySearchSelect({ counterparties, value, onChange }: { counter
           </div>
           <ScrollArea className="max-h-[200px]">
             <div className="p-1">
-              {filtered.length === 0 ? (
+              {searching ? (
+                <div className="px-2 py-3 text-center text-sm text-muted-foreground">Поиск...</div>
+              ) : displayList.length === 0 ? (
                 <div className="px-2 py-3 text-center text-sm text-muted-foreground">Не найдено</div>
               ) : (
-                filtered.map(c => (
+                displayList.map(c => (
                   <button
                     key={c.id}
                     type="button"
@@ -74,7 +118,7 @@ function CounterpartySearchSelect({ counterparties, value, onChange }: { counter
                       "w-full text-left px-2 py-1.5 rounded-sm text-sm hover:bg-accent cursor-pointer",
                       c.id === value && "bg-accent font-medium"
                     )}
-                    onClick={() => { onChange(c.id); setOpen(false); setSearch(""); }}
+                    onClick={() => { onChange(c.id); setOpen(false); setSearch(""); setServerResults(null); }}
                   >
                     {c.name}
                   </button>
@@ -1534,6 +1578,9 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
                         counterparties={msCounterparties}
                         value={msConfig.defaults.counterparty_id}
                         onChange={v => updateMsConfig({ defaults: { ...msConfig.defaults, counterparty_id: v } })}
+                        storeId={storeId}
+                        moyskladLogin={msAccounts.find(a => msConfig.account_ids.includes(a.id))?.login}
+                        moyskladPassword={msAccounts.find(a => msConfig.account_ids.includes(a.id))?.password}
                       />
                     </div>
                   </div>
