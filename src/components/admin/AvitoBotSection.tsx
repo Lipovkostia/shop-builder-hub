@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Bot, MessageCircle, Settings, Users, Sparkles, Power, Save, Plus, Trash2, Clock, Shield, Bell, Zap, ChevronRight, RefreshCw, KeyRound, ArrowLeft, Edit, HelpCircle, PlayCircle, Send, Loader2, Package, MessageSquarePlus, History, Activity, BarChart3, AlertTriangle, CheckCircle2, XCircle, Hand, User, FileText, ListChecks, Filter, Repeat, ShoppingCart, GripVertical, ArrowDown, ArrowUp, Copy, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,66 @@ function getBotNumber(id: string): string {
     hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
   }
   return String(Math.abs(hash) % 900000 + 100000);
+}
+
+
+function CounterpartySearchSelect({ counterparties, value, onChange }: { counterparties: { id: string; name: string }[]; value: string; onChange: (v: string) => void }) {
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const selected = counterparties.find(c => c.id === value);
+  const filtered = useMemo(() => {
+    if (!search.trim()) return counterparties;
+    const q = search.toLowerCase();
+    return counterparties.filter(c => c.name.toLowerCase().includes(q));
+  }, [counterparties, search]);
+
+  return (
+    <div className="relative">
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full justify-between text-sm font-normal h-10"
+        onClick={() => setOpen(!open)}
+      >
+        <span className="truncate">{selected ? selected.name : "Выберите контрагента"}</span>
+        <ChevronRight className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")} />
+      </Button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
+          <div className="p-2">
+            <Input
+              placeholder="Поиск по имени, телефону..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="h-8 text-sm"
+              autoFocus
+            />
+          </div>
+          <ScrollArea className="max-h-[200px]">
+            <div className="p-1">
+              {filtered.length === 0 ? (
+                <div className="px-2 py-3 text-center text-sm text-muted-foreground">Не найдено</div>
+              ) : (
+                filtered.map(c => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={cn(
+                      "w-full text-left px-2 py-1.5 rounded-sm text-sm hover:bg-accent cursor-pointer",
+                      c.id === value && "bg-accent font-medium"
+                    )}
+                    onClick={() => { onChange(c.id); setOpen(false); setSearch(""); }}
+                  >
+                    {c.name}
+                  </button>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
+    </div>
+  );
 }
 
 interface AvitoBotSectionProps {
@@ -1470,12 +1530,11 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
                     </div>
                     <div>
                       <Label className="text-xs">Контрагент по умолчанию *</Label>
-                      <Select value={msConfig.defaults.counterparty_id} onValueChange={v => updateMsConfig({ defaults: { ...msConfig.defaults, counterparty_id: v } })}>
-                        <SelectTrigger className="text-sm"><SelectValue placeholder="Выберите контрагента" /></SelectTrigger>
-                        <SelectContent>
-                          {msCounterparties.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <CounterpartySearchSelect
+                        counterparties={msCounterparties}
+                        value={msConfig.defaults.counterparty_id}
+                        onChange={v => updateMsConfig({ defaults: { ...msConfig.defaults, counterparty_id: v } })}
+                      />
                     </div>
                   </div>
                 )}

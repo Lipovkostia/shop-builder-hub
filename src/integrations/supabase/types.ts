@@ -424,6 +424,7 @@ export type Database = {
           max_response_chars: number | null
           max_responses: number | null
           mode: string
+          moysklad_lead_config: Json | null
           name: string
           personality_config: Json | null
           pro_seller_mode: boolean
@@ -461,6 +462,7 @@ export type Database = {
           max_response_chars?: number | null
           max_responses?: number | null
           mode?: string
+          moysklad_lead_config?: Json | null
           name?: string
           personality_config?: Json | null
           pro_seller_mode?: boolean
@@ -498,6 +500,7 @@ export type Database = {
           max_response_chars?: number | null
           max_responses?: number | null
           mode?: string
+          moysklad_lead_config?: Json | null
           name?: string
           personality_config?: Json | null
           pro_seller_mode?: boolean
