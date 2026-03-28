@@ -422,6 +422,51 @@ serve(async (req) => {
       );
     }
 
+    if (action === 'get_counterparty_by_id') {
+      const { counterpartyId } = body;
+
+      if (!counterpartyId) {
+        return new Response(
+          JSON.stringify({ error: 'counterpartyId is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const response = await fetch(
+        `${MOYSKLAD_API_URL}/entity/counterparty/${encodeURIComponent(counterpartyId)}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': authHeader,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('MoySklad counterparty by id API error:', response.status, errorText);
+        return new Response(
+          JSON.stringify({ error: `Failed to fetch counterparty: ${response.status}` }),
+          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const cp = await response.json();
+
+      const counterparty = {
+        id: cp.id,
+        name: cp.name,
+        phone: cp.phone || null,
+        email: cp.email || null,
+      };
+
+      return new Response(
+        JSON.stringify({ counterparty }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (action === 'create_customerorder') {
       // Create a customer order
       const { order } = body;
