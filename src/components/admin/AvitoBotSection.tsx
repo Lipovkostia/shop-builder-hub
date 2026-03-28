@@ -483,6 +483,7 @@ export function AvitoBotSection({ storeId }: AvitoBotSectionProps) {
         allowed_item_ids: (editingBot as any).allowed_item_ids || null,
         max_response_chars: (editingBot as any).max_response_chars || null,
         handoff_rules: Array.isArray((editingBot as any).handoff_rules) ? (editingBot as any).handoff_rules : [],
+        moysklad_lead_config: (editingBot as any).moysklad_lead_config || null,
         smart_setup_data: {
           category: smartData.category || "products",
           company_info: smartData.company_info || "",
