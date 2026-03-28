@@ -29,27 +29,80 @@ function getBotNumber(id: string): string {
 }
 
 
-function CounterpartySearchSelect({ counterparties, value, onChange, storeId, moyskladLogin, moyskladPassword }: { counterparties: { id: string; name: string }[]; value: string; onChange: (v: string) => void; storeId?: string | null; moyskladLogin?: string | null; moyskladPassword?: string | null }) {
+type CounterpartyOption = { id: string; name: string; phone?: string; email?: string };
+
+function CounterpartySearchSelect({ counterparties, value, onChange, storeId, moyskladLogin, moyskladPassword }: { counterparties: CounterpartyOption[]; value: string; onChange: (v: string) => void; storeId?: string | null; moyskladLogin?: string | null; moyskladPassword?: string | null }) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
-  const [serverResults, setServerResults] = useState<{ id: string; name: string }[] | null>(null);
+  const [serverResults, setServerResults] = useState<CounterpartyOption[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<CounterpartyOption | null>(null);
+  const [cacheById, setCacheById] = useState<Record<string, CounterpartyOption>>({});
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const selected = counterparties.find(c => c.id === value) || serverResults?.find(c => c.id === value);
+  const requestIdRef = useRef(0);
+
+  const selected = counterparties.find(c => c.id === value)
+    || serverResults?.find(c => c.id === value)
+    || (value ? cacheById[value] : undefined)
+    || (selectedOption?.id === value ? selectedOption : undefined);
+
+  useEffect(() => {
+    if (!counterparties.length) return;
+    setCacheById((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const option of counterparties) {
+        if (!next[option.id] || next[option.id].name !== option.name) {
+          next[option.id] = option;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [counterparties]);
+
+  useEffect(() => {
+    if (!serverResults?.length) return;
+    setCacheById((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const option of serverResults) {
+        if (!next[option.id] || next[option.id].name !== option.name) {
+          next[option.id] = option;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [serverResults]);
+
+  useEffect(() => {
+    if (!value) {
+      setSelectedOption(null);
+      return;
+    }
+    const option = counterparties.find(c => c.id === value)
+      || serverResults?.find(c => c.id === value)
+      || cacheById[value];
+    if (option) setSelectedOption(option);
+  }, [value, counterparties, serverResults, cacheById]);
 
   // Server-side search when typing
   useEffect(() => {
     if (!search.trim() || search.trim().length < 2) {
       setServerResults(null);
+      setSearching(false);
       return;
     }
     if (!moyskladLogin || !moyskladPassword) {
       // fallback to local filter
       setServerResults(null);
+      setSearching(false);
       return;
     }
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     searchTimeoutRef.current = setTimeout(async () => {
+      const requestId = ++requestIdRef.current;
       setSearching(true);
       try {
         const { data, error } = await supabase.functions.invoke("moysklad", {
@@ -62,13 +115,16 @@ function CounterpartySearchSelect({ counterparties, value, onChange, storeId, mo
             counterpartyOffset: 0,
           },
         });
+        if (requestId !== requestIdRef.current) return;
         if (!error && data?.counterparties) {
           setServerResults(data.counterparties);
         }
       } catch (e) {
         console.error("Server counterparty search error:", e);
       } finally {
-        setSearching(false);
+        if (requestId === requestIdRef.current) {
+          setSearching(false);
+        }
       }
     }, 400);
     return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
@@ -118,7 +174,14 @@ function CounterpartySearchSelect({ counterparties, value, onChange, storeId, mo
                       "w-full text-left px-2 py-1.5 rounded-sm text-sm hover:bg-accent cursor-pointer",
                       c.id === value && "bg-accent font-medium"
                     )}
-                    onClick={() => { onChange(c.id); setOpen(false); setSearch(""); setServerResults(null); }}
+                    onClick={() => {
+                      setSelectedOption(c);
+                      setCacheById((prev) => ({ ...prev, [c.id]: c }));
+                      onChange(c.id);
+                      setOpen(false);
+                      setSearch("");
+                      setServerResults(null);
+                    }}
                   >
                     {c.name}
                   </button>
@@ -1350,7 +1413,7 @@ interface MoyskladLeadConfig {
 
 interface MsAccount { id: string; name: string; login: string; password: string; }
 interface MsOrg { id: string; name: string; }
-interface MsCounterparty { id: string; name: string; }
+interface MsCounterparty { id: string; name: string; phone?: string; email?: string; }
 
 function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdateCondition, onRemoveCondition, onAiFill, aiFillingField, telegramLeadNotifications, hasTelegram, onToggleTelegramLeads, moyskladLeadConfig, onUpdateMoyskladConfig }: {
   botId: string;
@@ -1378,7 +1441,21 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
   const [msOrgs, setMsOrgs] = useState<MsOrg[]>([]);
   const [msCounterparties, setMsCounterparties] = useState<MsCounterparty[]>([]);
   const [msLoading, setMsLoading] = useState(false);
+  const [msSaving, setMsSaving] = useState(false);
+  const msSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const msSaveRequestRef = useRef(0);
   const msConfig: MoyskladLeadConfig = moyskladLeadConfig || { enabled: false, account_ids: [], defaults: { organization_id: "", counterparty_id: "" } };
+  const latestMsConfigRef = useRef(msConfig);
+
+  useEffect(() => {
+    latestMsConfigRef.current = msConfig;
+  }, [msConfig]);
+
+  useEffect(() => {
+    return () => {
+      if (msSaveTimeoutRef.current) clearTimeout(msSaveTimeoutRef.current);
+    };
+  }, []);
 
   // Load MoySklad accounts for this store
   useEffect(() => {
@@ -1400,8 +1477,54 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
       }).catch(console.error).finally(() => setMsLoading(false));
   }, [msConfig.enabled, msConfig.account_ids.join(","), msAccounts]);
 
-  const updateMsConfig = (partial: Partial<MoyskladLeadConfig>) => {
-    onUpdateMoyskladConfig({ ...msConfig, ...partial });
+  const persistMsConfig = useCallback(async (config: MoyskladLeadConfig) => {
+    const requestId = ++msSaveRequestRef.current;
+    setMsSaving(true);
+    try {
+      const { error } = await (supabase as any)
+        .from("avito_bots")
+        .update({
+          moysklad_lead_config: config,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", botId);
+
+      if (error) throw error;
+    } catch (err: any) {
+      toast({ title: "Ошибка сохранения настроек МойСклад", description: err.message, variant: "destructive" });
+    } finally {
+      if (requestId === msSaveRequestRef.current) {
+        setMsSaving(false);
+      }
+    }
+  }, [botId, toast]);
+
+  const updateMsConfig = (partial: Partial<MoyskladLeadConfig>, options?: { immediateSave?: boolean }) => {
+    const base = latestMsConfigRef.current;
+    const nextConfig: MoyskladLeadConfig = {
+      ...base,
+      ...partial,
+      defaults: {
+        ...base.defaults,
+        ...(partial.defaults || {}),
+      },
+    };
+
+    onUpdateMoyskladConfig(nextConfig);
+
+    if (msSaveTimeoutRef.current) {
+      clearTimeout(msSaveTimeoutRef.current);
+      msSaveTimeoutRef.current = null;
+    }
+
+    if (options?.immediateSave) {
+      void persistMsConfig(nextConfig);
+      return;
+    }
+
+    msSaveTimeoutRef.current = setTimeout(() => {
+      void persistMsConfig(nextConfig);
+    }, 250);
   };
 
   const loadLeads = useCallback(async () => {
@@ -1516,7 +1639,7 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
       <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30">
         <Switch
           checked={msConfig.enabled}
-          onCheckedChange={(v) => updateMsConfig({ enabled: v })}
+          onCheckedChange={(v) => updateMsConfig({ enabled: v }, { immediateSave: true })}
           disabled={msAccounts.length === 0}
         />
         <div className="flex-1">
@@ -1543,7 +1666,7 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
                         const ids = checked
                           ? [...msConfig.account_ids, acc.id]
                           : msConfig.account_ids.filter(id => id !== acc.id);
-                        updateMsConfig({ account_ids: ids });
+                        updateMsConfig({ account_ids: ids }, { immediateSave: true });
                       }}
                     />
                     {acc.name}
@@ -1564,7 +1687,7 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs">Организация *</Label>
-                      <Select value={msConfig.defaults.organization_id} onValueChange={v => updateMsConfig({ defaults: { ...msConfig.defaults, organization_id: v } })}>
+                        <Select value={msConfig.defaults.organization_id} onValueChange={v => updateMsConfig({ defaults: { organization_id: v } }, { immediateSave: true })}>
                         <SelectTrigger className="text-sm"><SelectValue placeholder="Выберите организацию" /></SelectTrigger>
                         <SelectContent>
                           {msOrgs.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
@@ -1576,7 +1699,7 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
                       <CounterpartySearchSelect
                         counterparties={msCounterparties}
                         value={msConfig.defaults.counterparty_id}
-                        onChange={v => updateMsConfig({ defaults: { ...msConfig.defaults, counterparty_id: v } })}
+                          onChange={v => updateMsConfig({ defaults: { counterparty_id: v } }, { immediateSave: true })}
                         storeId={storeId}
                         moyskladLogin={msAccounts.find(a => msConfig.account_ids.includes(a.id))?.login}
                         moyskladPassword={msAccounts.find(a => msConfig.account_ids.includes(a.id))?.password}
@@ -1584,7 +1707,14 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
                     </div>
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground">Организация и контрагент будут использоваться при создании заказа покупателя в МойСклад.</p>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Организация и контрагент будут использоваться при создании заказа покупателя в МойСклад.</p>
+                  {msSaving && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Сохраняем настройки МойСклад...
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </CardContent>
