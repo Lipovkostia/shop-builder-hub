@@ -1238,7 +1238,17 @@ interface LeadRecord {
   updated_at: string;
 }
 
-function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdateCondition, onRemoveCondition, onAiFill, aiFillingField, telegramLeadNotifications, hasTelegram, onToggleTelegramLeads }: {
+interface MoyskladLeadConfig {
+  enabled: boolean;
+  account_ids: string[];
+  defaults: { organization_id: string; counterparty_id: string };
+}
+
+interface MsAccount { id: string; name: string; login: string; password: string; }
+interface MsOrg { id: string; name: string; }
+interface MsCounterparty { id: string; name: string; }
+
+function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdateCondition, onRemoveCondition, onAiFill, aiFillingField, telegramLeadNotifications, hasTelegram, onToggleTelegramLeads, moyskladLeadConfig, onUpdateMoyskladConfig }: {
   botId: string;
   storeId: string;
   leadConditions: string[];
@@ -1250,12 +1260,48 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
   telegramLeadNotifications: boolean;
   hasTelegram: boolean;
   onToggleTelegramLeads: (v: boolean) => void;
+  moyskladLeadConfig: MoyskladLeadConfig | null;
+  onUpdateMoyskladConfig: (config: MoyskladLeadConfig) => void;
 }) {
   const { toast } = useToast();
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [addingLead, setAddingLead] = useState(false);
   const [newLead, setNewLead] = useState({ client_name: "", contact_type: "phone", contact_value: "", notes: "" });
+
+  // MoySklad state
+  const [msAccounts, setMsAccounts] = useState<MsAccount[]>([]);
+  const [msOrgs, setMsOrgs] = useState<MsOrg[]>([]);
+  const [msCounterparties, setMsCounterparties] = useState<MsCounterparty[]>([]);
+  const [msLoading, setMsLoading] = useState(false);
+  const msConfig: MoyskladLeadConfig = moyskladLeadConfig || { enabled: false, account_ids: [], defaults: { organization_id: "", counterparty_id: "" } };
+
+  // Load MoySklad accounts for this store
+  useEffect(() => {
+    if (!storeId) return;
+    (supabase as any).from("moysklad_accounts").select("id,name,login,password").eq("store_id", storeId).then(({ data }: any) => {
+      setMsAccounts(data || []);
+    });
+  }, [storeId]);
+
+  // Load orgs & counterparties when accounts are selected
+  useEffect(() => {
+    if (!msConfig.enabled || msConfig.account_ids.length === 0 || msAccounts.length === 0) return;
+    const acc = msAccounts.find(a => msConfig.account_ids.includes(a.id));
+    if (!acc) return;
+    setMsLoading(true);
+    Promise.all([
+      supabase.functions.invoke("moysklad", { body: { action: "get_organizations", login: acc.login, password: acc.password } }),
+      supabase.functions.invoke("moysklad", { body: { action: "get_counterparties", login: acc.login, password: acc.password } }),
+    ]).then(([orgRes, cpRes]) => {
+      setMsOrgs(orgRes.data?.organizations || []);
+      setMsCounterparties(cpRes.data?.counterparties || []);
+    }).catch(console.error).finally(() => setMsLoading(false));
+  }, [msConfig.enabled, msConfig.account_ids.join(","), msAccounts]);
+
+  const updateMsConfig = (partial: Partial<MoyskladLeadConfig>) => {
+    onUpdateMoyskladConfig({ ...msConfig, ...partial });
+  };
 
   const loadLeads = useCallback(async () => {
     setLoading(true);
