@@ -1388,19 +1388,16 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
     });
   }, [storeId]);
 
-  // Load orgs & counterparties when accounts are selected
+  // Load orgs when accounts are selected (counterparties use server-side search)
   useEffect(() => {
     if (!msConfig.enabled || msConfig.account_ids.length === 0 || msAccounts.length === 0) return;
     const acc = msAccounts.find(a => msConfig.account_ids.includes(a.id));
     if (!acc) return;
     setMsLoading(true);
-    Promise.all([
-      supabase.functions.invoke("moysklad", { body: { action: "get_organizations", login: acc.login, password: acc.password } }),
-      supabase.functions.invoke("moysklad", { body: { action: "get_counterparties", login: acc.login, password: acc.password } }),
-    ]).then(([orgRes, cpRes]) => {
-      setMsOrgs(orgRes.data?.organizations || []);
-      setMsCounterparties(cpRes.data?.counterparties || []);
-    }).catch(console.error).finally(() => setMsLoading(false));
+    supabase.functions.invoke("moysklad", { body: { action: "get_organizations", login: acc.login, password: acc.password } })
+      .then((orgRes) => {
+        setMsOrgs(orgRes.data?.organizations || []);
+      }).catch(console.error).finally(() => setMsLoading(false));
   }, [msConfig.enabled, msConfig.account_ids.join(","), msAccounts]);
 
   const updateMsConfig = (partial: Partial<MoyskladLeadConfig>) => {
