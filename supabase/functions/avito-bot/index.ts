@@ -536,6 +536,86 @@ async function updateLeadStatus(
     const leadMsg = `🔥 <b>Новый лид!</b>\n\n👤 ${userName || "Клиент"}${condStr}\n📞 Контакты: ${contactsStr || "по условиям"}${contextStr}`;
     await sendTelegramNotification(bot.telegram_bot_token, bot.telegram_chat_id, leadMsg);
   }
+
+  // Create MoySklad order for NEW leads
+  if (!wasLead && bot.moysklad_lead_config?.enabled) {
+    const msConfig = bot.moysklad_lead_config;
+    if (msConfig.account_ids?.length > 0 && msConfig.defaults?.organization_id && msConfig.defaults?.counterparty_id) {
+      try {
+        // Get context for order description
+        let orderContext = "";
+        try {
+          const { data: recentMsgs } = await supabase
+            .from("avito_bot_messages")
+            .select("content")
+            .eq("chat_id", chatId)
+            .eq("role", "user")
+            .order("created_at", { ascending: false })
+            .limit(5);
+          if (recentMsgs && recentMsgs.length > 0) {
+            orderContext = recentMsgs.reverse().map((m: any) => m.content).join("\n");
+          }
+        } catch (_) { /* ignore */ }
+
+        const contactsStr = allContacts.map((c: any) => `${c.type}: ${c.value}`).join(", ");
+        const description = [
+          `Лид из Авито (робот: ${bot.name})`,
+          `Клиент: ${userName || "Не указано"}`,
+          contactsStr ? `Контакты: ${contactsStr}` : "",
+          detection.matchedConditions.length > 0 ? `Условия: ${detection.matchedConditions.join(", ")}` : "",
+          orderContext ? `\nЗапрос клиента:\n${orderContext.slice(0, 500)}` : "",
+        ].filter(Boolean).join("\n");
+
+        // Get credentials for each selected MoySklad account
+        for (const accountId of msConfig.account_ids) {
+          const { data: msAccount } = await supabase
+            .from("moysklad_accounts")
+            .select("login,password")
+            .eq("id", accountId)
+            .single();
+
+          if (!msAccount) continue;
+
+          const MOYSKLAD_API_URL = "https://api.moysklad.ru/api/remap/1.2";
+          const credentials = btoa(`${msAccount.login}:${msAccount.password}`);
+          const authHeader = `Basic ${credentials}`;
+
+          const orderPayload = {
+            name: `Лид-${new Date().toISOString().slice(0, 10)}-${userName || "Авито"}`,
+            description,
+            organization: {
+              meta: {
+                href: `${MOYSKLAD_API_URL}/entity/organization/${msConfig.defaults.organization_id}`,
+                type: "organization",
+                mediaType: "application/json",
+              },
+            },
+            agent: {
+              meta: {
+                href: `${MOYSKLAD_API_URL}/entity/counterparty/${msConfig.defaults.counterparty_id}`,
+                type: "counterparty",
+                mediaType: "application/json",
+              },
+            },
+          };
+
+          const response = await fetch(`${MOYSKLAD_API_URL}/entity/customerorder`, {
+            method: "POST",
+            headers: { Authorization: authHeader, "Content-Type": "application/json" },
+            body: JSON.stringify(orderPayload),
+          });
+
+          if (response.ok) {
+            console.log(`MoySklad order created for lead in account ${accountId}`);
+          } else {
+            console.error(`MoySklad order creation failed for account ${accountId}:`, await response.text());
+          }
+        }
+      } catch (err) {
+        console.error("Error creating MoySklad order from lead:", err);
+      }
+    }
+  }
 }
 
 function buildQAContext(qaItems: Array<{ question: string; answer: string; match_mode: string }>): string {

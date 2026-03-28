@@ -1238,7 +1238,17 @@ interface LeadRecord {
   updated_at: string;
 }
 
-function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdateCondition, onRemoveCondition, onAiFill, aiFillingField, telegramLeadNotifications, hasTelegram, onToggleTelegramLeads }: {
+interface MoyskladLeadConfig {
+  enabled: boolean;
+  account_ids: string[];
+  defaults: { organization_id: string; counterparty_id: string };
+}
+
+interface MsAccount { id: string; name: string; login: string; password: string; }
+interface MsOrg { id: string; name: string; }
+interface MsCounterparty { id: string; name: string; }
+
+function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdateCondition, onRemoveCondition, onAiFill, aiFillingField, telegramLeadNotifications, hasTelegram, onToggleTelegramLeads, moyskladLeadConfig, onUpdateMoyskladConfig }: {
   botId: string;
   storeId: string;
   leadConditions: string[];
@@ -1250,12 +1260,48 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
   telegramLeadNotifications: boolean;
   hasTelegram: boolean;
   onToggleTelegramLeads: (v: boolean) => void;
+  moyskladLeadConfig: MoyskladLeadConfig | null;
+  onUpdateMoyskladConfig: (config: MoyskladLeadConfig) => void;
 }) {
   const { toast } = useToast();
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [addingLead, setAddingLead] = useState(false);
   const [newLead, setNewLead] = useState({ client_name: "", contact_type: "phone", contact_value: "", notes: "" });
+
+  // MoySklad state
+  const [msAccounts, setMsAccounts] = useState<MsAccount[]>([]);
+  const [msOrgs, setMsOrgs] = useState<MsOrg[]>([]);
+  const [msCounterparties, setMsCounterparties] = useState<MsCounterparty[]>([]);
+  const [msLoading, setMsLoading] = useState(false);
+  const msConfig: MoyskladLeadConfig = moyskladLeadConfig || { enabled: false, account_ids: [], defaults: { organization_id: "", counterparty_id: "" } };
+
+  // Load MoySklad accounts for this store
+  useEffect(() => {
+    if (!storeId) return;
+    (supabase as any).from("moysklad_accounts").select("id,name,login,password").eq("store_id", storeId).then(({ data }: any) => {
+      setMsAccounts(data || []);
+    });
+  }, [storeId]);
+
+  // Load orgs & counterparties when accounts are selected
+  useEffect(() => {
+    if (!msConfig.enabled || msConfig.account_ids.length === 0 || msAccounts.length === 0) return;
+    const acc = msAccounts.find(a => msConfig.account_ids.includes(a.id));
+    if (!acc) return;
+    setMsLoading(true);
+    Promise.all([
+      supabase.functions.invoke("moysklad", { body: { action: "get_organizations", login: acc.login, password: acc.password } }),
+      supabase.functions.invoke("moysklad", { body: { action: "get_counterparties", login: acc.login, password: acc.password } }),
+    ]).then(([orgRes, cpRes]) => {
+      setMsOrgs(orgRes.data?.organizations || []);
+      setMsCounterparties(cpRes.data?.counterparties || []);
+    }).catch(console.error).finally(() => setMsLoading(false));
+  }, [msConfig.enabled, msConfig.account_ids.join(","), msAccounts]);
+
+  const updateMsConfig = (partial: Partial<MoyskladLeadConfig>) => {
+    onUpdateMoyskladConfig({ ...msConfig, ...partial });
+  };
 
   const loadLeads = useCallback(async () => {
     setLoading(true);
@@ -1364,6 +1410,81 @@ function LeadsSection({ botId, storeId, leadConditions, onAddCondition, onUpdate
           </p>
         </div>
       </div>
+
+      {/* MoySklad integration */}
+      <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30">
+        <Switch
+          checked={msConfig.enabled}
+          onCheckedChange={(v) => updateMsConfig({ enabled: v })}
+          disabled={msAccounts.length === 0}
+        />
+        <div className="flex-1">
+          <Label className="text-sm font-medium">📦 Отправлять лиды в МойСклад</Label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {msAccounts.length === 0
+              ? "Подключите аккаунт МойСклад в настройках магазина"
+              : "При создании лида автоматически формируется заказ покупателя в МойСклад с контактами и запросом клиента"}
+          </p>
+        </div>
+      </div>
+
+      {msConfig.enabled && msAccounts.length > 0 && (
+        <Card className="border-dashed">
+          <CardContent className="pt-4 space-y-4">
+            <div>
+              <Label className="text-xs font-medium mb-1.5 block">Аккаунты МойСклад</Label>
+              <div className="space-y-2">
+                {msAccounts.map(acc => (
+                  <label key={acc.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={msConfig.account_ids.includes(acc.id)}
+                      onCheckedChange={(checked) => {
+                        const ids = checked
+                          ? [...msConfig.account_ids, acc.id]
+                          : msConfig.account_ids.filter(id => id !== acc.id);
+                        updateMsConfig({ account_ids: ids });
+                      }}
+                    />
+                    {acc.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {msConfig.account_ids.length > 0 && (
+              <>
+                {msLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Загрузка данных из МойСклад...
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Организация *</Label>
+                      <Select value={msConfig.defaults.organization_id} onValueChange={v => updateMsConfig({ defaults: { ...msConfig.defaults, organization_id: v } })}>
+                        <SelectTrigger className="text-sm"><SelectValue placeholder="Выберите организацию" /></SelectTrigger>
+                        <SelectContent>
+                          {msOrgs.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Контрагент по умолчанию *</Label>
+                      <Select value={msConfig.defaults.counterparty_id} onValueChange={v => updateMsConfig({ defaults: { ...msConfig.defaults, counterparty_id: v } })}>
+                        <SelectTrigger className="text-sm"><SelectValue placeholder="Выберите контрагента" /></SelectTrigger>
+                        <SelectContent>
+                          {msCounterparties.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">Организация и контрагент будут использоваться при создании заказа покупателя в МойСклад.</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Separator />
 
@@ -2132,7 +2253,7 @@ function BotEditor({ bot, bots, botForm, setBotForm, botSection, setBotSection, 
         return <LeadsSection botId={bot.id} storeId={storeId!} leadConditions={(botForm.lead_conditions as string[]) || []} onAddCondition={() => addListItem("lead_conditions")} onUpdateCondition={(i, v) => updateListItem("lead_conditions", i, v)} onRemoveCondition={(i) => removeListItem("lead_conditions", i)} onAiFill={async () => {
           const result = await aiFill("leads_gen", ((botForm.lead_conditions as string[]) || []).join("; "), "Условия для создания лида в чат-боте на Авито (список через точку с запятой)");
           if (result) { const items = result.split(/[;\n]/).map((s: string) => s.replace(/^\d+\.\s*/, "").trim()).filter(Boolean); updateForm({ lead_conditions: items }); }
-        }} aiFillingField={aiFillingField} telegramLeadNotifications={(botForm as any).telegram_lead_notifications !== false} hasTelegram={!!(botForm as any).telegram_bot_token && !!(botForm as any).telegram_chat_id} onToggleTelegramLeads={(v) => updateForm({ telegram_lead_notifications: v })} />;
+        }} aiFillingField={aiFillingField} telegramLeadNotifications={(botForm as any).telegram_lead_notifications !== false} hasTelegram={!!(botForm as any).telegram_bot_token && !!(botForm as any).telegram_chat_id} onToggleTelegramLeads={(v) => updateForm({ telegram_lead_notifications: v })} moyskladLeadConfig={(botForm as any).moysklad_lead_config || null} onUpdateMoyskladConfig={(config) => updateForm({ moysklad_lead_config: config } as any)} />;
 
       case "escalation":
         return <ListEditor title="Когда передать человеку?" desc="Случаи передачи диалога." items={(botForm.escalation_rules as string[]) || []} onAdd={() => addListItem("escalation_rules")} onUpdate={(i, v) => updateListItem("escalation_rules", i, v)} onRemove={(i) => removeListItem("escalation_rules", i)} placeholder="Правило..." onAiFill={async () => {
