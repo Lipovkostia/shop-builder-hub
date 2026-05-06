@@ -6,9 +6,9 @@ import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from "react
 import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/hooks/useAuth";
+import Index from "./pages/Index";
 import { useStoreBySubdomain } from "@/hooks/useUserStore";
 
-const Index = lazy(() => import("./pages/Index"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const TestStore = lazy(() => import("./pages/TestStore"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
