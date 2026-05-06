@@ -32,18 +32,56 @@ serve(async (req) => {
     const body: CreateGuestOrderRequest = await req.json();
     const { accessCode, guestName, guestPhone, guestComment, items } = body;
 
-    // Validate required fields
-    if (!accessCode) {
-      throw new Error("accessCode is required");
+    // --- Input validation (length / format / range / size limits) ---
+    const ACCESS_CODE_RE = /^[A-Za-z0-9_-]{4,64}$/;
+    const PHONE_RE = /^\+?[0-9\s\-()]{7,20}$/;
+    const MAX_NAME = 100;
+    const MAX_PHONE = 20;
+    const MAX_COMMENT = 500;
+    const MAX_PRODUCT_NAME = 200;
+    const MAX_ITEMS = 100;
+    const MAX_QTY = 10000;
+    const MAX_PRICE = 10_000_000;
+
+    if (typeof accessCode !== "string" || !ACCESS_CODE_RE.test(accessCode)) {
+      throw new Error("Invalid accessCode format");
     }
-    if (!guestName?.trim()) {
-      throw new Error("guestName is required");
+    if (typeof guestName !== "string" || !guestName.trim() || guestName.trim().length > MAX_NAME) {
+      throw new Error(`guestName is required (max ${MAX_NAME} chars)`);
     }
-    if (!guestPhone?.trim()) {
-      throw new Error("guestPhone is required");
+    if (typeof guestPhone !== "string" || !PHONE_RE.test(guestPhone.trim()) || guestPhone.trim().length > MAX_PHONE) {
+      throw new Error("Invalid guestPhone format");
     }
-    if (!items || items.length === 0) {
+    if (guestComment !== undefined && guestComment !== null) {
+      if (typeof guestComment !== "string" || guestComment.length > MAX_COMMENT) {
+        throw new Error(`guestComment must be a string (max ${MAX_COMMENT} chars)`);
+      }
+    }
+    if (!Array.isArray(items) || items.length === 0) {
       throw new Error("items are required");
+    }
+    if (items.length > MAX_ITEMS) {
+      throw new Error(`Too many items (max ${MAX_ITEMS})`);
+    }
+    for (const item of items) {
+      if (!item || typeof item !== "object") {
+        throw new Error("Invalid item entry");
+      }
+      if (typeof item.productName !== "string" || !item.productName.trim() || item.productName.length > MAX_PRODUCT_NAME) {
+        throw new Error(`Invalid productName (max ${MAX_PRODUCT_NAME} chars)`);
+      }
+      if (typeof item.quantity !== "number" || !Number.isFinite(item.quantity) || item.quantity <= 0 || item.quantity > MAX_QTY) {
+        throw new Error("Invalid item quantity");
+      }
+      if (typeof item.price !== "number" || !Number.isFinite(item.price) || item.price < 0 || item.price > MAX_PRICE) {
+        throw new Error("Invalid item price");
+      }
+      if (typeof item.variantIndex !== "number" || !Number.isInteger(item.variantIndex) || item.variantIndex < 0 || item.variantIndex > 10) {
+        throw new Error("Invalid variantIndex");
+      }
+      if (item.productId !== null && item.productId !== undefined && typeof item.productId !== "string") {
+        throw new Error("Invalid productId");
+      }
     }
 
     // Create Supabase client with service role to bypass RLS
