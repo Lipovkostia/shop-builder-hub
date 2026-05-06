@@ -29,13 +29,14 @@
     </div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      // Если приложение не смонтировалось за 25с — показать понятное сообщение вместо белого экрана
-      setTimeout(function(){
+      // Фолбэк только если React реально не смог смонтироваться (нет атрибута data-app-mounted).
+      // Не трогаем DOM, если приложение уже работает — иначе мы его уничтожим.
+      setTimeout(function () {
         var root = document.getElementById('root');
-        if (root && root.querySelector('[data-app-mounted]') === null && root.children.length <= 2) {
-          root.innerHTML = '<div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui,sans-serif;padding:24px;text-align:center;color:#333"><h1 style="font-size:20px;margin:0 0 12px">Не удалось загрузить страницу</h1><p style="margin:0 0 20px;color:#666;max-width:420px">Проверьте интернет-соединение и попробуйте обновить страницу.</p><button onclick="location.reload(true)" style="padding:10px 20px;background:#111;color:#fff;border:0;border-radius:8px;font-size:14px;cursor:pointer">Обновить</button></div>';
-        }
-      }, 25000);
+        if (!root) return;
+        if (root.getAttribute('data-app-mounted') === '1') return;
+        root.innerHTML = '<div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui,sans-serif;padding:24px;text-align:center;color:#333"><h1 style="font-size:20px;margin:0 0 12px">Не удалось загрузить страницу</h1><p style="margin:0 0 20px;color:#666;max-width:420px">Проверьте интернет-соединение и попробуйте обновить страницу.</p><button onclick="location.reload(true)" style="padding:10px 20px;background:#111;color:#fff;border:0;border-radius:8px;font-size:14px;cursor:pointer">Обновить</button></div>';
+      }, 30000);
     </script>
   </body>
 </html>
