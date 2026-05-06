@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { lazy, Suspense } from "react";
+import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -39,6 +39,40 @@ const AppLoadingFallback = () => (
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
   </div>
 );
+
+class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("App failed to load", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-6 text-center">
+          <h1 className="text-xl font-semibold text-foreground">Не удалось загрузить страницу</h1>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Обновите страницу. Если интернет нестабильный, повторная загрузка возьмёт сохранённые файлы из кеша.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >
+            Обновить
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // Check if hostname is a platform domain (not a custom domain)
 function isPlatformDomain(hostname: string): boolean {
@@ -102,9 +136,11 @@ const App = () => {
             <TooltipProvider>
               <Toaster />
               <Sonner />
-              <Suspense fallback={<AppLoadingFallback />}>
-                <CustomDomainHandler hostname={hostname} />
-              </Suspense>
+              <AppErrorBoundary>
+                <Suspense fallback={<AppLoadingFallback />}>
+                  <CustomDomainHandler hostname={hostname} />
+                </Suspense>
+              </AppErrorBoundary>
             </TooltipProvider>
           </AuthProvider>
         </HelmetProvider>
@@ -121,6 +157,7 @@ const App = () => {
               <Toaster />
               <Sonner />
               <BrowserRouter>
+                <AppErrorBoundary>
                 <Suspense fallback={<AppLoadingFallback />}>
                   <Routes>
                     <Route path="/" element={<Index />} />
@@ -153,6 +190,7 @@ const App = () => {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
+                </AppErrorBoundary>
               </BrowserRouter>
             </TooltipProvider>
           </AuthProvider>
