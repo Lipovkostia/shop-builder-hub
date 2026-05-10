@@ -29,11 +29,21 @@ interface LandingProductTableProps {
 }
 
 const BATCH_SIZE = 30;
+const LANDING_PRODUCTS_CACHE_KEY = "landing_products_cache_v1";
 
 export default function LandingProductTable({ onAddToCatalog, onInstantAdd, addedIds = new Set() }: LandingProductTableProps) {
   const [allProducts, setAllProducts] = useState<LandingProduct[]>([]);
   const [categories, setCategories] = useState<LandingCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem(LANDING_PRODUCTS_CACHE_KEY);
+      if (!cached) return true;
+      const json = JSON.parse(cached);
+      return !(json.data && json.data.length > 0);
+    } catch {
+      return true;
+    }
+  });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showCatalog, setShowCatalog] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -42,6 +52,18 @@ export default function LandingProductTable({ onAddToCatalog, onInstantAdd, adde
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    try {
+      const cached = localStorage.getItem(LANDING_PRODUCTS_CACHE_KEY);
+      if (cached) {
+        const json = JSON.parse(cached);
+        if (json.data && json.data.length > 0) {
+          setAllProducts(json.data || []);
+          setCategories(json.categories || []);
+          setLoading(false);
+        }
+      }
+    } catch { /* ignore broken landing cache */ }
+
     const fetchProducts = async () => {
       try {
         const res = await fetch(
@@ -49,6 +71,7 @@ export default function LandingProductTable({ onAddToCatalog, onInstantAdd, adde
         );
         if (!res.ok) throw new Error("Failed to fetch");
         const json = await res.json();
+        try { localStorage.setItem(LANDING_PRODUCTS_CACHE_KEY, JSON.stringify(json)); } catch { /* ignore quota */ }
         setAllProducts(json.data || []);
         setCategories(json.categories || []);
       } catch (e) {
