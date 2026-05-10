@@ -798,10 +798,12 @@ const Index = () => {
           ) : (
             <div className="space-y-1.5">
               <Label className="text-sm">Номер телефона</Label>
-              <PhoneInput
-                value={loginPhone}
-                onChange={setLoginPhone}
-              />
+                <Suspense fallback={<BlockLoader className="h-10 rounded-md border" />}>
+                  <PhoneInput
+                    value={loginPhone}
+                    onChange={setLoginPhone}
+                  />
+                </Suspense>
             </div>
           )
         ) : (
@@ -911,7 +913,9 @@ const Index = () => {
               </div>
             </div>
             <div ref={productListRef} className="rounded-lg border bg-card overflow-hidden flex flex-col flex-1 min-h-0">
-              <LandingProductTable onAddToCatalog={handleAddToCatalog} onInstantAdd={handleInstantAdd} addedIds={new Set(demoItems.map(i => i.id))} />
+              <Suspense fallback={<BlockLoader className="h-32" />}>
+                <LandingProductTable onAddToCatalog={handleAddToCatalog} onInstantAdd={handleInstantAdd} addedIds={new Set(demoItems.map(i => i.id))} />
+              </Suspense>
             </div>
           </div>
 
@@ -946,11 +950,13 @@ const Index = () => {
               </div>
             )}
             <div className="flex-1 min-h-0 overflow-y-auto rounded-b-xl">
-              <LandingDemoCart
-                items={demoItems}
-                onRemove={handleRemoveFromCart}
-                onClear={handleClearCart}
-              />
+              <Suspense fallback={<BlockLoader className="h-56 rounded-xl" />}>
+                <LandingDemoCart
+                  items={demoItems}
+                  onRemove={handleRemoveFromCart}
+                  onClear={handleClearCart}
+                />
+              </Suspense>
             </div>
           </div>
 
