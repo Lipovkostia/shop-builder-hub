@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from "react";
+import { Component, lazy, Suspense, useEffect, type ErrorInfo, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -34,9 +34,19 @@ const CustomDomainHandler = lazy(() =>
 
 const queryClient = new QueryClient();
 
-const AppLoadingFallback = () => (
-  <div className="min-h-screen bg-background flex items-center justify-center">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+declare global {
+  interface Window {
+    __setBootProgress?: (value: number, message?: string) => void;
+  }
+}
+
+const AppLoadingFallback = ({ progress = 88, message = "Загрузка раздела…" }: { progress?: number; message?: string }) => (
+  <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3 px-6">
+    <div className="text-sm font-semibold text-foreground">{message}</div>
+    <div className="h-2 w-full max-w-[280px] overflow-hidden rounded-full bg-secondary">
+      <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }} />
+    </div>
+    <div className="text-xs text-muted-foreground">{progress}%</div>
   </div>
 );
 
@@ -127,6 +137,14 @@ function StoreAdminWrapper() {
 const App = () => {
   const hostname = window.location.hostname;
 
+  useEffect(() => {
+    window.__setBootProgress?.(96, "Отрисовка страницы…");
+    const frame = requestAnimationFrame(() => {
+      window.__setBootProgress?.(100, "Готово");
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
   // If this is a custom domain, use the CustomDomainHandler
   if (!isPlatformDomain(hostname)) {
     return (
@@ -158,7 +176,7 @@ const App = () => {
               <Sonner />
               <BrowserRouter>
                 <AppErrorBoundary>
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<AppLoadingFallback progress={92} />}>
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/index" element={<Index />} />
