@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
 import { useStoreBySubdomain } from "@/hooks/useUserStore";
 
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -14,7 +15,6 @@ const TestStore = lazy(() => import("./pages/TestStore"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
 const SuperAdmin = lazy(() => import("./pages/SuperAdmin"));
 const SellerWorkspace = lazy(() => import("./pages/SellerWorkspace"));
-const NotFound = lazy(() => import("./pages/NotFound"));
 const RetailStore = lazy(() => import("./pages/RetailStore"));
 const RetailProductPage = lazy(() => import("./pages/RetailProductPage"));
 const RetailCheckout = lazy(() => import("./pages/RetailCheckout"));
@@ -158,9 +158,11 @@ const App = () => {
               <Sonner />
               <BrowserRouter>
                 <AppErrorBoundary>
-                <Suspense fallback={<AppLoadingFallback />}>
+                  <Suspense fallback={<AppLoadingFallback />}>
                   <Routes>
                     <Route path="/" element={<Index />} />
+                    <Route path="/index" element={<Index />} />
+                    <Route path="/index.html" element={<Index />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/auth" element={<Navigate to="/" replace />} />
                     <Route path="/dashboard" element={<Navigate to="/" replace />} />
