@@ -13,4 +13,4 @@ window.__setBootProgress?.(65, "Запуск приложения…");
 // Маркер для index.html: приложение успешно начало монтирование.
 rootEl.setAttribute("data-app-mounted", "1");
 
-createRoot(rootEl).render(<App onReady={() => window.__setBootProgress?.(100, "Готово")} />);
+createRoot(rootEl).render(<App />);
