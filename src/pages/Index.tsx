@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { lazy, Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,12 +8,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Store, User, Mail, Lock, Phone, ArrowLeft, Loader2, ChevronRight } from "lucide-react";
-import { PhoneInput } from "@/components/ui/phone-input";
-import LandingProductTable from "@/components/landing/LandingProductTable";
 
-import LandingDemoCart from "@/components/landing/LandingDemoCart";
-import LandingFeaturedCarousel from "@/components/landing/LandingFeaturedCarousel";
-import LandingInfoBlocks from "@/components/landing/LandingInfoBlocks";
+const PhoneInput = lazy(() => import("@/components/ui/phone-input").then((module) => ({ default: module.PhoneInput })));
+const LandingProductTable = lazy(() => import("@/components/landing/LandingProductTable"));
+const LandingDemoCart = lazy(() => import("@/components/landing/LandingDemoCart"));
+const LandingFeaturedCarousel = lazy(() => import("@/components/landing/LandingFeaturedCarousel"));
+const LandingInfoBlocks = lazy(() => import("@/components/landing/LandingInfoBlocks"));
+
+const BlockLoader = ({ className = "h-32" }: { className?: string }) => (
+  <div className={`flex items-center justify-center bg-card ${className}`}>
+    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+  </div>
+);
 
 interface DemoProduct {
   id: string;
