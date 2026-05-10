@@ -134,16 +134,16 @@ function StoreAdminWrapper() {
   return <Navigate to={`/admin?storeId=${store.id}`} replace />;
 }
 
-const App = ({ onReady }: { onReady?: () => void }) => {
+const App = () => {
   const hostname = window.location.hostname;
 
   useEffect(() => {
     window.__setBootProgress?.(96, "Отрисовка страницы…");
     const frame = requestAnimationFrame(() => {
-      onReady?.();
+      window.__setBootProgress?.(100, "Готово");
     });
     return () => cancelAnimationFrame(frame);
-  }, [onReady]);
+  }, []);
 
   // If this is a custom domain, use the CustomDomainHandler
   if (!isPlatformDomain(hostname)) {
