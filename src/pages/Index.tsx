@@ -14,6 +14,7 @@ const LandingProductTable = lazy(() => import("@/components/landing/LandingProdu
 const LandingDemoCart = lazy(() => import("@/components/landing/LandingDemoCart"));
 const LandingFeaturedCarousel = lazy(() => import("@/components/landing/LandingFeaturedCarousel"));
 const LandingInfoBlocks = lazy(() => import("@/components/landing/LandingInfoBlocks"));
+const LANDING_PRODUCTS_CACHE_KEY = "landing_products_cache_v1";
 
 const BlockLoader = ({ className = "h-32" }: { className?: string }) => (
   <div className={`flex items-center justify-center bg-card ${className}`}>
@@ -58,9 +59,25 @@ const Index = () => {
 
   // Fetch catalog access code + seed demo cart with products that have images
   useEffect(() => {
+    try {
+      const cached = localStorage.getItem(LANDING_PRODUCTS_CACHE_KEY);
+      if (cached) {
+        const json = JSON.parse(cached);
+        if (json.access_code) setCatalogAccessCode(json.access_code);
+        if (json.data && json.data.length > 0) {
+          setDemoItems(prev => {
+            if (prev.length > 0) return prev;
+            const withImages = (json.data as DemoProduct[]).filter(p => p.image && p.image.length > 0);
+            return withImages.slice(0, 6);
+          });
+        }
+      }
+    } catch { /* ignore broken landing cache */ }
+
     fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/landing-products`)
       .then(r => r.json())
       .then(json => {
+        try { localStorage.setItem(LANDING_PRODUCTS_CACHE_KEY, JSON.stringify(json)); } catch { /* ignore quota */ }
         if (json.access_code) setCatalogAccessCode(json.access_code);
         // Auto-seed demo cart if empty — pick first products with images
         if (json.data && json.data.length > 0) {
