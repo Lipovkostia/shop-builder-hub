@@ -158,7 +158,7 @@ const App = () => {
               <Sonner />
               <BrowserRouter>
                 <AppErrorBoundary>
-                  <Suspense fallback={<AppLoadingFallback />}>
+                  <Suspense fallback={null}>
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/index" element={<Index />} />
