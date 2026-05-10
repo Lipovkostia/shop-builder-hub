@@ -1032,10 +1032,12 @@ const Index = () => {
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-sm">Телефон</Label>
-                          <PhoneInput
-                            value={sellerPhone}
-                            onChange={setSellerPhone}
-                          />
+                          <Suspense fallback={<BlockLoader className="h-10 rounded-md border" />}>
+                            <PhoneInput
+                              value={sellerPhone}
+                              onChange={setSellerPhone}
+                            />
+                          </Suspense>
                         </div>
                       </>
                     )}
@@ -1089,10 +1091,12 @@ const Index = () => {
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-sm">Телефон</Label>
-                          <PhoneInput
-                            value={customerPhone}
-                            onChange={setCustomerPhone}
-                          />
+                          <Suspense fallback={<BlockLoader className="h-10 rounded-md border" />}>
+                            <PhoneInput
+                              value={customerPhone}
+                              onChange={setCustomerPhone}
+                            />
+                          </Suspense>
                         </div>
                       </>
                     )}
@@ -1106,12 +1110,16 @@ const Index = () => {
 
       {/* Featured products carousel - full width */}
       <div className="w-full max-w-[100vw] px-4 lg:px-8">
-        <LandingFeaturedCarousel />
+        <Suspense fallback={null}>
+          <LandingFeaturedCarousel />
+        </Suspense>
       </div>
 
       {/* Info blocks - full width */}
       <div className="w-full max-w-[100vw] px-4 lg:px-8">
-        <LandingInfoBlocks />
+        <Suspense fallback={null}>
+          <LandingInfoBlocks />
+        </Suspense>
       </div>
     </div>
     </div>
