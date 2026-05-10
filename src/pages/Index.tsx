@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { lazy, Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,12 +8,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Store, User, Mail, Lock, Phone, ArrowLeft, Loader2, ChevronRight } from "lucide-react";
-import { PhoneInput } from "@/components/ui/phone-input";
-import LandingProductTable from "@/components/landing/LandingProductTable";
 
-import LandingDemoCart from "@/components/landing/LandingDemoCart";
-import LandingFeaturedCarousel from "@/components/landing/LandingFeaturedCarousel";
-import LandingInfoBlocks from "@/components/landing/LandingInfoBlocks";
+const PhoneInput = lazy(() => import("@/components/ui/phone-input").then((module) => ({ default: module.PhoneInput })));
+const LandingProductTable = lazy(() => import("@/components/landing/LandingProductTable"));
+const LandingDemoCart = lazy(() => import("@/components/landing/LandingDemoCart"));
+const LandingFeaturedCarousel = lazy(() => import("@/components/landing/LandingFeaturedCarousel"));
+const LandingInfoBlocks = lazy(() => import("@/components/landing/LandingInfoBlocks"));
+const LANDING_PRODUCTS_CACHE_KEY = "landing_products_cache_v1";
+
+const BlockLoader = ({ className = "h-32" }: { className?: string }) => (
+  <div className={`flex items-center justify-center bg-card ${className}`}>
+    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+  </div>
+);
 
 interface DemoProduct {
   id: string;
@@ -52,9 +59,25 @@ const Index = () => {
 
   // Fetch catalog access code + seed demo cart with products that have images
   useEffect(() => {
+    try {
+      const cached = localStorage.getItem(LANDING_PRODUCTS_CACHE_KEY);
+      if (cached) {
+        const json = JSON.parse(cached);
+        if (json.access_code) setCatalogAccessCode(json.access_code);
+        if (json.data && json.data.length > 0) {
+          setDemoItems(prev => {
+            if (prev.length > 0) return prev;
+            const withImages = (json.data as DemoProduct[]).filter(p => p.image && p.image.length > 0);
+            return withImages.slice(0, 6);
+          });
+        }
+      }
+    } catch { /* ignore broken landing cache */ }
+
     fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/landing-products`)
       .then(r => r.json())
       .then(json => {
+        try { localStorage.setItem(LANDING_PRODUCTS_CACHE_KEY, JSON.stringify(json)); } catch { /* ignore quota */ }
         if (json.access_code) setCatalogAccessCode(json.access_code);
         // Auto-seed demo cart if empty — pick first products with images
         if (json.data && json.data.length > 0) {
@@ -792,10 +815,12 @@ const Index = () => {
           ) : (
             <div className="space-y-1.5">
               <Label className="text-sm">Номер телефона</Label>
-              <PhoneInput
-                value={loginPhone}
-                onChange={setLoginPhone}
-              />
+                <Suspense fallback={<BlockLoader className="h-10 rounded-md border" />}>
+                  <PhoneInput
+                    value={loginPhone}
+                    onChange={setLoginPhone}
+                  />
+                </Suspense>
             </div>
           )
         ) : (
@@ -905,7 +930,9 @@ const Index = () => {
               </div>
             </div>
             <div ref={productListRef} className="rounded-lg border bg-card overflow-hidden flex flex-col flex-1 min-h-0">
-              <LandingProductTable onAddToCatalog={handleAddToCatalog} onInstantAdd={handleInstantAdd} addedIds={new Set(demoItems.map(i => i.id))} />
+              <Suspense fallback={<BlockLoader className="h-32" />}>
+                <LandingProductTable onAddToCatalog={handleAddToCatalog} onInstantAdd={handleInstantAdd} addedIds={new Set(demoItems.map(i => i.id))} />
+              </Suspense>
             </div>
           </div>
 
@@ -940,11 +967,13 @@ const Index = () => {
               </div>
             )}
             <div className="flex-1 min-h-0 overflow-y-auto rounded-b-xl">
-              <LandingDemoCart
-                items={demoItems}
-                onRemove={handleRemoveFromCart}
-                onClear={handleClearCart}
-              />
+              <Suspense fallback={<BlockLoader className="h-56 rounded-xl" />}>
+                <LandingDemoCart
+                  items={demoItems}
+                  onRemove={handleRemoveFromCart}
+                  onClear={handleClearCart}
+                />
+              </Suspense>
             </div>
           </div>
 
@@ -1020,10 +1049,12 @@ const Index = () => {
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-sm">Телефон</Label>
-                          <PhoneInput
-                            value={sellerPhone}
-                            onChange={setSellerPhone}
-                          />
+                          <Suspense fallback={<BlockLoader className="h-10 rounded-md border" />}>
+                            <PhoneInput
+                              value={sellerPhone}
+                              onChange={setSellerPhone}
+                            />
+                          </Suspense>
                         </div>
                       </>
                     )}
@@ -1077,10 +1108,12 @@ const Index = () => {
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-sm">Телефон</Label>
-                          <PhoneInput
-                            value={customerPhone}
-                            onChange={setCustomerPhone}
-                          />
+                          <Suspense fallback={<BlockLoader className="h-10 rounded-md border" />}>
+                            <PhoneInput
+                              value={customerPhone}
+                              onChange={setCustomerPhone}
+                            />
+                          </Suspense>
                         </div>
                       </>
                     )}
@@ -1094,12 +1127,16 @@ const Index = () => {
 
       {/* Featured products carousel - full width */}
       <div className="w-full max-w-[100vw] px-4 lg:px-8">
-        <LandingFeaturedCarousel />
+        <Suspense fallback={null}>
+          <LandingFeaturedCarousel />
+        </Suspense>
       </div>
 
       {/* Info blocks - full width */}
       <div className="w-full max-w-[100vw] px-4 lg:px-8">
-        <LandingInfoBlocks />
+        <Suspense fallback={null}>
+          <LandingInfoBlocks />
+        </Suspense>
       </div>
     </div>
     </div>
