@@ -36,6 +36,8 @@ import * as XLSX from "xlsx";
 import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
 import { AvitoAiDescriptionWorkspace } from "./AvitoAiDescriptionWorkspace";
+import { AvitoListingVariantsManager } from "./AvitoListingVariantsManager";
+import { Copy as CopyIcon } from "lucide-react";
 
 interface AvitoItem {
   id: number;
@@ -253,6 +255,7 @@ function AvitoFeedTable({
   onUpdateProductParams: (productId: string, params: any) => Promise<void>;
 }) {
   const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
+  const [variantsManagerProductId, setVariantsManagerProductId] = useState<string | null>(null);
 
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
     try {
@@ -673,6 +676,15 @@ function AvitoFeedTable({
                       <Button size="icon" variant="ghost" className="h-6 w-6" title="AI описание" onClick={() => openAiForProducts([fp.product_id])}>
                         <Wand2 className="h-3.5 w-3.5 text-primary" />
                       </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        title="Дубли объявления для Авито"
+                        onClick={() => setVariantsManagerProductId(fp.product_id)}
+                      >
+                        <CopyIcon className="h-3.5 w-3.5 text-amber-600" />
+                      </Button>
                       <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeProductFromFeed(fp.product_id)}>
                         <X className="h-3.5 w-3.5" />
                       </Button>
@@ -714,6 +726,21 @@ function AvitoFeedTable({
           }}
         />
       )}
+
+      {variantsManagerProductId && (() => {
+        const p = storeProducts.find(sp => sp.id === variantsManagerProductId);
+        const sourceProduct = p
+          ? { id: p.id, name: p.name, description: p.description, price: p.pricePerUnit, images: p.images || [] }
+          : null;
+        return (
+          <AvitoListingVariantsManager
+            open={!!variantsManagerProductId}
+            onOpenChange={(open) => { if (!open) setVariantsManagerProductId(null); }}
+            storeId={storeId}
+            product={sourceProduct}
+          />
+        );
+      })()}
     </div>
   );
 }
