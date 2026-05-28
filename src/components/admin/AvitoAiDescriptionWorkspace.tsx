@@ -201,9 +201,13 @@ export function AvitoAiDescriptionWorkspace({
   };
 
   const handleSaveTpl = () => {
-    if (!newTplName.trim()) return;
+    const name = newTplName.trim();
+    if (!name) {
+      alert("Введите название шаблона перед сохранением");
+      return;
+    }
     onSaveTemplate({
-      name: newTplName.trim(),
+      name,
       instruction,
       maxChars,
       blocks: useBlocks ? { heading, main, advantages, cta } : undefined,
@@ -212,6 +216,7 @@ export function AvitoAiDescriptionWorkspace({
     });
     setNewTplName("");
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
