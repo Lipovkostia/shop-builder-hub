@@ -189,6 +189,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
         aspect_ratio: aspect,
         width: customW ?? undefined,
         height: customH ?? undefined,
+        model: modelId,
       },
     );
   };
@@ -200,7 +201,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
     }
     await generateBatch(
       [{ id: row.id, product_id: row.product_id, source_image_url: row.source_url, prompt: row.prompt }],
-      { aspect_ratio: aspect, width: customW ?? undefined, height: customH ?? undefined },
+      { aspect_ratio: aspect, width: customW ?? undefined, height: customH ?? undefined, model: modelId },
     );
   };
 
