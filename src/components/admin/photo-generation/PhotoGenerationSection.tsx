@@ -451,7 +451,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
                           <Checkbox checked={selectedJobIds.has(item.key)} onCheckedChange={() => toggleJob(item.key)} />
                           Одобрить
                         </label>
-                        <Button size="sm" variant="ghost" onClick={() => hideJob(item.jobId)}>
+                        <Button size="sm" variant="ghost" onClick={() => item.jobId ? hideJob(item.jobId) : item.taskId ? clearResult(item.taskId) : undefined}>
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
