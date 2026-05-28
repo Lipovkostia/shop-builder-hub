@@ -97,7 +97,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
   const loadJobs = async (ids: string[]) => {
     if (ids.length === 0) { setSavedJobs([]); return; }
     const { data, error } = await supabase
-      .from("image_generation_jobs" as any)
+      .from("image_generation_jobs" as never)
       .select("id, product_id, prompt, result_image_url, created_at, status, approved, hidden")
       .in("product_id", ids)
       .eq("status", "success")
@@ -106,7 +106,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) { setSavedJobs([]); return; }
-    setSavedJobs(((data ?? []) as any[]).filter((j) => j.result_image_url) as SavedJob[]);
+    setSavedJobs(((data ?? []) as unknown as SavedJob[]).filter((j) => j.result_image_url));
   };
 
   useEffect(() => { loadJobs(Array.from(selectedIds)); }, [selectedIds, results]);
@@ -260,7 +260,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
       else { ok++; allJobIds.push(...jobIds); setProducts((prev) => prev.map((p) => p.id === pid ? { ...p, images: next } : p)); }
     }
     if (allJobIds.length) {
-      await supabase.from("image_generation_jobs" as any).update({ approved: true } as any).in("id", allJobIds);
+      await supabase.from("image_generation_jobs" as never).update({ approved: true } as never).in("id", allJobIds);
     }
     toast.success(`Добавлено в ${ok} товаров`);
     approvable.forEach((item) => { if (selectedJobIds.has(item.key) && item.taskId) allTaskIds.push(item.taskId); });
@@ -271,7 +271,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
   };
 
   const hideJob = async (jobId: string) => {
-    await supabase.from("image_generation_jobs" as any).update({ hidden: true } as any).eq("id", jobId);
+    await supabase.from("image_generation_jobs" as never).update({ hidden: true } as never).eq("id", jobId);
     setSavedJobs((prev) => prev.filter((j) => j.id !== jobId));
   };
 

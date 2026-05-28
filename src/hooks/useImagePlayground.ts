@@ -90,31 +90,33 @@ export function useImagePlayground(storeId: string | null) {
         body: { ...params, store_id: storeId },
       });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      const payload = data as { error?: string; url?: string; model?: string } | null;
+      if (payload?.error) throw new Error(payload.error);
       const assistantMessage: PlaygroundMessage = {
         id: crypto.randomUUID(),
         store_id: storeId,
         user_id: "local",
         role: "assistant",
         content: "",
-        image_urls: (data as any)?.url ? [(data as any).url] : [],
-        model: (data as any)?.model ?? params.model,
+        image_urls: payload?.url ? [payload.url] : [],
+        model: payload?.model ?? params.model,
         created_at: new Date().toISOString(),
       };
       saveMessages([...withUser, assistantMessage]);
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
       const assistantMessage: PlaygroundMessage = {
         id: crypto.randomUUID(),
         store_id: storeId,
         user_id: "local",
         role: "assistant",
-        content: `Ошибка: ${e?.message ?? String(e)}`,
+        content: `Ошибка: ${message}`,
         image_urls: [],
         model: params.model,
         created_at: new Date().toISOString(),
       };
       saveMessages([...withUser, assistantMessage]);
-      toast.error(e?.message ?? String(e));
+      toast.error(message);
     } finally {
       setSending(false);
     }

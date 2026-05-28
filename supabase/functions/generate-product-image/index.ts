@@ -41,7 +41,7 @@ async function kieCreateTask(model: string, input: Record<string, unknown>): Pro
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`kie.ai createTask ${res.status}: ${text.slice(0, 400)}`);
-  let json: any;
+  let json: Record<string, unknown>;
   try { json = JSON.parse(text); } catch { throw new Error(`kie.ai createTask: некорректный JSON: ${text.slice(0, 200)}`); }
   if (json?.code && json.code !== 200) throw new Error(`kie.ai createTask code=${json.code}: ${json?.msg ?? "ошибка"}`);
   const taskId = json?.data?.taskId;
@@ -58,7 +58,7 @@ async function kiePoll(taskId: string, timeoutMs = 180_000): Promise<string> {
     });
     const text = await res.text();
     if (!res.ok) throw new Error(`kie.ai recordInfo ${res.status}: ${text.slice(0, 300)}`);
-    let json: any;
+    let json: Record<string, unknown>;
     try { json = JSON.parse(text); } catch { throw new Error("kie.ai recordInfo: некорректный JSON"); }
     const state = json?.data?.state;
     if (state === "success") {
@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
     try {
       const taskId = await kieCreateTask(model, input);
       resultUrl = await kiePoll(taskId);
-    } catch (genErr: any) {
+    } catch (genErr: unknown) {
       if (hasJobsTable) {
         const errorRow: Record<string, unknown> = {
           store_id: product.store_id,
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
           prompt: finalPrompt,
           aspect_ratio,
           status: "error",
-          error_message: String(genErr?.message ?? genErr),
+          error_message: genErr instanceof Error ? genErr.message : String(genErr),
         };
         const { error: insertErr } = await admin.from("image_generation_jobs").insert(errorRow);
         if (insertErr) {
@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
           await admin.from("image_generation_jobs").insert(errorRow);
         }
       }
-      return new Response(JSON.stringify({ error: String(genErr?.message ?? genErr) }), {
+      return new Response(JSON.stringify({ error: genErr instanceof Error ? genErr.message : String(genErr) }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -206,9 +206,9 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ url, prompt: finalPrompt, model }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("generate-product-image error:", err);
-    return new Response(JSON.stringify({ error: String(err?.message ?? err) }), {
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
