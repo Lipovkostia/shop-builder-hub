@@ -269,6 +269,8 @@ function AvitoFeedTable({
 
   // Column filters state
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
   const setFilter = (col: string, val: string) => {
     setColumnFilters(prev => {
@@ -280,6 +282,21 @@ function AvitoFeedTable({
   };
 
   const activeFilterCount = Object.keys(columnFilters).length;
+
+  const handleSort = (colKey: string) => {
+    setSortConfig(prev => {
+      if (!prev || prev.key !== colKey) return { key: colKey, direction: 'asc' };
+      if (prev.direction === 'asc') return { key: colKey, direction: 'desc' };
+      return null;
+    });
+  };
+
+  const SortIndicator = ({ colKey }: { colKey: string }) => {
+    if (!sortConfig || sortConfig.key !== colKey) return <span className="ml-1 text-muted-foreground/30">↕</span>;
+    return sortConfig.direction === 'asc' 
+      ? <span className="ml-1 text-primary">↑</span> 
+      : <span className="ml-1 text-primary">↓</span>;
+  };
 
   const onMouseDown = (col: string, e: React.MouseEvent) => {
     e.preventDefault();
