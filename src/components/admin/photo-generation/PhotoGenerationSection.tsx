@@ -228,13 +228,14 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
       const prod = products.find((p) => p.id === j.product_id);
       return { key: `job:${j.id}`, productId: j.product_id, url: j.result_image_url, productName: prod?.name ?? "товар", jobId: j.id };
     });
-    const fromLive = rows.flatMap((r) => {
-      const res = results[r.id];
-      if (res?.status !== "success" || !res.url) return [];
-      return [{ key: `live:${r.id}`, productId: r.product_id, url: res.url, productName: r.product_name, taskId: r.id }];
-    });
+    const fromLive = localJobs
+      .filter((j) => selectedIds.has(j.product_id))
+      .map((j) => {
+        const prod = products.find((p) => p.id === j.product_id);
+        return { key: `local:${j.id}`, productId: j.product_id, url: j.result_image_url, productName: prod?.name ?? "товар", taskId: j.id };
+      });
     return [...fromLive, ...fromJobs];
-  }, [savedJobs, products, rows, results]);
+  }, [savedJobs, localJobs, selectedIds, products]);
 
   const toggleJob = (k: string) => {
     setSelectedJobIds((prev) => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
@@ -263,7 +264,8 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
     }
     toast.success(`Добавлено в ${ok} товаров`);
     approvable.forEach((item) => { if (selectedJobIds.has(item.key) && item.taskId) allTaskIds.push(item.taskId); });
-    allTaskIds.forEach(clearResult);
+    if (allTaskIds.length) persistLocalJobs(localJobs.filter((j) => !allTaskIds.includes(j.id)));
+    Object.keys(results).forEach(clearResult);
     setSelectedJobIds(new Set());
     await loadJobs(Array.from(selectedIds));
   };
