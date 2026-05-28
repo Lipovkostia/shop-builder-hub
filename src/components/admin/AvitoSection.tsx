@@ -497,7 +497,6 @@ function AvitoFeedTable({
         <div style={{ minWidth: totalWidth }}>
           {/* Header */}
           <div className="flex bg-muted/50 border-b text-xs font-medium text-muted-foreground select-none">
-          <div className="flex bg-muted/50 border-b text-xs font-medium text-muted-foreground select-none">
             {cols.map((col) => (
               <div
                 key={col.key}
