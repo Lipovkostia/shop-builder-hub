@@ -733,9 +733,15 @@ export function AvitoImageEditor({
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t mt-2 flex-shrink-0 px-6 py-3">
-          <span className="text-xs text-muted-foreground">
-            Выбрано для Авито: {selectedOrder.length} из {allImages.length} фото
-          </span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-muted-foreground">
+              Выбрано для Авито: {selectedOrder.length} из {allImages.length} фото
+            </span>
+            <span className="text-[10px] text-muted-foreground/70">
+              Номер на фото = порядок в объявлении. Стрелки ↑↓ меняют позицию.
+            </span>
+          </div>
+
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Отмена</Button>
             <Button size="sm" onClick={handleSave}>
