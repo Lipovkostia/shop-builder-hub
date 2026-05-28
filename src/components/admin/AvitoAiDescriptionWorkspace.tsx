@@ -363,21 +363,26 @@ export function AvitoAiDescriptionWorkspace({
                     <div className="space-y-3">
                       <div className="space-y-1">
                         <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">1. Заголовок</Label>
-                        <Textarea value={heading} onChange={(e) => setHeading(e.target.value)} className="text-sm min-h-[60px]" placeholder="{product_name} — оптовая цена от поставщика" />
+                        <RichTextToolbar targetRef={headingRef} value={heading} onChange={setHeading} placeholders={PLACEHOLDERS} onInsertPlaceholder={(k) => setHeading(heading + k)} />
+                        <Textarea ref={headingRef} value={heading} onChange={(e) => setHeading(e.target.value)} className="text-sm min-h-[60px]" placeholder="{product_name} — оптовая цена от поставщика" />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">2. Основная информация</Label>
-                        <Textarea value={main} onChange={(e) => setMain(e.target.value)} className="text-sm min-h-[80px]" placeholder="Опиши состав, вес, происхождение. Используй {description}." />
+                        <RichTextToolbar targetRef={mainRef} value={main} onChange={setMain} placeholders={PLACEHOLDERS} onInsertPlaceholder={(k) => setMain(main + k)} />
+                        <Textarea ref={mainRef} value={main} onChange={(e) => setMain(e.target.value)} className="text-sm min-h-[80px]" placeholder="Опиши состав, вес, происхождение. Используй {description}." />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">3. Преимущества</Label>
-                        <Textarea value={advantages} onChange={(e) => setAdvantages(e.target.value)} className="text-sm min-h-[80px]" placeholder="— свежие поставки еженедельно&#10;— доставка по {city}&#10;— документы и сертификаты" />
+                        <RichTextToolbar targetRef={advantagesRef} value={advantages} onChange={setAdvantages} placeholders={PLACEHOLDERS} onInsertPlaceholder={(k) => setAdvantages(advantages + k)} />
+                        <Textarea ref={advantagesRef} value={advantages} onChange={(e) => setAdvantages(e.target.value)} className="text-sm min-h-[80px]" placeholder="— свежие поставки еженедельно&#10;— доставка по {city}&#10;— документы и сертификаты" />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">4. CTA (призыв)</Label>
-                        <Textarea value={cta} onChange={(e) => setCta(e.target.value)} className="text-sm min-h-[60px]" placeholder="Напишите в чат за прайсом — пришлём в течение часа." />
+                        <RichTextToolbar targetRef={ctaRef} value={cta} onChange={setCta} placeholders={PLACEHOLDERS} onInsertPlaceholder={(k) => setCta(cta + k)} />
+                        <Textarea ref={ctaRef} value={cta} onChange={(e) => setCta(e.target.value)} className="text-sm min-h-[60px]" placeholder="Напишите в чат за прайсом — пришлём в течение часа." />
                       </div>
                     </div>
+
                   </TabsContent>
 
                   <TabsContent value="rules" className="space-y-4 mt-0">
