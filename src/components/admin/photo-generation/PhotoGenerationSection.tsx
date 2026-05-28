@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useImagePrompts } from "@/hooks/useImagePrompts";
 import { useImageReferences } from "@/hooks/useImageReferences";
@@ -66,10 +66,10 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
 
   const localJobsKey = useMemo(() => `image_generation_pending_v1:${storeId}`, [storeId]);
 
-  const persistLocalJobs = (jobs: SavedJob[]) => {
+  const persistLocalJobs = useCallback((jobs: SavedJob[]) => {
     setLocalJobs(jobs);
-    try { localStorage.setItem(localJobsKey, JSON.stringify(jobs)); } catch {}
-  };
+    try { localStorage.setItem(localJobsKey, JSON.stringify(jobs)); } catch { /* ignore unavailable localStorage */ }
+  }, [localJobsKey]);
 
   useEffect(() => {
     let mounted = true;
@@ -136,7 +136,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
     const existing = new Set(localJobs.map((j) => j.id));
     const unique = additions.filter((j) => !existing.has(j.id));
     if (unique.length) persistLocalJobs([...unique, ...localJobs].slice(0, 200));
-  }, [results, rows, localJobs, localJobsKey]);
+  }, [results, rows, localJobs, persistLocalJobs]);
 
   useEffect(() => {
     const newRows: PhotoRow[] = [];
@@ -169,7 +169,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
   }, [products, search]);
 
   const toggleProduct = (id: string) => {
-    setSelectedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelectedIds((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   };
 
   const updateRow = (id: string, patch: Partial<PhotoRow>) => {
@@ -238,7 +238,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
   }, [savedJobs, localJobs, selectedIds, products]);
 
   const toggleJob = (k: string) => {
-    setSelectedJobIds((prev) => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
+    setSelectedJobIds((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   };
 
   const addSelectedToProducts = async () => {
@@ -319,7 +319,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
                   onChange={(e) => {
                     const v = Number(e.target.value) || DEFAULT_USD_RUB;
                     setUsdRub(v);
-                    try { localStorage.setItem("kie_usd_rub", String(v)); } catch {}
+                    try { localStorage.setItem("kie_usd_rub", String(v)); } catch { /* ignore unavailable localStorage */ }
                   }} />
               </div>
               <div className="space-y-1">
