@@ -129,20 +129,57 @@ Deno.serve(async (req) => {
       });
     }
 
-    const editSource = body.reference_image_url || body.source_image_url || null;
-    const prompt = (body.prompt ?? "").replaceAll("{product_name}", product.name).trim();
-    if (!prompt && !editSource) {
-      return new Response(JSON.stringify({ error: "Нужен промпт или референс" }), {
+    const productImage = body.source_image_url || null;
+    const referenceImage = body.reference_image_url || null;
+    const userPrompt = (body.prompt ?? "").replaceAll("{product_name}", product.name).trim();
+
+    if (!userPrompt && !productImage && !referenceImage) {
+      return new Response(JSON.stringify({ error: "Нужен промпт или изображение" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const hasSource = !!editSource;
-    const model = body.model ?? (hasSource ? "google/nano-banana-edit" : "google/nano-banana");
+    // Если референс пришёл data URL — загрузим в storage, чтобы kie.ai мог его скачать
+    async function ensureUrl(maybeDataUrl: string): Promise<string> {
+      if (!maybeDataUrl.startsWith("data:")) return maybeDataUrl;
+      const match = maybeDataUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (!match) return maybeDataUrl;
+      const ct = match[1];
+      const b64 = match[2];
+      const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const ext = (ct.split("/")[1] ?? "png").split(";")[0];
+      const path = `${product.id}/refs/${Date.now()}_${Math.floor(Math.random()*9999)}.${ext}`;
+      const { error } = await admin.storage.from("product-images").upload(path, bin, { contentType: ct, upsert: false });
+      if (error) throw new Error(`Reference upload: ${error.message}`);
+      return admin.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+    }
+
+    const images: string[] = [];
+    if (productImage) images.push(await ensureUrl(productImage));
+    if (referenceImage) images.push(await ensureUrl(referenceImage));
+
+    const hasImages = images.length > 0;
+    const hasBoth = !!productImage && !!referenceImage;
+    const model = body.model ?? (hasImages ? "google/nano-banana-edit" : "google/nano-banana");
     const aspect_ratio = ALLOWED_AR.has(body.aspect_ratio ?? "") ? body.aspect_ratio! : "1:1";
-    const finalPrompt = prompt || `Сгенерируй качественное коммерческое фото товара: ${product.name}`;
+
+    let finalPrompt: string;
+    if (hasBoth) {
+      const extra = userPrompt ? `\n\nДополнительные указания пользователя: ${userPrompt}` : "";
+      finalPrompt =
+        `Ты получаешь ДВА изображения. ` +
+        `ПЕРВОЕ изображение — это товар "${product.name}", который должен остаться главным объектом по центру композиции: сохрани его форму, упаковку, этикетку, цвета и пропорции БЕЗ изменений. ` +
+        `ВТОРОЕ изображение — это стилистический референс (фон, рамка, текстура, окружение, узор). ` +
+        `Совмести их: помести товар с первого изображения в центр, а вокруг используй стиль, цветовую палитру, рамку и фон со второго изображения. ` +
+        `Результат — единое цельное коммерческое фото товара в стиле референса. Не добавляй текст и не искажай упаковку.` +
+        extra;
+    } else {
+      finalPrompt = userPrompt || `Сгенерируй качественное коммерческое фото товара: ${product.name}`;
+    }
+
     const input: Record<string, unknown> = { prompt: finalPrompt, output_format: "png", aspect_ratio };
-    if (hasSource) input.image_urls = [editSource];
+    if (hasImages) input.image_urls = images;
+
 
     const hasJobsTable = await admin.from("image_generation_jobs").select("id").limit(1).then(({ error }) => !error);
 
