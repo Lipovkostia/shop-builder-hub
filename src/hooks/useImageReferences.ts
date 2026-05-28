@@ -33,10 +33,15 @@ function writeReferences(storeId: string, refs: ImageReference[]) {
 
 const EVENT_NAME = "image-references-changed";
 
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
 }
+
 
 export function useImageReferences(storeId: string | null) {
   const [customRefs, setCustomRefs] = useState<ImageReference[]>([]);
