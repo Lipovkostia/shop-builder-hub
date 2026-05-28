@@ -84,7 +84,9 @@ export function AvitoAiDescriptionWorkspace({
   instruction, setInstruction, maxChars, setMaxChars,
   templates, onSaveTemplate, onDeleteTemplate,
   generating, progress, onGenerate,
+}: Props) {
   const [tab, setTab] = useState<"prompt" | "blocks" | "rules">("prompt");
+
   const [heading, setHeading] = useState("");
   const [main, setMain] = useState("");
   const [advantages, setAdvantages] = useState("");
