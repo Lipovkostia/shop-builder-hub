@@ -124,7 +124,7 @@ export function AvitoImageEditor({
 }: AvitoImageEditorProps) {
   const { toast } = useToast();
   const [imageInfos, setImageInfos] = useState<ImageInfo[]>([]);
-  const [imageInfos, setImageInfos] = useState<ImageInfo[]>([]);
+
   const [generatedImages, setGeneratedImages] = useState<ImageInfo[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<string[]>([]);
   const [processing, setProcessing] = useState<Set<string>>(new Set());
