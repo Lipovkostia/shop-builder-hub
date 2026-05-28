@@ -25,7 +25,10 @@ function readReferences(storeId: string | null): ImageReference[] {
 
 function writeReferences(storeId: string, refs: ImageReference[]) {
   localStorage.setItem(`${STORAGE_KEY}:${storeId}`, JSON.stringify(refs));
+  try { window.dispatchEvent(new CustomEvent("image-references-changed", { detail: { storeId } })); } catch {}
 }
+
+const EVENT_NAME = "image-references-changed";
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -35,6 +38,7 @@ function fileToDataUrl(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
 
 export function useImageReferences(storeId: string | null) {
   const [customRefs, setCustomRefs] = useState<ImageReference[]>([]);
@@ -47,6 +51,24 @@ export function useImageReferences(storeId: string | null) {
   }, [storeId]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!storeId || typeof window === "undefined") return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail || detail.storeId === storeId) setCustomRefs(readReferences(storeId));
+    };
+    window.addEventListener(EVENT_NAME, handler);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === `${STORAGE_KEY}:${storeId}`) setCustomRefs(readReferences(storeId));
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(EVENT_NAME, handler);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [storeId]);
+
 
   const refs = useMemo(
     () => customRefs.sort((a, b) => Number(b.is_system) - Number(a.is_system) || a.sort_order - b.sort_order),
