@@ -438,7 +438,7 @@ export function AvitoAiDescriptionWorkspace({
               </div>
             </div>
 
-            <ScrollArea className="flex-1">
+            <div className="flex-1 overflow-y-auto overscroll-contain">
               <div className="p-4 flex justify-center">
                 <div
                   className={cn(
@@ -457,14 +457,32 @@ export function AvitoAiDescriptionWorkspace({
                   </div>
                   <Separator />
                   <div className="px-4 py-3">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Описание</div>
-                    <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                      <span>{visibleBeforeCut}</span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Описание</div>
                       {cutHidden && (
+                        <button
+                          type="button"
+                          className="text-[11px] text-primary hover:underline"
+                          onClick={() => setPreviewExpanded((v) => !v)}
+                        >
+                          {previewExpanded ? "Свернуть ↑" : "Развернуть всё ↓"}
+                        </button>
+                      )}
+                    </div>
+                    <div className="text-sm whitespace-pre-wrap leading-relaxed break-words">
+                      {previewExpanded || !cutHidden ? (
+                        <span>{preview}</span>
+                      ) : (
                         <>
+                          <span>{visibleBeforeCut}</span>
                           <span className="text-muted-foreground/50">{preview.slice(CUTOFF, CUTOFF + 60)}…</span>
-                          <div className="mt-2 text-primary text-xs font-medium cursor-pointer">Показать ещё ↓</div>
-                          <div className="opacity-50 mt-1">{preview.slice(CUTOFF + 60)}</div>
+                          <button
+                            type="button"
+                            className="block mt-2 text-primary text-xs font-medium hover:underline"
+                            onClick={() => setPreviewExpanded(true)}
+                          >
+                            Показать ещё ↓
+                          </button>
                         </>
                       )}
                     </div>
@@ -514,7 +532,8 @@ export function AvitoAiDescriptionWorkspace({
                   <pre className="mt-2 text-[11px] whitespace-pre-wrap font-mono text-muted-foreground">{compiledInstruction || "(пусто)"}</pre>
                 </details>
               </div>
-            </ScrollArea>
+            </div>
+
           </div>
         </div>
       </DialogContent>
