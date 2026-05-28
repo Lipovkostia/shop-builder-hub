@@ -199,26 +199,24 @@ export function AvitoImageEditor({
     return () => { cancelled = true; };
   }, [open, images]);
 
-  // Initialize selected from avitoImages param
+  // Initialize selected from avitoImages param (preserves order)
   useEffect(() => {
     if (open) {
       if (avitoImages && avitoImages.length > 0) {
-        setSelectedUrls(new Set(avitoImages));
+        setSelectedOrder([...avitoImages]);
       } else {
-        setSelectedUrls(new Set(images));
+        setSelectedOrder([...images]);
       }
       setGeneratedImages([]);
     }
   }, [open, avitoImages, images]);
 
   const toggleSelect = (url: string) => {
-    setSelectedUrls(prev => {
-      const next = new Set(prev);
-      if (next.has(url)) next.delete(url);
-      else next.add(url);
-      return next;
-    });
+    setSelectedOrder(prev =>
+      prev.includes(url) ? prev.filter(u => u !== url) : [...prev, url]
+    );
   };
+
 
   const handleCanvasResize = useCallback(async (imageUrl: string) => {
     setProcessing(prev => new Set(prev).add(imageUrl));
