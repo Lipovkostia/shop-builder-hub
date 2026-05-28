@@ -265,7 +265,8 @@ export function AvitoAiDescriptionWorkspace({
                 </TabsTrigger>
               </TabsList>
 
-              <ScrollArea className="flex-1 mt-3">
+              <div className="flex-1 mt-3 overflow-y-auto overscroll-contain">
+
                 <div className="px-4 pb-6 space-y-5">
                   {/* Templates always visible */}
                   {templates.length > 0 && (
