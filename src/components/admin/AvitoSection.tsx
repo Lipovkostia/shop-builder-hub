@@ -233,6 +233,8 @@ function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
       )}
     </>
   );
+}
+
 function AvitoFeedTable({
   feedProducts, storeProducts, storeCategories, selectedFeedProducts, setSelectedFeedProducts,
   aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
