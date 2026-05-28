@@ -29,6 +29,7 @@ const navItems: NavItem[] = [
   { id: "megacatalog", label: "Мегакаталог", icon: Globe },
   { id: "avito", label: "Авито", icon: Megaphone },
   { id: "avito-bot", label: "Авитобот", icon: Bot },
+  { id: "photo-generation", label: "AI-фото", icon: Sparkles },
   { id: "office", label: "Мой офис", icon: Building2 },
 ];
 
