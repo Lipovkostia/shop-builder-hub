@@ -661,8 +661,12 @@ function TemplatesManager({
   };
 
   const save = async () => {
-    if (!draft.name.trim() || !draft.prompt_template.trim()) {
-      toast.info("Заполните название и промпт");
+    if (!draft.name.trim()) {
+      toast.info("Укажите название шаблона");
+      return;
+    }
+    if (!draft.prompt_template.trim() && !draft.reference_image_url) {
+      toast.info("Добавьте промпт или референс-изображение");
       return;
     }
     setSaving(true);
