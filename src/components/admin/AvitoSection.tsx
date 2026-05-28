@@ -758,7 +758,7 @@ function AvitoFeedTable({
   );
 }
 
-export function AvitoSection({ storeId, products: storeProducts = [], storeCategories = [], avitoFeed }: AvitoSectionProps) {
+export function AvitoSection({ storeId, products: storeProducts = [], storeCategories = [], avitoFeed, onOpenInPhotoStudio }: AvitoSectionProps) {
   const { toast } = useToast();
   const [account, setAccount] = useState<AvitoAccount | null>(null);
   const [loading, setLoading] = useState(true);
