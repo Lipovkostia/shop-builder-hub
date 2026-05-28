@@ -391,20 +391,59 @@ function AvitoFeedTable({
     return result;
   }, [preFiltered, storeProducts, storeCategories]);
 
-  // Apply column filters
-  const filteredFeedProducts = preFiltered.filter((fp) => {
-    const product = storeProducts.find(p => p.id === fp.product_id);
-    if (!product) return false;
-    for (const [col, filterVal] of Object.entries(columnFilters)) {
-      const cellVal = getColValue(fp, product, col);
-      if (filterVal === "__empty__") {
-        if (cellVal) return false;
-      } else {
-        if (cellVal !== filterVal) return false;
+  // Apply column filters + sorting
+  const filteredFeedProducts = useMemo(() => {
+    let result = preFiltered.filter((fp) => {
+      const product = storeProducts.find(p => p.id === fp.product_id);
+      if (!product) return false;
+      for (const [col, filterVal] of Object.entries(columnFilters)) {
+        const cellVal = getColValue(fp, product, col);
+        if (filterVal === "__empty__") {
+          if (cellVal) return false;
+        } else {
+          if (cellVal !== filterVal) return false;
+        }
       }
+      return true;
+    });
+
+    if (sortConfig) {
+      result = [...result].sort((a, b) => {
+        const productA = storeProducts.find(p => p.id === a.product_id);
+        const productB = storeProducts.find(p => p.id === b.product_id);
+        if (!productA || !productB) return 0;
+        const paramsA = a.avito_params || {};
+        const paramsB = b.avito_params || {};
+        let valA = "";
+        let valB = "";
+        switch (sortConfig.key) {
+          case "title":
+            valA = (paramsA.title || productA.name || "").toLowerCase();
+            valB = (paramsB.title || productB.name || "").toLowerCase();
+            break;
+          case "price": {
+            const numA = Number(paramsA.price || paramsA.Price || productA.pricePerUnit || 0);
+            const numB = Number(paramsB.price || paramsB.Price || productB.pricePerUnit || 0);
+            return sortConfig.direction === 'asc' ? numA - numB : numB - numA;
+          }
+          case "storeCategory":
+            valA = (productA.categories || []).map(cid => categoryMap.get(cid) || "").filter(Boolean).join(", ").toLowerCase();
+            valB = (productB.categories || []).map(cid => categoryMap.get(cid) || "").filter(Boolean).join(", ").toLowerCase();
+            break;
+          case "category":
+            valA = (paramsA.category || "").toLowerCase();
+            valB = (paramsB.category || "").toLowerCase();
+            break;
+          default:
+            return 0;
+        }
+        const cmp = valA.localeCompare(valB, 'ru');
+        return sortConfig.direction === 'asc' ? cmp : -cmp;
+      });
     }
-    return true;
-  });
+
+    return result;
+  }, [preFiltered, storeProducts, columnFilters, sortConfig, categoryMap]);
   const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
 
   const cols = [
