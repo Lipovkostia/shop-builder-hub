@@ -255,6 +255,7 @@ function AvitoFeedTable({
   onUpdateProductParams: (productId: string, params: any) => Promise<void>;
 }) {
   const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
+  const [variantsManagerProductId, setVariantsManagerProductId] = useState<string | null>(null);
 
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
     try {
@@ -725,6 +726,21 @@ function AvitoFeedTable({
           }}
         />
       )}
+
+      {variantsManagerProductId && (() => {
+        const p = storeProducts.find(sp => sp.id === variantsManagerProductId);
+        const sourceProduct = p
+          ? { id: p.id, name: p.name, description: p.description, price: p.pricePerUnit, images: p.images || [] }
+          : null;
+        return (
+          <AvitoListingVariantsManager
+            open={!!variantsManagerProductId}
+            onOpenChange={(open) => { if (!open) setVariantsManagerProductId(null); }}
+            storeId={storeId}
+            product={sourceProduct}
+          />
+        );
+      })()}
     </div>
   );
 }
