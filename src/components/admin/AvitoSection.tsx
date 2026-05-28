@@ -2180,8 +2180,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         onGenerate={({ instruction, maxChars }) => {
           setAiInstruction(instruction);
           setAiMaxChars(maxChars);
-          // call existing generate which uses state - state setters are async, so pass via closure
-          setTimeout(() => handleAiGenerate(), 0);
+          handleAiGenerate({ instruction, maxChars });
         }}
       />
 
