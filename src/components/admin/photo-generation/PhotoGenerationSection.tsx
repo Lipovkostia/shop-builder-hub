@@ -51,6 +51,17 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
   const [globalPrompt, setGlobalPrompt] = useState("");
   const [globalTemplateId, setGlobalTemplateId] = useState<string | null>(null);
   const [selectedResults, setSelectedResults] = useState<Set<string>>(new Set());
+  const [modelId, setModelId] = useState<string>(KIE_MODELS[0].id);
+  const [usdRub, setUsdRub] = useState<number>(() => {
+    const saved = typeof window !== "undefined" ? Number(localStorage.getItem("kie_usd_rub")) : NaN;
+    return Number.isFinite(saved) && saved > 0 ? saved : DEFAULT_USD_RUB;
+  });
+
+  const selectedModel = useMemo(
+    () => KIE_MODELS.find((m) => m.id === modelId) ?? KIE_MODELS[0],
+    [modelId],
+  );
+  const pricePerImageRub = selectedModel.priceUsd * usdRub;
 
   const { templates, create, update, remove } = useImageTemplates(storeId);
   const { results, running, progress, generateBatch, clearResult } = useImageGeneration();
