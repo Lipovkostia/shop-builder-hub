@@ -2056,6 +2056,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     storeId={storeId || ""}
                     onUpdateProductParams={avitoFeed.updateProductParams}
                     onOpenInPhotoStudio={onOpenInPhotoStudio}
+                    autoOpenImageEditorForProductId={autoOpenImageEditorForProductId}
+                    onAutoOpenImageEditorHandled={onAutoOpenImageEditorHandled}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full">
