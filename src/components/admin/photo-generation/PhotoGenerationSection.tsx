@@ -451,7 +451,12 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                     <div key={r.id} className="rounded-lg border border-border p-2 space-y-2">
                       <div className="flex items-center gap-2">
                         {r.source_url
-                          ? <img src={r.source_url} alt="" className="h-16 w-16 rounded object-cover flex-shrink-0" />
+                          ? (
+                            <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                              <img src={r.source_url} alt="" className="h-16 w-16 rounded object-cover" />
+                              <ImageDims url={r.source_url} />
+                            </div>
+                          )
                           : <div className="h-16 w-16 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">нет фото</div>}
                         <div className="flex-1 min-w-0 space-y-1">
                           <div className="text-sm font-medium truncate">{r.product_name}</div>
