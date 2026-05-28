@@ -87,6 +87,7 @@ import { InlinePriceCell } from "@/components/admin/InlinePriceCell";
 import { InlineMarkupCell } from "@/components/admin/InlineMarkupCell";
 import { MobileTabNav } from "@/components/admin/MobileTabNav";
 import { AvitoBotSection } from "@/components/admin/AvitoBotSection";
+import { PhotoGenerationSection } from "@/components/admin/photo-generation/PhotoGenerationSection";
 import { BulkEditPanel } from "@/components/admin/BulkEditPanel";
 import { uploadProductImages, deleteSingleImage, uploadFilesToStorage } from "@/hooks/useProductImages";
 import { ImageGalleryViewer } from "@/components/admin/ImageGalleryViewer";
@@ -314,7 +315,7 @@ const formatVariants = (product: Product) => {
   return "-";
 };
 
-type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings" | "exchange" | "avito" | "avito-bot" | "office";
+type ActiveSection = "products" | "megacatalog" | "import" | "catalogs" | "visibility" | "profile" | "orders" | "clients" | "history" | "trash" | "help" | "retail" | "showcase" | "wholesale" | "category-settings" | "exchange" | "avito" | "avito-bot" | "office" | "photo-generation";
 type ImportView = "accounts" | "catalog" | "counterparties";
 type ImportSource = "select" | "moysklad" | "excel" | "google-sheets";
 type CatalogView = "list" | "detail";
@@ -703,7 +704,7 @@ export default function AdminPanel({
     }
     
     const section = searchParams.get('section');
-    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients' || section === 'help' || section === 'category-settings' || section === 'profile' || section === 'history' || section === 'trash' || section === 'retail' || section === 'wholesale' || section === 'avito' || section === 'showcase' || section === 'megacatalog' || section === 'exchange' || section === 'avito-bot' || section === 'office') {
+    if (section === 'products' || section === 'import' || section === 'catalogs' || section === 'visibility' || section === 'orders' || section === 'clients' || section === 'help' || section === 'category-settings' || section === 'profile' || section === 'history' || section === 'trash' || section === 'retail' || section === 'wholesale' || section === 'avito' || section === 'showcase' || section === 'megacatalog' || section === 'exchange' || section === 'avito-bot' || section === 'office' || section === 'photo-generation') {
       setActiveSection(section);
     }
   }, [searchParams, workspaceMode, initialSection]);
@@ -7198,7 +7199,12 @@ export default function AdminPanel({
               }}
             />
           )}
+
+          {activeSection === "photo-generation" && (
+            <PhotoGenerationSection storeId={effectiveStoreId} />
+          )}
         </main>
+
 
       {/* Quick Add Product Dialog */}
       <Dialog open={quickAddDialogOpen} onOpenChange={setQuickAddDialogOpen}>
