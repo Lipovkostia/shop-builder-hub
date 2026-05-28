@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useImageTemplates, type ImageTemplate } from "@/hooks/useImageTemplates";
+import { useImageTemplates, type ImageTemplate, type TemplateInput } from "@/hooks/useImageTemplates";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Sparkles, Loader2, Trash2, Plus, Wand2, Check, Pencil } from "lucide-react";
+import { Sparkles, Loader2, Trash2, Plus, Wand2, Check, Pencil, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { KIE_MODELS, DEFAULT_USD_RUB, formatRub } from "./models";
 
@@ -23,13 +23,22 @@ interface ProductLite {
 }
 
 interface PhotoRow {
-  id: string; // product_id::index
+  id: string;
   product_id: string;
   product_name: string;
   index: number;
   source_url: string | null;
   template_id: string | null;
   prompt: string;
+  reference_image_url?: string | null;
+}
+
+interface SavedJob {
+  id: string;
+  product_id: string;
+  prompt: string;
+  result_image_url: string;
+  created_at: string;
 }
 
 const ASPECT_PRESETS = ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2", "21:9"] as const;
@@ -50,7 +59,8 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
   const [customH, setCustomH] = useState<number | null>(null);
   const [globalPrompt, setGlobalPrompt] = useState("");
   const [globalTemplateId, setGlobalTemplateId] = useState<string | null>(null);
-  const [selectedResults, setSelectedResults] = useState<Set<string>>(new Set());
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const [modelId, setModelId] = useState<string>(KIE_MODELS[0].id);
   const [usdRub, setUsdRub] = useState<number>(() => {
     const saved = typeof window !== "undefined" ? Number(localStorage.getItem("kie_usd_rub")) : NaN;
@@ -63,10 +73,9 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
   );
   const pricePerImageRub = selectedModel.priceUsd * usdRub;
 
-  const { templates, create, update, remove } = useImageTemplates(storeId);
+  const { templates, create, update, remove, uploadReferenceImage } = useImageTemplates(storeId);
   const { results, running, progress, generateBatch, clearResult } = useImageGeneration();
 
-  // Load products
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -95,7 +104,32 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
     };
   }, [storeId, preselectedProductId]);
 
-  // Build rows when selection changes
+  // Load past unapproved jobs for selected products
+  const loadJobs = async (ids: string[]) => {
+    if (ids.length === 0) {
+      setSavedJobs([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from("image_generation_jobs" as any)
+      .select("id, product_id, prompt, result_image_url, created_at, status, approved, hidden")
+      .in("product_id", ids)
+      .eq("status", "success")
+      .eq("approved", false)
+      .eq("hidden", false)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) {
+      console.error("load jobs", error);
+      return;
+    }
+    setSavedJobs(((data ?? []) as any[]).filter((j) => j.result_image_url) as SavedJob[]);
+  };
+
+  useEffect(() => {
+    loadJobs(Array.from(selectedIds));
+  }, [selectedIds, results]);
+
   useEffect(() => {
     const newRows: PhotoRow[] = [];
     products
@@ -127,7 +161,6 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
         }
       });
     setRows((prev) => {
-      // preserve existing prompt/template for rows that still exist
       const prevById = new Map(prev.map((r) => [r.id, r]));
       return newRows.map((r) => prevById.get(r.id) ?? r);
     });
@@ -153,7 +186,11 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
   };
 
   const applyTemplateToRow = (rowId: string, tpl: ImageTemplate) => {
-    updateRow(rowId, { template_id: tpl.id, prompt: tpl.prompt_template });
+    updateRow(rowId, {
+      template_id: tpl.id,
+      prompt: tpl.prompt_template,
+      reference_image_url: tpl.reference_image_url ?? null,
+    });
   };
 
   const applyGlobalToAll = () => {
@@ -167,10 +204,19 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
         ...r,
         template_id: globalTemplateId,
         prompt: globalPrompt.trim() || tpl?.prompt_template || r.prompt,
+        reference_image_url: tpl?.reference_image_url ?? r.reference_image_url ?? null,
       })),
     );
     toast.success("Применено ко всем фото");
   };
+
+  const buildTask = (r: PhotoRow) => ({
+    id: r.id,
+    product_id: r.product_id,
+    // если есть референс шаблона — используем его как источник для редактирования
+    source_image_url: r.reference_image_url || r.source_url,
+    prompt: r.prompt,
+  });
 
   const generateAll = async () => {
     const tasks = rows.filter((r) => r.prompt.trim());
@@ -178,20 +224,12 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
       toast.info("Заполните хотя бы один промпт");
       return;
     }
-    await generateBatch(
-      tasks.map((r) => ({
-        id: r.id,
-        product_id: r.product_id,
-        source_image_url: r.source_url,
-        prompt: r.prompt,
-      })),
-      {
-        aspect_ratio: aspect,
-        width: customW ?? undefined,
-        height: customH ?? undefined,
-        model: modelId,
-      },
-    );
+    await generateBatch(tasks.map(buildTask), {
+      aspect_ratio: aspect,
+      width: customW ?? undefined,
+      height: customH ?? undefined,
+      model: modelId,
+    });
   };
 
   const generateRow = async (row: PhotoRow) => {
@@ -199,39 +237,65 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
       toast.info("Введите промпт");
       return;
     }
-    await generateBatch(
-      [{ id: row.id, product_id: row.product_id, source_image_url: row.source_url, prompt: row.prompt }],
-      { aspect_ratio: aspect, width: customW ?? undefined, height: customH ?? undefined, model: modelId },
-    );
+    await generateBatch([buildTask(row)], {
+      aspect_ratio: aspect,
+      width: customW ?? undefined,
+      height: customH ?? undefined,
+      model: modelId,
+    });
   };
 
-  const toggleResult = (taskId: string) => {
-    setSelectedResults((prev) => {
+  // === Approve flow: combine in-memory results + saved jobs ===
+  type ApprovableItem = {
+    key: string;
+    productId: string;
+    url: string;
+    productName: string;
+    jobId?: string;
+  };
+
+  const approvable: ApprovableItem[] = useMemo(() => {
+    const items: ApprovableItem[] = [];
+    // saved jobs from DB
+    for (const j of savedJobs) {
+      const prod = products.find((p) => p.id === j.product_id);
+      items.push({
+        key: `job:${j.id}`,
+        productId: j.product_id,
+        url: j.result_image_url,
+        productName: prod?.name ?? "товар",
+        jobId: j.id,
+      });
+    }
+    return items;
+  }, [savedJobs, products]);
+
+  const toggleJob = (key: string) => {
+    setSelectedJobIds((prev) => {
       const n = new Set(prev);
-      if (n.has(taskId)) n.delete(taskId);
-      else n.add(taskId);
+      if (n.has(key)) n.delete(key);
+      else n.add(key);
       return n;
     });
   };
 
   const addSelectedToProducts = async () => {
-    // Group selected results by product_id
-    const byProduct = new Map<string, string[]>();
-    for (const taskId of selectedResults) {
-      const r = results[taskId];
-      if (!r || r.status !== "success" || !r.url) continue;
-      const productId = taskId.split("::")[0];
-      const arr = byProduct.get(productId) ?? [];
-      arr.push(r.url);
-      byProduct.set(productId, arr);
-    }
-    if (byProduct.size === 0) {
+    if (selectedJobIds.size === 0) {
       toast.info("Не выбрано ни одного результата");
       return;
     }
+    const byProduct = new Map<string, { urls: string[]; jobIds: string[] }>();
+    for (const item of approvable) {
+      if (!selectedJobIds.has(item.key)) continue;
+      const entry = byProduct.get(item.productId) ?? { urls: [], jobIds: [] };
+      entry.urls.push(item.url);
+      if (item.jobId) entry.jobIds.push(item.jobId);
+      byProduct.set(item.productId, entry);
+    }
 
     let ok = 0;
-    for (const [pid, urls] of byProduct) {
+    const allJobIds: string[] = [];
+    for (const [pid, { urls, jobIds }] of byProduct) {
       const prod = products.find((p) => p.id === pid);
       const current = prod?.images ?? [];
       const next = [...current, ...urls];
@@ -240,12 +304,24 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
         toast.error(`${prod?.name}: ${error.message}`);
       } else {
         ok += 1;
-        // update local cache so the UI reflects the new images instantly
+        allJobIds.push(...jobIds);
         setProducts((prev) => prev.map((p) => (p.id === pid ? { ...p, images: next } : p)));
       }
     }
+    if (allJobIds.length) {
+      await supabase
+        .from("image_generation_jobs" as any)
+        .update({ approved: true } as any)
+        .in("id", allJobIds);
+    }
     toast.success(`Добавлено в ${ok} товаров`);
-    setSelectedResults(new Set());
+    setSelectedJobIds(new Set());
+    await loadJobs(Array.from(selectedIds));
+  };
+
+  const hideJob = async (jobId: string) => {
+    await supabase.from("image_generation_jobs" as any).update({ hidden: true } as any).eq("id", jobId);
+    setSavedJobs((prev) => prev.filter((j) => j.id !== jobId));
   };
 
   return (
@@ -270,9 +346,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
         </TabsList>
 
         <TabsContent value="workspace" className="space-y-3">
-          {/* Global params bar */}
           <div className="rounded-lg border border-border bg-card p-3 space-y-3">
-            {/* Model + pricing row */}
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1 min-w-[280px]">
                 <Label className="text-xs">Модель генерации</Label>
@@ -367,6 +441,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
                     {templates.map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.is_system ? "★ " : ""}
+                        {t.reference_image_url ? "🖼 " : ""}
                         {t.name}
                       </SelectItem>
                     ))}
@@ -385,12 +460,9 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
 
 
           <div className="grid grid-cols-12 gap-3">
-            {/* Left: product picker */}
             <div className="col-span-12 lg:col-span-3 rounded-lg border border-border bg-card p-3">
               <Input placeholder="Поиск товара..." value={search} onChange={(e) => setSearch(e.target.value)} className="mb-2" />
-              <div className="text-xs text-muted-foreground mb-2">
-                Выбрано: {selectedIds.size}
-              </div>
+              <div className="text-xs text-muted-foreground mb-2">Выбрано: {selectedIds.size}</div>
               <ScrollArea className="h-[600px]">
                 <div className="space-y-1 pr-2">
                   {loadingProducts && <div className="text-sm text-muted-foreground">Загрузка...</div>}
@@ -409,7 +481,6 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
               </ScrollArea>
             </div>
 
-            {/* Center: rows */}
             <div className="col-span-12 lg:col-span-5 rounded-lg border border-border bg-card p-3 space-y-2">
               <h3 className="font-semibold text-sm">Исходные фото и промпты</h3>
               <ScrollArea className="h-[600px]">
@@ -435,12 +506,18 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
                             <SelectContent>
                               {templates.map((t) => (
                                 <SelectItem key={t.id} value={t.id}>
-                                  {t.is_system ? "★ " : ""}{t.name}
+                                  {t.is_system ? "★ " : ""}{t.reference_image_url ? "🖼 " : ""}{t.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
+                        {r.reference_image_url && (
+                          <div className="flex flex-col items-center gap-1">
+                            <img src={r.reference_image_url} alt="" className="h-12 w-12 rounded object-cover border-2 border-primary" />
+                            <span className="text-[9px] text-primary">референс</span>
+                          </div>
+                        )}
                       </div>
                       <Textarea
                         value={r.prompt}
@@ -461,25 +538,22 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
               </ScrollArea>
             </div>
 
-            {/* Right: results */}
             <div className="col-span-12 lg:col-span-4 rounded-lg border border-border bg-card p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-sm">Сгенерированные</h3>
-                <Button size="sm" onClick={addSelectedToProducts} disabled={selectedResults.size === 0}>
+                <Button size="sm" onClick={addSelectedToProducts} disabled={selectedJobIds.size === 0}>
                   <Check className="h-3 w-3" />
-                  Добавить ({selectedResults.size})
+                  Добавить ({selectedJobIds.size})
                 </Button>
               </div>
               <ScrollArea className="h-[600px]">
                 <div className="space-y-2 pr-2">
-                  {Object.keys(results).length === 0 && (
-                    <div className="text-sm text-muted-foreground">Здесь появятся результаты генерации</div>
-                  )}
+                  {/* live in-progress results */}
                   {rows.map((r) => {
                     const res = results[r.id];
-                    if (!res) return null;
+                    if (!res || res.status === "success") return null;
                     return (
-                      <div key={r.id} className="rounded-lg border border-border p-2 space-y-1">
+                      <div key={`live:${r.id}`} className="rounded-lg border border-border p-2 space-y-1">
                         <div className="text-xs text-muted-foreground truncate">{r.product_name}</div>
                         {res.status === "pending" && (
                           <div className="h-32 flex items-center justify-center bg-muted rounded">
@@ -491,28 +565,36 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
                             {res.error}
                           </div>
                         )}
-                        {res.status === "success" && res.url && (
-                          <>
-                            <img src={res.url} alt="" className="w-full rounded object-cover" />
-                            <div className="flex items-center justify-between gap-2">
-                              <label className="flex items-center gap-1 text-xs cursor-pointer">
-                                <Checkbox checked={selectedResults.has(r.id)} onCheckedChange={() => toggleResult(r.id)} />
-                                Выбрать
-                              </label>
-                              <div className="flex gap-1">
-                                <Button size="sm" variant="ghost" onClick={() => generateRow(r)} disabled={running}>
-                                  <Wand2 className="h-3 w-3" />
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => clearResult(r.id)}>
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          </>
-                        )}
                       </div>
                     );
                   })}
+
+                  {approvable.length === 0 && Object.keys(results).length === 0 && (
+                    <div className="text-sm text-muted-foreground">
+                      Выберите товары и нажмите «Сгенерировать». Готовые фото копятся здесь до одобрения.
+                    </div>
+                  )}
+
+                  {approvable.map((item) => (
+                    <div key={item.key} className="rounded-lg border border-border p-2 space-y-1">
+                      <div className="text-xs text-muted-foreground truncate">{item.productName}</div>
+                      <img src={item.url} alt="" className="w-full rounded object-cover" />
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="flex items-center gap-1 text-xs cursor-pointer">
+                          <Checkbox
+                            checked={selectedJobIds.has(item.key)}
+                            onCheckedChange={() => toggleJob(item.key)}
+                          />
+                          Одобрить
+                        </label>
+                        {item.jobId && (
+                          <Button size="sm" variant="ghost" onClick={() => hideJob(item.jobId!)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </ScrollArea>
             </div>
@@ -520,7 +602,13 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
         </TabsContent>
 
         <TabsContent value="templates">
-          <TemplatesManager templates={templates} onCreate={create} onUpdate={update} onDelete={remove} />
+          <TemplatesManager
+            templates={templates}
+            onCreate={create}
+            onUpdate={update}
+            onDelete={remove}
+            uploadReferenceImage={uploadReferenceImage}
+          />
         </TabsContent>
       </Tabs>
     </div>
@@ -532,35 +620,63 @@ function TemplatesManager({
   onCreate,
   onUpdate,
   onDelete,
+  uploadReferenceImage,
 }: {
   templates: ImageTemplate[];
-  onCreate: (i: { name: string; prompt_template: string; default_aspect_ratio?: string }) => Promise<void>;
-  onUpdate: (id: string, i: Partial<Pick<ImageTemplate, "name" | "prompt_template" | "default_aspect_ratio">>) => Promise<void>;
+  onCreate: (i: TemplateInput) => Promise<void>;
+  onUpdate: (id: string, i: Partial<TemplateInput>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  uploadReferenceImage: (file: File) => Promise<string | null>;
 }) {
   const [editing, setEditing] = useState<ImageTemplate | null>(null);
-  const [draft, setDraft] = useState({ name: "", prompt_template: "", default_aspect_ratio: "1:1" });
+  const [draft, setDraft] = useState<TemplateInput>({
+    name: "",
+    prompt_template: "",
+    default_aspect_ratio: "1:1",
+    reference_image_url: null,
+  });
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   const startNew = () => {
     setEditing(null);
-    setDraft({ name: "", prompt_template: "", default_aspect_ratio: "1:1" });
+    setDraft({ name: "", prompt_template: "", default_aspect_ratio: "1:1", reference_image_url: null });
   };
   const startEdit = (t: ImageTemplate) => {
     setEditing(t);
-    setDraft({ name: t.name, prompt_template: t.prompt_template, default_aspect_ratio: t.default_aspect_ratio ?? "1:1" });
+    setDraft({
+      name: t.name,
+      prompt_template: t.prompt_template,
+      default_aspect_ratio: t.default_aspect_ratio ?? "1:1",
+      reference_image_url: t.reference_image_url ?? null,
+    });
   };
+
+  const handleUpload = async (file: File) => {
+    setUploading(true);
+    const url = await uploadReferenceImage(file);
+    setUploading(false);
+    if (url) setDraft((d) => ({ ...d, reference_image_url: url }));
+  };
+
   const save = async () => {
     if (!draft.name.trim() || !draft.prompt_template.trim()) {
       toast.info("Заполните название и промпт");
       return;
     }
-    if (editing && !editing.is_system) {
-      await onUpdate(editing.id, draft);
-    } else {
-      await onCreate(draft);
+    setSaving(true);
+    try {
+      if (editing && !editing.is_system) {
+        await onUpdate(editing.id, draft);
+      } else {
+        await onCreate(draft);
+      }
+      setEditing(null);
+      setDraft({ name: "", prompt_template: "", default_aspect_ratio: "1:1", reference_image_url: null });
+    } finally {
+      setSaving(false);
     }
-    setEditing(null);
-    setDraft({ name: "", prompt_template: "", default_aspect_ratio: "1:1" });
   };
 
   return (
@@ -577,9 +693,15 @@ function TemplatesManager({
           <div className="space-y-1">
             {templates.map((t) => (
               <div key={t.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted">
+                {t.reference_image_url ? (
+                  <img src={t.reference_image_url} alt="" className="h-10 w-10 rounded object-cover flex-shrink-0" />
+                ) : (
+                  <div className="h-10 w-10 rounded bg-muted flex-shrink-0" />
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate flex items-center gap-1">
                     {t.is_system && <Badge variant="secondary" className="text-xs">сист.</Badge>}
+                    {t.reference_image_url && <Badge className="text-xs">🖼 референс</Badge>}
                     {t.name}
                   </div>
                   <div className="text-xs text-muted-foreground truncate">{t.prompt_template}</div>
@@ -606,7 +728,50 @@ function TemplatesManager({
         </div>
         <div className="space-y-2">
           <Label>Промпт (используйте {`{product_name}`} для подстановки названия)</Label>
-          <Textarea value={draft.prompt_template} onChange={(e) => setDraft({ ...draft, prompt_template: e.target.value })} rows={6} />
+          <Textarea
+            value={draft.prompt_template}
+            onChange={(e) => setDraft({ ...draft, prompt_template: e.target.value })}
+            rows={6}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Референс-изображение (необязательно)</Label>
+          <div className="text-xs text-muted-foreground">
+            ИИ будет опираться на это фото как на образец стиля/композиции вместо фото товара.
+          </div>
+          <div className="flex items-center gap-3">
+            {draft.reference_image_url ? (
+              <div className="relative">
+                <img src={draft.reference_image_url} alt="" className="h-24 w-24 rounded object-cover border" />
+                <button
+                  type="button"
+                  onClick={() => setDraft((d) => ({ ...d, reference_image_url: null }))}
+                  className="absolute -top-2 -right-2 rounded-full bg-destructive text-destructive-foreground p-1"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <div className="h-24 w-24 rounded border-2 border-dashed border-border bg-muted/30 flex items-center justify-center text-xs text-muted-foreground">
+                нет фото
+              </div>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleUpload(f);
+                e.target.value = "";
+              }}
+            />
+            <Button type="button" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+              {draft.reference_image_url ? "Заменить" : "Загрузить"}
+            </Button>
+          </div>
         </div>
         <div className="space-y-2">
           <Label>Соотношение по умолчанию</Label>
@@ -617,7 +782,10 @@ function TemplatesManager({
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={save}>Сохранить</Button>
+        <Button onClick={save} disabled={saving}>
+          {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+          Сохранить
+        </Button>
       </div>
     </div>
   );

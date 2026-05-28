@@ -8,8 +8,16 @@ export interface ImageTemplate {
   name: string;
   prompt_template: string;
   default_aspect_ratio: string | null;
+  reference_image_url: string | null;
   is_system: boolean;
   sort_order: number;
+}
+
+export interface TemplateInput {
+  name: string;
+  prompt_template: string;
+  default_aspect_ratio?: string;
+  reference_image_url?: string | null;
 }
 
 export function useImageTemplates(storeId: string | null) {
@@ -38,13 +46,17 @@ export function useImageTemplates(storeId: string | null) {
     load();
   }, [load]);
 
-  const create = async (input: { name: string; prompt_template: string; default_aspect_ratio?: string }) => {
-    if (!storeId) return;
+  const create = async (input: TemplateInput) => {
+    if (!storeId) {
+      toast.error("Не выбран магазин — невозможно создать шаблон");
+      return;
+    }
     const { error } = await supabase.from("image_generation_templates" as any).insert({
       store_id: storeId,
       name: input.name,
       prompt_template: input.prompt_template,
       default_aspect_ratio: input.default_aspect_ratio ?? "1:1",
+      reference_image_url: input.reference_image_url ?? null,
       is_system: false,
     } as any);
     if (error) {
@@ -55,7 +67,7 @@ export function useImageTemplates(storeId: string | null) {
     await load();
   };
 
-  const update = async (id: string, input: Partial<Pick<ImageTemplate, "name" | "prompt_template" | "default_aspect_ratio">>) => {
+  const update = async (id: string, input: Partial<TemplateInput>) => {
     const { error } = await supabase.from("image_generation_templates" as any).update(input as any).eq("id", id);
     if (error) {
       toast.error(`Не удалось обновить: ${error.message}`);
@@ -75,5 +87,24 @@ export function useImageTemplates(storeId: string | null) {
     await load();
   };
 
-  return { templates, loading, reload: load, create, update, remove };
+  const uploadReferenceImage = async (file: File): Promise<string | null> => {
+    if (!storeId) {
+      toast.error("Не выбран магазин");
+      return null;
+    }
+    const ext = file.name.split(".").pop() || "png";
+    const path = `templates/${storeId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabase.storage.from("product-images").upload(path, file, {
+      contentType: file.type || "image/png",
+      upsert: false,
+    });
+    if (error) {
+      toast.error(`Не удалось загрузить: ${error.message}`);
+      return null;
+    }
+    const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+    return data.publicUrl;
+  };
+
+  return { templates, loading, reload: load, create, update, remove, uploadReferenceImage };
 }
