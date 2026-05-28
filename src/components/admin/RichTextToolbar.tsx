@@ -130,15 +130,16 @@ export function RichTextToolbar({ targetRef, value, onChange, className, placeho
 
   return (
     <div className={cn("flex flex-wrap items-center gap-0.5 border rounded-md bg-muted/30 px-1 py-1", className)}>
-      <ToolBtn title="Жирный (выделите текст)" onClick={() => applyToSelection(toBold)}>
+      <ToolBtn title="Жирный (вкл/выкл для выделения)" onClick={() => applyToSelection(toggleBold)}>
         <Bold className="h-3.5 w-3.5" />
       </ToolBtn>
-      <ToolBtn title="Курсив (выделите текст)" onClick={() => applyToSelection(toItalic)}>
+      <ToolBtn title="Курсив (вкл/выкл для выделения)" onClick={() => applyToSelection(toggleItalic)}>
         <Italic className="h-3.5 w-3.5" />
       </ToolBtn>
-      <ToolBtn title="Зачёркнутый (выделите текст)" onClick={() => applyToSelection(toStrike)}>
+      <ToolBtn title="Зачёркнутый (вкл/выкл для выделения)" onClick={() => applyToSelection(toggleStrike)}>
         <Strikethrough className="h-3.5 w-3.5" />
       </ToolBtn>
+
       <div className="w-px h-4 bg-border mx-1" />
       <ToolBtn title="Маркер •" onClick={() => insertAtCursor("\n• ")}>
         <List className="h-3.5 w-3.5" />
