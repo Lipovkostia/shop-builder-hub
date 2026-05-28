@@ -89,7 +89,10 @@ Deno.serve(async (req) => {
       const description = escapeXml(params.description || product.description || product.name || "");
       const price = params.Price || params.price || product.price || 0;
       const category = escapeXml(fp.avito_category || params.category || defaultCategory);
-      const images = product.images || [];
+      const selectedImages: string[] = Array.isArray(params.avitoImages) && params.avitoImages.length > 0
+        ? params.avitoImages
+        : (product.images || []);
+      const images = selectedImages;
       const address = escapeXml(fp.avito_address || params.address || defaultAddress);
       const adType = escapeXml(params.adType || params.goodsType || defaultAdType);
       const goodsType = escapeXml(params.GoodsType || params.goodsSubType || defaultGoodsType);
