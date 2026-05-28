@@ -331,13 +331,12 @@ function AvitoFeedTable({
   const categoryMap = new Map(storeCategories.map(c => [c.id, c.name]));
 
   // Helper: get column value for a feed product
+  // Helper: get column value for a feed product
   const getColValue = (fp: AvitoFeedProduct, product: Product, colKey: string): string => {
     const params = fp.avito_params || {};
     switch (colKey) {
-  // Filterable columns
-  const filterableCols = ["storeCategory", "category", "adType", "goodsType", "promo", "address", "managerName", "contactPhone", "email", "companyName"];
-  // Sortable columns
-  const sortableCols = ["title", "price", "storeCategory", "category"];
+      case "storeCategory":
+        return (product.categories || []).map(cid => categoryMap.get(cid) || "").filter(Boolean).join(", ");
       case "category": return params.category || "";
       case "adType": return params.goodsType || params.adType || "";
       case "goodsType": return params.goodsSubType || params.GoodsType || "";
@@ -355,6 +354,8 @@ function AvitoFeedTable({
 
   // Filterable columns
   const filterableCols = ["storeCategory", "category", "adType", "goodsType", "promo", "address", "managerName", "contactPhone", "email", "companyName"];
+  // Sortable columns
+  const sortableCols = ["title", "price", "storeCategory", "category"];
 
   // Pre-filter: search + price
   const preFiltered = feedProducts.filter((fp) => {
