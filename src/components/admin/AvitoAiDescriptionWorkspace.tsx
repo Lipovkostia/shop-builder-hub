@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import {
   Smartphone, Monitor, AlertTriangle, CheckCircle2, Eye, Blocks, Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RichTextToolbar } from "./RichTextToolbar";
 
 export interface AiTemplate {
   id: string;
@@ -85,6 +86,7 @@ export function AvitoAiDescriptionWorkspace({
   generating, progress, onGenerate,
 }: Props) {
   const [tab, setTab] = useState<"prompt" | "blocks" | "rules">("prompt");
+
   const [heading, setHeading] = useState("");
   const [main, setMain] = useState("");
   const [advantages, setAdvantages] = useState("");
@@ -94,6 +96,14 @@ export function AvitoAiDescriptionWorkspace({
   const [useBlocks, setUseBlocks] = useState(false);
   const [device, setDevice] = useState<"mobile" | "desktop">("mobile");
   const [newTplName, setNewTplName] = useState("");
+  const [previewExpanded, setPreviewExpanded] = useState(false);
+
+  const instructionRef = useRef<HTMLTextAreaElement>(null);
+  const headingRef = useRef<HTMLTextAreaElement>(null);
+  const mainRef = useRef<HTMLTextAreaElement>(null);
+  const advantagesRef = useRef<HTMLTextAreaElement>(null);
+  const ctaRef = useRef<HTMLTextAreaElement>(null);
+
 
   // Compose final instruction sent to AI
   const compiledInstruction = useMemo(() => {
@@ -255,7 +265,8 @@ export function AvitoAiDescriptionWorkspace({
                 </TabsTrigger>
               </TabsList>
 
-              <ScrollArea className="flex-1 mt-3">
+              <div className="flex-1 mt-3 overflow-y-auto overscroll-contain">
+
                 <div className="px-4 pb-6 space-y-5">
                   {/* Templates always visible */}
                   {templates.length > 0 && (
@@ -285,34 +296,26 @@ export function AvitoAiDescriptionWorkspace({
                   <TabsContent value="prompt" className="space-y-4 mt-0">
                     <div className="space-y-1.5">
                       <Label className="text-xs">Инструкция для AI</Label>
+                      <RichTextToolbar
+                        targetRef={instructionRef}
+                        value={instruction}
+                        onChange={setInstruction}
+                        placeholders={PLACEHOLDERS}
+                        onInsertPlaceholder={handleInsertPlaceholder}
+                      />
                       <Textarea
+                        ref={instructionRef}
                         value={instruction}
                         onChange={(e) => setInstruction(e.target.value)}
                         placeholder="Например: Пиши от лица оптового поставщика мясной продукции. Упоминай, что доставка по Москве и МО."
                         className="text-sm min-h-[180px] font-mono"
                       />
+                      <p className="text-[10px] text-muted-foreground">
+                        Выделите текст и нажмите <b>B/I/S</b> — символы заменятся на Unicode-аналоги, которые Авито отображает как
+                        жирный/курсив/зачёркнутый. Эмодзи вставляются в позиции курсора.
+                      </p>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs flex items-center gap-1.5">
-                        <Tag className="h-3.5 w-3.5" /> Плейсхолдеры (вставляются в промпт, подставятся в текст)
-                      </Label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {PLACEHOLDERS.map((p) => (
-                          <Button
-                            key={p.key}
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-[11px] gap-1"
-                            onClick={() => handleInsertPlaceholder(p.key)}
-                          >
-                            <code className="font-mono text-primary">{p.key}</code>
-                            <span className="text-muted-foreground">— {p.label}</span>
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
 
                     <Separator />
 
@@ -361,21 +364,26 @@ export function AvitoAiDescriptionWorkspace({
                     <div className="space-y-3">
                       <div className="space-y-1">
                         <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">1. Заголовок</Label>
-                        <Textarea value={heading} onChange={(e) => setHeading(e.target.value)} className="text-sm min-h-[60px]" placeholder="{product_name} — оптовая цена от поставщика" />
+                        <RichTextToolbar targetRef={headingRef} value={heading} onChange={setHeading} placeholders={PLACEHOLDERS} onInsertPlaceholder={(k) => setHeading(heading + k)} />
+                        <Textarea ref={headingRef} value={heading} onChange={(e) => setHeading(e.target.value)} className="text-sm min-h-[60px]" placeholder="{product_name} — оптовая цена от поставщика" />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">2. Основная информация</Label>
-                        <Textarea value={main} onChange={(e) => setMain(e.target.value)} className="text-sm min-h-[80px]" placeholder="Опиши состав, вес, происхождение. Используй {description}." />
+                        <RichTextToolbar targetRef={mainRef} value={main} onChange={setMain} placeholders={PLACEHOLDERS} onInsertPlaceholder={(k) => setMain(main + k)} />
+                        <Textarea ref={mainRef} value={main} onChange={(e) => setMain(e.target.value)} className="text-sm min-h-[80px]" placeholder="Опиши состав, вес, происхождение. Используй {description}." />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">3. Преимущества</Label>
-                        <Textarea value={advantages} onChange={(e) => setAdvantages(e.target.value)} className="text-sm min-h-[80px]" placeholder="— свежие поставки еженедельно&#10;— доставка по {city}&#10;— документы и сертификаты" />
+                        <RichTextToolbar targetRef={advantagesRef} value={advantages} onChange={setAdvantages} placeholders={PLACEHOLDERS} onInsertPlaceholder={(k) => setAdvantages(advantages + k)} />
+                        <Textarea ref={advantagesRef} value={advantages} onChange={(e) => setAdvantages(e.target.value)} className="text-sm min-h-[80px]" placeholder="— свежие поставки еженедельно&#10;— доставка по {city}&#10;— документы и сертификаты" />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">4. CTA (призыв)</Label>
-                        <Textarea value={cta} onChange={(e) => setCta(e.target.value)} className="text-sm min-h-[60px]" placeholder="Напишите в чат за прайсом — пришлём в течение часа." />
+                        <RichTextToolbar targetRef={ctaRef} value={cta} onChange={setCta} placeholders={PLACEHOLDERS} onInsertPlaceholder={(k) => setCta(cta + k)} />
+                        <Textarea ref={ctaRef} value={cta} onChange={(e) => setCta(e.target.value)} className="text-sm min-h-[60px]" placeholder="Напишите в чат за прайсом — пришлём в течение часа." />
                       </div>
                     </div>
+
                   </TabsContent>
 
                   <TabsContent value="rules" className="space-y-4 mt-0">
@@ -409,7 +417,8 @@ export function AvitoAiDescriptionWorkspace({
                     </div>
                   </TabsContent>
                 </div>
-              </ScrollArea>
+              </div>
+
             </Tabs>
           </div>
 
@@ -431,7 +440,7 @@ export function AvitoAiDescriptionWorkspace({
               </div>
             </div>
 
-            <ScrollArea className="flex-1">
+            <div className="flex-1 overflow-y-auto overscroll-contain">
               <div className="p-4 flex justify-center">
                 <div
                   className={cn(
@@ -450,14 +459,32 @@ export function AvitoAiDescriptionWorkspace({
                   </div>
                   <Separator />
                   <div className="px-4 py-3">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Описание</div>
-                    <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                      <span>{visibleBeforeCut}</span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Описание</div>
                       {cutHidden && (
+                        <button
+                          type="button"
+                          className="text-[11px] text-primary hover:underline"
+                          onClick={() => setPreviewExpanded((v) => !v)}
+                        >
+                          {previewExpanded ? "Свернуть ↑" : "Развернуть всё ↓"}
+                        </button>
+                      )}
+                    </div>
+                    <div className="text-sm whitespace-pre-wrap leading-relaxed break-words">
+                      {previewExpanded || !cutHidden ? (
+                        <span>{preview}</span>
+                      ) : (
                         <>
+                          <span>{visibleBeforeCut}</span>
                           <span className="text-muted-foreground/50">{preview.slice(CUTOFF, CUTOFF + 60)}…</span>
-                          <div className="mt-2 text-primary text-xs font-medium cursor-pointer">Показать ещё ↓</div>
-                          <div className="opacity-50 mt-1">{preview.slice(CUTOFF + 60)}</div>
+                          <button
+                            type="button"
+                            className="block mt-2 text-primary text-xs font-medium hover:underline"
+                            onClick={() => setPreviewExpanded(true)}
+                          >
+                            Показать ещё ↓
+                          </button>
                         </>
                       )}
                     </div>
@@ -507,7 +534,8 @@ export function AvitoAiDescriptionWorkspace({
                   <pre className="mt-2 text-[11px] whitespace-pre-wrap font-mono text-muted-foreground">{compiledInstruction || "(пусто)"}</pre>
                 </details>
               </div>
-            </ScrollArea>
+            </div>
+
           </div>
         </div>
       </DialogContent>
