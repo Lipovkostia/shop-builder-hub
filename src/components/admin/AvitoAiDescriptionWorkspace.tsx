@@ -295,34 +295,26 @@ export function AvitoAiDescriptionWorkspace({
                   <TabsContent value="prompt" className="space-y-4 mt-0">
                     <div className="space-y-1.5">
                       <Label className="text-xs">Инструкция для AI</Label>
+                      <RichTextToolbar
+                        targetRef={instructionRef}
+                        value={instruction}
+                        onChange={setInstruction}
+                        placeholders={PLACEHOLDERS}
+                        onInsertPlaceholder={handleInsertPlaceholder}
+                      />
                       <Textarea
+                        ref={instructionRef}
                         value={instruction}
                         onChange={(e) => setInstruction(e.target.value)}
                         placeholder="Например: Пиши от лица оптового поставщика мясной продукции. Упоминай, что доставка по Москве и МО."
                         className="text-sm min-h-[180px] font-mono"
                       />
+                      <p className="text-[10px] text-muted-foreground">
+                        Выделите текст и нажмите <b>B/I/S</b> — символы заменятся на Unicode-аналоги, которые Авито отображает как
+                        жирный/курсив/зачёркнутый. Эмодзи вставляются в позиции курсора.
+                      </p>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs flex items-center gap-1.5">
-                        <Tag className="h-3.5 w-3.5" /> Плейсхолдеры (вставляются в промпт, подставятся в текст)
-                      </Label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {PLACEHOLDERS.map((p) => (
-                          <Button
-                            key={p.key}
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-[11px] gap-1"
-                            onClick={() => handleInsertPlaceholder(p.key)}
-                          >
-                            <code className="font-mono text-primary">{p.key}</code>
-                            <span className="text-muted-foreground">— {p.label}</span>
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
 
                     <Separator />
 
