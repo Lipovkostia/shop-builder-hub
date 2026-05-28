@@ -752,7 +752,16 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [aiSingleProductId, setAiSingleProductId] = useState<string | null>(null);
 
   // Saved templates
-  interface AiTemplate { id: string; name: string; instruction: string; maxChars: number; }
+  interface AiTemplate {
+    id: string;
+    name: string;
+    instruction: string;
+    maxChars: number;
+    blocks?: { heading: string; main: string; advantages: string; cta: string };
+    stopWords?: string;
+    preserveCta?: boolean;
+  }
+
   const TEMPLATES_KEY = `avito_ai_templates_${storeId}`;
   const [savedTemplates, setSavedTemplates] = useState<AiTemplate[]>([]);
   const [newTemplateName, setNewTemplateName] = useState("");
