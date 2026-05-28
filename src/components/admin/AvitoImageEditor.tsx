@@ -667,7 +667,7 @@ export function AvitoImageEditor({
               )}
             </div>
           </div>
-        </div>
+
 
 
         {/* Footer */}
