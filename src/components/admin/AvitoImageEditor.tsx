@@ -600,9 +600,14 @@ export function AvitoImageEditor({
                             {processing.has(`ai_enhance_${img.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Sparkles className="h-3 w-3 mr-1" />Качество</>}
                           </Button>
                         </div>
-                        <label className="absolute top-2 left-2 flex items-center gap-2 cursor-pointer z-10">
-                          <Checkbox checked={selectedUrls.has(img.url)} onCheckedChange={() => toggleSelect(img.url)} />
-                        </label>
+                        <SelectBadge
+                          url={img.url}
+                          index={selectedIndex(img.url)}
+                          total={selectedOrder.length}
+                          onToggle={() => toggleSelect(img.url)}
+                          onMove={(d) => moveSelected(img.url, d)}
+                        />
+
                       </div>
                     ))}
                   </div>
