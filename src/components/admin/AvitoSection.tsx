@@ -933,7 +933,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
         try {
           const { data, error } = await supabase.functions.invoke("ai-avito-description", {
-            body: { products: productsToGenerate, instruction: aiInstruction, maxChars: aiMaxChars, mode: aiMode },
+            body: { products: productsToGenerate, instruction: effInstruction, maxChars: effMaxChars, mode: aiMode },
           });
 
           if (error) throw error;
