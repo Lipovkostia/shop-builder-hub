@@ -15,6 +15,7 @@ export interface GenerationTask {
   id: string;
   product_id: string;
   source_image_url: string | null;
+  reference_image_url?: string | null;
   prompt: string;
 }
 
@@ -38,6 +39,7 @@ export function useImageGeneration() {
         body: {
           product_id: task.product_id,
           source_image_url: task.source_image_url,
+          reference_image_url: task.reference_image_url ?? null,
           prompt: task.prompt,
           aspect_ratio: params.aspect_ratio,
           width: params.width,

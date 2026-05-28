@@ -1,147 +1,84 @@
+## Что не так сейчас
 
-## Раздел «Генерация фотографий»
+Миграции `image_generation_*` не применились — таблиц в БД нет, поэтому любое сохранение шаблона падает с ошибкой schema cache. Плюс структура «шаблон = промпт + картинка одним блоком» неудобна — нужно разделить.
 
-Новый AI-инструмент для пакетной генерации товарных фотографий по промптам/шаблонам с массовым редактированием и встраиванием результатов в карточку товара и Avito-фид.
+## План
 
-## Размещение в UI
+### 1. База данных (одна миграция)
 
-1. **Отдельный пункт в админ-сайдбаре** — `AdminPanel`, section `photo-generation` (иконка `Sparkles` / `ImagePlus`). Полноценный workflow: выбор товаров → настройка промптов → генерация → сохранение.
-2. **Кнопка «AI-фото» в карточке товара** (в существующем редакторе товара рядом с галереей) — открывает тот же интерфейс, но с предвыбранным одним товаром.
+Создать заново (idempotent, через `IF NOT EXISTS`):
 
-## Структура страницы (3 колонки)
+- `image_generation_prompts` — только текстовые шаблоны
+  - `id, store_id, name, prompt_template, default_aspect_ratio, is_system, sort_order, created_at`
+- `image_generation_references` — только картинки-референсы
+  - `id, store_id, name, image_url, is_system, sort_order, created_at`
+- `image_generation_jobs` — без изменений (если уже есть — оставить); добавить колонку `mode` (`product` | `playground`), `approved`, `hidden`, `model`
+- `image_playground_messages` — история чата ИИ-плейграунда
+  - `id, store_id, user_id, role` (`user`/`assistant`), `content`, `image_urls jsonb`, `model`, `created_at`
 
-```text
-┌───────────────────┬─────────────────────────────┬──────────────────────┐
-│ Список товаров    │ Исходные фото + настройки   │ Сгенерированные      │
-│ (поиск, чекбоксы) │ (по одному ряду на фото)    │ превью + действия    │
-└───────────────────┴─────────────────────────────┴──────────────────────┘
+Для каждой таблицы: GRANT'ы, RLS, политики по `store_id` владельца.
+
+Старая таблица `image_generation_templates` (если существует в проде) — оставить нетронутой, новый код её не использует.
+
+### 2. UI «Генерация фотографий» — три вкладки
+
+```
+[Рабочая область] [Шаблоны промптов] [Референсы] [AI-чат]
 ```
 
-**Левая колонка** — выбор товаров (виртуализированный список с поиском, чекбоксами, фильтром по категории/каталогу). Поддержка multi-select для массовой работы.
+**Шаблоны промптов** — список + редактор только текста (название + промпт + соотношение). Без картинки.
 
-**Центральная колонка** — для каждого выбранного товара ряд на каждое исходное фото:
-- миниатюра исходного фото
-- селект «Шаблон» (из набора + пользовательские) — подставляет промпт в textarea
-- textarea «Промпт» (редактируемый)
-- кнопка «Применить ко всем» (массово копирует шаблон/промпт в остальные ряды)
-- кнопка «Генерировать» на ряд + общая «Сгенерировать всё»
+**Референсы** — список + загрузчик: название + одно изображение. Без промпта.
 
-**Панель глобальных параметров** (sticky сверху центральной/правой колонок):
-- Соотношение сторон: пресеты `1:1, 16:9, 9:16, 4:3, 3:4, 2:3, 3:2, 21:9` + «Своё» (поля ширина/высота, 512–1920, кратно 32)
-- Количество вариантов на фото (1–4)
-- Качество (low/medium/high)
-- Модель (выбор провайдера — из подключённого API)
+**Рабочая область** — в строке товара и в глобальной панели добавить два независимых селектора:
+- «Промпт-шаблон» (dropdown из `image_generation_prompts`)
+- «Референс» (dropdown из `image_generation_references`, превью миниатюры)
 
-**Правая колонка** — для каждой генерации:
-- сгенерированное изображение (большое превью, клик — fullscreen)
-- кнопки «Перегенерировать», «Удалить»
-- чекбокс «Выбрать»
-- внизу: **«Добавить выбранные в карточку товара»** (массово добавляет в `products.images` ниже существующих)
+При генерации в edge-function отправляем `prompt` из выбранного промпта + `reference_image_url` из выбранного референса (если есть — используется вместо фото товара для edit-моделей).
 
-## Шаблоны промптов
+### 3. Новая вкладка «AI-чат»
 
-CRUD-интерфейс (вкладка «Шаблоны» в разделе) + предзагруженный набор:
-- Белый студийный фон
-- Лайфстайл / в интерьере
-- На деревянной поверхности
-- Инфографика с характеристиками
-- Avito-оптимизированное (4:3, контраст)
-- Сезонная подача (зима/лето)
-- Макро / детали
+Чат-интерфейс как у ChatGPT/Midjourney:
 
-Шаблоны: `{ name, prompt_template, category, default_aspect_ratio }`. Пользователь может создавать/редактировать/удалять свои.
+- Лента сообщений (user / assistant с превью картинок)
+- Внизу: textarea + кнопка загрузки 1-N изображений (drag&drop) + селектор модели (тот же `KIE_MODELS`) + соотношение сторон + кнопка «Отправить»
+- Поведение:
+  - Нет картинок → text-to-image (`nano-banana`, `seedream-4`, `flux-*`)
+  - 1+ картинка → image edit / композиция (`nano-banana-edit`, `seedream-4`, `flux-kontext-*` — все поддерживают `image_urls: [...]`)
+- История сохраняется в `image_playground_messages` (по `store_id` + `user_id`), подгружается при открытии
+- Кнопка «Скачать» и «Добавить к товару…» на каждой сгенерированной картинке (поиск товара по названию в простом селекторе)
 
-## Интеграция с Avito
+### 4. Edge function
 
-В существующем разделе Avito (`avito-feed`) при выборе фотографий для выгрузки:
-- Все фото товара (оригиналы + AI) показываются в едином гриде с бейджем источника (`оригинал` / `AI`)
-- Чекбоксы для выбора, какие фото уходят в Avito-фид (с сохранением порядка)
-- Кнопка «Использовать только AI-фото» / «Использовать только оригиналы» — массово на странице
-- Сохранение выбора в `avito_feed_products.avito_params.selected_images[]` (массив URL)
-- `avito-feed/index.ts` при генерации XML использует `selected_images` если задан, иначе все `images`
+Текущая `generate-product-image` остаётся для рабочей области.
 
-## API провайдера генерации
+Новая `generate-playground-image`:
+- Принимает: `prompt`, `model`, `aspect_ratio`, `image_urls: string[]` (уже загруженные в storage), `store_id`
+- Загружает пользовательские картинки в bucket `product-images/playground/{store_id}/...` перед вызовом kie.ai (если приходит base64 — иначе использует переданные URL)
+- Вызывает kie.ai (та же `kieCreateTask` + `kiePoll`)
+- Сохраняет результат в storage и в `image_playground_messages` как assistant-сообщение
+- Возвращает URL
 
-Пользователь укажет API позже. Архитектура:
-- Edge-функция `generate-product-image` принимает `{ product_id, source_image_url, prompt, aspect_ratio, size, n, quality }`, вызывает внешний API, возвращает base64 или URL
-- Секрет: добавим через `add_secret` (имя зависит от выбранного провайдера, например `IMAGE_GEN_API_KEY`)
-- Заглушка с понятной ошибкой «Укажите API ключ» пока секрет не добавлен
-- Сохранение результата: загрузка в bucket `product-images` под путём `{product_id}/ai/{timestamp}_{idx}.png`, публичный URL добавляется в `products.images`
+### 5. Файлы
 
-Параллельные генерации — пул на 3 одновременных запроса с прогресс-индикатором (как описано в `mem://design/ai-operation-progress-feedback`).
+Новые:
+- `supabase/migrations/20260528030000_image_generation_split.sql`
+- `src/hooks/useImagePrompts.ts`
+- `src/hooks/useImageReferences.ts`
+- `src/hooks/useImagePlayground.ts`
+- `src/components/admin/photo-generation/PromptsManager.tsx`
+- `src/components/admin/photo-generation/ReferencesManager.tsx`
+- `src/components/admin/photo-generation/PlaygroundChat.tsx`
+- `supabase/functions/generate-playground-image/index.ts`
 
-## База данных (миграции)
+Изменить:
+- `src/components/admin/photo-generation/PhotoGenerationSection.tsx` — 4 вкладки, два селектора в рабочей области
+- `src/hooks/useImageGeneration.ts` — пробрасывать `reference_image_url` отдельно от `source_image_url`
+- `supabase/functions/generate-product-image/index.ts` — принимать `reference_image_url`, при наличии использовать его как `image_urls[0]` вместо фото товара
+- удалить старый `src/hooks/useImageTemplates.ts` после миграции UI
 
-```sql
--- Шаблоны промптов (на магазин)
-CREATE TABLE public.image_generation_templates (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  store_id uuid NOT NULL,
-  name text NOT NULL,
-  prompt_template text NOT NULL,
-  default_aspect_ratio text DEFAULT '1:1',
-  is_system boolean DEFAULT false, -- предзагруженные
-  sort_order integer DEFAULT 0,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.image_generation_templates TO authenticated;
-GRANT ALL ON public.image_generation_templates TO service_role;
-ALTER TABLE public.image_generation_templates ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Store owners manage templates" ON public.image_generation_templates
-  FOR ALL TO authenticated USING (is_store_owner(store_id, auth.uid()))
-  WITH CHECK (is_store_owner(store_id, auth.uid()));
-CREATE POLICY "Anyone reads system templates" ON public.image_generation_templates
-  FOR SELECT TO authenticated USING (is_system = true);
+### Технические детали
 
--- Лог генераций (для истории/повтора)
-CREATE TABLE public.image_generation_jobs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  store_id uuid NOT NULL,
-  product_id uuid NOT NULL,
-  source_image_url text,
-  prompt text NOT NULL,
-  aspect_ratio text,
-  result_image_url text,
-  status text NOT NULL DEFAULT 'pending', -- pending|success|error
-  error_message text,
-  cost numeric DEFAULT 0,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.image_generation_jobs TO authenticated;
-GRANT ALL ON public.image_generation_jobs TO service_role;
-ALTER TABLE public.image_generation_jobs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Store owners manage jobs" ON public.image_generation_jobs
-  FOR ALL TO authenticated USING (is_store_owner(store_id, auth.uid()))
-  WITH CHECK (is_store_owner(store_id, auth.uid()));
-
--- В avito_feed_products: selected_images уже умещается в avito_params (jsonb), миграция не нужна
-```
-
-Сидинг 7 системных шаблонов через `INSERT` (с `store_id = NULL` либо отдельный механизм — уточним: проще делать `is_system = true` без store_id, поэтому колонку `store_id` сделаем nullable).
-
-## Файлы
-
-**Создать:**
-- `src/components/admin/photo-generation/PhotoGenerationSection.tsx` — корневой компонент раздела
-- `src/components/admin/photo-generation/ProductSelector.tsx` — левая колонка
-- `src/components/admin/photo-generation/PhotoPromptRow.tsx` — ряд с фото + промпт + шаблон
-- `src/components/admin/photo-generation/GeneratedPreviewColumn.tsx` — правая колонка
-- `src/components/admin/photo-generation/GenerationParamsBar.tsx` — глобальные параметры
-- `src/components/admin/photo-generation/TemplatesManager.tsx` — CRUD шаблонов
-- `src/hooks/useImageGeneration.ts` — пул генерации, прогресс, вызов edge function
-- `src/hooks/useImageTemplates.ts` — загрузка/CRUD шаблонов
-- `supabase/functions/generate-product-image/index.ts` — прокси к API провайдера
-- `supabase/migrations/<ts>_image_generation.sql`
-
-**Изменить:**
-- `src/pages/AdminPanel.tsx` — новый section `photo-generation` + роутинг
-- `src/components/admin/AdminSidebar.tsx` (или эквивалент) — пункт меню
-- `src/components/admin/products/...` — кнопка «AI-фото» в редакторе товара
-- `src/components/admin/avito/...` (компонент выбора фото для фида) — единый грид с бейджами и массовыми действиями
-- `supabase/functions/avito-feed/index.ts` — учитывать `selected_images`
-
-## Дальнейшие шаги после плана
-
-1. Уточните провайдер API (Replicate / fal.ai / DALL·E / Midjourney-proxy / своё API) — это влияет на формат запроса в edge-функции. Можно реализовать «универсальный» с возможностью указать base URL.
-2. После согласования — запрошу секрет с ключом через защищённую форму.
+- Сохранение шаблона валидируется только по `name` (для промптов — ещё `prompt_template`; для референсов — `image_url`).
+- В чате модель по умолчанию — `google/nano-banana-edit` если есть вложения, иначе `google/nano-banana`. Стоимость показываем под полем ввода в ₽ по тому же `KIE_MODELS` + курс из localStorage.
+- Realtime для чата не нужен — после ответа просто инвалидируем список.

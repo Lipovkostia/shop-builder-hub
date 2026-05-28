@@ -13,6 +13,10 @@ const corsHeaders = {
 interface RequestBody {
   product_id: string;
   source_image_url?: string | null;
+interface RequestBody {
+  product_id: string;
+  source_image_url?: string | null;
+  reference_image_url?: string | null;
   prompt: string;
   aspect_ratio?: string;
   width?: number;
@@ -21,8 +25,6 @@ interface RequestBody {
   quality?: "low" | "medium" | "high";
   model?: string;
 }
-
-const KIE_API_KEY = Deno.env.get("KIE_API_KEY") ?? "";
 const KIE_BASE = "https://api.kie.ai";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -134,17 +136,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const aspect_ratio = ALLOWED_AR.has(body.aspect_ratio ?? "") ? body.aspect_ratio! : "1:1";
-    const finalPrompt = body.prompt.replace(/\{product_name\}/g, product.name ?? "товар");
-
-    // Выбор модели: если есть исходное фото — редактирование, иначе text-to-image.
-    const hasSource = !!body.source_image_url;
+    // Источник для редактирования: явный референс из шаблона приоритетнее фото товара
+    const editSource = body.reference_image_url || body.source_image_url || null;
+    const hasSource = !!editSource;
     const model = body.model ?? (hasSource ? "google/nano-banana-edit" : "google/nano-banana");
     const input: Record<string, unknown> = {
       prompt: finalPrompt,
       output_format: "png",
       aspect_ratio,
     };
+    if (hasSource) input.image_urls = [editSource];
     if (hasSource) input.image_urls = [body.source_image_url];
 
     let resultUrl: string;
