@@ -229,7 +229,7 @@ export function AvitoImageEditor({
       const dims = await loadImageDimensions(urlData.publicUrl);
       const newImg: ImageInfo = { url: urlData.publicUrl, ...dims, isGenerated: true };
       setGeneratedImages(prev => [...prev, newImg]);
-      setSelectedUrls(prev => new Set(prev).add(urlData.publicUrl));
+      addSelected(urlData.publicUrl);
       toast({ title: "Фото изменено до 1280×960 (4:3)" });
     } catch (err: any) {
       toast({ title: "Ошибка", description: err.message, variant: "destructive" });
@@ -257,7 +257,7 @@ export function AvitoImageEditor({
       const dims = await loadImageDimensions(data.url);
       const newImg: ImageInfo = { url: data.url, ...dims, isGenerated: true };
       setGeneratedImages(prev => [...prev, newImg]);
-      setSelectedUrls(prev => new Set(prev).add(data.url));
+      addSelected(data.url);
       toast({ title: "AI: фото адаптировано для Авито" });
     } catch (err: any) {
       toast({ title: "Ошибка AI", description: err.message, variant: "destructive" });
@@ -285,7 +285,7 @@ export function AvitoImageEditor({
       const dims = await loadImageDimensions(data.url);
       const newImg: ImageInfo = { url: data.url, ...dims, isGenerated: true };
       setGeneratedImages(prev => [...prev, newImg]);
-      setSelectedUrls(prev => new Set(prev).add(data.url));
+      addSelected(data.url);
       toast({ title: label });
       setTimeout(() => {
         scrollViewportRef.current?.scrollTo({ top: scrollViewportRef.current.scrollHeight, behavior: "smooth" });
@@ -361,7 +361,7 @@ export function AvitoImageEditor({
       const newImg: ImageInfo = { url: urlData.publicUrl, ...dims, isGenerated: true };
       setGeneratedImages(prev => [...prev, newImg]);
       // Keep original selected AND add the generated one
-      setSelectedUrls(prev => new Set(prev).add(urlData.publicUrl));
+      addSelected(urlData.publicUrl);
       toast({ title: "Шаблон наложен — оригинал сохранён" });
     } catch (err: any) {
       toast({ title: "Ошибка", description: err.message, variant: "destructive" });
@@ -371,13 +371,13 @@ export function AvitoImageEditor({
   }, [templateUrl, templatePreview, storeId, productId, toast]);
 
   const handleSave = () => {
-    onSave(Array.from(selectedUrls));
+    onSave(selectedOrder);
     onOpenChange(false);
   };
 
   const handleRemoveGenerated = (url: string) => {
     setGeneratedImages(prev => prev.filter(img => img.url !== url));
-    setSelectedUrls(prev => { const n = new Set(prev); n.delete(url); return n; });
+    removeSelected(url);
   };
 
   const handleUploadPhotos = useCallback(async (files: FileList | File[]) => {
@@ -401,7 +401,7 @@ export function AvitoImageEditor({
       for (const url of newUrls) {
         const dims = await loadImageDimensions(url);
         setImageInfos(prev => [...prev, { url, ...dims }]);
-        setSelectedUrls(prev => new Set(prev).add(url));
+        addSelected(url);
       }
       onImagesAdded?.(newUrls);
       toast({ title: `Загружено ${newUrls.length} фото` });
@@ -672,13 +672,13 @@ export function AvitoImageEditor({
         {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t mt-2 flex-shrink-0 px-6 py-3">
           <span className="text-xs text-muted-foreground">
-            Выбрано для Авито: {selectedUrls.size} из {allImages.length} фото
+            Выбрано для Авито: {selectedOrder.length} из {allImages.length} фото
           </span>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Отмена</Button>
             <Button size="sm" onClick={handleSave}>
               <Check className="h-3.5 w-3.5 mr-1" />
-              Сохранить ({selectedUrls.size})
+              Сохранить ({selectedOrder.length})
             </Button>
           </div>
         </div>
