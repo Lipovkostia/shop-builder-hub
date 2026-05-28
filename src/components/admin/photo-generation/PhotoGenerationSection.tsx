@@ -62,9 +62,9 @@ interface SavedJob { id: string; product_id: string; prompt: string; result_imag
 
 const ASPECT_PRESETS = ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2", "21:9"] as const;
 
-interface Props { storeId: string; preselectedProductId?: string | null; }
+interface Props { storeId: string; preselectedProductId?: string | null; onOpenInAvito?: (productId: string) => void; }
 
-export function PhotoGenerationSection({ storeId, preselectedProductId }: Props) {
+export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenInAvito }: Props) {
   const [products, setProducts] = useState<ProductLite[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [search, setSearch] = useState("");
