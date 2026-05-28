@@ -136,7 +136,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
     const existing = new Set(localJobs.map((j) => j.id));
     const unique = additions.filter((j) => !existing.has(j.id));
     if (unique.length) persistLocalJobs([...unique, ...localJobs].slice(0, 200));
-  }, [results, rows, localJobs]);
+  }, [results, rows, localJobs, localJobsKey]);
 
   useEffect(() => {
     const newRows: PhotoRow[] = [];
