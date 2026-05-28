@@ -26,11 +26,13 @@ function readReferences(storeId: string | null): ImageReference[] {
 function writeReferences(storeId: string, refs: ImageReference[]) {
   localStorage.setItem(`${STORAGE_KEY}:${storeId}`, JSON.stringify(refs));
 }
+function writeReferences(storeId: string, refs: ImageReference[]) {
+  localStorage.setItem(`${STORAGE_KEY}:${storeId}`, JSON.stringify(refs));
+  try { window.dispatchEvent(new CustomEvent("image-references-changed", { detail: { storeId } })); } catch {}
+}
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
+const EVENT_NAME = "image-references-changed";
+
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
