@@ -72,6 +72,8 @@ interface AvitoSectionProps {
   products?: Product[];
   storeCategories?: StoreCategory[];
   onOpenInPhotoStudio?: (productId: string) => void;
+  autoOpenImageEditorForProductId?: string | null;
+  onAutoOpenImageEditorHandled?: () => void;
   avitoFeed?: {
     feedProducts: AvitoFeedProduct[];
     feedProductIds: Set<string>;
