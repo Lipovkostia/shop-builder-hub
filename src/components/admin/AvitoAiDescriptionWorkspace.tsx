@@ -417,7 +417,8 @@ export function AvitoAiDescriptionWorkspace({
                     </div>
                   </TabsContent>
                 </div>
-              </ScrollArea>
+              </div>
+
             </Tabs>
           </div>
 
