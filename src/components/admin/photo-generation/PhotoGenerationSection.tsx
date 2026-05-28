@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Sparkles, Loader2, Trash2, Plus, Wand2, Check, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { KIE_MODELS, DEFAULT_USD_RUB, formatRub } from "./models";
 
 interface ProductLite {
   id: string;
