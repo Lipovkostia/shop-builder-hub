@@ -14,7 +14,12 @@ const EMOJIS = [
   "🔥", "✅", "📦", "🚚", "💰", "⭐", "🎁", "🏷️", "📞", "📍",
   "✨", "💎", "🛒", "🔔", "⚡", "🥇", "👍", "🌿", "🍃", "🇷🇺",
   "❤️", "💯", "🎯", "📌", "🆕", "🔝", "🤝", "👀", "💬", "📲",
+  "🟢", "🟡", "🔴", "⏰", "📅", "🛡️", "🧾", "📈", "🍀", "🥩",
+  "🧀", "🍖", "🍷", "🥖", "🥗", "🌍", "🇪🇸", "🇮🇹", "🇫🇷", "🇩🇪",
+];
+
 // Maps for bold/italic transformations (Latin + digits)
+
 const BOLD_MAP: Record<string, string> = {};
 const ITALIC_MAP: Record<string, string> = {};
 for (let i = 0; i < 26; i++) {
