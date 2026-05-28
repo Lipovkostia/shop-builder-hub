@@ -35,6 +35,7 @@ import { StoreCategory } from "@/hooks/useStoreCategories";
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
+import { AvitoAiDescriptionWorkspace } from "./AvitoAiDescriptionWorkspace";
 
 interface AvitoItem {
   id: number;
@@ -895,9 +896,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     Object.keys(newParams).forEach(k => { if (!newParams[k]) delete newParams[k]; });
     await avitoFeed.updateProductParams(productId, newParams);
   }, [avitoFeed]);
-
   // === AI DESCRIPTION/TITLE GENERATION ===
-  const handleAiGenerate = async () => {
+  const handleAiGenerate = async (overrides?: { instruction?: string; maxChars?: number }) => {
+    if (!avitoFeed) return;
+    const effInstruction = overrides?.instruction ?? aiInstruction;
+    const effMaxChars = overrides?.maxChars ?? aiMaxChars;
     if (!avitoFeed) return;
     const targetIds = aiSingleProductId ? [aiSingleProductId] : Array.from(selectedFeedProducts);
     if (targetIds.length === 0) return;
@@ -930,7 +933,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
         try {
           const { data, error } = await supabase.functions.invoke("ai-avito-description", {
-            body: { products: productsToGenerate, instruction: aiInstruction, maxChars: aiMaxChars, mode: aiMode },
+            body: { products: productsToGenerate, instruction: effInstruction, maxChars: effMaxChars, mode: aiMode },
           });
 
           if (error) throw error;
@@ -938,8 +941,16 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
           const descriptions = data?.descriptions || {};
 
-          for (const [pid, value] of Object.entries(descriptions)) {
-            if (value && typeof value === "string") {
+          const city = (localDefaults.address?.split(",")[0]?.trim()) || "вашем городе";
+          for (const [pid, rawValue] of Object.entries(descriptions)) {
+            if (rawValue && typeof rawValue === "string") {
+              const prod = storeProducts.find(p => p.id === pid);
+              // post-process placeholders the AI was told to keep verbatim
+              const value = rawValue
+                .replace(/\{product_name\}/g, prod?.name ?? "")
+                .replace(/\{price\}/g, prod?.pricePerUnit ? `${Math.round(prod.pricePerUnit)} ₽` : "")
+                .replace(/\{city\}/g, city)
+                .replace(/\{description\}/g, prod?.description ?? "");
               const fp = avitoFeed.feedProducts.find(f => f.product_id === pid);
               const currentParams = fp?.avito_params || {};
               if (aiMode === "title") {
@@ -2023,9 +2034,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
           </TabsContent>
         )}
       </Tabs>
-
-      {/* AI Generation Sheet */}
-      <Sheet open={aiPromptOpen} onOpenChange={(open) => { setAiPromptOpen(open); if (!open) setAiSingleProductId(null); }}>
+      {/* AI Generation Sheet — used only for TITLE mode */}
+      <Sheet open={aiPromptOpen && aiMode === "title"} onOpenChange={(open) => { setAiPromptOpen(open); if (!open) setAiSingleProductId(null); }}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="text-base flex items-center gap-2">
@@ -2136,7 +2146,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
             {/* Actions */}
             <div className="flex gap-2 pt-2 border-t">
-              <Button className="flex-1" onClick={handleAiGenerate} disabled={aiGenerating}>
+              <Button className="flex-1" onClick={() => handleAiGenerate()} disabled={aiGenerating}>
                 {aiGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Wand2 className="h-3.5 w-3.5 mr-1" />}
                 {aiGenerating ? `${aiProgress.done}/${aiProgress.total}...` : (aiMode === "title" ? "Сократить названия" : "Сгенерировать")}
               </Button>
@@ -2144,6 +2154,43 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Full-screen workspace for DESCRIPTION mode */}
+      <AvitoAiDescriptionWorkspace
+        open={aiPromptOpen && aiMode === "description"}
+        onOpenChange={(open) => { setAiPromptOpen(open); if (!open) setAiSingleProductId(null); }}
+        selectedCount={selectedFeedProducts.size}
+        singleProduct={aiSingleProductId ? (() => {
+          const p = storeProducts.find(sp => sp.id === aiSingleProductId);
+          return p ? { id: p.id, name: p.name, description: p.description, pricePerUnit: p.pricePerUnit } : null;
+        })() : null}
+        previewProduct={(() => {
+          const firstId = aiSingleProductId || Array.from(selectedFeedProducts)[0] || avitoFeed?.feedProducts[0]?.product_id;
+          const p = firstId ? storeProducts.find(sp => sp.id === firstId) : null;
+          return p ? { id: p.id, name: p.name, description: p.description, pricePerUnit: p.pricePerUnit } : null;
+        })()}
+        city={localDefaults.address?.split(",")[0]?.trim() || "Москва"}
+        instruction={aiInstruction}
+        setInstruction={setAiInstruction}
+        maxChars={aiMaxChars}
+        setMaxChars={setAiMaxChars}
+        templates={savedTemplates}
+        onSaveTemplate={(tpl) => {
+          const full: AiTemplate = { id: Date.now().toString(), ...tpl };
+          const updated = [...savedTemplates, full];
+          setSavedTemplates(updated);
+          localStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
+          toast({ title: "Шаблон сохранён" });
+        }}
+        onDeleteTemplate={deleteTemplate}
+        generating={aiGenerating}
+        progress={aiProgress}
+        onGenerate={({ instruction, maxChars }) => {
+          setAiInstruction(instruction);
+          setAiMaxChars(maxChars);
+          handleAiGenerate({ instruction, maxChars });
+        }}
+      />
 
       {/* Item Detail Dialog */}
       <Dialog open={!!detailDialogItem} onOpenChange={(open) => !open && setDetailDialogItem(null)}>
