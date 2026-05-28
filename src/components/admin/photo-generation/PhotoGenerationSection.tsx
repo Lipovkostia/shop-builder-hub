@@ -500,8 +500,8 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                           <Wand2 className="h-3 w-3" />Генерировать
                         </Button>
                       </div>
-                      </div>
                     </div>
+                  ))}
                   ))}
                 </div>
               </ScrollArea>
