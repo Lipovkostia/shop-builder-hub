@@ -14,35 +14,68 @@ const EMOJIS = [
   "🔥", "✅", "📦", "🚚", "💰", "⭐", "🎁", "🏷️", "📞", "📍",
   "✨", "💎", "🛒", "🔔", "⚡", "🥇", "👍", "🌿", "🍃", "🇷🇺",
   "❤️", "💯", "🎯", "📌", "🆕", "🔝", "🤝", "👀", "💬", "📲",
-  "🟢", "🟡", "🔴", "⏰", "📅", "🛡️", "🧾", "📈", "🍀", "🥩",
-  "🧀", "🍖", "🍷", "🥖", "🥗", "🌍", "🇪🇸", "🇮🇹", "🇫🇷", "🇩🇪",
-];
+// Maps for bold/italic transformations (Latin + digits)
+const BOLD_MAP: Record<string, string> = {};
+const ITALIC_MAP: Record<string, string> = {};
+for (let i = 0; i < 26; i++) {
+  BOLD_MAP[String.fromCharCode(65 + i)] = String.fromCodePoint(0x1d400 + i);
+  BOLD_MAP[String.fromCharCode(97 + i)] = String.fromCodePoint(0x1d41a + i);
+  ITALIC_MAP[String.fromCharCode(65 + i)] = String.fromCodePoint(0x1d434 + i);
+  ITALIC_MAP[String.fromCharCode(97 + i)] = String.fromCodePoint(0x1d44e + i);
+}
+for (let i = 0; i < 10; i++) BOLD_MAP[String(i)] = String.fromCodePoint(0x1d7ce + i);
+
+const BOLD_REVERSE: Record<string, string> = Object.fromEntries(
+  Object.entries(BOLD_MAP).map(([k, v]) => [v, k]),
+);
+const ITALIC_REVERSE: Record<string, string> = Object.fromEntries(
+  Object.entries(ITALIC_MAP).map(([k, v]) => [v, k]),
+);
+
+// Split string into graphemes (code points), so surrogate pairs (𝐁) stay together
+function toCodePoints(str: string): string[] {
+  return Array.from(str);
+}
+
+function hasBold(str: string): boolean {
+  return toCodePoints(str).some((ch) => BOLD_REVERSE[ch]);
+}
+function hasItalic(str: string): boolean {
+  return toCodePoints(str).some((ch) => ITALIC_REVERSE[ch]);
+}
+function hasStrike(str: string): boolean {
+  return str.includes("\u0336");
+}
+
+function stripBold(str: string): string {
+  return toCodePoints(str).map((ch) => BOLD_REVERSE[ch] ?? ch).join("");
+}
+function stripItalic(str: string): string {
+  return toCodePoints(str).map((ch) => ITALIC_REVERSE[ch] ?? ch).join("");
+}
+function stripStrike(str: string): string {
+  return str.replace(/\u0336/g, "");
+}
 
 function toBold(str: string): string {
-  const map: Record<string, string> = {};
-  // Latin
-  for (let i = 0; i < 26; i++) {
-    map[String.fromCharCode(65 + i)] = String.fromCodePoint(0x1d400 + i);
-    map[String.fromCharCode(97 + i)] = String.fromCodePoint(0x1d41a + i);
-  }
-  for (let i = 0; i < 10; i++) map[String(i)] = String.fromCodePoint(0x1d7ce + i);
-  // Cyrillic: жирных нет в Unicode стандартно, используем "Mathematical Bold" нет для кириллицы.
-  // Применяем комбинирующий U+0331 (нижнее подчёркивание) как fallback? Нет — Авито поддерживает обычный текст.
-  // Для кириллицы оставим как есть — пусть будет уникод там, где работает.
-  return str.split("").map((ch) => map[ch] ?? ch).join("");
+  return toCodePoints(str).map((ch) => BOLD_MAP[ch] ?? ch).join("");
 }
-
 function toItalic(str: string): string {
-  const map: Record<string, string> = {};
-  for (let i = 0; i < 26; i++) {
-    map[String.fromCharCode(65 + i)] = String.fromCodePoint(0x1d434 + i);
-    map[String.fromCharCode(97 + i)] = String.fromCodePoint(0x1d44e + i);
-  }
-  return str.split("").map((ch) => map[ch] ?? ch).join("");
+  return toCodePoints(str).map((ch) => ITALIC_MAP[ch] ?? ch).join("");
+}
+function toStrike(str: string): string {
+  // strip existing strike chars first so we don't double them
+  return stripStrike(str).split("").map((ch) => ch + "\u0336").join("");
 }
 
-function toStrike(str: string): string {
-  return str.split("").map((ch) => ch + "\u0336").join("");
+function toggleBold(str: string): string {
+  return hasBold(str) ? stripBold(str) : toBold(stripItalic(str));
+}
+function toggleItalic(str: string): string {
+  return hasItalic(str) ? stripItalic(str) : toItalic(stripBold(str));
+}
+function toggleStrike(str: string): string {
+  return hasStrike(str) ? stripStrike(str) : toStrike(str);
 }
 
 interface Props {
