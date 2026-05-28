@@ -85,16 +85,6 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-    // log user message
-    await admin.from("image_playground_messages").insert({
-      store_id: body.store_id,
-      user_id: userData.user.id,
-      role: "user",
-      content: body.prompt ?? "",
-      image_urls: images,
-      model,
-    });
-
     const input: Record<string, unknown> = { prompt: body.prompt || "Generate image", output_format: "png", aspect_ratio };
     if (hasImages) input.image_urls = images;
 
@@ -102,16 +92,8 @@ Deno.serve(async (req) => {
     try {
       const taskId = await kieCreateTask(model, input);
       resultUrl = await kiePoll(taskId);
-    } catch (genErr: any) {
-      await admin.from("image_playground_messages").insert({
-        store_id: body.store_id,
-        user_id: userData.user.id,
-        role: "assistant",
-        content: `Ошибка: ${String(genErr?.message ?? genErr)}`,
-        image_urls: [],
-        model,
-      });
-      return new Response(JSON.stringify({ error: String(genErr?.message ?? genErr) }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    } catch (genErr: unknown) {
+      return new Response(JSON.stringify({ error: genErr instanceof Error ? genErr.message : String(genErr) }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // download + store
@@ -124,18 +106,9 @@ Deno.serve(async (req) => {
     if (upErr) throw new Error(`Storage: ${upErr.message}`);
     const url = admin.storage.from("product-images").getPublicUrl(path).data.publicUrl;
 
-    await admin.from("image_playground_messages").insert({
-      store_id: body.store_id,
-      user_id: userData.user.id,
-      role: "assistant",
-      content: "",
-      image_urls: [url],
-      model,
-    });
-
     return new Response(JSON.stringify({ url, model }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("playground error:", err);
-    return new Response(JSON.stringify({ error: String(err?.message ?? err) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

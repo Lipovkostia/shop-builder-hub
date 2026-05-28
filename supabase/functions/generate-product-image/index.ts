@@ -1,6 +1,5 @@
 // Edge function: generate-product-image
-// Провайдер: kie.ai (https://docs.kie.ai)
-// Использует async-задачи: POST /api/v1/jobs/createTask -> taskId -> GET /api/v1/jobs/recordInfo
+// Генерация фото товара через kie.ai + сохранение результата в storage.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -13,11 +12,8 @@ const corsHeaders = {
 interface RequestBody {
   product_id: string;
   source_image_url?: string | null;
-interface RequestBody {
-  product_id: string;
-  source_image_url?: string | null;
   reference_image_url?: string | null;
-  prompt: string;
+  prompt?: string | null;
   aspect_ratio?: string;
   width?: number;
   height?: number;
@@ -25,9 +21,12 @@ interface RequestBody {
   quality?: "low" | "medium" | "high";
   model?: string;
 }
+
+const KIE_API_KEY = Deno.env.get("KIE_API_KEY") ?? "";
 const KIE_BASE = "https://api.kie.ai";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const ALLOWED_AR = new Set(["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2", "21:9"]);
 
@@ -42,11 +41,9 @@ async function kieCreateTask(model: string, input: Record<string, unknown>): Pro
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`kie.ai createTask ${res.status}: ${text.slice(0, 400)}`);
-  let json: any;
+  let json: Record<string, unknown>;
   try { json = JSON.parse(text); } catch { throw new Error(`kie.ai createTask: некорректный JSON: ${text.slice(0, 200)}`); }
-  if (json?.code && json.code !== 200) {
-    throw new Error(`kie.ai createTask code=${json.code}: ${json?.msg ?? "ошибка"}`);
-  }
+  if (json?.code && json.code !== 200) throw new Error(`kie.ai createTask code=${json.code}: ${json?.msg ?? "ошибка"}`);
   const taskId = json?.data?.taskId;
   if (!taskId) throw new Error(`kie.ai createTask: нет taskId. Ответ: ${text.slice(0, 200)}`);
   return taskId;
@@ -61,8 +58,8 @@ async function kiePoll(taskId: string, timeoutMs = 180_000): Promise<string> {
     });
     const text = await res.text();
     if (!res.ok) throw new Error(`kie.ai recordInfo ${res.status}: ${text.slice(0, 300)}`);
-    let json: any;
-    try { json = JSON.parse(text); } catch { throw new Error(`kie.ai recordInfo: некорректный JSON`); }
+    let json: Record<string, unknown>;
+    try { json = JSON.parse(text); } catch { throw new Error("kie.ai recordInfo: некорректный JSON"); }
     const state = json?.data?.state;
     if (state === "success") {
       const rj = json?.data?.resultJson;
@@ -74,9 +71,7 @@ async function kiePoll(taskId: string, timeoutMs = 180_000): Promise<string> {
       if (!urls.length) throw new Error("kie.ai: пустой resultUrls");
       return urls[0];
     }
-    if (state === "fail") {
-      throw new Error(`kie.ai: ${json?.data?.failMsg ?? json?.data?.failCode ?? "генерация не удалась"}`);
-    }
+    if (state === "fail") throw new Error(`kie.ai: ${json?.data?.failMsg ?? json?.data?.failCode ?? "генерация не удалась"}`);
     await new Promise((r) => setTimeout(r, delay));
     delay = Math.min(delay + 1000, 6000);
   }
@@ -86,9 +81,8 @@ async function kiePoll(taskId: string, timeoutMs = 180_000): Promise<string> {
 async function fetchAsBytes(url: string): Promise<{ bytes: Uint8Array; contentType: string }> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Не удалось скачать результат: ${res.status}`);
-  const ct = res.headers.get("content-type") ?? "image/png";
-  const bytes = new Uint8Array(await res.arrayBuffer());
-  return { bytes, contentType: ct };
+  const contentType = res.headers.get("content-type") ?? "image/png";
+  return { bytes: new Uint8Array(await res.arrayBuffer()), contentType };
 }
 
 Deno.serve(async (req) => {
@@ -107,9 +101,8 @@ Deno.serve(async (req) => {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const supabaseAuth = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
+
+    const supabaseAuth = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } });
     const { data: userData, error: userErr } = await supabaseAuth.auth.getUser();
     if (userErr || !userData?.user) {
       return new Response(JSON.stringify({ error: "Неверный токен" }), {
@@ -118,8 +111,8 @@ Deno.serve(async (req) => {
     }
 
     const body = (await req.json()) as RequestBody;
-    if (!body.product_id || !body.prompt) {
-      return new Response(JSON.stringify({ error: "product_id и prompt обязательны" }), {
+    if (!body.product_id) {
+      return new Response(JSON.stringify({ error: "product_id обязателен" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -136,65 +129,86 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Источник для редактирования: явный референс из шаблона приоритетнее фото товара
     const editSource = body.reference_image_url || body.source_image_url || null;
+    const prompt = (body.prompt ?? "").replaceAll("{product_name}", product.name).trim();
+    if (!prompt && !editSource) {
+      return new Response(JSON.stringify({ error: "Нужен промпт или референс" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const hasSource = !!editSource;
     const model = body.model ?? (hasSource ? "google/nano-banana-edit" : "google/nano-banana");
-    const input: Record<string, unknown> = {
-      prompt: finalPrompt,
-      output_format: "png",
-      aspect_ratio,
-    };
+    const aspect_ratio = ALLOWED_AR.has(body.aspect_ratio ?? "") ? body.aspect_ratio! : "1:1";
+    const finalPrompt = prompt || `Сгенерируй качественное коммерческое фото товара: ${product.name}`;
+    const input: Record<string, unknown> = { prompt: finalPrompt, output_format: "png", aspect_ratio };
     if (hasSource) input.image_urls = [editSource];
-    if (hasSource) input.image_urls = [body.source_image_url];
+
+    const hasJobsTable = await admin.from("image_generation_jobs").select("id").limit(1).then(({ error }) => !error);
 
     let resultUrl: string;
     try {
       const taskId = await kieCreateTask(model, input);
       resultUrl = await kiePoll(taskId);
-    } catch (genErr: any) {
-      await admin.from("image_generation_jobs").insert({
-        store_id: product.store_id,
-        product_id: product.id,
-        source_image_url: body.source_image_url,
-        prompt: finalPrompt,
-        aspect_ratio,
-        status: "error",
-        error_message: String(genErr?.message ?? genErr),
-      });
-      return new Response(JSON.stringify({ error: String(genErr?.message ?? genErr) }), {
+    } catch (genErr: unknown) {
+      if (hasJobsTable) {
+        const errorRow: Record<string, unknown> = {
+          store_id: product.store_id,
+          product_id: product.id,
+          source_image_url: body.source_image_url ?? null,
+          reference_image_url: body.reference_image_url ?? null,
+          model,
+          prompt: finalPrompt,
+          aspect_ratio,
+          status: "error",
+          error_message: genErr instanceof Error ? genErr.message : String(genErr),
+        };
+        const { error: insertErr } = await admin.from("image_generation_jobs").insert(errorRow);
+        if (insertErr) {
+          delete errorRow.reference_image_url;
+          delete errorRow.model;
+          await admin.from("image_generation_jobs").insert(errorRow);
+        }
+      }
+      return new Response(JSON.stringify({ error: genErr instanceof Error ? genErr.message : String(genErr) }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Скачиваем результат и кладём в наш storage (kie.ai URLs живут ограниченно)
     const { bytes, contentType } = await fetchAsBytes(resultUrl);
     const ext = (contentType.split("/")[1] ?? "png").split(";")[0];
     const path = `${product.id}/ai/${Date.now()}_${Math.floor(Math.random() * 9999)}.${ext}`;
-    const { error: upErr } = await admin.storage
-      .from("product-images")
-      .upload(path, bytes, { contentType, upsert: false });
+    const { error: upErr } = await admin.storage.from("product-images").upload(path, bytes, { contentType, upsert: false });
     if (upErr) throw new Error(`Storage: ${upErr.message}`);
 
-    const { data: pub } = admin.storage.from("product-images").getPublicUrl(path);
-    const url = pub.publicUrl;
+    const url = admin.storage.from("product-images").getPublicUrl(path).data.publicUrl;
 
-    await admin.from("image_generation_jobs").insert({
-      store_id: product.store_id,
-      product_id: product.id,
-      source_image_url: body.source_image_url,
-      prompt: finalPrompt,
-      aspect_ratio,
-      result_image_url: url,
-      status: "success",
-    });
+    if (hasJobsTable) {
+      const successRow: Record<string, unknown> = {
+        store_id: product.store_id,
+        product_id: product.id,
+        source_image_url: body.source_image_url ?? null,
+        reference_image_url: body.reference_image_url ?? null,
+        model,
+        prompt: finalPrompt,
+        aspect_ratio,
+        result_image_url: url,
+        status: "success",
+      };
+      const { error: insertErr } = await admin.from("image_generation_jobs").insert(successRow);
+      if (insertErr) {
+        delete successRow.reference_image_url;
+        delete successRow.model;
+        await admin.from("image_generation_jobs").insert(successRow);
+      }
+    }
 
     return new Response(JSON.stringify({ url, prompt: finalPrompt, model }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("generate-product-image error:", err);
-    return new Response(JSON.stringify({ error: String(err?.message ?? err) }), {
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

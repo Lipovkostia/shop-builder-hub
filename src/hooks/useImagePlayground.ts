@@ -13,26 +13,39 @@ export interface PlaygroundMessage {
   created_at: string;
 }
 
+const STORAGE_KEY = "image_playground_messages_v1";
+
+function readMessages(storeId: string | null): PlaygroundMessage[] {
+  if (!storeId || typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(`${STORAGE_KEY}:${storeId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeMessages(storeId: string, messages: PlaygroundMessage[]) {
+  localStorage.setItem(`${STORAGE_KEY}:${storeId}`, JSON.stringify(messages.slice(-200)));
+}
+
 export function useImagePlayground(storeId: string | null) {
   const [messages, setMessages] = useState<PlaygroundMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
   const load = useCallback(async () => {
-    if (!storeId) { setMessages([]); setLoading(false); return; }
     setLoading(true);
-    const { data, error } = await supabase
-      .from("image_playground_messages" as any)
-      .select("*")
-      .eq("store_id", storeId)
-      .order("created_at", { ascending: true })
-      .limit(200);
-    if (error) console.error("playground load", error);
-    setMessages(((data ?? []) as unknown) as PlaygroundMessage[]);
+    setMessages(readMessages(storeId));
     setLoading(false);
   }, [storeId]);
 
   useEffect(() => { load(); }, [load]);
+
+  const saveMessages = useCallback((next: PlaygroundMessage[]) => {
+    if (storeId) writeMessages(storeId, next);
+    setMessages(next);
+  }, [storeId]);
 
   const uploadAttachment = async (file: File): Promise<string | null> => {
     if (!storeId) return null;
@@ -57,16 +70,53 @@ export function useImagePlayground(storeId: string | null) {
       toast.info("Введите промпт или приложите изображение");
       return;
     }
+
+    const userMessage: PlaygroundMessage = {
+      id: crypto.randomUUID(),
+      store_id: storeId,
+      user_id: "local",
+      role: "user",
+      content: params.prompt,
+      image_urls: params.image_urls,
+      model: params.model,
+      created_at: new Date().toISOString(),
+    };
+
     setSending(true);
+    const withUser = [...messages, userMessage];
+    saveMessages(withUser);
     try {
       const { data, error } = await supabase.functions.invoke("generate-playground-image", {
         body: { ...params, store_id: storeId },
       });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      await load();
-    } catch (e: any) {
-      toast.error(e?.message ?? String(e));
+      const payload = data as { error?: string; url?: string; model?: string } | null;
+      if (payload?.error) throw new Error(payload.error);
+      const assistantMessage: PlaygroundMessage = {
+        id: crypto.randomUUID(),
+        store_id: storeId,
+        user_id: "local",
+        role: "assistant",
+        content: "",
+        image_urls: payload?.url ? [payload.url] : [],
+        model: payload?.model ?? params.model,
+        created_at: new Date().toISOString(),
+      };
+      saveMessages([...withUser, assistantMessage]);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      const assistantMessage: PlaygroundMessage = {
+        id: crypto.randomUUID(),
+        store_id: storeId,
+        user_id: "local",
+        role: "assistant",
+        content: `Ошибка: ${message}`,
+        image_urls: [],
+        model: params.model,
+        created_at: new Date().toISOString(),
+      };
+      saveMessages([...withUser, assistantMessage]);
+      toast.error(message);
     } finally {
       setSending(false);
     }
@@ -74,8 +124,7 @@ export function useImagePlayground(storeId: string | null) {
 
   const clearHistory = async () => {
     if (!storeId) return;
-    const { error } = await supabase.from("image_playground_messages" as any).delete().eq("store_id", storeId);
-    if (error) { toast.error(error.message); return; }
+    writeMessages(storeId, []);
     setMessages([]);
     toast.success("История очищена");
   };

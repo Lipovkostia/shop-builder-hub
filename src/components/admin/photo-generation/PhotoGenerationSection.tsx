@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useImagePrompts } from "@/hooks/useImagePrompts";
 import { useImageReferences } from "@/hooks/useImageReferences";
@@ -49,6 +49,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
   const [globalReferenceId, setGlobalReferenceId] = useState<string | null>(null);
   const [globalPromptText, setGlobalPromptText] = useState("");
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
+  const [localJobs, setLocalJobs] = useState<SavedJob[]>([]);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
   const [modelId, setModelId] = useState<string>(KIE_MODELS[0].id);
   const [usdRub, setUsdRub] = useState<number>(() => {
@@ -61,7 +62,14 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
 
   const { prompts } = useImagePrompts(storeId);
   const { refs } = useImageReferences(storeId);
-  const { results, running, progress, generateBatch } = useImageGeneration();
+  const { results, running, progress, generateBatch, clearResult } = useImageGeneration();
+
+  const localJobsKey = useMemo(() => `image_generation_pending_v1:${storeId}`, [storeId]);
+
+  const persistLocalJobs = useCallback((jobs: SavedJob[]) => {
+    setLocalJobs(jobs);
+    try { localStorage.setItem(localJobsKey, JSON.stringify(jobs)); } catch { /* ignore unavailable localStorage */ }
+  }, [localJobsKey]);
 
   useEffect(() => {
     let mounted = true;
@@ -88,8 +96,8 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
 
   const loadJobs = async (ids: string[]) => {
     if (ids.length === 0) { setSavedJobs([]); return; }
-    const { data } = await supabase
-      .from("image_generation_jobs" as any)
+    const { data, error } = await supabase
+      .from("image_generation_jobs" as never)
       .select("id, product_id, prompt, result_image_url, created_at, status, approved, hidden")
       .in("product_id", ids)
       .eq("status", "success")
@@ -97,10 +105,38 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
       .eq("hidden", false)
       .order("created_at", { ascending: false })
       .limit(200);
-    setSavedJobs(((data ?? []) as any[]).filter((j) => j.result_image_url) as SavedJob[]);
+    if (error) { setSavedJobs([]); return; }
+    setSavedJobs(((data ?? []) as unknown as SavedJob[]).filter((j) => j.result_image_url));
   };
 
   useEffect(() => { loadJobs(Array.from(selectedIds)); }, [selectedIds, results]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(localJobsKey);
+      setLocalJobs(raw ? JSON.parse(raw) : []);
+    } catch { setLocalJobs([]); }
+  }, [localJobsKey]);
+
+  useEffect(() => {
+    const additions: SavedJob[] = [];
+    rows.forEach((row) => {
+      const res = results[row.id];
+      if (res?.status === "success" && res.url) {
+        additions.push({
+          id: `local:${row.id}:${res.url}`,
+          product_id: row.product_id,
+          prompt: row.prompt,
+          result_image_url: res.url,
+          created_at: new Date().toISOString(),
+        });
+      }
+    });
+    if (!additions.length) return;
+    const existing = new Set(localJobs.map((j) => j.id));
+    const unique = additions.filter((j) => !existing.has(j.id));
+    if (unique.length) persistLocalJobs([...unique, ...localJobs].slice(0, 200));
+  }, [results, rows, localJobs, persistLocalJobs]);
 
   useEffect(() => {
     const newRows: PhotoRow[] = [];
@@ -133,7 +169,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
   }, [products, search]);
 
   const toggleProduct = (id: string) => {
-    setSelectedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelectedIds((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   };
 
   const updateRow = (id: string, patch: Partial<PhotoRow>) => {
@@ -186,14 +222,23 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
     await generateBatch([buildTask(row)], { aspect_ratio: aspect, model: modelId });
   };
 
-  type Item = { key: string; productId: string; url: string; productName: string; jobId: string };
-  const approvable: Item[] = useMemo(() => savedJobs.map((j) => {
-    const prod = products.find((p) => p.id === j.product_id);
-    return { key: `job:${j.id}`, productId: j.product_id, url: j.result_image_url, productName: prod?.name ?? "товар", jobId: j.id };
-  }), [savedJobs, products]);
+  type Item = { key: string; productId: string; url: string; productName: string; jobId?: string; taskId?: string };
+  const approvable: Item[] = useMemo(() => {
+    const fromJobs = savedJobs.map((j) => {
+      const prod = products.find((p) => p.id === j.product_id);
+      return { key: `job:${j.id}`, productId: j.product_id, url: j.result_image_url, productName: prod?.name ?? "товар", jobId: j.id };
+    });
+    const fromLive = localJobs
+      .filter((j) => selectedIds.has(j.product_id))
+      .map((j) => {
+        const prod = products.find((p) => p.id === j.product_id);
+        return { key: `local:${j.id}`, productId: j.product_id, url: j.result_image_url, productName: prod?.name ?? "товар", taskId: j.id };
+      });
+    return [...fromLive, ...fromJobs];
+  }, [savedJobs, localJobs, selectedIds, products]);
 
   const toggleJob = (k: string) => {
-    setSelectedJobIds((prev) => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
+    setSelectedJobIds((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   };
 
   const addSelectedToProducts = async () => {
@@ -202,10 +247,11 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
     for (const item of approvable) {
       if (!selectedJobIds.has(item.key)) continue;
       const e = byProduct.get(item.productId) ?? { urls: [], jobIds: [] };
-      e.urls.push(item.url); e.jobIds.push(item.jobId);
+      e.urls.push(item.url);
+      if (item.jobId) e.jobIds.push(item.jobId);
       byProduct.set(item.productId, e);
     }
-    let ok = 0; const allJobIds: string[] = [];
+    let ok = 0; const allJobIds: string[] = []; const allTaskIds: string[] = [];
     for (const [pid, { urls, jobIds }] of byProduct) {
       const prod = products.find((p) => p.id === pid);
       const next = [...(prod?.images ?? []), ...urls];
@@ -214,15 +260,18 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
       else { ok++; allJobIds.push(...jobIds); setProducts((prev) => prev.map((p) => p.id === pid ? { ...p, images: next } : p)); }
     }
     if (allJobIds.length) {
-      await supabase.from("image_generation_jobs" as any).update({ approved: true } as any).in("id", allJobIds);
+      await supabase.from("image_generation_jobs" as never).update({ approved: true } as never).in("id", allJobIds);
     }
     toast.success(`Добавлено в ${ok} товаров`);
+    approvable.forEach((item) => { if (selectedJobIds.has(item.key) && item.taskId) allTaskIds.push(item.taskId); });
+    if (allTaskIds.length) persistLocalJobs(localJobs.filter((j) => !allTaskIds.includes(j.id)));
+    Object.keys(results).forEach(clearResult);
     setSelectedJobIds(new Set());
     await loadJobs(Array.from(selectedIds));
   };
 
   const hideJob = async (jobId: string) => {
-    await supabase.from("image_generation_jobs" as any).update({ hidden: true } as any).eq("id", jobId);
+    await supabase.from("image_generation_jobs" as never).update({ hidden: true } as never).eq("id", jobId);
     setSavedJobs((prev) => prev.filter((j) => j.id !== jobId));
   };
 
@@ -270,7 +319,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
                   onChange={(e) => {
                     const v = Number(e.target.value) || DEFAULT_USD_RUB;
                     setUsdRub(v);
-                    try { localStorage.setItem("kie_usd_rub", String(v)); } catch {}
+                    try { localStorage.setItem("kie_usd_rub", String(v)); } catch { /* ignore unavailable localStorage */ }
                   }} />
               </div>
               <div className="space-y-1">
@@ -439,7 +488,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
                           <Checkbox checked={selectedJobIds.has(item.key)} onCheckedChange={() => toggleJob(item.key)} />
                           Одобрить
                         </label>
-                        <Button size="sm" variant="ghost" onClick={() => hideJob(item.jobId)}>
+                        <Button size="sm" variant="ghost" onClick={() => item.jobId ? hideJob(item.jobId) : item.taskId ? persistLocalJobs(localJobs.filter((j) => j.id !== item.taskId)) : undefined}>
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
