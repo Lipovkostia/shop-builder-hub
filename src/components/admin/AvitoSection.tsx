@@ -36,6 +36,8 @@ import * as XLSX from "xlsx";
 import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
 import { AvitoAiDescriptionWorkspace } from "./AvitoAiDescriptionWorkspace";
+import { AvitoListingVariantsManager } from "./AvitoListingVariantsManager";
+import { Copy as CopyIcon } from "lucide-react";
 
 interface AvitoItem {
   id: number;
@@ -672,6 +674,15 @@ function AvitoFeedTable({
                     <div className="flex items-center gap-0">
                       <Button size="icon" variant="ghost" className="h-6 w-6" title="AI описание" onClick={() => openAiForProducts([fp.product_id])}>
                         <Wand2 className="h-3.5 w-3.5 text-primary" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        title="Дубли объявления для Авито"
+                        onClick={() => setVariantsManagerProductId(fp.product_id)}
+                      >
+                        <CopyIcon className="h-3.5 w-3.5 text-amber-600" />
                       </Button>
                       <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeProductFromFeed(fp.product_id)}>
                         <X className="h-3.5 w-3.5" />
