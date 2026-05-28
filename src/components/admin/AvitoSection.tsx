@@ -497,6 +497,7 @@ function AvitoFeedTable({
         <div style={{ minWidth: totalWidth }}>
           {/* Header */}
           <div className="flex bg-muted/50 border-b text-xs font-medium text-muted-foreground select-none">
+          <div className="flex bg-muted/50 border-b text-xs font-medium text-muted-foreground select-none">
             {cols.map((col) => (
               <div
                 key={col.key}
@@ -513,7 +514,23 @@ function AvitoFeedTable({
                   />
                 ) : (
                   <>
-                    <span className="truncate">{col.label}</span>
+                    {sortableCols.includes(col.key) ? (
+                      <button
+                        className="truncate flex items-center hover:text-foreground transition-colors"
+                        onClick={() => handleSort(col.key)}
+                      >
+                        <span className="truncate">{col.label}</span>
+                        {sortConfig?.key === col.key ? (
+                          sortConfig.direction === 'asc' 
+                            ? <span className="ml-1 text-primary">↑</span> 
+                            : <span className="ml-1 text-primary">↓</span>
+                        ) : (
+                          <span className="ml-1 text-muted-foreground/30">↕</span>
+                        )}
+                      </button>
+                    ) : (
+                      <span className="truncate">{col.label}</span>
+                    )}
                     {filterableCols.includes(col.key) && (
                       <ColumnFilterDropdown
                         values={uniqueValues[col.key] || []}
