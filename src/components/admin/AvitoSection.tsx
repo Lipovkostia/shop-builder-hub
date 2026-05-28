@@ -896,9 +896,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     Object.keys(newParams).forEach(k => { if (!newParams[k]) delete newParams[k]; });
     await avitoFeed.updateProductParams(productId, newParams);
   }, [avitoFeed]);
-
   // === AI DESCRIPTION/TITLE GENERATION ===
-  const handleAiGenerate = async () => {
+  const handleAiGenerate = async (overrides?: { instruction?: string; maxChars?: number }) => {
+    if (!avitoFeed) return;
+    const effInstruction = overrides?.instruction ?? aiInstruction;
+    const effMaxChars = overrides?.maxChars ?? aiMaxChars;
     if (!avitoFeed) return;
     const targetIds = aiSingleProductId ? [aiSingleProductId] : Array.from(selectedFeedProducts);
     if (targetIds.length === 0) return;
