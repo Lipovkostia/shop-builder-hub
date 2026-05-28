@@ -259,9 +259,18 @@ function AvitoFeedTable({
   autoOpenImageEditorForProductId?: string | null;
   onAutoOpenImageEditorHandled?: () => void;
 }) {
-}) {
   const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
   const [variantsManagerProductId, setVariantsManagerProductId] = useState<string | null>(null);
+
+  // Auto-open image editor when navigated from another section (e.g. AI Photo → Avito)
+  useEffect(() => {
+    if (!autoOpenImageEditorForProductId) return;
+    const product = storeProducts.find((p) => p.id === autoOpenImageEditorForProductId);
+    if (!product) return;
+    setEditingImageProduct({ id: product.id, name: product.name, images: product.images || [] });
+    onAutoOpenImageEditorHandled?.();
+  }, [autoOpenImageEditorForProductId, storeProducts, onAutoOpenImageEditorHandled]);
+
 
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
     try {
