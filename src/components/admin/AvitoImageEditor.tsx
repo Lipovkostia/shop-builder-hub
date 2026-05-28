@@ -124,8 +124,9 @@ export function AvitoImageEditor({
 }: AvitoImageEditorProps) {
   const { toast } = useToast();
   const [imageInfos, setImageInfos] = useState<ImageInfo[]>([]);
+  const [imageInfos, setImageInfos] = useState<ImageInfo[]>([]);
   const [generatedImages, setGeneratedImages] = useState<ImageInfo[]>([]);
-  const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
+  const [selectedOrder, setSelectedOrder] = useState<string[]>([]);
   const [processing, setProcessing] = useState<Set<string>>(new Set());
   const [templateUrl, setTemplateUrl] = useState<string | null>(null);
   const [templatePreview, setTemplatePreview] = useState<string | null>(null);
@@ -137,6 +138,23 @@ export function AvitoImageEditor({
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const scrollViewportRef = useRef<HTMLDivElement>(null);
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+
+  const isSelected = (url: string) => selectedOrder.includes(url);
+  const selectedIndex = (url: string) => selectedOrder.indexOf(url);
+  const addSelected = (url: string) =>
+    setSelectedOrder(prev => (prev.includes(url) ? prev : [...prev, url]));
+  const removeSelected = (url: string) =>
+    setSelectedOrder(prev => prev.filter(u => u !== url));
+  const moveSelected = (url: string, dir: -1 | 1) =>
+    setSelectedOrder(prev => {
+      const idx = prev.indexOf(url);
+      if (idx < 0) return prev;
+      const target = idx + dir;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
 
   // Load saved templates from storage
   useEffect(() => {
