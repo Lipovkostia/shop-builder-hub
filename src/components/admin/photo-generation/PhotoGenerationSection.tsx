@@ -36,7 +36,7 @@ function ImageDims({ url, className = "" }: { url: string | null | undefined; cl
     <div className={`text-[10px] text-muted-foreground tabular-nums ${className}`}>
       {dims ? `${dims.w}×${dims.h}` : "…"}
     </div>
-interface Props { storeId: string; preselectedProductId?: string | null; onOpenInAvito?: (productId: string) => void; }
+  );
 }
 import { toast } from "sonner";
 import { KIE_MODELS, DEFAULT_USD_RUB, formatRub } from "./models";
