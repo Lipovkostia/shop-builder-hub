@@ -49,6 +49,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
   const [globalReferenceId, setGlobalReferenceId] = useState<string | null>(null);
   const [globalPromptText, setGlobalPromptText] = useState("");
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
+  const [localJobs, setLocalJobs] = useState<SavedJob[]>([]);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
   const [modelId, setModelId] = useState<string>(KIE_MODELS[0].id);
   const [usdRub, setUsdRub] = useState<number>(() => {
@@ -62,6 +63,13 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
   const { prompts } = useImagePrompts(storeId);
   const { refs } = useImageReferences(storeId);
   const { results, running, progress, generateBatch, clearResult } = useImageGeneration();
+
+  const localJobsKey = useMemo(() => `image_generation_pending_v1:${storeId}`, [storeId]);
+
+  const persistLocalJobs = (jobs: SavedJob[]) => {
+    setLocalJobs(jobs);
+    try { localStorage.setItem(localJobsKey, JSON.stringify(jobs)); } catch {}
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -102,6 +110,33 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
   };
 
   useEffect(() => { loadJobs(Array.from(selectedIds)); }, [selectedIds, results]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(localJobsKey);
+      setLocalJobs(raw ? JSON.parse(raw) : []);
+    } catch { setLocalJobs([]); }
+  }, [localJobsKey]);
+
+  useEffect(() => {
+    const additions: SavedJob[] = [];
+    rows.forEach((row) => {
+      const res = results[row.id];
+      if (res?.status === "success" && res.url) {
+        additions.push({
+          id: `local:${row.id}:${res.url}`,
+          product_id: row.product_id,
+          prompt: row.prompt,
+          result_image_url: res.url,
+          created_at: new Date().toISOString(),
+        });
+      }
+    });
+    if (!additions.length) return;
+    const existing = new Set(localJobs.map((j) => j.id));
+    const unique = additions.filter((j) => !existing.has(j.id));
+    if (unique.length) persistLocalJobs([...unique, ...localJobs].slice(0, 200));
+  }, [results, rows, localJobs]);
 
   useEffect(() => {
     const newRows: PhotoRow[] = [];
