@@ -85,17 +85,6 @@ async function fetchAsBytes(url: string): Promise<{ bytes: Uint8Array; contentTy
   return { bytes: new Uint8Array(await res.arrayBuffer()), contentType };
 }
 
-async function columnExists(admin: ReturnType<typeof createClient>, tableName: string, columnName: string): Promise<boolean> {
-  const { data, error } = await admin
-    .from("information_schema.columns")
-    .select("column_name")
-    .eq("table_schema", "public")
-    .eq("table_name", tableName)
-    .eq("column_name", columnName)
-    .maybeSingle();
-  return !error && !!data;
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -156,8 +145,6 @@ Deno.serve(async (req) => {
     if (hasSource) input.image_urls = [editSource];
 
     const hasJobsTable = await admin.from("image_generation_jobs").select("id").limit(1).then(({ error }) => !error);
-    const hasReferenceColumn = hasJobsTable ? await columnExists(admin, "image_generation_jobs", "reference_image_url") : false;
-    const hasModelColumn = hasJobsTable ? await columnExists(admin, "image_generation_jobs", "model") : false;
 
     let resultUrl: string;
     try {
@@ -169,14 +156,19 @@ Deno.serve(async (req) => {
           store_id: product.store_id,
           product_id: product.id,
           source_image_url: body.source_image_url ?? null,
+          reference_image_url: body.reference_image_url ?? null,
+          model,
           prompt: finalPrompt,
           aspect_ratio,
           status: "error",
           error_message: String(genErr?.message ?? genErr),
         };
-        if (hasReferenceColumn) errorRow.reference_image_url = body.reference_image_url ?? null;
-        if (hasModelColumn) errorRow.model = model;
-        await admin.from("image_generation_jobs").insert(errorRow);
+        const { error: insertErr } = await admin.from("image_generation_jobs").insert(errorRow);
+        if (insertErr) {
+          delete errorRow.reference_image_url;
+          delete errorRow.model;
+          await admin.from("image_generation_jobs").insert(errorRow);
+        }
       }
       return new Response(JSON.stringify({ error: String(genErr?.message ?? genErr) }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -196,14 +188,19 @@ Deno.serve(async (req) => {
         store_id: product.store_id,
         product_id: product.id,
         source_image_url: body.source_image_url ?? null,
+        reference_image_url: body.reference_image_url ?? null,
+        model,
         prompt: finalPrompt,
         aspect_ratio,
         result_image_url: url,
         status: "success",
       };
-      if (hasReferenceColumn) successRow.reference_image_url = body.reference_image_url ?? null;
-      if (hasModelColumn) successRow.model = model;
-      await admin.from("image_generation_jobs").insert(successRow);
+      const { error: insertErr } = await admin.from("image_generation_jobs").insert(successRow);
+      if (insertErr) {
+        delete successRow.reference_image_url;
+        delete successRow.model;
+        await admin.from("image_generation_jobs").insert(successRow);
+      }
     }
 
     return new Response(JSON.stringify({ url, prompt: finalPrompt, model }), {
