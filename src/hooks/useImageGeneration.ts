@@ -44,6 +44,7 @@ export function useImageGeneration() {
           height: params.height,
           n: params.n ?? 1,
           quality: params.quality ?? "medium",
+          model: params.model,
         },
       });
       if (error) throw error;
