@@ -272,6 +272,58 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
         <TabsContent value="workspace" className="space-y-3">
           {/* Global params bar */}
           <div className="rounded-lg border border-border bg-card p-3 space-y-3">
+            {/* Model + pricing row */}
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="space-y-1 min-w-[280px]">
+                <Label className="text-xs">Модель генерации</Label>
+                <Select value={modelId} onValueChange={setModelId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {KIE_MODELS.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        <span className="flex items-center gap-2">
+                          <span>{m.label}</span>
+                          <span className="text-xs text-muted-foreground">
+                            ~{formatRub(m.priceUsd * usdRub)}/фото
+                          </span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedModel.description && (
+                  <div className="text-[11px] text-muted-foreground">{selectedModel.description}</div>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Курс USD → ₽</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  step={0.5}
+                  value={usdRub}
+                  onChange={(e) => {
+                    const v = Number(e.target.value) || DEFAULT_USD_RUB;
+                    setUsdRub(v);
+                    try { localStorage.setItem("kie_usd_rub", String(v)); } catch {}
+                  }}
+                  className="w-24"
+                />
+              </div>
+              <div className="flex-1 min-w-[200px] rounded-md bg-muted/50 px-3 py-2 text-sm">
+                <div className="text-xs text-muted-foreground">Оценка расхода</div>
+                <div className="font-semibold">
+                  {formatRub(pricePerImageRub)} × {rows.length} ={" "}
+                  <span className="text-primary">{formatRub(pricePerImageRub * rows.length)}</span>
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  ${selectedModel.priceUsd.toFixed(3)}/фото по тарифу kie.ai
+                </div>
+              </div>
+            </div>
+
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Соотношение сторон</Label>
@@ -326,10 +378,11 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
               </Button>
               <Button onClick={generateAll} disabled={running || rows.length === 0}>
                 <Wand2 className="h-4 w-4" />
-                Сгенерировать всё
+                Сгенерировать всё ({formatRub(pricePerImageRub * rows.length)})
               </Button>
             </div>
           </div>
+
 
           <div className="grid grid-cols-12 gap-3">
             {/* Left: product picker */}
