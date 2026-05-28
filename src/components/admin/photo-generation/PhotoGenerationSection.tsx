@@ -84,15 +84,33 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
         .order("name")
         .limit(2000);
       if (!mounted) return;
-      if (error) toast.error(error.message);
-      else {
-        setProducts((data ?? []) as ProductLite[]);
-        if (preselectedProductId) setSelectedIds(new Set([preselectedProductId]));
+      if (error) {
+        toast.error(error.message);
+        setLoadingProducts(false);
+        return;
+      }
+      let list = (data ?? []) as ProductLite[];
+      // Ensure preselected product is present even if inactive / outside the first 2000
+      if (preselectedProductId && !list.some((p) => p.id === preselectedProductId)) {
+        const { data: extra } = await supabase
+          .from("products")
+          .select("id, name, images, sku")
+          .eq("id", preselectedProductId)
+          .maybeSingle();
+        if (extra) list = [extra as ProductLite, ...list];
+      }
+      setProducts(list);
+      if (preselectedProductId) {
+        setSelectedIds(new Set([preselectedProductId]));
+        const target = list.find((p) => p.id === preselectedProductId);
+        if (target) setSearch(target.name);
+        else toast.warning("Товар не найден в ассортименте");
       }
       setLoadingProducts(false);
     })();
     return () => { mounted = false; };
   }, [storeId, preselectedProductId]);
+
 
   const loadJobs = async (ids: string[]) => {
     if (ids.length === 0) { setSavedJobs([]); return; }
