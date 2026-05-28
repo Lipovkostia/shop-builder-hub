@@ -502,7 +502,6 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                       </div>
                     </div>
                   ))}
-                  ))}
                 </div>
               </ScrollArea>
             </div>
