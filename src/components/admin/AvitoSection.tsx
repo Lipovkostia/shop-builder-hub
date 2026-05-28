@@ -2145,6 +2145,44 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         </SheetContent>
       </Sheet>
 
+      {/* Full-screen workspace for DESCRIPTION mode */}
+      <AvitoAiDescriptionWorkspace
+        open={aiPromptOpen && aiMode === "description"}
+        onOpenChange={(open) => { setAiPromptOpen(open); if (!open) setAiSingleProductId(null); }}
+        selectedCount={selectedFeedProducts.size}
+        singleProduct={aiSingleProductId ? (() => {
+          const p = storeProducts.find(sp => sp.id === aiSingleProductId);
+          return p ? { id: p.id, name: p.name, description: p.description, pricePerUnit: p.pricePerUnit } : null;
+        })() : null}
+        previewProduct={(() => {
+          const firstId = aiSingleProductId || Array.from(selectedFeedProducts)[0] || avitoFeed?.feedProducts[0]?.product_id;
+          const p = firstId ? storeProducts.find(sp => sp.id === firstId) : null;
+          return p ? { id: p.id, name: p.name, description: p.description, pricePerUnit: p.pricePerUnit } : null;
+        })()}
+        city={localDefaults.address?.split(",")[0]?.trim() || "Москва"}
+        instruction={aiInstruction}
+        setInstruction={setAiInstruction}
+        maxChars={aiMaxChars}
+        setMaxChars={setAiMaxChars}
+        templates={savedTemplates}
+        onSaveTemplate={(tpl) => {
+          const full: AiTemplate = { id: Date.now().toString(), ...tpl };
+          const updated = [...savedTemplates, full];
+          setSavedTemplates(updated);
+          localStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
+          toast({ title: "Шаблон сохранён" });
+        }}
+        onDeleteTemplate={deleteTemplate}
+        generating={aiGenerating}
+        progress={aiProgress}
+        onGenerate={({ instruction, maxChars }) => {
+          setAiInstruction(instruction);
+          setAiMaxChars(maxChars);
+          // call existing generate which uses state - state setters are async, so pass via closure
+          setTimeout(() => handleAiGenerate(), 0);
+        }}
+      />
+
       {/* Item Detail Dialog */}
       <Dialog open={!!detailDialogItem} onOpenChange={(open) => !open && setDetailDialogItem(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
