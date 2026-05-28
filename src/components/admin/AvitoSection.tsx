@@ -23,7 +23,7 @@ import {
 import {
   ExternalLink, Loader2, Link2, Unlink, RefreshCw, Check, Package, Search, Filter,
   MapPin, Calendar, Eye, Image as ImageIcon, X, Download, Settings, Save, Sparkles, Wand2,
-  Plus, Trash2, BookOpen, Clock,
+  Plus, Trash2, BookOpen, Clock, ImagePlus,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -71,6 +71,7 @@ interface AvitoSectionProps {
   storeId: string | null;
   products?: Product[];
   storeCategories?: StoreCategory[];
+  onOpenInPhotoStudio?: (productId: string) => void;
   avitoFeed?: {
     feedProducts: AvitoFeedProduct[];
     feedProductIds: Set<string>;
@@ -235,7 +236,7 @@ function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
 function AvitoFeedTable({
   feedProducts, storeProducts, storeCategories, selectedFeedProducts, setSelectedFeedProducts,
   aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
-  feedSearchQuery, feedPriceFilter, storeId, onUpdateProductParams,
+  feedSearchQuery, feedPriceFilter, storeId, onUpdateProductParams, onOpenInPhotoStudio,
 }: {
   feedProducts: AvitoFeedProduct[];
   storeProducts: Product[];
@@ -253,6 +254,7 @@ function AvitoFeedTable({
   feedPriceFilter: string;
   storeId: string;
   onUpdateProductParams: (productId: string, params: any) => Promise<void>;
+  onOpenInPhotoStudio?: (productId: string) => void;
 }) {
   const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
   const [variantsManagerProductId, setVariantsManagerProductId] = useState<string | null>(null);
@@ -676,6 +678,17 @@ function AvitoFeedTable({
                       <Button size="icon" variant="ghost" className="h-6 w-6" title="AI описание" onClick={() => openAiForProducts([fp.product_id])}>
                         <Wand2 className="h-3.5 w-3.5 text-primary" />
                       </Button>
+                      {onOpenInPhotoStudio && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          title="Открыть в AI Фото"
+                          onClick={() => onOpenInPhotoStudio(fp.product_id)}
+                        >
+                          <ImagePlus className="h-3.5 w-3.5 text-emerald-600" />
+                        </Button>
+                      )}
                       <Button
                         size="icon"
                         variant="ghost"
@@ -745,7 +758,7 @@ function AvitoFeedTable({
   );
 }
 
-export function AvitoSection({ storeId, products: storeProducts = [], storeCategories = [], avitoFeed }: AvitoSectionProps) {
+export function AvitoSection({ storeId, products: storeProducts = [], storeCategories = [], avitoFeed, onOpenInPhotoStudio }: AvitoSectionProps) {
   const { toast } = useToast();
   const [account, setAccount] = useState<AvitoAccount | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1965,6 +1978,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     feedPriceFilter={feedPriceFilter}
                     storeId={storeId || ""}
                     onUpdateProductParams={avitoFeed.updateProductParams}
+                    onOpenInPhotoStudio={onOpenInPhotoStudio}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full">

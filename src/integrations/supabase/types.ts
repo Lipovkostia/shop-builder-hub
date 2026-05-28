@@ -585,6 +585,69 @@ export type Database = {
           },
         ]
       }
+      avito_listing_variants: {
+        Row: {
+          avito_address: string | null
+          avito_category: string | null
+          avito_item_id: string | null
+          avito_params: Json | null
+          created_at: string
+          description: string | null
+          id: string
+          images: string[] | null
+          last_error: string | null
+          price: number | null
+          sort_order: number | null
+          source_product_id: string
+          status: string
+          store_id: string
+          title: string | null
+          unique_seed: number
+          updated_at: string
+          variant_label: string
+        }
+        Insert: {
+          avito_address?: string | null
+          avito_category?: string | null
+          avito_item_id?: string | null
+          avito_params?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: string[] | null
+          last_error?: string | null
+          price?: number | null
+          sort_order?: number | null
+          source_product_id: string
+          status?: string
+          store_id: string
+          title?: string | null
+          unique_seed?: number
+          updated_at?: string
+          variant_label?: string
+        }
+        Update: {
+          avito_address?: string | null
+          avito_category?: string | null
+          avito_item_id?: string | null
+          avito_params?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: string[] | null
+          last_error?: string | null
+          price?: number | null
+          sort_order?: number | null
+          source_product_id?: string
+          status?: string
+          store_id?: string
+          title?: string | null
+          unique_seed?: number
+          updated_at?: string
+          variant_label?: string
+        }
+        Relationships: []
+      }
       canonical_products: {
         Row: {
           canonical_name: string

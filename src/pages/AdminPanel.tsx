@@ -7179,6 +7179,14 @@ export default function AdminPanel({
               products={allProducts}
               avitoFeed={avitoFeed}
               storeCategories={storeCategories}
+              onOpenInPhotoStudio={(productId) => {
+                setActiveSection("photo-generation");
+                setSearchParams(prev => {
+                  prev.set('section', 'photo-generation');
+                  prev.set('productId', productId);
+                  return prev;
+                });
+              }}
             />
           )}
 
@@ -7201,7 +7209,10 @@ export default function AdminPanel({
           )}
 
           {activeSection === "photo-generation" && (
-            <PhotoGenerationSection storeId={effectiveStoreId} />
+            <PhotoGenerationSection
+              storeId={effectiveStoreId}
+              preselectedProductId={searchParams.get('productId')}
+            />
           )}
         </main>
 
