@@ -543,6 +543,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                     <div key={item.key} className="rounded-lg border border-border p-2 space-y-1">
                       <div className="text-xs text-muted-foreground truncate">{item.productName}</div>
                       <img src={item.url} alt="" className="w-full rounded object-cover" />
+                      <ImageDims url={item.url} />
                       <div className="flex items-center justify-between gap-2">
                         <label className="flex items-center gap-1 text-xs cursor-pointer">
                           <Checkbox checked={selectedJobIds.has(item.key)} onCheckedChange={() => toggleJob(item.key)} />
