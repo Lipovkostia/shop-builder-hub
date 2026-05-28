@@ -236,7 +236,7 @@ function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
 function AvitoFeedTable({
   feedProducts, storeProducts, storeCategories, selectedFeedProducts, setSelectedFeedProducts,
   aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
-  feedSearchQuery, feedPriceFilter, storeId, onUpdateProductParams,
+  feedSearchQuery, feedPriceFilter, storeId, onUpdateProductParams, onOpenInPhotoStudio,
 }: {
   feedProducts: AvitoFeedProduct[];
   storeProducts: Product[];
@@ -254,6 +254,8 @@ function AvitoFeedTable({
   feedPriceFilter: string;
   storeId: string;
   onUpdateProductParams: (productId: string, params: any) => Promise<void>;
+  onOpenInPhotoStudio?: (productId: string) => void;
+}) {
 }) {
   const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
   const [variantsManagerProductId, setVariantsManagerProductId] = useState<string | null>(null);
