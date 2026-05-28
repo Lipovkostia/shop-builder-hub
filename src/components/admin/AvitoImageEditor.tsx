@@ -4,14 +4,13 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Wand2, Image as ImageIcon, Upload, X, Check, Maximize, Layers, Download, Bookmark,
-  Eraser, ZoomIn, Sparkles,
+  Eraser, ZoomIn, Sparkles, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+
 
 interface ImageInfo {
   url: string;
@@ -120,13 +119,65 @@ function canvasOverlay(imageUrl: string, templateUrl: string, targetW: number, t
   });
 }
 
+function SelectBadge({
+  url, index, total, onToggle, onMove,
+}: {
+  url: string;
+  index: number;
+  total: number;
+  onToggle: () => void;
+  onMove: (dir: -1 | 1) => void;
+}) {
+  const selected = index >= 0;
+  return (
+    <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 items-start">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
+        title={selected ? `В Авито — позиция #${index + 1}. Клик чтобы убрать.` : "Добавить в Авито"}
+        className={`h-7 min-w-7 px-1.5 rounded-full text-xs font-semibold flex items-center justify-center transition-all shadow-md ${
+          selected
+            ? "bg-emerald-500 text-white hover:bg-emerald-600"
+            : "bg-background/90 text-muted-foreground border border-border hover:border-emerald-500 hover:text-emerald-600"
+        }`}
+      >
+        {selected ? `#${index + 1}` : "+"}
+      </button>
+      {selected && total > 1 && (
+        <div className="flex flex-col gap-0.5 bg-background/90 rounded border border-border shadow-sm">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onMove(-1); }}
+            disabled={index === 0}
+            title="Раньше"
+            className="h-5 w-5 flex items-center justify-center disabled:opacity-30 hover:bg-muted rounded-t"
+          >
+            <ArrowUp className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onMove(1); }}
+            disabled={index === total - 1}
+            title="Позже"
+            className="h-5 w-5 flex items-center justify-center disabled:opacity-30 hover:bg-muted rounded-b"
+          >
+            <ArrowDown className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AvitoImageEditor({
+
   open, onOpenChange, productId, productName, images, storeId, avitoImages, onSave, onImagesAdded,
 }: AvitoImageEditorProps) {
   const { toast } = useToast();
   const [imageInfos, setImageInfos] = useState<ImageInfo[]>([]);
+
   const [generatedImages, setGeneratedImages] = useState<ImageInfo[]>([]);
-  const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
+  const [selectedOrder, setSelectedOrder] = useState<string[]>([]);
   const [processing, setProcessing] = useState<Set<string>>(new Set());
   const [templateUrl, setTemplateUrl] = useState<string | null>(null);
   const [templatePreview, setTemplatePreview] = useState<string | null>(null);
@@ -138,6 +189,23 @@ export function AvitoImageEditor({
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const scrollViewportRef = useRef<HTMLDivElement>(null);
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+
+  const isSelected = (url: string) => selectedOrder.includes(url);
+  const selectedIndex = (url: string) => selectedOrder.indexOf(url);
+  const addSelected = (url: string) =>
+    setSelectedOrder(prev => (prev.includes(url) ? prev : [...prev, url]));
+  const removeSelected = (url: string) =>
+    setSelectedOrder(prev => prev.filter(u => u !== url));
+  const moveSelected = (url: string, dir: -1 | 1) =>
+    setSelectedOrder(prev => {
+      const idx = prev.indexOf(url);
+      if (idx < 0) return prev;
+      const target = idx + dir;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
 
   // Load saved templates from storage
   useEffect(() => {
@@ -182,26 +250,24 @@ export function AvitoImageEditor({
     return () => { cancelled = true; };
   }, [open, images]);
 
-  // Initialize selected from avitoImages param
+  // Initialize selected from avitoImages param (preserves order)
   useEffect(() => {
     if (open) {
       if (avitoImages && avitoImages.length > 0) {
-        setSelectedUrls(new Set(avitoImages));
+        setSelectedOrder([...avitoImages]);
       } else {
-        setSelectedUrls(new Set(images));
+        setSelectedOrder([...images]);
       }
       setGeneratedImages([]);
     }
   }, [open, avitoImages, images]);
 
   const toggleSelect = (url: string) => {
-    setSelectedUrls(prev => {
-      const next = new Set(prev);
-      if (next.has(url)) next.delete(url);
-      else next.add(url);
-      return next;
-    });
+    setSelectedOrder(prev =>
+      prev.includes(url) ? prev.filter(u => u !== url) : [...prev, url]
+    );
   };
+
 
   const handleCanvasResize = useCallback(async (imageUrl: string) => {
     setProcessing(prev => new Set(prev).add(imageUrl));
@@ -214,7 +280,7 @@ export function AvitoImageEditor({
       const dims = await loadImageDimensions(urlData.publicUrl);
       const newImg: ImageInfo = { url: urlData.publicUrl, ...dims, isGenerated: true };
       setGeneratedImages(prev => [...prev, newImg]);
-      setSelectedUrls(prev => new Set(prev).add(urlData.publicUrl));
+      addSelected(urlData.publicUrl);
       toast({ title: "Фото изменено до 1280×960 (4:3)" });
     } catch (err: any) {
       toast({ title: "Ошибка", description: err.message, variant: "destructive" });
@@ -242,7 +308,7 @@ export function AvitoImageEditor({
       const dims = await loadImageDimensions(data.url);
       const newImg: ImageInfo = { url: data.url, ...dims, isGenerated: true };
       setGeneratedImages(prev => [...prev, newImg]);
-      setSelectedUrls(prev => new Set(prev).add(data.url));
+      addSelected(data.url);
       toast({ title: "AI: фото адаптировано для Авито" });
     } catch (err: any) {
       toast({ title: "Ошибка AI", description: err.message, variant: "destructive" });
@@ -270,7 +336,7 @@ export function AvitoImageEditor({
       const dims = await loadImageDimensions(data.url);
       const newImg: ImageInfo = { url: data.url, ...dims, isGenerated: true };
       setGeneratedImages(prev => [...prev, newImg]);
-      setSelectedUrls(prev => new Set(prev).add(data.url));
+      addSelected(data.url);
       toast({ title: label });
       setTimeout(() => {
         scrollViewportRef.current?.scrollTo({ top: scrollViewportRef.current.scrollHeight, behavior: "smooth" });
@@ -346,7 +412,7 @@ export function AvitoImageEditor({
       const newImg: ImageInfo = { url: urlData.publicUrl, ...dims, isGenerated: true };
       setGeneratedImages(prev => [...prev, newImg]);
       // Keep original selected AND add the generated one
-      setSelectedUrls(prev => new Set(prev).add(urlData.publicUrl));
+      addSelected(urlData.publicUrl);
       toast({ title: "Шаблон наложен — оригинал сохранён" });
     } catch (err: any) {
       toast({ title: "Ошибка", description: err.message, variant: "destructive" });
@@ -356,13 +422,13 @@ export function AvitoImageEditor({
   }, [templateUrl, templatePreview, storeId, productId, toast]);
 
   const handleSave = () => {
-    onSave(Array.from(selectedUrls));
+    onSave(selectedOrder);
     onOpenChange(false);
   };
 
   const handleRemoveGenerated = (url: string) => {
     setGeneratedImages(prev => prev.filter(img => img.url !== url));
-    setSelectedUrls(prev => { const n = new Set(prev); n.delete(url); return n; });
+    removeSelected(url);
   };
 
   const handleUploadPhotos = useCallback(async (files: FileList | File[]) => {
@@ -386,7 +452,7 @@ export function AvitoImageEditor({
       for (const url of newUrls) {
         const dims = await loadImageDimensions(url);
         setImageInfos(prev => [...prev, { url, ...dims }]);
-        setSelectedUrls(prev => new Set(prev).add(url));
+        addSelected(url);
       }
       onImagesAdded?.(newUrls);
       toast({ title: `Загружено ${newUrls.length} фото` });
@@ -420,9 +486,9 @@ export function AvitoImageEditor({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full w-full" viewportRef={scrollViewportRef}>
-            <div className="px-6 py-4 space-y-4">
+        <div ref={scrollViewportRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+          <div className="px-6 py-4 space-y-4">
+
               {/* Template section */}
               <div className="p-3 rounded-lg border bg-muted/30">
                 <div className="flex items-center justify-between mb-2">
@@ -585,9 +651,14 @@ export function AvitoImageEditor({
                             {processing.has(`ai_enhance_${img.url}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Sparkles className="h-3 w-3 mr-1" />Качество</>}
                           </Button>
                         </div>
-                        <label className="absolute top-2 left-2 flex items-center gap-2 cursor-pointer z-10">
-                          <Checkbox checked={selectedUrls.has(img.url)} onCheckedChange={() => toggleSelect(img.url)} />
-                        </label>
+                        <SelectBadge
+                          url={img.url}
+                          index={selectedIndex(img.url)}
+                          total={selectedOrder.length}
+                          onToggle={() => toggleSelect(img.url)}
+                          onMove={(d) => moveSelected(img.url, d)}
+                        />
+
                       </div>
                     ))}
                   </div>
@@ -636,9 +707,14 @@ export function AvitoImageEditor({
                             <X className="h-3 w-3 mr-1" />Удалить
                           </Button>
                         </div>
-                        <label className="absolute top-2 left-2 flex items-center gap-2 cursor-pointer z-10">
-                          <Checkbox checked={selectedUrls.has(img.url)} onCheckedChange={() => toggleSelect(img.url)} />
-                        </label>
+                        <SelectBadge
+                          url={img.url}
+                          index={selectedIndex(img.url)}
+                          total={selectedOrder.length}
+                          onToggle={() => toggleSelect(img.url)}
+                          onMove={(d) => moveSelected(img.url, d)}
+                        />
+
                       </div>
                     ))}
                   </div>
@@ -651,19 +727,26 @@ export function AvitoImageEditor({
                 </div>
               )}
             </div>
-          </ScrollArea>
-        </div>
+          </div>
+
+
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t mt-2 flex-shrink-0 px-6 py-3">
-          <span className="text-xs text-muted-foreground">
-            Выбрано для Авито: {selectedUrls.size} из {allImages.length} фото
-          </span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-muted-foreground">
+              Выбрано для Авито: {selectedOrder.length} из {allImages.length} фото
+            </span>
+            <span className="text-[10px] text-muted-foreground/70">
+              Номер на фото = порядок в объявлении. Стрелки ↑↓ меняют позицию.
+            </span>
+          </div>
+
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Отмена</Button>
             <Button size="sm" onClick={handleSave}>
               <Check className="h-3.5 w-3.5 mr-1" />
-              Сохранить ({selectedUrls.size})
+              Сохранить ({selectedOrder.length})
             </Button>
           </div>
         </div>
