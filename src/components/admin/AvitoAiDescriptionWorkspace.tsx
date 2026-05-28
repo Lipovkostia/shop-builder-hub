@@ -84,7 +84,6 @@ export function AvitoAiDescriptionWorkspace({
   instruction, setInstruction, maxChars, setMaxChars,
   templates, onSaveTemplate, onDeleteTemplate,
   generating, progress, onGenerate,
-}: Props) {
   const [tab, setTab] = useState<"prompt" | "blocks" | "rules">("prompt");
   const [heading, setHeading] = useState("");
   const [main, setMain] = useState("");
@@ -95,6 +94,14 @@ export function AvitoAiDescriptionWorkspace({
   const [useBlocks, setUseBlocks] = useState(false);
   const [device, setDevice] = useState<"mobile" | "desktop">("mobile");
   const [newTplName, setNewTplName] = useState("");
+  const [previewExpanded, setPreviewExpanded] = useState(false);
+
+  const instructionRef = useRef<HTMLTextAreaElement>(null);
+  const headingRef = useRef<HTMLTextAreaElement>(null);
+  const mainRef = useRef<HTMLTextAreaElement>(null);
+  const advantagesRef = useRef<HTMLTextAreaElement>(null);
+  const ctaRef = useRef<HTMLTextAreaElement>(null);
+
 
   // Compose final instruction sent to AI
   const compiledInstruction = useMemo(() => {
