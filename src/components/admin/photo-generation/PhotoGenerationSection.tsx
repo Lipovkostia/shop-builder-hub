@@ -61,7 +61,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
 
   const { prompts } = useImagePrompts(storeId);
   const { refs } = useImageReferences(storeId);
-  const { results, running, progress, generateBatch } = useImageGeneration();
+  const { results, running, progress, generateBatch, clearResult } = useImageGeneration();
 
   useEffect(() => {
     let mounted = true;
@@ -88,7 +88,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
 
   const loadJobs = async (ids: string[]) => {
     if (ids.length === 0) { setSavedJobs([]); return; }
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("image_generation_jobs" as any)
       .select("id, product_id, prompt, result_image_url, created_at, status, approved, hidden")
       .in("product_id", ids)
@@ -97,6 +97,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
       .eq("hidden", false)
       .order("created_at", { ascending: false })
       .limit(200);
+    if (error) { setSavedJobs([]); return; }
     setSavedJobs(((data ?? []) as any[]).filter((j) => j.result_image_url) as SavedJob[]);
   };
 
@@ -186,11 +187,19 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
     await generateBatch([buildTask(row)], { aspect_ratio: aspect, model: modelId });
   };
 
-  type Item = { key: string; productId: string; url: string; productName: string; jobId: string };
-  const approvable: Item[] = useMemo(() => savedJobs.map((j) => {
-    const prod = products.find((p) => p.id === j.product_id);
-    return { key: `job:${j.id}`, productId: j.product_id, url: j.result_image_url, productName: prod?.name ?? "товар", jobId: j.id };
-  }), [savedJobs, products]);
+  type Item = { key: string; productId: string; url: string; productName: string; jobId?: string; taskId?: string };
+  const approvable: Item[] = useMemo(() => {
+    const fromJobs = savedJobs.map((j) => {
+      const prod = products.find((p) => p.id === j.product_id);
+      return { key: `job:${j.id}`, productId: j.product_id, url: j.result_image_url, productName: prod?.name ?? "товар", jobId: j.id };
+    });
+    const fromLive = rows.flatMap((r) => {
+      const res = results[r.id];
+      if (res?.status !== "success" || !res.url) return [];
+      return [{ key: `live:${r.id}`, productId: r.product_id, url: res.url, productName: r.product_name, taskId: r.id }];
+    });
+    return [...fromLive, ...fromJobs];
+  }, [savedJobs, products, rows, results]);
 
   const toggleJob = (k: string) => {
     setSelectedJobIds((prev) => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
@@ -205,7 +214,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
       e.urls.push(item.url); e.jobIds.push(item.jobId);
       byProduct.set(item.productId, e);
     }
-    let ok = 0; const allJobIds: string[] = [];
+    let ok = 0; const allJobIds: string[] = []; const allTaskIds: string[] = [];
     for (const [pid, { urls, jobIds }] of byProduct) {
       const prod = products.find((p) => p.id === pid);
       const next = [...(prod?.images ?? []), ...urls];
@@ -217,6 +226,8 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
       await supabase.from("image_generation_jobs" as any).update({ approved: true } as any).in("id", allJobIds);
     }
     toast.success(`Добавлено в ${ok} товаров`);
+    approvable.forEach((item) => { if (selectedJobIds.has(item.key) && item.taskId) allTaskIds.push(item.taskId); });
+    allTaskIds.forEach(clearResult);
     setSelectedJobIds(new Set());
     await loadJobs(Array.from(selectedIds));
   };
