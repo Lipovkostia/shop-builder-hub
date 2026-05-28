@@ -8,6 +8,7 @@ export interface GenerationParams {
   height?: number;
   n?: number;
   quality?: "low" | "medium" | "high";
+  model?: string;
 }
 
 export interface GenerationTask {
