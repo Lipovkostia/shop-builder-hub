@@ -35,6 +35,7 @@ import { StoreCategory } from "@/hooks/useStoreCategories";
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
+import { AvitoAiDescriptionWorkspace } from "./AvitoAiDescriptionWorkspace";
 
 interface AvitoItem {
   id: number;
