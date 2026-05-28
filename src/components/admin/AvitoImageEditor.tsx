@@ -119,7 +119,58 @@ function canvasOverlay(imageUrl: string, templateUrl: string, targetW: number, t
   });
 }
 
+function SelectBadge({
+  url, index, total, onToggle, onMove,
+}: {
+  url: string;
+  index: number;
+  total: number;
+  onToggle: () => void;
+  onMove: (dir: -1 | 1) => void;
+}) {
+  const selected = index >= 0;
+  return (
+    <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 items-start">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
+        title={selected ? `В Авито — позиция #${index + 1}. Клик чтобы убрать.` : "Добавить в Авито"}
+        className={`h-7 min-w-7 px-1.5 rounded-full text-xs font-semibold flex items-center justify-center transition-all shadow-md ${
+          selected
+            ? "bg-emerald-500 text-white hover:bg-emerald-600"
+            : "bg-background/90 text-muted-foreground border border-border hover:border-emerald-500 hover:text-emerald-600"
+        }`}
+      >
+        {selected ? `#${index + 1}` : "+"}
+      </button>
+      {selected && total > 1 && (
+        <div className="flex flex-col gap-0.5 bg-background/90 rounded border border-border shadow-sm">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onMove(-1); }}
+            disabled={index === 0}
+            title="Раньше"
+            className="h-5 w-5 flex items-center justify-center disabled:opacity-30 hover:bg-muted rounded-t"
+          >
+            <ArrowUp className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onMove(1); }}
+            disabled={index === total - 1}
+            title="Позже"
+            className="h-5 w-5 flex items-center justify-center disabled:opacity-30 hover:bg-muted rounded-b"
+          >
+            <ArrowDown className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AvitoImageEditor({
+
   open, onOpenChange, productId, productName, images, storeId, avitoImages, onSave, onImagesAdded,
 }: AvitoImageEditorProps) {
   const { toast } = useToast();
