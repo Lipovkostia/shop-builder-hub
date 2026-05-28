@@ -36,7 +36,6 @@ export function useImageGeneration() {
   const generateOne = useCallback(async (task: GenerationTask, params: GenerationParams): Promise<GenerationResult> => {
     try {
       const { data, error } = await supabase.functions.invoke("generate-product-image", {
-      const { data, error } = await supabase.functions.invoke("generate-product-image", {
         body: {
           product_id: task.product_id,
           source_image_url: task.source_image_url,
@@ -50,6 +49,9 @@ export function useImageGeneration() {
           model: params.model,
         },
       });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return { task_id: task.id, url: (data as any)?.url, status: "success" };
     } catch (e: any) {
       const msg = e?.message ?? String(e);
       return { task_id: task.id, error: msg, status: "error" };
