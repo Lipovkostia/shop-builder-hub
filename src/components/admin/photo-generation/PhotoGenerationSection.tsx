@@ -211,7 +211,8 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
     for (const item of approvable) {
       if (!selectedJobIds.has(item.key)) continue;
       const e = byProduct.get(item.productId) ?? { urls: [], jobIds: [] };
-      e.urls.push(item.url); e.jobIds.push(item.jobId);
+      e.urls.push(item.url);
+      if (item.jobId) e.jobIds.push(item.jobId);
       byProduct.set(item.productId, e);
     }
     let ok = 0; const allJobIds: string[] = []; const allTaskIds: string[] = [];
