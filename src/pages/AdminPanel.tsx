@@ -7179,6 +7179,13 @@ export default function AdminPanel({
               products={allProducts}
               avitoFeed={avitoFeed}
               storeCategories={storeCategories}
+              autoOpenImageEditorForProductId={searchParams.get('editImagesFor')}
+              onAutoOpenImageEditorHandled={() => {
+                setSearchParams(prev => {
+                  prev.delete('editImagesFor');
+                  return prev;
+                });
+              }}
               onOpenInPhotoStudio={(productId) => {
                 setActiveSection("photo-generation");
                 setSearchParams(prev => {
@@ -7212,6 +7219,15 @@ export default function AdminPanel({
             <PhotoGenerationSection
               storeId={effectiveStoreId}
               preselectedProductId={searchParams.get('productId')}
+              onOpenInAvito={(productId) => {
+                setActiveSection("avito");
+                setSearchParams(prev => {
+                  prev.set('section', 'avito');
+                  prev.set('editImagesFor', productId);
+                  prev.delete('productId');
+                  return prev;
+                });
+              }}
             />
           )}
         </main>

@@ -72,6 +72,8 @@ interface AvitoSectionProps {
   products?: Product[];
   storeCategories?: StoreCategory[];
   onOpenInPhotoStudio?: (productId: string) => void;
+  autoOpenImageEditorForProductId?: string | null;
+  onAutoOpenImageEditorHandled?: () => void;
   avitoFeed?: {
     feedProducts: AvitoFeedProduct[];
     feedProductIds: Set<string>;
@@ -231,12 +233,11 @@ function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
       )}
     </>
   );
-}
-
 function AvitoFeedTable({
   feedProducts, storeProducts, storeCategories, selectedFeedProducts, setSelectedFeedProducts,
   aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
   feedSearchQuery, feedPriceFilter, storeId, onUpdateProductParams, onOpenInPhotoStudio,
+  autoOpenImageEditorForProductId, onAutoOpenImageEditorHandled,
 }: {
   feedProducts: AvitoFeedProduct[];
   storeProducts: Product[];
@@ -255,9 +256,21 @@ function AvitoFeedTable({
   storeId: string;
   onUpdateProductParams: (productId: string, params: any) => Promise<void>;
   onOpenInPhotoStudio?: (productId: string) => void;
+  autoOpenImageEditorForProductId?: string | null;
+  onAutoOpenImageEditorHandled?: () => void;
 }) {
   const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
   const [variantsManagerProductId, setVariantsManagerProductId] = useState<string | null>(null);
+
+  // Auto-open image editor when navigated from another section (e.g. AI Photo → Avito)
+  useEffect(() => {
+    if (!autoOpenImageEditorForProductId) return;
+    const product = storeProducts.find((p) => p.id === autoOpenImageEditorForProductId);
+    if (!product) return;
+    setEditingImageProduct({ id: product.id, name: product.name, images: product.images || [] });
+    onAutoOpenImageEditorHandled?.();
+  }, [autoOpenImageEditorForProductId, storeProducts, onAutoOpenImageEditorHandled]);
+
 
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
     try {
@@ -833,7 +846,7 @@ function AvitoFeedTable({
   );
 }
 
-export function AvitoSection({ storeId, products: storeProducts = [], storeCategories = [], avitoFeed, onOpenInPhotoStudio }: AvitoSectionProps) {
+export function AvitoSection({ storeId, products: storeProducts = [], storeCategories = [], avitoFeed, onOpenInPhotoStudio, autoOpenImageEditorForProductId, onAutoOpenImageEditorHandled }: AvitoSectionProps) {
   const { toast } = useToast();
   const [account, setAccount] = useState<AvitoAccount | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2054,6 +2067,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     storeId={storeId || ""}
                     onUpdateProductParams={avitoFeed.updateProductParams}
                     onOpenInPhotoStudio={onOpenInPhotoStudio}
+                    autoOpenImageEditorForProductId={autoOpenImageEditorForProductId}
+                    onAutoOpenImageEditorHandled={onAutoOpenImageEditorHandled}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full">

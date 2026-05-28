@@ -11,7 +11,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Sparkles, Loader2, Trash2, Wand2, Check } from "lucide-react";
+import { Sparkles, Loader2, Trash2, Wand2, Check, ImageIcon } from "lucide-react";
+
+// Cache natural dimensions across renders
+const dimsCache = new Map<string, { w: number; h: number }>();
+function ImageDims({ url, className = "" }: { url: string | null | undefined; className?: string }) {
+  const [dims, setDims] = useState<{ w: number; h: number } | null>(() => (url ? dimsCache.get(url) ?? null : null));
+  useEffect(() => {
+    if (!url) { setDims(null); return; }
+    const cached = dimsCache.get(url);
+    if (cached) { setDims(cached); return; }
+    const img = new Image();
+    let cancelled = false;
+    img.onload = () => {
+      const d = { w: img.naturalWidth, h: img.naturalHeight };
+      dimsCache.set(url, d);
+      if (!cancelled) setDims(d);
+    };
+    img.src = url;
+    return () => { cancelled = true; };
+  }, [url]);
+  if (!url) return null;
+  return (
+    <div className={`text-[10px] text-muted-foreground tabular-nums ${className}`}>
+      {dims ? `${dims.w}×${dims.h}` : "…"}
+    </div>
+  );
+}
 import { toast } from "sonner";
 import { KIE_MODELS, DEFAULT_USD_RUB, formatRub } from "./models";
 import { PromptsManager } from "./PromptsManager";
@@ -36,9 +62,9 @@ interface SavedJob { id: string; product_id: string; prompt: string; result_imag
 
 const ASPECT_PRESETS = ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2", "21:9"] as const;
 
-interface Props { storeId: string; preselectedProductId?: string | null; }
+interface Props { storeId: string; preselectedProductId?: string | null; onOpenInAvito?: (productId: string) => void; }
 
-export function PhotoGenerationSection({ storeId, preselectedProductId }: Props) {
+export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenInAvito }: Props) {
   const [products, setProducts] = useState<ProductLite[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [search, setSearch] = useState("");
@@ -402,7 +428,12 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
                     <label key={p.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer">
                       <Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => toggleProduct(p.id)} />
                       {p.images?.[0]
-                        ? <img src={p.images[0]} alt="" className="h-8 w-8 rounded object-cover" />
+                        ? (
+                          <div className="flex flex-col items-center">
+                            <img src={p.images[0]} alt="" className="h-8 w-8 rounded object-cover" />
+                            <ImageDims url={p.images[0]} />
+                          </div>
+                        )
                         : <div className="h-8 w-8 rounded bg-muted" />}
                       <span className="text-sm flex-1 line-clamp-1">{p.name}</span>
                     </label>
@@ -420,7 +451,12 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
                     <div key={r.id} className="rounded-lg border border-border p-2 space-y-2">
                       <div className="flex items-center gap-2">
                         {r.source_url
-                          ? <img src={r.source_url} alt="" className="h-16 w-16 rounded object-cover flex-shrink-0" />
+                          ? (
+                            <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                              <img src={r.source_url} alt="" className="h-16 w-16 rounded object-cover" />
+                              <ImageDims url={r.source_url} />
+                            </div>
+                          )
                           : <div className="h-16 w-16 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">нет фото</div>}
                         <div className="flex-1 min-w-0 space-y-1">
                           <div className="text-sm font-medium truncate">{r.product_name}</div>
@@ -446,6 +482,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
                         {r.reference_image_url && (
                           <div className="flex flex-col items-center gap-1">
                             <img src={r.reference_image_url} alt="" className="h-12 w-12 rounded object-cover border-2 border-primary" />
+                            <ImageDims url={r.reference_image_url} />
                             <button onClick={() => updateRow(r.id, { reference_id: null, reference_image_url: null })}
                               className="text-[9px] text-destructive">убрать</button>
                           </div>
@@ -453,7 +490,12 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
                       </div>
                       <Textarea value={r.prompt} onChange={(e) => updateRow(r.id, { prompt: e.target.value })}
                         placeholder="Промпт... ({product_name} подставится автоматически)" rows={2} className="text-xs" />
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-1">
+                        {onOpenInAvito && (
+                          <Button size="sm" variant="ghost" onClick={() => onOpenInAvito(r.product_id)} title="Открыть фото объявления в разделе Авито">
+                            <ImageIcon className="h-3 w-3" />В Авито
+                          </Button>
+                        )}
                         <Button size="sm" variant="outline" onClick={() => generateRow(r)} disabled={running}>
                           <Wand2 className="h-3 w-3" />Генерировать
                         </Button>
@@ -501,6 +543,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId }: Props)
                     <div key={item.key} className="rounded-lg border border-border p-2 space-y-1">
                       <div className="text-xs text-muted-foreground truncate">{item.productName}</div>
                       <img src={item.url} alt="" className="w-full rounded object-cover" />
+                      <ImageDims url={item.url} />
                       <div className="flex items-center justify-between gap-2">
                         <label className="flex items-center gap-1 text-xs cursor-pointer">
                           <Checkbox checked={selectedJobIds.has(item.key)} onCheckedChange={() => toggleJob(item.key)} />
