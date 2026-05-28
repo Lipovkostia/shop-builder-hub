@@ -334,8 +334,10 @@ function AvitoFeedTable({
   const getColValue = (fp: AvitoFeedProduct, product: Product, colKey: string): string => {
     const params = fp.avito_params || {};
     switch (colKey) {
-      case "storeCategory":
-        return (product.categories || []).map(cid => categoryMap.get(cid) || "").filter(Boolean).join(", ");
+  // Filterable columns
+  const filterableCols = ["storeCategory", "category", "adType", "goodsType", "promo", "address", "managerName", "contactPhone", "email", "companyName"];
+  // Sortable columns
+  const sortableCols = ["title", "price", "storeCategory", "category"];
       case "category": return params.category || "";
       case "adType": return params.goodsType || params.adType || "";
       case "goodsType": return params.goodsSubType || params.GoodsType || "";
