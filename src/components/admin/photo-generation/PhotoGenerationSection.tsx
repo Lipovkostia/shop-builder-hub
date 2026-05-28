@@ -482,6 +482,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                         {r.reference_image_url && (
                           <div className="flex flex-col items-center gap-1">
                             <img src={r.reference_image_url} alt="" className="h-12 w-12 rounded object-cover border-2 border-primary" />
+                            <ImageDims url={r.reference_image_url} />
                             <button onClick={() => updateRow(r.id, { reference_id: null, reference_image_url: null })}
                               className="text-[9px] text-destructive">убрать</button>
                           </div>
@@ -489,10 +490,16 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                       </div>
                       <Textarea value={r.prompt} onChange={(e) => updateRow(r.id, { prompt: e.target.value })}
                         placeholder="Промпт... ({product_name} подставится автоматически)" rows={2} className="text-xs" />
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-1">
+                        {onOpenInAvito && (
+                          <Button size="sm" variant="ghost" onClick={() => onOpenInAvito(r.product_id)} title="Открыть фото объявления в разделе Авито">
+                            <ImageIcon className="h-3 w-3" />В Авито
+                          </Button>
+                        )}
                         <Button size="sm" variant="outline" onClick={() => generateRow(r)} disabled={running}>
                           <Wand2 className="h-3 w-3" />Генерировать
                         </Button>
+                      </div>
                       </div>
                     </div>
                   ))}
