@@ -11,7 +11,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Sparkles, Loader2, Trash2, Wand2, Check } from "lucide-react";
+import { Sparkles, Loader2, Trash2, Wand2, Check, ImageIcon } from "lucide-react";
+
+// Cache natural dimensions across renders
+const dimsCache = new Map<string, { w: number; h: number }>();
+function ImageDims({ url, className = "" }: { url: string | null | undefined; className?: string }) {
+  const [dims, setDims] = useState<{ w: number; h: number } | null>(() => (url ? dimsCache.get(url) ?? null : null));
+  useEffect(() => {
+    if (!url) { setDims(null); return; }
+    const cached = dimsCache.get(url);
+    if (cached) { setDims(cached); return; }
+    const img = new Image();
+    let cancelled = false;
+    img.onload = () => {
+      const d = { w: img.naturalWidth, h: img.naturalHeight };
+      dimsCache.set(url, d);
+      if (!cancelled) setDims(d);
+    };
+    img.src = url;
+    return () => { cancelled = true; };
+  }, [url]);
+  if (!url) return null;
+  return (
+    <div className={`text-[10px] text-muted-foreground tabular-nums ${className}`}>
+      {dims ? `${dims.w}×${dims.h}` : "…"}
+    </div>
+  );
+}
 import { toast } from "sonner";
 import { KIE_MODELS, DEFAULT_USD_RUB, formatRub } from "./models";
 import { PromptsManager } from "./PromptsManager";
