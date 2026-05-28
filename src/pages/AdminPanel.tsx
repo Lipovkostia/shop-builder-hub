@@ -7199,7 +7199,12 @@ export default function AdminPanel({
               }}
             />
           )}
+
+          {activeSection === "photo-generation" && (
+            <PhotoGenerationSection storeId={effectiveStoreId} />
+          )}
         </main>
+
 
       {/* Quick Add Product Dialog */}
       <Dialog open={quickAddDialogOpen} onOpenChange={setQuickAddDialogOpen}>
