@@ -666,8 +666,9 @@ export function AvitoImageEditor({
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
         </div>
+
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t mt-2 flex-shrink-0 px-6 py-3">
