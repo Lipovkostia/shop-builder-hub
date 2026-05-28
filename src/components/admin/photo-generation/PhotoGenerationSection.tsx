@@ -428,7 +428,12 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                     <label key={p.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer">
                       <Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => toggleProduct(p.id)} />
                       {p.images?.[0]
-                        ? <img src={p.images[0]} alt="" className="h-8 w-8 rounded object-cover" />
+                        ? (
+                          <div className="flex flex-col items-center">
+                            <img src={p.images[0]} alt="" className="h-8 w-8 rounded object-cover" />
+                            <ImageDims url={p.images[0]} />
+                          </div>
+                        )
                         : <div className="h-8 w-8 rounded bg-muted" />}
                       <span className="text-sm flex-1 line-clamp-1">{p.name}</span>
                     </label>
