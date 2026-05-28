@@ -269,6 +269,8 @@ function AvitoFeedTable({
 
   // Column filters state
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
   const setFilter = (col: string, val: string) => {
     setColumnFilters(prev => {
@@ -280,6 +282,21 @@ function AvitoFeedTable({
   };
 
   const activeFilterCount = Object.keys(columnFilters).length;
+
+  const handleSort = (colKey: string) => {
+    setSortConfig(prev => {
+      if (!prev || prev.key !== colKey) return { key: colKey, direction: 'asc' };
+      if (prev.direction === 'asc') return { key: colKey, direction: 'desc' };
+      return null;
+    });
+  };
+
+  const SortIndicator = ({ colKey }: { colKey: string }) => {
+    if (!sortConfig || sortConfig.key !== colKey) return <span className="ml-1 text-muted-foreground/30">↕</span>;
+    return sortConfig.direction === 'asc' 
+      ? <span className="ml-1 text-primary">↑</span> 
+      : <span className="ml-1 text-primary">↓</span>;
+  };
 
   const onMouseDown = (col: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -314,6 +331,7 @@ function AvitoFeedTable({
   const categoryMap = new Map(storeCategories.map(c => [c.id, c.name]));
 
   // Helper: get column value for a feed product
+  // Helper: get column value for a feed product
   const getColValue = (fp: AvitoFeedProduct, product: Product, colKey: string): string => {
     const params = fp.avito_params || {};
     switch (colKey) {
@@ -336,6 +354,8 @@ function AvitoFeedTable({
 
   // Filterable columns
   const filterableCols = ["storeCategory", "category", "adType", "goodsType", "promo", "address", "managerName", "contactPhone", "email", "companyName"];
+  // Sortable columns
+  const sortableCols = ["title", "price", "storeCategory", "category"];
 
   // Pre-filter: search + price
   const preFiltered = feedProducts.filter((fp) => {
@@ -371,20 +391,59 @@ function AvitoFeedTable({
     return result;
   }, [preFiltered, storeProducts, storeCategories]);
 
-  // Apply column filters
-  const filteredFeedProducts = preFiltered.filter((fp) => {
-    const product = storeProducts.find(p => p.id === fp.product_id);
-    if (!product) return false;
-    for (const [col, filterVal] of Object.entries(columnFilters)) {
-      const cellVal = getColValue(fp, product, col);
-      if (filterVal === "__empty__") {
-        if (cellVal) return false;
-      } else {
-        if (cellVal !== filterVal) return false;
+  // Apply column filters + sorting
+  const filteredFeedProducts = useMemo(() => {
+    let result = preFiltered.filter((fp) => {
+      const product = storeProducts.find(p => p.id === fp.product_id);
+      if (!product) return false;
+      for (const [col, filterVal] of Object.entries(columnFilters)) {
+        const cellVal = getColValue(fp, product, col);
+        if (filterVal === "__empty__") {
+          if (cellVal) return false;
+        } else {
+          if (cellVal !== filterVal) return false;
+        }
       }
+      return true;
+    });
+
+    if (sortConfig) {
+      result = [...result].sort((a, b) => {
+        const productA = storeProducts.find(p => p.id === a.product_id);
+        const productB = storeProducts.find(p => p.id === b.product_id);
+        if (!productA || !productB) return 0;
+        const paramsA = a.avito_params || {};
+        const paramsB = b.avito_params || {};
+        let valA = "";
+        let valB = "";
+        switch (sortConfig.key) {
+          case "title":
+            valA = (paramsA.title || productA.name || "").toLowerCase();
+            valB = (paramsB.title || productB.name || "").toLowerCase();
+            break;
+          case "price": {
+            const numA = Number(paramsA.price || paramsA.Price || productA.pricePerUnit || 0);
+            const numB = Number(paramsB.price || paramsB.Price || productB.pricePerUnit || 0);
+            return sortConfig.direction === 'asc' ? numA - numB : numB - numA;
+          }
+          case "storeCategory":
+            valA = (productA.categories || []).map(cid => categoryMap.get(cid) || "").filter(Boolean).join(", ").toLowerCase();
+            valB = (productB.categories || []).map(cid => categoryMap.get(cid) || "").filter(Boolean).join(", ").toLowerCase();
+            break;
+          case "category":
+            valA = (paramsA.category || "").toLowerCase();
+            valB = (paramsB.category || "").toLowerCase();
+            break;
+          default:
+            return 0;
+        }
+        const cmp = valA.localeCompare(valB, 'ru');
+        return sortConfig.direction === 'asc' ? cmp : -cmp;
+      });
     }
-    return true;
-  });
+
+    return result;
+  }, [preFiltered, storeProducts, columnFilters, sortConfig, categoryMap]);
   const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
 
   const cols = [
@@ -454,7 +513,23 @@ function AvitoFeedTable({
                   />
                 ) : (
                   <>
-                    <span className="truncate">{col.label}</span>
+                    {sortableCols.includes(col.key) ? (
+                      <button
+                        className="truncate flex items-center hover:text-foreground transition-colors"
+                        onClick={() => handleSort(col.key)}
+                      >
+                        <span className="truncate">{col.label}</span>
+                        {sortConfig?.key === col.key ? (
+                          sortConfig.direction === 'asc' 
+                            ? <span className="ml-1 text-primary">↑</span> 
+                            : <span className="ml-1 text-primary">↓</span>
+                        ) : (
+                          <span className="ml-1 text-muted-foreground/30">↕</span>
+                        )}
+                      </button>
+                    ) : (
+                      <span className="truncate">{col.label}</span>
+                    )}
                     {filterableCols.includes(col.key) && (
                       <ColumnFilterDropdown
                         values={uniqueValues[col.key] || []}
