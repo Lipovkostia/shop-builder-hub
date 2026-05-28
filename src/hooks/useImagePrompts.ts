@@ -70,7 +70,11 @@ function readCustomPrompts(storeId: string | null): ImagePrompt[] {
 
 function writeCustomPrompts(storeId: string, prompts: ImagePrompt[]) {
   localStorage.setItem(`${STORAGE_KEY}:${storeId}`, JSON.stringify(prompts));
+  try { window.dispatchEvent(new CustomEvent("image-prompts-changed", { detail: { storeId } })); } catch {}
 }
+
+const EVENT_NAME = "image-prompts-changed";
+
 
 export function useImagePrompts(storeId: string | null) {
   const [customPrompts, setCustomPrompts] = useState<ImagePrompt[]>([]);
