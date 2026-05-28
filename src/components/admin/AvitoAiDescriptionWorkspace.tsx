@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import {
   Smartphone, Monitor, AlertTriangle, CheckCircle2, Eye, Blocks, Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RichTextToolbar } from "./RichTextToolbar";
 
 export interface AiTemplate {
   id: string;
