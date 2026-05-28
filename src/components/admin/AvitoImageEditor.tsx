@@ -435,9 +435,9 @@ export function AvitoImageEditor({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full w-full" viewportRef={scrollViewportRef}>
-            <div className="px-6 py-4 space-y-4">
+        <div ref={scrollViewportRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+          <div className="px-6 py-4 space-y-4">
+
               {/* Template section */}
               <div className="p-3 rounded-lg border bg-muted/30">
                 <div className="flex items-center justify-between mb-2">
