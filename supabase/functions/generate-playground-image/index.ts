@@ -85,16 +85,6 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-    // log user message
-    await admin.from("image_playground_messages").insert({
-      store_id: body.store_id,
-      user_id: userData.user.id,
-      role: "user",
-      content: body.prompt ?? "",
-      image_urls: images,
-      model,
-    });
-
     const input: Record<string, unknown> = { prompt: body.prompt || "Generate image", output_format: "png", aspect_ratio };
     if (hasImages) input.image_urls = images;
 
@@ -103,14 +93,6 @@ Deno.serve(async (req) => {
       const taskId = await kieCreateTask(model, input);
       resultUrl = await kiePoll(taskId);
     } catch (genErr: any) {
-      await admin.from("image_playground_messages").insert({
-        store_id: body.store_id,
-        user_id: userData.user.id,
-        role: "assistant",
-        content: `Ошибка: ${String(genErr?.message ?? genErr)}`,
-        image_urls: [],
-        model,
-      });
       return new Response(JSON.stringify({ error: String(genErr?.message ?? genErr) }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -123,15 +105,6 @@ Deno.serve(async (req) => {
     const { error: upErr } = await admin.storage.from("product-images").upload(path, bytes, { contentType: ct, upsert: false });
     if (upErr) throw new Error(`Storage: ${upErr.message}`);
     const url = admin.storage.from("product-images").getPublicUrl(path).data.publicUrl;
-
-    await admin.from("image_playground_messages").insert({
-      store_id: body.store_id,
-      user_id: userData.user.id,
-      role: "assistant",
-      content: "",
-      image_urls: [url],
-      model,
-    });
 
     return new Response(JSON.stringify({ url, model }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err: any) {
