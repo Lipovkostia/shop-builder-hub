@@ -2026,7 +2026,6 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       </Tabs>
       {/* AI Generation Sheet — used only for TITLE mode */}
       <Sheet open={aiPromptOpen && aiMode === "title"} onOpenChange={(open) => { setAiPromptOpen(open); if (!open) setAiSingleProductId(null); }}>
-      <Sheet open={aiPromptOpen} onOpenChange={(open) => { setAiPromptOpen(open); if (!open) setAiSingleProductId(null); }}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="text-base flex items-center gap-2">
