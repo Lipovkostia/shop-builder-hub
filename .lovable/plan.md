@@ -1,84 +1,49 @@
-## Что не так сейчас
+## Что меняем в `src/components/admin/AvitoImageEditor.tsx`
 
-Миграции `image_generation_*` не применились — таблиц в БД нет, поэтому любое сохранение шаблона падает с ошибкой schema cache. Плюс структура «шаблон = промпт + картинка одним блоком» неудобна — нужно разделить.
+### 1. Прокрутка списка фото
 
-## План
+Сейчас контент завёрнут в `ScrollArea` внутри `flex-1 min-h-0 overflow-hidden`, но колесо мыши до Radix viewport не всегда доходит (особенно когда курсор над сеткой фото). Заменяю обёртку на нативную:
 
-### 1. База данных (одна миграция)
-
-Создать заново (idempotent, через `IF NOT EXISTS`):
-
-- `image_generation_prompts` — только текстовые шаблоны
-  - `id, store_id, name, prompt_template, default_aspect_ratio, is_system, sort_order, created_at`
-- `image_generation_references` — только картинки-референсы
-  - `id, store_id, name, image_url, is_system, sort_order, created_at`
-- `image_generation_jobs` — без изменений (если уже есть — оставить); добавить колонку `mode` (`product` | `playground`), `approved`, `hidden`, `model`
-- `image_playground_messages` — история чата ИИ-плейграунда
-  - `id, store_id, user_id, role` (`user`/`assistant`), `content`, `image_urls jsonb`, `model`, `created_at`
-
-Для каждой таблицы: GRANT'ы, RLS, политики по `store_id` владельца.
-
-Старая таблица `image_generation_templates` (если существует в проде) — оставить нетронутой, новый код её не использует.
-
-### 2. UI «Генерация фотографий» — три вкладки
-
-```
-[Рабочая область] [Шаблоны промптов] [Референсы] [AI-чат]
+```text
+<div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 py-4 space-y-4">
+   ...всё текущее содержимое...
+</div>
 ```
 
-**Шаблоны промптов** — список + редактор только текста (название + промпт + соотношение). Без картинки.
+Убираю `ScrollArea` и `scrollViewportRef`. Это даёт обычное колесо мыши + тачпад без перехвата событий и решает проблему «не видно остальных фото».
 
-**Референсы** — список + загрузчик: название + одно изображение. Без промпта.
+### 2. Явная отметка «идёт в Авито» + порядок
 
-**Рабочая область** — в строке товара и в глобальной панели добавить два независимых селектора:
-- «Промпт-шаблон» (dropdown из `image_generation_prompts`)
-- «Референс» (dropdown из `image_generation_references`, превью миниатюры)
+Сейчас выбор хранится в `Set<string>` — порядок теряется. Перевожу на упорядоченный массив `selectedOrder: string[]` (state + initializer из `avitoImages ?? images`).
 
-При генерации в edge-function отправляем `prompt` из выбранного промпта + `reference_image_url` из выбранного референса (если есть — используется вместо фото товара для edit-моделей).
+Хелперы:
+- `isSelected(url) = selectedOrder.includes(url)`
+- `indexOf(url) = selectedOrder.indexOf(url)`
+- `toggleSelect(url)` — добавляет в конец или убирает
+- `moveSelected(url, dir: -1|1)` — меняет местами с соседом в `selectedOrder`
 
-### 3. Новая вкладка «AI-чат»
+На карточке фото (в обоих блоках «Оригинальные» и «Сгенерированные»):
 
-Чат-интерфейс как у ChatGPT/Midjourney:
+- Чекбокс в левом верхнем углу заменяю на **кликабельный бейдж-кружок**:
+  - не выбрано → пустой кружок с подсказкой «В Авито»
+  - выбрано → зелёный кружок с номером позиции (`#1`, `#2`, …)
+- Под бейджем (только если выбрано) — две маленькие кнопки `↑` / `↓` для сдвига позиции (disabled на крайних).
+- Клик по картинке тоже переключает выбор (для удобства).
 
-- Лента сообщений (user / assistant с превью картинок)
-- Внизу: textarea + кнопка загрузки 1-N изображений (drag&drop) + селектор модели (тот же `KIE_MODELS`) + соотношение сторон + кнопка «Отправить»
-- Поведение:
-  - Нет картинок → text-to-image (`nano-banana`, `seedream-4`, `flux-*`)
-  - 1+ картинка → image edit / композиция (`nano-banana-edit`, `seedream-4`, `flux-kontext-*` — все поддерживают `image_urls: [...]`)
-- История сохраняется в `image_playground_messages` (по `store_id` + `user_id`), подгружается при открытии
-- Кнопка «Скачать» и «Добавить к товару…» на каждой сгенерированной картинке (поиск товара по названию в простом селекторе)
+### 3. Сохранение в правильном порядке
 
-### 4. Edge function
+`handleSave` теперь передаёт `selectedOrder` как есть (а не `Array.from(selectedUrls)`), так что порядок фото в API Авито = тот, что виден пользователю по бейджам.
 
-Текущая `generate-product-image` остаётся для рабочей области.
-
-Новая `generate-playground-image`:
-- Принимает: `prompt`, `model`, `aspect_ratio`, `image_urls: string[]` (уже загруженные в storage), `store_id`
-- Загружает пользовательские картинки в bucket `product-images/playground/{store_id}/...` перед вызовом kie.ai (если приходит base64 — иначе использует переданные URL)
-- Вызывает kie.ai (та же `kieCreateTask` + `kiePoll`)
-- Сохраняет результат в storage и в `image_playground_messages` как assistant-сообщение
-- Возвращает URL
-
-### 5. Файлы
-
-Новые:
-- `supabase/migrations/20260528030000_image_generation_split.sql`
-- `src/hooks/useImagePrompts.ts`
-- `src/hooks/useImageReferences.ts`
-- `src/hooks/useImagePlayground.ts`
-- `src/components/admin/photo-generation/PromptsManager.tsx`
-- `src/components/admin/photo-generation/ReferencesManager.tsx`
-- `src/components/admin/photo-generation/PlaygroundChat.tsx`
-- `supabase/functions/generate-playground-image/index.ts`
-
-Изменить:
-- `src/components/admin/photo-generation/PhotoGenerationSection.tsx` — 4 вкладки, два селектора в рабочей области
-- `src/hooks/useImageGeneration.ts` — пробрасывать `reference_image_url` отдельно от `source_image_url`
-- `supabase/functions/generate-product-image/index.ts` — принимать `reference_image_url`, при наличии использовать его как `image_urls[0]` вместо фото товара
-- удалить старый `src/hooks/useImageTemplates.ts` после миграции UI
+Футер: «Выбрано для Авито: N из M фото» + подсказка «номер на фото = порядок в объявлении».
 
 ### Технические детали
 
-- Сохранение шаблона валидируется только по `name` (для промптов — ещё `prompt_template`; для референсов — `image_url`).
-- В чате модель по умолчанию — `google/nano-banana-edit` если есть вложения, иначе `google/nano-banana`. Стоимость показываем под полем ввода в ₽ по тому же `KIE_MODELS` + курс из localStorage.
-- Realtime для чата не нужен — после ответа просто инвалидируем список.
+- Меняем тип состояния: `useState<string[]>([])` вместо `Set<string>`; во всех местах (`setSelectedUrls(prev => new Set(prev).add(url))` после AI/resize/template/upload) — заменяем на «append если ещё нет».
+- `useEffect` инициализации (строки 186-195) переписывается под массив с сохранением порядка из `avitoImages`.
+- Удаляются `ScrollArea` импорт и `scrollViewportRef`.
+- Никаких изменений в backend/edge-функциях, типах БД и других файлах.
+
+### Что НЕ трогаем
+
+- Логика шаблонов, AI-обработки, загрузки фото, генерации — без изменений.
+- API сохранения (`onSave(selectedImages: string[])`) — сигнатура та же, просто массив теперь упорядочен.
