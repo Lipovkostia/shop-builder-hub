@@ -27,6 +27,15 @@ function writeReferences(storeId: string, refs: ImageReference[]) {
   localStorage.setItem(`${STORAGE_KEY}:${storeId}`, JSON.stringify(refs));
 }
 
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 export function useImageReferences(storeId: string | null) {
   const [customRefs, setCustomRefs] = useState<ImageReference[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +61,10 @@ export function useImageReferences(storeId: string | null) {
       contentType: file.type || "image/png",
       upsert: false,
     });
-    if (error) { toast.error(`Не удалось загрузить картинку: ${error.message}`); return null; }
+    if (error) {
+      toast.warning("Картинка сохранена локально; если генерация по ней не сработает, проверьте доступ к загрузке файлов");
+      return await fileToDataUrl(file);
+    }
     return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
   };
 
