@@ -673,6 +673,8 @@ function AvitoFeedTable({
                       {(product.images || []).length}
                     </div>
                   </div>
+                  <div className="flex-shrink-0 px-1 pt-1.5" style={{ width: colWidths.actions }}>
+                    <div className="flex items-center gap-0">
                       <Button size="icon" variant="ghost" className="h-6 w-6" title="AI описание" onClick={() => openAiForProducts([fp.product_id])}>
                         <Wand2 className="h-3.5 w-3.5 text-primary" />
                       </Button>
