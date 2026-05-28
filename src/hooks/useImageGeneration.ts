@@ -8,6 +8,7 @@ export interface GenerationParams {
   height?: number;
   n?: number;
   quality?: "low" | "medium" | "high";
+  model?: string;
 }
 
 export interface GenerationTask {
@@ -43,6 +44,7 @@ export function useImageGeneration() {
           height: params.height,
           n: params.n ?? 1,
           quality: params.quality ?? "medium",
+          model: params.model,
         },
       });
       if (error) throw error;
