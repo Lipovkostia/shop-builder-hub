@@ -941,8 +941,16 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
           const descriptions = data?.descriptions || {};
 
-          for (const [pid, value] of Object.entries(descriptions)) {
-            if (value && typeof value === "string") {
+          const city = (localDefaults.address?.split(",")[0]?.trim()) || "вашем городе";
+          for (const [pid, rawValue] of Object.entries(descriptions)) {
+            if (rawValue && typeof rawValue === "string") {
+              const prod = storeProducts.find(p => p.id === pid);
+              // post-process placeholders the AI was told to keep verbatim
+              const value = rawValue
+                .replace(/\{product_name\}/g, prod?.name ?? "")
+                .replace(/\{price\}/g, prod?.pricePerUnit ? `${Math.round(prod.pricePerUnit)} ₽` : "")
+                .replace(/\{city\}/g, city)
+                .replace(/\{description\}/g, prod?.description ?? "");
               const fp = avitoFeed.feedProducts.find(f => f.product_id === pid);
               const currentParams = fp?.avito_params || {};
               if (aiMode === "title") {
