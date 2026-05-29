@@ -2604,6 +2604,31 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                       </Button>
                     )}
                     {(() => {
+                      const catList = list.filter((r) => !!(r.fp.avito_params as any)?.moderation?.suggested_category);
+                      if (catList.length === 0) return null;
+                      return (
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                          onClick={async () => {
+                            let ok = 0;
+                            for (const r of catList) {
+                              const sug = (r.fp.avito_params as any)?.moderation?.suggested_category;
+                              if (!sug) continue;
+                              try {
+                                await handleInlineParamUpdate(r.product.id, "category", sug);
+                                ok++;
+                              } catch {}
+                            }
+                            await avitoFeed!.refetch?.();
+                            toast({ title: `Категории применены: ${ok} из ${catList.length}` });
+                          }}
+                        >
+                          <Check className="h-3.5 w-3.5 mr-1" /> Применить все рекомендации ({catList.length})
+                        </Button>
+                      );
+                    })()}
+                    {(() => {
                       const modList = list.filter((r) => (r.issues.some((i) => i.severity === "error" && i.kind !== "not_published") || r.issues.some((i) => i.kind === "not_published")) && !r.fp.avito_params?.excluded_from_feed);
                       if (modList.length === 0) return null;
                       return (
