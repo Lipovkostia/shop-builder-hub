@@ -38,6 +38,7 @@ import * as XLSX from "xlsx";
 import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
 import { AvitoAiDescriptionWorkspace } from "./AvitoAiDescriptionWorkspace";
+import { AvitoCategoryCombobox } from "./AvitoCategoryCombobox";
 import { AvitoListingVariantsManager } from "./AvitoListingVariantsManager";
 import { Copy as CopyIcon } from "lucide-react";
 
@@ -769,7 +770,8 @@ function AvitoFeedTable({
                   </div>
                   {/* Категория Авито */}
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.category }}>
-                    <InlineCell
+                    <AvitoCategoryCombobox
+                      compact
                       value={params.category || ""}
                       onChange={(val) => handleInlineParamUpdate(fp.product_id, "category", val)}
                       placeholder={localDefaults.category || "Категория"}
@@ -1969,7 +1971,17 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                         <div className="space-y-1">
                           <Label className="text-[10px] text-muted-foreground">Категория Авито</Label>
                           <div className="flex gap-1">
-                            <Input value={localDefaults.category} onChange={(e) => setLocalDefaults(prev => ({ ...prev, category: e.target.value }))} onBlur={() => avitoFeed.saveDefaults(localDefaults)} placeholder="Продукты питания" className="h-7 text-xs flex-1" />
+                            <div className="flex-1 min-w-0">
+                              <AvitoCategoryCombobox
+                                value={localDefaults.category}
+                                onChange={(val) => {
+                                  const next = { ...localDefaults, category: val };
+                                  setLocalDefaults(next);
+                                  avitoFeed.saveDefaults(next);
+                                }}
+                                placeholder="Выберите категорию Авито..."
+                              />
+                            </div>
                             <BulkButtons onApply={async (onlySelected) => {
                               if (!localDefaults.category) { toast({ title: "Введите категорию", variant: "destructive" }); return; }
                               await applyToTargets(async (targets) => {
