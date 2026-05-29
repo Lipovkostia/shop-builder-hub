@@ -2521,11 +2521,13 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             const errorsCount = fullList.filter((r) => r.issues.some((i) => i.severity === "error" && i.kind !== "not_published")).length;
             const unpublishedCount = fullList.filter((r) => r.issues.some((i) => i.kind === "not_published")).length;
             const excludedCount = fullList.filter((r) => r.fp.avito_params?.excluded_from_feed === true).length;
+            const fileCount = fullList.filter((r) => (r.fp.avito_params as any)?.moderation?.source === "xlsx_import").length;
 
             const list = fullList.filter((r) => {
               if (errorsFilter === "errors") return r.issues.some((i) => i.severity === "error" && i.kind !== "not_published");
               if (errorsFilter === "unpublished") return r.issues.some((i) => i.kind === "not_published");
               if (errorsFilter === "excluded") return r.fp.avito_params?.excluded_from_feed === true;
+              if (errorsFilter === "file") return (r.fp.avito_params as any)?.moderation?.source === "xlsx_import";
               return true;
             });
 
@@ -2537,6 +2539,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
               <div className="flex items-center gap-1.5 flex-wrap">
                 {([
                   { key: "all", label: `Все`, count: fullList.length },
+                  { key: "file", label: `Из последнего файла`, count: fileCount },
                   { key: "errors", label: `Ошибки`, count: errorsCount },
                   { key: "unpublished", label: `Не опубликованы`, count: unpublishedCount },
                   { key: "excluded", label: `Отключены от автозалива`, count: excludedCount },
