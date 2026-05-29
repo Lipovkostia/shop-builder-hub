@@ -115,14 +115,22 @@ Deno.serve(async (req) => {
       const title = escapeXml(params.title || product.name || "Товар");
       const description = escapeXml(params.description || product.description || product.name || "");
       const price = params.Price || params.price || product.price || 0;
-      const category = escapeXml(fp.avito_category || params.category || defaultCategory);
+      // Defensive split: if category is a hierarchical path "A---B---C", use level 2 as <Category> and leaf as <GoodsType>
+      let rawCategory = fp.avito_category || params.category || defaultCategory;
+      let derivedGoodsSubType = params.GoodsType || params.goodsSubType || "";
+      if (typeof rawCategory === "string" && rawCategory.includes("---")) {
+        const parts = rawCategory.split("---").map((s: string) => s.trim()).filter(Boolean);
+        rawCategory = parts.length >= 2 ? parts[1] : parts[0];
+        if (!derivedGoodsSubType && parts.length >= 3) derivedGoodsSubType = parts[parts.length - 1];
+      }
+      const category = escapeXml(rawCategory);
       const selectedImages: string[] = Array.isArray(params.avitoImages) && params.avitoImages.length > 0
         ? params.avitoImages
         : (product.images || []);
       const images = selectedImages;
       const address = escapeXml(fp.avito_address || params.address || defaultAddress);
       const adType = escapeXml(params.adType || params.goodsType || defaultAdType);
-      const goodsType = escapeXml(params.GoodsType || params.goodsSubType || defaultGoodsType);
+      const goodsType = escapeXml(derivedGoodsSubType || defaultGoodsType);
       const listingFee = escapeXml(params.listingFee || defaultListingFee);
       const contactMethod = escapeXml(params.contactMethod || defaultContactMethod);
       const contactPhone = escapeXml(params.contactPhone || defaultContactPhone);
@@ -231,11 +239,18 @@ Deno.serve(async (req) => {
       const title = escapeXml(v.title || product.name || "Товар");
       const description = escapeXml(v.description || product.description || product.name || "");
       const price = v.price ?? params.Price ?? params.price ?? product.price ?? 0;
-      const category = escapeXml(v.avito_category || params.category || defaultCategory);
+      let rawCategoryV = v.avito_category || params.category || defaultCategory;
+      let derivedGoodsSubTypeV = params.GoodsType || params.goodsSubType || "";
+      if (typeof rawCategoryV === "string" && rawCategoryV.includes("---")) {
+        const parts = rawCategoryV.split("---").map((s: string) => s.trim()).filter(Boolean);
+        rawCategoryV = parts.length >= 2 ? parts[1] : parts[0];
+        if (!derivedGoodsSubTypeV && parts.length >= 3) derivedGoodsSubTypeV = parts[parts.length - 1];
+      }
+      const category = escapeXml(rawCategoryV);
       const images = (v.images && v.images.length ? v.images : product.images) || [];
       const address = escapeXml(v.avito_address || params.address || defaultAddress);
       const adType = escapeXml(params.adType || params.goodsType || defaultAdType);
-      const goodsType = escapeXml(params.GoodsType || params.goodsSubType || defaultGoodsType);
+      const goodsType = escapeXml(derivedGoodsSubTypeV || defaultGoodsType);
       const listingFee = escapeXml(params.listingFee || defaultListingFee);
       const contactMethod = escapeXml(params.contactMethod || defaultContactMethod);
       const contactPhone = escapeXml(params.contactPhone || defaultContactPhone);
