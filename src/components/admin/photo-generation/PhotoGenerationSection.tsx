@@ -249,24 +249,56 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
     toast.success("Применено ко всем фото");
   };
 
+  // Собираем упорядоченный список изображений: #1 = товар, #2 = референс, #3+ = доп.
+  const composeImages = (r: PhotoRow): string[] => {
+    const list: string[] = [];
+    if (r.source_url) list.push(r.source_url);
+    if (r.reference_image_url) list.push(r.reference_image_url);
+    for (const u of r.extra_images) if (u) list.push(u);
+    return list;
+  };
+
   const buildTask = (r: PhotoRow) => ({
     id: r.id,
     product_id: r.product_id,
     source_image_url: r.source_url,
     reference_image_url: r.reference_image_url,
+    image_urls: composeImages(r),
     prompt: r.prompt,
   });
 
   const generateAll = async () => {
-    const tasks = rows.filter((r) => r.prompt.trim() || r.reference_image_url);
+    const tasks = rows.filter((r) => r.prompt.trim() || r.reference_image_url || r.extra_images.length > 0);
     if (!tasks.length) { toast.info("Заполните промпт или выберите референс хотя бы для одной строки"); return; }
-    await generateBatch(tasks.map(buildTask), { aspect_ratio: aspect, model: modelId });
+    // Запускаем все одновременно (параллельно), не блокируя интерфейс
+    generateBatch(tasks.map(buildTask), { aspect_ratio: aspect, model: modelId });
   };
 
-  const generateRow = async (row: PhotoRow) => {
-    if (!row.prompt.trim() && !row.reference_image_url) { toast.info("Нужен промпт или референс"); return; }
-    await generateBatch([buildTask(row)], { aspect_ratio: aspect, model: modelId });
+  const generateRow = (row: PhotoRow) => {
+    if (!row.prompt.trim() && !row.reference_image_url && row.extra_images.length === 0) {
+      toast.info("Нужен промпт или изображение"); return;
+    }
+    // Не ждём — позволяем запускать несколько генераций параллельно
+    generateBatch([buildTask(row)], { aspect_ratio: aspect, model: modelId });
   };
+
+  const addExtraImageFromFile = async (rowId: string, file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result);
+      setRows((prev) => prev.map((r) => r.id === rowId ? { ...r, extra_images: [...r.extra_images, dataUrl] } : r));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const addExtraImageFromRef = (rowId: string, url: string) => {
+    setRows((prev) => prev.map((r) => r.id === rowId ? { ...r, extra_images: [...r.extra_images, url] } : r));
+  };
+
+  const removeExtraImage = (rowId: string, idx: number) => {
+    setRows((prev) => prev.map((r) => r.id === rowId ? { ...r, extra_images: r.extra_images.filter((_, i) => i !== idx) } : r));
+  };
+
 
   type Item = { key: string; productId: string; url: string; productName: string; jobId?: string; taskId?: string };
   const approvable: Item[] = useMemo(() => {
