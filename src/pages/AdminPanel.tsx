@@ -108,7 +108,7 @@ import { useStoreNotificationSettings } from "@/hooks/useStoreNotificationSettin
 import { useMoyskladOrders } from "@/hooks/useMoyskladOrders";
 import { Textarea } from "@/components/ui/textarea";
 import { ImportSourceCard } from "@/components/admin/ImportSourceCard";
-import { downloadExcelTemplate, importProductsFromExcel, ImportProgress, exportProductsToExcel, exportCatalogToExcel, CatalogExportProduct } from "@/lib/excelImport";
+import { downloadExcelTemplate, importProductsFromExcel, ImportProgress, exportProductsToExcel, exportCatalogToExcel, exportCatalogToExcelPretty, CatalogExportProduct } from "@/lib/excelImport";
 import { ExcelImportSection } from "@/components/admin/ExcelImportSection";
 import { CatalogExportDialog } from "@/components/admin/CatalogExportDialog";
 import { CatalogPdfExportDialog } from "@/components/admin/CatalogPdfExportDialog";
@@ -1884,7 +1884,7 @@ export default function AdminPanel({
   };
 
   // Export catalog to Excel with selected columns
-  const handleExportCatalog = async (enabledColumns: string[]) => {
+  const handleExportCatalog = async (enabledColumns: string[], pretty: boolean = false) => {
     if (!currentCatalog || !effectiveStoreId) return;
     
     setIsExportingCatalog(true);
@@ -1946,7 +1946,11 @@ export default function AdminPanel({
           } as CatalogExportProduct;
         });
 
-      exportCatalogToExcel(currentCatalog.name, catalogProducts, enabledColumns);
+      if (pretty) {
+        await exportCatalogToExcelPretty(currentCatalog.name, catalogProducts, enabledColumns);
+      } else {
+        exportCatalogToExcel(currentCatalog.name, catalogProducts, enabledColumns);
+      }
       
       toast({
         title: "Экспорт завершён",

@@ -1492,5 +1492,187 @@ export function exportCatalogToExcel(
   const date = new Date().toISOString().split('T')[0];
   
   XLSX.utils.book_append_sheet(wb, ws, 'Прайс-лист');
+  XLSX.utils.book_append_sheet(wb, ws, 'Прайс-лист');
   XLSX.writeFile(wb, `${safeCatalogName}_${date}.xlsx`);
 }
+
+/**
+ * Pretty export with category grouping, styled headers, borders, number formats.
+ * Uses ExcelJS to support real cell styling (xlsx CE doesn't).
+ */
+export async function exportCatalogToExcelPretty(
+  catalogName: string,
+  products: CatalogExportProduct[],
+  enabledColumns: string[]
+): Promise<void> {
+  const ExcelJS = (await import('exceljs')).default;
+
+  type ColDef = {
+    id: string;
+    header: string;
+    width: number;
+    numFmt?: string;
+    align?: 'left' | 'center' | 'right';
+    getValue: (p: CatalogExportProduct) => string | number | null;
+  };
+
+  const allCols: ColDef[] = [
+    { id: 'sku', header: 'Код', width: 14, align: 'left', getValue: p => p.sku || '' },
+    { id: 'photo', header: 'Фото', width: 50, align: 'left', getValue: p => (p.images || []).join('\n') },
+    { id: 'name', header: 'Название', width: 36, align: 'left', getValue: p => p.name || '' },
+    { id: 'description', header: 'Описание', width: 55, align: 'left', getValue: p => p.description || '' },
+    { id: 'categories', header: 'Категории', width: 28, align: 'left', getValue: p => (p.categories || []).join(', ') },
+    { id: 'unit', header: 'Ед.', width: 8, align: 'center', getValue: p => p.unit || '' },
+    { id: 'volume', header: 'Объём', width: 10, align: 'right', getValue: p => p.unitWeight ?? '' },
+    { id: 'type', header: 'Фасовка', width: 16, align: 'left', getValue: p => p.packagingType || '' },
+    { id: 'buyPrice', header: 'Себестоимость', width: 14, align: 'right', numFmt: '#,##0.00 ₽', getValue: p => p.buyPrice ?? '' },
+    { id: 'markup', header: 'Наценка', width: 11, align: 'right', getValue: p => p.markup || '' },
+    { id: 'price', header: 'Цена', width: 13, align: 'right', numFmt: '#,##0.00 ₽', getValue: p => p.price ?? '' },
+    { id: 'priceFull', header: 'Целая', width: 12, align: 'right', numFmt: '#,##0.00 ₽', getValue: p => p.priceFull ?? '' },
+    { id: 'priceHalf', header: '½', width: 11, align: 'right', numFmt: '#,##0.00 ₽', getValue: p => p.priceHalf ?? '' },
+    { id: 'priceQuarter', header: '¼', width: 11, align: 'right', numFmt: '#,##0.00 ₽', getValue: p => p.priceQuarter ?? '' },
+    { id: 'pricePortion', header: 'Порция', width: 12, align: 'right', numFmt: '#,##0.00 ₽', getValue: p => p.pricePortion ?? '' },
+    { id: 'status', header: 'Статус', width: 16, align: 'center', getValue: p => STATUS_LABELS[p.status] || p.status || '' },
+  ];
+
+  const cols = allCols.filter(c => enabledColumns.includes(c.id));
+  const colCount = cols.length;
+
+  // Group products by first category (or "Без категории")
+  const groups = new Map<string, CatalogExportProduct[]>();
+  for (const p of products) {
+    const key = (p.categories && p.categories[0]) || 'Без категории';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(p);
+  }
+  const sortedGroupNames = Array.from(groups.keys()).sort((a, b) => {
+    if (a === 'Без категории') return 1;
+    if (b === 'Без категории') return -1;
+    return a.localeCompare(b, 'ru');
+  });
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Lovable';
+  wb.created = new Date();
+  const ws = wb.addWorksheet('Прайс-лист', {
+    views: [{ state: 'frozen', ySplit: 3 }],
+    properties: { defaultRowHeight: 22 },
+  });
+
+  ws.columns = cols.map(c => ({ width: c.width }));
+
+  // Title row
+  const titleRow = ws.addRow([catalogName]);
+  ws.mergeCells(titleRow.number, 1, titleRow.number, colCount);
+  const titleCell = titleRow.getCell(1);
+  titleCell.value = catalogName;
+  titleCell.font = { name: 'Calibri', size: 18, bold: true, color: { argb: 'FFFFFFFF' } };
+  titleCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } };
+  titleRow.height = 34;
+
+  // Subtitle row (date + count)
+  const today = new Date().toLocaleDateString('ru-RU');
+  const subRow = ws.addRow([`Дата: ${today}   •   Товаров: ${products.length}   •   Категорий: ${sortedGroupNames.length}`]);
+  ws.mergeCells(subRow.number, 1, subRow.number, colCount);
+  const subCell = subRow.getCell(1);
+  subCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF555555' } };
+  subCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+  subRow.height = 18;
+
+  // Header row
+  const headerRow = ws.addRow(cols.map(c => c.header));
+  headerRow.height = 28;
+  headerRow.eachCell((cell, colNumber) => {
+    cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E75B6' } };
+    cell.alignment = { vertical: 'middle', horizontal: cols[colNumber - 1].align || 'left', wrapText: true };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FFB4C7E7' } },
+      bottom: { style: 'medium', color: { argb: 'FF1F4E79' } },
+      left: { style: 'thin', color: { argb: 'FFB4C7E7' } },
+      right: { style: 'thin', color: { argb: 'FFB4C7E7' } },
+    };
+  });
+
+  // Body
+  let zebra = false;
+  for (const groupName of sortedGroupNames) {
+    const items = groups.get(groupName)!;
+
+    // Category banner row
+    const banner = ws.addRow([`▸ ${groupName}  (${items.length})`]);
+    ws.mergeCells(banner.number, 1, banner.number, colCount);
+    const bc = banner.getCell(1);
+    bc.font = { name: 'Calibri', size: 12, bold: true, color: { argb: 'FF1F4E79' } };
+    bc.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+    bc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDEEBF7' } };
+    banner.height = 22;
+    bc.border = {
+      top: { style: 'thin', color: { argb: 'FFB4C7E7' } },
+      bottom: { style: 'thin', color: { argb: 'FFB4C7E7' } },
+    };
+
+    for (const p of items) {
+      const row = ws.addRow(cols.map(c => c.getValue(p)));
+      row.height = 22;
+      const bg = zebra ? 'FFF7FAFD' : 'FFFFFFFF';
+      zebra = !zebra;
+
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const def = cols[colNumber - 1];
+        cell.font = { name: 'Calibri', size: 10, color: { argb: 'FF222222' } };
+        cell.alignment = {
+          vertical: 'middle',
+          horizontal: def.align || 'left',
+          wrapText: def.id === 'description' || def.id === 'name' || def.id === 'photo',
+        };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+        cell.border = {
+          top: { style: 'hair', color: { argb: 'FFE0E0E0' } },
+          bottom: { style: 'hair', color: { argb: 'FFE0E0E0' } },
+          left: { style: 'hair', color: { argb: 'FFE0E0E0' } },
+          right: { style: 'hair', color: { argb: 'FFE0E0E0' } },
+        };
+        if (def.numFmt && typeof cell.value === 'number') {
+          cell.numFmt = def.numFmt;
+        }
+        // Status badge color
+        if (def.id === 'status') {
+          const v = String(cell.value || '').toLowerCase();
+          let argb = 'FF6B7280';
+          if (v.includes('налич')) argb = 'FF16A34A';
+          else if (v.includes('предзак')) argb = 'FFF59E0B';
+          else if (v.includes('нет') || v.includes('скры')) argb = 'FFDC2626';
+          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb } };
+        }
+        // Price emphasis
+        if (def.id === 'price' && typeof cell.value === 'number') {
+          cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF1F4E79' } };
+        }
+      });
+    }
+  }
+
+  // Autofilter on header row
+  ws.autoFilter = {
+    from: { row: 3, column: 1 },
+    to: { row: 3, column: colCount },
+  };
+
+  const safeCatalogName = catalogName.replace(/[^a-zA-Zа-яА-Я0-9\s-]/g, '').trim() || 'прайс-лист';
+  const date = new Date().toISOString().split('T')[0];
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${safeCatalogName}_красивый_${date}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
