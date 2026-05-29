@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Sparkles, Loader2, Trash2, Wand2, Check, ImageIcon } from "lucide-react";
+import { Sparkles, Loader2, Trash2, Wand2, Check, ImageIcon, Plus, Upload, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // Cache natural dimensions across renders
 const dimsCache = new Map<string, { w: number; h: number }>();
@@ -56,6 +57,7 @@ interface PhotoRow {
   reference_id: string | null;
   prompt: string;
   reference_image_url: string | null;
+  extra_images: string[]; // дополнительные изображения (#3, #4, ...)
 }
 
 interface SavedJob { id: string; product_id: string; prompt: string; result_image_url: string; created_at: string; }
@@ -189,13 +191,13 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
       if (imgs.length === 0) {
         newRows.push({
           id: `${p.id}::nofoto`, product_id: p.id, product_name: p.name, index: 0,
-          source_url: null, prompt_id: null, reference_id: null, prompt: "", reference_image_url: null,
+          source_url: null, prompt_id: null, reference_id: null, prompt: "", reference_image_url: null, extra_images: [],
         });
       } else {
         imgs.forEach((url, idx) => {
           newRows.push({
             id: `${p.id}::${idx}`, product_id: p.id, product_name: p.name, index: idx,
-            source_url: url, prompt_id: null, reference_id: null, prompt: "", reference_image_url: null,
+            source_url: url, prompt_id: null, reference_id: null, prompt: "", reference_image_url: null, extra_images: [],
           });
         });
       }
@@ -247,24 +249,56 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
     toast.success("Применено ко всем фото");
   };
 
+  // Собираем упорядоченный список изображений: #1 = товар, #2 = референс, #3+ = доп.
+  const composeImages = (r: PhotoRow): string[] => {
+    const list: string[] = [];
+    if (r.source_url) list.push(r.source_url);
+    if (r.reference_image_url) list.push(r.reference_image_url);
+    for (const u of r.extra_images) if (u) list.push(u);
+    return list;
+  };
+
   const buildTask = (r: PhotoRow) => ({
     id: r.id,
     product_id: r.product_id,
     source_image_url: r.source_url,
     reference_image_url: r.reference_image_url,
+    image_urls: composeImages(r),
     prompt: r.prompt,
   });
 
   const generateAll = async () => {
-    const tasks = rows.filter((r) => r.prompt.trim() || r.reference_image_url);
+    const tasks = rows.filter((r) => r.prompt.trim() || r.reference_image_url || r.extra_images.length > 0);
     if (!tasks.length) { toast.info("Заполните промпт или выберите референс хотя бы для одной строки"); return; }
-    await generateBatch(tasks.map(buildTask), { aspect_ratio: aspect, model: modelId });
+    // Запускаем все одновременно (параллельно), не блокируя интерфейс
+    generateBatch(tasks.map(buildTask), { aspect_ratio: aspect, model: modelId });
   };
 
-  const generateRow = async (row: PhotoRow) => {
-    if (!row.prompt.trim() && !row.reference_image_url) { toast.info("Нужен промпт или референс"); return; }
-    await generateBatch([buildTask(row)], { aspect_ratio: aspect, model: modelId });
+  const generateRow = (row: PhotoRow) => {
+    if (!row.prompt.trim() && !row.reference_image_url && row.extra_images.length === 0) {
+      toast.info("Нужен промпт или изображение"); return;
+    }
+    // Не ждём — позволяем запускать несколько генераций параллельно
+    generateBatch([buildTask(row)], { aspect_ratio: aspect, model: modelId });
   };
+
+  const addExtraImageFromFile = async (rowId: string, file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result);
+      setRows((prev) => prev.map((r) => r.id === rowId ? { ...r, extra_images: [...r.extra_images, dataUrl] } : r));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const addExtraImageFromRef = (rowId: string, url: string) => {
+    setRows((prev) => prev.map((r) => r.id === rowId ? { ...r, extra_images: [...r.extra_images, url] } : r));
+  };
+
+  const removeExtraImage = (rowId: string, idx: number) => {
+    setRows((prev) => prev.map((r) => r.id === rowId ? { ...r, extra_images: r.extra_images.filter((_, i) => i !== idx) } : r));
+  };
+
 
   type Item = { key: string; productId: string; url: string; productName: string; jobId?: string; taskId?: string };
   const approvable: Item[] = useMemo(() => {
@@ -447,22 +481,17 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
               <ScrollArea className="h-[600px]">
                 <div className="space-y-3 pr-2">
                   {rows.length === 0 && <div className="text-sm text-muted-foreground">Выберите товары слева</div>}
-                  {rows.map((r) => (
+                  {rows.map((r) => {
+                    const imgs = composeImages(r);
+                    const rowPending = results[r.id]?.status === "pending";
+                    return (
                     <div key={r.id} className="rounded-lg border border-border p-2 space-y-2">
-                      <div className="flex items-center gap-2">
-                        {r.source_url
-                          ? (
-                            <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-                              <img src={r.source_url} alt="" className="h-16 w-16 rounded object-cover" />
-                              <ImageDims url={r.source_url} />
-                            </div>
-                          )
-                          : <div className="h-16 w-16 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">нет фото</div>}
+                      <div className="flex items-start gap-2">
                         <div className="flex-1 min-w-0 space-y-1">
                           <div className="text-sm font-medium truncate">{r.product_name}</div>
                           <div className="flex gap-1">
                             <Select value={r.prompt_id ?? ""} onValueChange={(v) => v && applyPromptToRow(r.id, v)}>
-                              <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Промпт..." /></SelectTrigger>
+                              <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Шаблон промпта..." /></SelectTrigger>
                               <SelectContent>
                                 {prompts.map((p) => (
                                   <SelectItem key={p.id} value={p.id}>{p.is_system ? "★ " : ""}{p.name}</SelectItem>
@@ -470,7 +499,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                               </SelectContent>
                             </Select>
                             <Select value={r.reference_id ?? ""} onValueChange={(v) => v && applyReferenceToRow(r.id, v)}>
-                              <SelectTrigger className="h-7 text-xs w-32"><SelectValue placeholder="Референс" /></SelectTrigger>
+                              <SelectTrigger className="h-7 text-xs w-32"><SelectValue placeholder="Референс →#2" /></SelectTrigger>
                               <SelectContent>
                                 {refs.map((x) => (
                                   <SelectItem key={x.id} value={x.id}>{x.is_system ? "★ " : ""}{x.name}</SelectItem>
@@ -479,29 +508,114 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                             </Select>
                           </div>
                         </div>
-                        {r.reference_image_url && (
-                          <div className="flex flex-col items-center gap-1">
-                            <img src={r.reference_image_url} alt="" className="h-12 w-12 rounded object-cover border-2 border-primary" />
-                            <ImageDims url={r.reference_image_url} />
-                            <button onClick={() => updateRow(r.id, { reference_id: null, reference_image_url: null })}
-                              className="text-[9px] text-destructive">убрать</button>
-                          </div>
-                        )}
                       </div>
-                      <Textarea value={r.prompt} onChange={(e) => updateRow(r.id, { prompt: e.target.value })}
-                        placeholder="Промпт... ({product_name} подставится автоматически)" rows={2} className="text-xs" />
-                      <div className="flex justify-end gap-1">
-                        {onOpenInAvito && (
-                          <Button size="sm" variant="ghost" onClick={() => onOpenInAvito(r.product_id)} title="Открыть фото объявления в разделе Авито">
-                            <ImageIcon className="h-3 w-3" />В Авито
-                          </Button>
+
+                      {/* Полоса изображений с номерами (#1, #2, #3, ...) */}
+                      <div className="flex flex-wrap gap-2 items-start rounded-md bg-muted/30 p-2">
+                        {imgs.length === 0 && (
+                          <div className="text-[11px] text-muted-foreground py-3 px-1">Нет изображений — добавьте товарное фото или референс</div>
                         )}
-                        <Button size="sm" variant="outline" onClick={() => generateRow(r)} disabled={running}>
-                          <Wand2 className="h-3 w-3" />Генерировать
-                        </Button>
+                        {imgs.map((url, i) => {
+                          const sourceIdx = r.source_url ? 0 : -1;
+                          const refIdx = r.reference_image_url ? (r.source_url ? 1 : 0) : -1;
+                          const isSource = i === sourceIdx;
+                          const isReference = i === refIdx;
+                          const extraIdx = i - (r.source_url ? 1 : 0) - (r.reference_image_url ? 1 : 0);
+                          return (
+                            <div key={`${url}-${i}`} className="relative flex flex-col items-center gap-0.5">
+                              <div className="absolute -top-1 -left-1 z-10 bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center shadow">
+                                #{i + 1}
+                              </div>
+                              <img src={url} alt="" className={`h-16 w-16 rounded object-cover border ${isSource ? "border-emerald-500" : isReference ? "border-primary" : "border-amber-500"}`} />
+                              <ImageDims url={url} />
+                              <div className="text-[9px] text-muted-foreground">
+                                {isSource ? "товар" : isReference ? "референс" : "доп."}
+                              </div>
+                              {!isSource && (
+                                <button
+                                  onClick={() => {
+                                    if (isReference) updateRow(r.id, { reference_id: null, reference_image_url: null });
+                                    else removeExtraImage(r.id, extraIdx);
+                                  }}
+                                  className="absolute -top-1 -right-1 z-10 bg-destructive text-destructive-foreground rounded-full h-4 w-4 flex items-center justify-center"
+                                  title="Убрать"
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {/* Кнопка "Добавить изображение" */}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className="h-16 w-16 rounded border-2 border-dashed border-border hover:border-primary flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors">
+                              <Plus className="h-4 w-4" />
+                              <span className="text-[9px]">+ фото</span>
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-72 p-2 space-y-2">
+                            <div className="text-xs font-medium">Добавить изображение #{imgs.length + 1}</div>
+                            <label className="flex items-center gap-2 text-xs p-2 rounded hover:bg-muted cursor-pointer border border-border">
+                              <Upload className="h-3 w-3" /> Загрузить файл с компьютера
+                              <input
+                                type="file" accept="image/*" className="hidden"
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f) addExtraImageFromFile(r.id, f);
+                                  e.target.value = "";
+                                }}
+                              />
+                            </label>
+                            {refs.length > 0 && (
+                              <div className="space-y-1">
+                                <div className="text-[10px] text-muted-foreground">Из референсов:</div>
+                                <div className="grid grid-cols-4 gap-1 max-h-48 overflow-y-auto">
+                                  {refs.map((x) => (
+                                    <button
+                                      key={x.id}
+                                      onClick={() => addExtraImageFromRef(r.id, x.image_url)}
+                                      className="relative group"
+                                      title={x.name}
+                                    >
+                                      <img src={x.image_url} alt={x.name} className="h-14 w-14 object-cover rounded border hover:border-primary" />
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+
+                      <Textarea
+                        value={r.prompt}
+                        onChange={(e) => updateRow(r.id, { prompt: e.target.value })}
+                        placeholder={imgs.length >= 2
+                          ? `Опиши задачу. Обращайся к изображениям по номерам: #1 — товар, #2 — референс${imgs.length > 2 ? `, #3…#${imgs.length} — доп.` : ""}. Пример: «Помести товар с #1 в руки персонажа с #2, фон как на #3»`
+                          : "Промпт... ({product_name} подставится автоматически)"
+                        }
+                        rows={3} className="text-xs"
+                      />
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="text-[10px] text-muted-foreground">
+                          {imgs.length > 0 && `Передаётся ${imgs.length} изображени${imgs.length === 1 ? "е" : imgs.length < 5 ? "я" : "й"} в порядке #1…#${imgs.length}`}
+                        </div>
+                        <div className="flex gap-1">
+                          {onOpenInAvito && (
+                            <Button size="sm" variant="ghost" onClick={() => onOpenInAvito(r.product_id)} title="Открыть фото объявления в разделе Авито">
+                              <ImageIcon className="h-3 w-3" />В Авито
+                            </Button>
+                          )}
+                          <Button size="sm" variant="outline" onClick={() => generateRow(r)} disabled={rowPending}>
+                            {rowPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                            Генерировать
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </ScrollArea>
             </div>
