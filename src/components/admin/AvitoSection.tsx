@@ -2569,8 +2569,18 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                           const shortId = String(fp.product_id || "").slice(0, 8);
                           const modMessages: any[] = Array.isArray(fp.avito_params?.moderation?.messages) ? fp.avito_params.moderation.messages : [];
                           const excluded = fp.avito_params?.excluded_from_feed === true;
+                          const modStatus: string | undefined = fp.avito_params?.moderation?.status;
+                          const notPublished = fp.avito_params?.moderation?.published === false;
+                          const hasHardError = issues.some((i) => i.severity === "error" && i.kind !== "not_published");
+                          const rowTone = excluded
+                            ? "opacity-60 bg-muted/30"
+                            : notPublished && !hasHardError
+                              ? "bg-amber-500/10 border-l-4 border-l-amber-500"
+                              : hasHardError
+                                ? "bg-destructive/5 border-l-4 border-l-destructive"
+                                : "";
                           return (
-                            <TableRow key={fp.product_id} className={`align-top ${excluded ? "opacity-60" : ""}`}>
+                            <TableRow key={fp.product_id} className={`align-top ${rowTone}`}>
                               <TableCell className="px-2 py-2">
                                 {firstImg ? (
                                   <img src={firstImg} alt="" className="w-12 h-12 rounded object-cover" />
@@ -2581,14 +2591,21 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                 )}
                               </TableCell>
                               <TableCell className="px-2 py-2">
-                                <button
-                                  type="button"
-                                  title="ID объявления (клик — скопировать)"
-                                  onClick={() => { navigator.clipboard?.writeText(shortId); toast({ title: "ID скопирован", description: shortId }); }}
-                                  className="font-mono text-[10px] px-1 py-0 rounded bg-destructive/10 text-destructive hover:bg-destructive/20 mb-1"
-                                >
-                                  #{shortId}
-                                </button>
+                                <div className="flex items-center gap-1 flex-wrap mb-1">
+                                  <button
+                                    type="button"
+                                    title="ID объявления (клик — скопировать)"
+                                    onClick={() => { navigator.clipboard?.writeText(shortId); toast({ title: "ID скопирован", description: shortId }); }}
+                                    className={`font-mono text-[10px] px-1 py-0 rounded ${hasHardError ? "bg-destructive/10 text-destructive hover:bg-destructive/20" : notPublished ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-500/25" : "bg-muted text-muted-foreground hover:text-foreground"}`}
+                                  >
+                                    #{shortId}
+                                  </button>
+                                  {notPublished && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 font-medium">
+                                      {modStatus ? `не опубл.: ${modStatus}` : "не опубл."}
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="text-xs font-medium leading-tight line-clamp-2">{product.name}</div>
                                 {product.sku && <div className="text-[10px] text-muted-foreground mt-1">арт. {product.sku}</div>}
                                 {excluded && <div className="text-[10px] text-muted-foreground mt-1">не в автозаливе</div>}
