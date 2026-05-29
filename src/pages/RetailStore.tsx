@@ -82,6 +82,18 @@ export default function RetailStore({ subdomain: propSubdomain }: RetailStorePro
     setCurrentPriceRange(priceRange);
   }, [priceRange]);
 
+  // Telegram Mini App: expand viewport and set theme
+  useEffect(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg && typeof tg.ready === "function") {
+      try {
+        tg.ready();
+        tg.expand?.();
+        tg.setHeaderColor?.("secondary_bg_color");
+      } catch {/* noop */}
+    }
+  }, []);
+
   // Load Google Fonts dynamically based on theme settings
   useEffect(() => {
     if (!store?.retail_theme?.fonts) return;
