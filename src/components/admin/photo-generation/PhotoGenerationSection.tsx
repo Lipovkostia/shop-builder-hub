@@ -521,6 +521,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                           const isSource = i === sourceIdx;
                           const isReference = i === refIdx;
                           const extraIdx = i - (r.source_url ? 1 : 0) - (r.reference_image_url ? 1 : 0);
+                          return (
                             <div key={`${url}-${i}`} className="relative flex flex-col items-center gap-0.5">
                               <div className="absolute -top-1 -left-1 z-10 bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center shadow">
                                 #{i + 1}
