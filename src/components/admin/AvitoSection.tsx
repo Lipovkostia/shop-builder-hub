@@ -770,7 +770,8 @@ function AvitoFeedTable({
                   </div>
                   {/* Категория Авито */}
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.category }}>
-                    <InlineCell
+                    <AvitoCategoryCombobox
+                      compact
                       value={params.category || ""}
                       onChange={(val) => handleInlineParamUpdate(fp.product_id, "category", val)}
                       placeholder={localDefaults.category || "Категория"}
