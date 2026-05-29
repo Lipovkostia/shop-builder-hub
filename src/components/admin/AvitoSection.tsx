@@ -326,6 +326,7 @@ function AvitoFeedTable({
   autoOpenImageEditorForProductId?: string | null;
   onAutoOpenImageEditorHandled?: () => void;
 }) {
+  const { toast } = useToast();
   const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
   const [variantsManagerProductId, setVariantsManagerProductId] = useState<string | null>(null);
 
