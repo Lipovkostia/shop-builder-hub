@@ -1272,13 +1272,34 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       let updated = 0;
       let matched = 0;
       let unpublishedCount = 0;
+      let cleared = 0;
+      let withSuggestion = 0;
       const feed = avitoFeed.feedProducts || [];
+      // Множество product_id, упомянутых в файле — нужно для зачистки старых данных
+      const matchedProductIds = new Set<string>();
       for (const fp of feed) {
         const prefix = String(fp.product_id || "").slice(0, 8).toLowerCase();
         const errs = errorMap.get(prefix);
         const status = statusMap.get(prefix);
-        if ((!errs || errs.length === 0) && !status) continue;
+        const oldMod = (fp.avito_params as any)?.moderation;
+        if ((!errs || errs.length === 0) && !status) {
+          // Если у товара была старая модерация — стираем (его уже нет в свежем файле, значит исправлен)
+          if (oldMod) {
+            const cleaned = { ...(fp.avito_params || {}) };
+            delete (cleaned as any).moderation;
+            try { await avitoFeed.updateProductParams(fp.product_id, cleaned); cleared++; } catch {}
+          }
+          continue;
+        }
         matched++;
+        matchedProductIds.add(fp.product_id);
+        // Берём первую найденную подсказку категории среди всех комментариев
+        let suggestedCategory: string | undefined;
+        for (const m of errs || []) {
+          const s = extractCategorySuggestion(`${m.text} ${m.hint || ""}`);
+          if (s) { suggestedCategory = s; break; }
+        }
+        if (suggestedCategory) withSuggestion++;
         const messages = (errs || []).map((m) => ({
           type: /заблокир|удален|отклон/i.test(m.text) ? "error" : "warning",
           text: m.text,
@@ -1296,6 +1317,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             status: status || undefined,
             published,
             messages,
+            suggested_category: suggestedCategory,
           },
         };
         try {
@@ -1307,9 +1329,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       await avitoFeed.refetch?.();
       const totalAvito = new Set([...errorMap.keys(), ...statusMap.keys()]).size;
       const unmatched = totalAvito - matched;
+      // Автоматически переключаемся на новый фильтр "из файла"
+      setErrorsFilter("file");
       toast({
         title: "Файл Авито обработан",
-        description: `Объявлений в файле: ${totalAvito}. С ошибками: ${errorMap.size}. Не опубликовано: ${unpublishedCount}. Сопоставлено: ${matched}. Не найдено в фиде: ${unmatched}.`,
+        description: `В файле: ${totalAvito}. С ошибками: ${errorMap.size}. Не опубликовано: ${unpublishedCount}. Сопоставлено: ${matched}. Подсказок категории: ${withSuggestion}. Старых отметок очищено: ${cleared}. Не найдено в фиде: ${unmatched}.`,
       });
     } catch (err: any) {
       console.error("Import avito errors xlsx failed", err);
