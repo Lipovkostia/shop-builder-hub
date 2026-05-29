@@ -2184,7 +2184,19 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
         {/* Errors Tab */}
         <TabsContent value="errors" className="space-y-3">
+          {isConnected && (
+            <div className="flex items-center justify-between gap-2 flex-wrap rounded-lg border bg-muted/30 p-3">
+              <div className="text-xs text-muted-foreground">
+                Подтянуть причины блокировок и ошибки модерации из последних отчётов автозагрузки Авито
+              </div>
+              <Button size="sm" variant="default" onClick={handleFetchAutoloadErrors} disabled={fetchingErrors}>
+                {fetchingErrors ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+                Обновить ошибки с Авито
+              </Button>
+            </div>
+          )}
           {(() => {
+
             const list = (avitoFeed?.feedProducts || [])
               .map((fp) => {
                 const product = storeProducts.find((sp) => sp.id === fp.product_id);
