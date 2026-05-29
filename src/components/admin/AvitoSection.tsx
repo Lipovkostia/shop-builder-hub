@@ -325,6 +325,7 @@ function AvitoFeedTable({
   autoOpenImageEditorForProductId?: string | null;
   onAutoOpenImageEditorHandled?: () => void;
 }) {
+  const { toast } = useToast();
   const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
   const [variantsManagerProductId, setVariantsManagerProductId] = useState<string | null>(null);
 
@@ -445,11 +446,12 @@ function AvitoFeedTable({
     if (feedPriceFilter === "zero" && price !== 0) return false;
     if (feedPriceFilter === "nonzero" && price === 0) return false;
     if (feedSearchQuery) {
-      const q = feedSearchQuery.toLowerCase();
+      const q = feedSearchQuery.toLowerCase().replace(/^#/, "");
       const title = (params.title || product.name || "").toLowerCase();
       const desc = (params.description || product.description || "").toLowerCase();
       const sku = (product.sku || "").toLowerCase();
-      if (!title.includes(q) && !desc.includes(q) && !sku.includes(q)) return false;
+      const shortId = String(fp.product_id || "").slice(0, 8).toLowerCase();
+      if (!title.includes(q) && !desc.includes(q) && !sku.includes(q) && !shortId.includes(q)) return false;
     }
     return true;
   });
@@ -633,9 +635,24 @@ function AvitoFeedTable({
               const isGenerating = aiGeneratingIds.has(fp.product_id);
               const isDone = aiDoneIds.has(fp.product_id);
               const isQueued = aiQueuedIds.has(fp.product_id);
+              const shortId = String(fp.product_id || "").slice(0, 8);
+              const modMessages: any[] = Array.isArray(params.moderation?.messages) ? params.moderation.messages : [];
+              const hasModError = modMessages.some((m) => !/warn|warning|info/i.test(String(m?.type || "")));
+              const hasModWarning = modMessages.length > 0 && !hasModError;
+              const excluded = params.excluded_from_feed === true;
+
+              const rowBg = excluded
+                ? "bg-muted/40 opacity-60"
+                : hasModError
+                  ? "bg-destructive/5 border-l-2 border-l-destructive"
+                  : hasModWarning
+                    ? "bg-amber-500/5 border-l-2 border-l-amber-500"
+                    : isDone ? 'bg-green-50 dark:bg-green-950/20'
+                      : isGenerating ? 'bg-yellow-50 dark:bg-yellow-950/20'
+                        : isQueued ? 'bg-muted/20' : '';
 
               return (
-                <div key={fp.id} className={`flex border-b text-xs hover:bg-muted/30 items-start transition-colors ${isDone ? 'bg-green-50 dark:bg-green-950/20' : isGenerating ? 'bg-yellow-50 dark:bg-yellow-950/20' : isQueued ? 'bg-muted/20' : ''}`}>
+                <div key={fp.id} className={`flex border-b text-xs hover:bg-muted/30 items-start transition-colors ${rowBg}`}>
                   <div className="flex-shrink-0 px-2 pt-2.5" style={{ width: colWidths.check }}>
                     <Checkbox
                       checked={selectedFeedProducts.has(fp.product_id)}
@@ -659,6 +676,19 @@ function AvitoFeedTable({
                     )}
                   </div>
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.title }}>
+                    <div className="flex items-center gap-1 px-1.5 pt-0.5">
+                      <button
+                        type="button"
+                        title="ID объявления (клик — скопировать)"
+                        onClick={() => { navigator.clipboard?.writeText(shortId); toast({ title: "ID скопирован", description: shortId }); }}
+                        className={`font-mono text-[10px] px-1 py-0 rounded ${hasModError ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground hover:text-foreground"}`}
+                      >
+                        #{shortId}
+                      </button>
+                      {excluded && <span className="text-[9px] px-1 rounded bg-muted text-muted-foreground">не выгр.</span>}
+                      {hasModError && <span className="text-[9px] px-1 rounded bg-destructive/15 text-destructive">ошибка</span>}
+                      {!hasModError && hasModWarning && <span className="text-[9px] px-1 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400">предупр.</span>}
+                    </div>
                     <InlineCell
                       value={params.title || product.name}
                       onChange={(val) => handleInlineParamUpdate(fp.product_id, "title", val)}
@@ -668,7 +698,21 @@ function AvitoFeedTable({
                     <span className="text-[10px] text-muted-foreground/50 px-1.5">
                       {(params.title || product.name || "").length}/50
                     </span>
+                    {modMessages.length > 0 && (
+                      <div className="px-1.5 pt-1 space-y-0.5">
+                        {modMessages.slice(0, 3).map((m: any, i: number) => (
+                          <div key={i} className="text-[10px] leading-tight">
+                            <div className={hasModError ? "text-destructive font-medium" : "text-amber-700 dark:text-amber-400"}>• {m.text}</div>
+                            {m.hint && <div className="text-muted-foreground italic">{m.hint}</div>}
+                          </div>
+                        ))}
+                        {modMessages.length > 3 && (
+                          <div className="text-[10px] text-muted-foreground">+ ещё {modMessages.length - 3}</div>
+                        )}
+                      </div>
+                    )}
                   </div>
+
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.desc }}>
                     {isGenerating ? (
                       <div className="flex items-center gap-1.5 py-2 text-xs text-muted-foreground">
@@ -851,6 +895,20 @@ function AvitoFeedTable({
                         onClick={() => setVariantsManagerProductId(fp.product_id)}
                       >
                         <CopyIcon className="h-3.5 w-3.5 text-amber-600" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        title={excluded ? "Включить в автозалив" : "Отключить от автозалива"}
+                        onClick={() => {
+                          const newParams = { ...(fp.avito_params || {}), excluded_from_feed: !excluded };
+                          onUpdateProductParams(fp.product_id, newParams);
+                        }}
+                      >
+                        {excluded
+                          ? <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                          : <AlertCircle className={`h-3.5 w-3.5 ${hasModError ? "text-destructive" : "text-muted-foreground"}`} />}
                       </Button>
                       <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeProductFromFeed(fp.product_id)}>
                         <X className="h-3.5 w-3.5" />
@@ -1107,20 +1165,32 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     } finally { setFetchingErrors(false); }
   };
 
+  const detectAvitoField = (text: string): string | undefined => {
+    const t = text.toLowerCase();
+    if (/назван|заголов|title/.test(t)) return "title";
+    if (/описан|description/.test(t)) return "description";
+    if (/цен|price|стоимост/.test(t)) return "price";
+    if (/фото|image|картин|изображ/.test(t)) return "images";
+    if (/адрес|address/.test(t)) return "address";
+    if (/категор/.test(t)) return "category";
+    if (/телефон|phone/.test(t)) return "contactPhone";
+    if (/email|почт/.test(t)) return "email";
+    return undefined;
+  };
+
   const handleImportAvitoErrorsFile = async (file: File) => {
     if (!storeId || !avitoFeed) return;
     setImportingErrors(true);
     try {
       const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array" });
-      // Map: first-8-chars of product UUID -> array of error messages
-      const errorMap = new Map<string, string[]>();
+      const wb = XLSX.read(buf, { type: "array", cellNF: false, cellHTML: false });
+      // Map: first-8-chars of product UUID -> array of {text, hint, field}
+      const errorMap = new Map<string, { text: string; hint?: string; field?: string }[]>();
       for (const sheetName of wb.SheetNames) {
         if (sheetName === "Инструкция" || sheetName.startsWith("Спр-")) continue;
         const ws = wb.Sheets[sheetName];
         const rows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: null });
         if (rows.length < 5) continue;
-        // Row index 1 (second row) holds parameter names per Avito template
         const headers = (rows[1] || []) as any[];
         const errIdx = headers.findIndex((h) => String(h || "").trim() === "Ошибка");
         const idIdx = headers.findIndex((h) => String(h || "").trim() === "Уникальный идентификатор объявления");
@@ -1130,9 +1200,20 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
           const aid = String(row[idIdx] || "").trim().toLowerCase();
           const err = String(row[errIdx] || "").trim();
           if (!aid || !err) continue;
+          // Read cell comment from the "Ошибка" cell
+          const cellAddr = XLSX.utils.encode_cell({ r: i, c: errIdx });
+          const cell = (ws as any)[cellAddr];
+          const commentText: string = (cell?.c && Array.isArray(cell.c))
+            ? cell.c.map((c: any) => String(c?.t || "").trim()).filter(Boolean).join("\n")
+            : "";
           const parts = err.split(/;\s*/).map((s) => s.trim()).filter(Boolean);
           const prev = errorMap.get(aid) || [];
-          errorMap.set(aid, Array.from(new Set([...prev, ...parts])));
+          const next = [...prev];
+          for (const p of parts) {
+            if (next.find((x) => x.text === p)) continue;
+            next.push({ text: p, hint: commentText || undefined, field: detectAvitoField(p + " " + commentText) });
+          }
+          errorMap.set(aid, next);
         }
       }
 
@@ -1141,7 +1222,6 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         return;
       }
 
-      // Match against current feed products by 8-char product_id prefix
       const checkedAt = new Date().toISOString();
       let updated = 0;
       let matched = 0;
@@ -1151,9 +1231,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         const errs = errorMap.get(prefix);
         if (!errs || errs.length === 0) continue;
         matched++;
-        const messages = errs.map((text) => ({
-          type: /заблокир|удален|отклон/i.test(text) ? "error" : "warning",
-          text,
+        const messages = errs.map((m) => ({
+          type: /заблокир|удален|отклон/i.test(m.text) ? "error" : "warning",
+          text: m.text,
+          hint: m.hint,
+          field: m.field,
         }));
         const newParams = {
           ...(fp.avito_params || {}),
@@ -1184,6 +1266,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       if (errorsFileInputRef.current) errorsFileInputRef.current.value = "";
     }
   };
+
 
 
 
@@ -1782,7 +1865,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                       <div className="relative">
                         <Search className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                          placeholder="Название, описание, артикул..."
+                          placeholder="Название, артикул, ID (#abc12345)..."
                           value={feedSearchQuery}
                           onChange={(e) => setFeedSearchQuery(e.target.value)}
                           className="h-7 text-xs pl-7"
@@ -2367,6 +2450,25 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                         <ImagePlus className="h-3.5 w-3.5 mr-1" /> Сгенерировать фото ({noImages.length})
                       </Button>
                     )}
+                    {(() => {
+                      const modList = list.filter((r) => (r.fp.avito_params?.moderation?.messages || []).length > 0 && !r.fp.avito_params?.excluded_from_feed);
+                      if (modList.length === 0) return null;
+                      return (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={async () => {
+                            for (const r of modList) {
+                              await avitoFeed!.updateProductParams(r.product.id, { ...(r.fp.avito_params || {}), excluded_from_feed: true });
+                            }
+                            await avitoFeed!.refetch?.();
+                            toast({ title: `Отключено от автозалива: ${modList.length}` });
+                          }}
+                        >
+                          <AlertCircle className="h-3.5 w-3.5 mr-1" /> Отключить от автозалива ({modList.length})
+                        </Button>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -2390,8 +2492,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                           const canFixTitle = issues.some((i) => i.kind === "title_missing" || i.kind === "title_too_long");
                           const canFixDesc = issues.some((i) => i.kind === "description_missing" || i.kind === "description_too_short");
                           const needPhoto = issues.some((i) => i.kind === "images_missing");
+                          const shortId = String(fp.product_id || "").slice(0, 8);
+                          const modMessages: any[] = Array.isArray(fp.avito_params?.moderation?.messages) ? fp.avito_params.moderation.messages : [];
+                          const excluded = fp.avito_params?.excluded_from_feed === true;
                           return (
-                            <TableRow key={fp.product_id} className="align-top">
+                            <TableRow key={fp.product_id} className={`align-top ${excluded ? "opacity-60" : ""}`}>
                               <TableCell className="px-2 py-2">
                                 {firstImg ? (
                                   <img src={firstImg} alt="" className="w-12 h-12 rounded object-cover" />
@@ -2402,12 +2507,21 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                 )}
                               </TableCell>
                               <TableCell className="px-2 py-2">
+                                <button
+                                  type="button"
+                                  title="ID объявления (клик — скопировать)"
+                                  onClick={() => { navigator.clipboard?.writeText(shortId); toast({ title: "ID скопирован", description: shortId }); }}
+                                  className="font-mono text-[10px] px-1 py-0 rounded bg-destructive/10 text-destructive hover:bg-destructive/20 mb-1"
+                                >
+                                  #{shortId}
+                                </button>
                                 <div className="text-xs font-medium leading-tight line-clamp-2">{product.name}</div>
                                 {product.sku && <div className="text-[10px] text-muted-foreground mt-1">арт. {product.sku}</div>}
+                                {excluded && <div className="text-[10px] text-muted-foreground mt-1">не в автозаливе</div>}
                               </TableCell>
                               <TableCell className="px-2 py-2">
-                                <div className="flex flex-wrap gap-1">
-                                  {issues.map((iss, idx) => (
+                                <div className="flex flex-wrap gap-1 mb-1">
+                                  {issues.filter((i) => i.kind !== "avito_moderation").map((iss, idx) => (
                                     <Badge
                                       key={idx}
                                       variant={iss.severity === "error" ? "destructive" : "secondary"}
@@ -2420,6 +2534,32 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                     </Badge>
                                   ))}
                                 </div>
+                                {modMessages.length > 0 && (
+                                  <div className="rounded border border-destructive/30 bg-destructive/5 p-2 space-y-1.5">
+                                    <div className="text-[10px] uppercase tracking-wide text-destructive font-semibold flex items-center gap-1">
+                                      <AlertCircle className="h-3 w-3" /> Что исправить (по выгрузке Авито)
+                                    </div>
+                                    {modMessages.map((m: any, i: number) => (
+                                      <div key={i} className="text-[11px] leading-snug">
+                                        <div className="font-medium">• {m.text}</div>
+                                        {m.hint && <div className="text-muted-foreground italic whitespace-pre-line">{m.hint}</div>}
+                                        {m.field && <div className="text-[9px] uppercase text-muted-foreground/70 mt-0.5">поле: {m.field}</div>}
+                                      </div>
+                                    ))}
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 text-[10px] mt-1"
+                                      onClick={() => {
+                                        const text = modMessages.map((m: any) => `• ${m.text}${m.hint ? "\n  " + m.hint : ""}`).join("\n");
+                                        navigator.clipboard?.writeText(text);
+                                        toast({ title: "Инструкция скопирована" });
+                                      }}
+                                    >
+                                      <CopyIcon className="h-3 w-3 mr-1" /> Скопировать инструкцию
+                                    </Button>
+                                  </div>
+                                )}
                               </TableCell>
                               <TableCell className="px-2 py-2 text-right">
                                 <div className="flex items-center justify-end gap-1 flex-wrap">
@@ -2441,8 +2581,19 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                       <ImagePlus className="h-3 w-3 mr-1" /> Фото
                                     </Button>
                                   )}
+                                  <Button
+                                    size="sm"
+                                    variant={excluded ? "default" : "outline"}
+                                    className="h-7 text-[11px]"
+                                    onClick={async () => {
+                                      await avitoFeed!.updateProductParams(product.id, { ...(fp.avito_params || {}), excluded_from_feed: !excluded });
+                                      await avitoFeed!.refetch?.();
+                                    }}
+                                  >
+                                    {excluded ? "Вернуть в автозалив" : "Не заливать"}
+                                  </Button>
                                   <Button size="sm" variant="ghost" className="h-7 text-[11px]"
-                                    onClick={() => { setActiveTab("feed"); setFeedSearchQuery(product.name); }}>
+                                    onClick={() => { setActiveTab("feed"); setFeedSearchQuery(shortId); }}>
                                     Открыть
                                   </Button>
                                 </div>
