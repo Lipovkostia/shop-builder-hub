@@ -1107,20 +1107,32 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     } finally { setFetchingErrors(false); }
   };
 
+  const detectAvitoField = (text: string): string | undefined => {
+    const t = text.toLowerCase();
+    if (/назван|заголов|title/.test(t)) return "title";
+    if (/описан|description/.test(t)) return "description";
+    if (/цен|price|стоимост/.test(t)) return "price";
+    if (/фото|image|картин|изображ/.test(t)) return "images";
+    if (/адрес|address/.test(t)) return "address";
+    if (/категор/.test(t)) return "category";
+    if (/телефон|phone/.test(t)) return "contactPhone";
+    if (/email|почт/.test(t)) return "email";
+    return undefined;
+  };
+
   const handleImportAvitoErrorsFile = async (file: File) => {
     if (!storeId || !avitoFeed) return;
     setImportingErrors(true);
     try {
       const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array" });
-      // Map: first-8-chars of product UUID -> array of error messages
-      const errorMap = new Map<string, string[]>();
+      const wb = XLSX.read(buf, { type: "array", cellNF: false, cellHTML: false });
+      // Map: first-8-chars of product UUID -> array of {text, hint, field}
+      const errorMap = new Map<string, { text: string; hint?: string; field?: string }[]>();
       for (const sheetName of wb.SheetNames) {
         if (sheetName === "Инструкция" || sheetName.startsWith("Спр-")) continue;
         const ws = wb.Sheets[sheetName];
         const rows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: null });
         if (rows.length < 5) continue;
-        // Row index 1 (second row) holds parameter names per Avito template
         const headers = (rows[1] || []) as any[];
         const errIdx = headers.findIndex((h) => String(h || "").trim() === "Ошибка");
         const idIdx = headers.findIndex((h) => String(h || "").trim() === "Уникальный идентификатор объявления");
@@ -1130,9 +1142,20 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
           const aid = String(row[idIdx] || "").trim().toLowerCase();
           const err = String(row[errIdx] || "").trim();
           if (!aid || !err) continue;
+          // Read cell comment from the "Ошибка" cell
+          const cellAddr = XLSX.utils.encode_cell({ r: i, c: errIdx });
+          const cell = (ws as any)[cellAddr];
+          const commentText: string = (cell?.c && Array.isArray(cell.c))
+            ? cell.c.map((c: any) => String(c?.t || "").trim()).filter(Boolean).join("\n")
+            : "";
           const parts = err.split(/;\s*/).map((s) => s.trim()).filter(Boolean);
           const prev = errorMap.get(aid) || [];
-          errorMap.set(aid, Array.from(new Set([...prev, ...parts])));
+          const next = [...prev];
+          for (const p of parts) {
+            if (next.find((x) => x.text === p)) continue;
+            next.push({ text: p, hint: commentText || undefined, field: detectAvitoField(p + " " + commentText) });
+          }
+          errorMap.set(aid, next);
         }
       }
 
@@ -1141,7 +1164,6 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         return;
       }
 
-      // Match against current feed products by 8-char product_id prefix
       const checkedAt = new Date().toISOString();
       let updated = 0;
       let matched = 0;
@@ -1151,9 +1173,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         const errs = errorMap.get(prefix);
         if (!errs || errs.length === 0) continue;
         matched++;
-        const messages = errs.map((text) => ({
-          type: /заблокир|удален|отклон/i.test(text) ? "error" : "warning",
-          text,
+        const messages = errs.map((m) => ({
+          type: /заблокир|удален|отклон/i.test(m.text) ? "error" : "warning",
+          text: m.text,
+          hint: m.hint,
+          field: m.field,
         }));
         const newParams = {
           ...(fp.avito_params || {}),
@@ -1184,6 +1208,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       if (errorsFileInputRef.current) errorsFileInputRef.current.value = "";
     }
   };
+
 
 
 
