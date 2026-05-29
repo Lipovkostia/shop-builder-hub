@@ -1082,6 +1082,21 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     } finally { setFetching(false); }
   };
 
+  const handleFetchAutoloadErrors = async () => {
+    if (!storeId) return;
+    setFetchingErrors(true);
+    try {
+      const data = await callAvitoApi({ action: "fetch_autoload_errors", store_id: storeId });
+      await avitoFeed?.refetch?.();
+      toast({
+        title: "Ошибки модерации обновлены",
+        description: `Проверено ${data.inspected ?? 0} объявлений, с ошибками: ${data.with_errors ?? 0}, обновлено: ${data.updated ?? 0}`,
+      });
+    } catch (err: any) {
+      toast({ title: "Ошибка загрузки отчёта", description: err.message, variant: "destructive" });
+    } finally { setFetchingErrors(false); }
+
+
   const handleViewDetail = async (item: AvitoItem) => {
     setDetailDialogItem(item);
     setLoadingDetail(true);
