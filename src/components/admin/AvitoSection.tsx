@@ -1087,6 +1087,14 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     setFetchingErrors(true);
     try {
       const data = await callAvitoApi({ action: "fetch_autoload_errors", store_id: storeId });
+      if (data?.fallback || data?.success === false) {
+        toast({
+          title: "Авито недоступен",
+          description: data?.message || "Не удалось получить отчёт автозагрузки. Проверьте, что автозагрузка настроена в кабинете Авито и приложению выданы права 'autoload'.",
+          variant: "destructive",
+        });
+        return;
+      }
       await avitoFeed?.refetch?.();
       toast({
         title: "Ошибки модерации обновлены",
