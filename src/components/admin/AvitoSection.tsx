@@ -1319,11 +1319,29 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     if (!avitoFeed) return;
     const fp = avitoFeed.feedProducts.find(f => f.product_id === productId);
     const currentParams = fp?.avito_params || {};
-    const newParams = { ...currentParams, [key]: value || undefined };
-    // Clean empty values
+    const newParams: any = { ...currentParams, [key]: value || undefined };
+
+    // Smart split for hierarchical Avito category path "A---B---C"
+    if (key === "category" && value && value.includes("---")) {
+      const parts = value.split("---").map((s: string) => s.trim()).filter(Boolean);
+      // <Category> in XML = level 2 (Avito autoload convention), or level 1 if no level 2
+      newParams.category = parts.length >= 2 ? parts[1] : parts[0];
+      // <GoodsType> in XML = leaf (most specific level)
+      if (parts.length >= 3) {
+        newParams.goodsSubType = parts[parts.length - 1];
+        delete newParams.GoodsType;
+      }
+      // Persist full original path for display / audit
+      newParams.categoryPath = value;
+      toast({
+        title: "Категория сохранена",
+        description: `В выгрузку: Категория = «${newParams.category}»${newParams.goodsSubType ? `, Вид товара = «${newParams.goodsSubType}»` : ""}`,
+      });
+    }
+
     Object.keys(newParams).forEach(k => { if (!newParams[k]) delete newParams[k]; });
     await avitoFeed.updateProductParams(productId, newParams);
-  }, [avitoFeed]);
+  }, [avitoFeed, toast]);
   // === AI DESCRIPTION/TITLE GENERATION ===
   const handleAiGenerate = async (overrides?: { instruction?: string; maxChars?: number }) => {
     if (!avitoFeed) return;
