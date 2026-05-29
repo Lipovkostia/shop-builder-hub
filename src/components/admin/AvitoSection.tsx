@@ -1577,12 +1577,26 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         )}
       </div>
 
-      {/* Tabs */}
+      {/* Validation: detect issues per feed product */}
+      {(() => null)()}
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="feed">Товары для Авито ({avitoFeed?.feedProducts.length || 0})</TabsTrigger>
+          <TabsTrigger value="errors" className="data-[state=active]:text-destructive">
+            <AlertCircle className="h-3.5 w-3.5 mr-1" />
+            Объявления с ошибками{(() => {
+              const c = (avitoFeed?.feedProducts || []).filter((fp) => {
+                const p = storeProducts.find((sp) => sp.id === fp.product_id);
+                if (!p) return false;
+                return computeAvitoIssues(fp, p, localDefaults).length > 0;
+              }).length;
+              return c > 0 ? ` (${c})` : "";
+            })()}
+          </TabsTrigger>
           {isConnected && <TabsTrigger value="active">Активные объявления</TabsTrigger>}
         </TabsList>
+
 
         {/* Feed Products Tab */}
         <TabsContent value="feed">
