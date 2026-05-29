@@ -2451,6 +2451,25 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                         <ImagePlus className="h-3.5 w-3.5 mr-1" /> Сгенерировать фото ({noImages.length})
                       </Button>
                     )}
+                    {(() => {
+                      const modList = list.filter((r) => (r.fp.avito_params?.moderation?.messages || []).length > 0 && !r.fp.avito_params?.excluded_from_feed);
+                      if (modList.length === 0) return null;
+                      return (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={async () => {
+                            for (const r of modList) {
+                              await avitoFeed!.updateProductParams(r.product.id, { ...(r.fp.avito_params || {}), excluded_from_feed: true });
+                            }
+                            await avitoFeed!.refetch?.();
+                            toast({ title: `Отключено от автозалива: ${modList.length}` });
+                          }}
+                        >
+                          <AlertCircle className="h-3.5 w-3.5 mr-1" /> Отключить от автозалива ({modList.length})
+                        </Button>
+                      );
+                    })()}
                   </div>
                 </div>
 
