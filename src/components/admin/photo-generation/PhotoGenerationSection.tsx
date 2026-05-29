@@ -64,6 +64,16 @@ interface SavedJob { id: string; product_id: string; prompt: string; result_imag
 
 const ASPECT_PRESETS = ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2", "21:9"] as const;
 
+interface PhotoSettingsTemplate {
+  id: string;
+  name: string;
+  aspect: string;
+  modelId: string;
+  globalPromptId: string | null;
+  globalReferenceId: string | null;
+  globalPromptText: string;
+}
+
 interface Props { storeId: string; preselectedProductId?: string | null; onOpenInAvito?: (productId: string) => void; }
 
 export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenInAvito }: Props) {
@@ -72,18 +82,80 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [rows, setRows] = useState<PhotoRow[]>([]);
-  const [aspect, setAspect] = useState<string>("1:1");
-  const [globalPromptId, setGlobalPromptId] = useState<string | null>(null);
-  const [globalReferenceId, setGlobalReferenceId] = useState<string | null>(null);
-  const [globalPromptText, setGlobalPromptText] = useState("");
+
+  const settingsKey = useMemo(() => `photo_gen_settings_v1:${storeId}`, [storeId]);
+  const templatesKey = useMemo(() => `photo_gen_templates_v1:${storeId}`, [storeId]);
+
+  const loadedSettings = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try { return JSON.parse(localStorage.getItem(settingsKey) || "null"); } catch { return null; }
+  }, [settingsKey]);
+
+  const [aspect, setAspect] = useState<string>(loadedSettings?.aspect ?? "1:1");
+  const [globalPromptId, setGlobalPromptId] = useState<string | null>(loadedSettings?.globalPromptId ?? null);
+  const [globalReferenceId, setGlobalReferenceId] = useState<string | null>(loadedSettings?.globalReferenceId ?? null);
+  const [globalPromptText, setGlobalPromptText] = useState<string>(loadedSettings?.globalPromptText ?? "");
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const [localJobs, setLocalJobs] = useState<SavedJob[]>([]);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
-  const [modelId, setModelId] = useState<string>(KIE_MODELS[0].id);
+
+  const [modelId, setModelId] = useState<string>(loadedSettings?.modelId ?? KIE_MODELS[0].id);
   const [usdRub, setUsdRub] = useState<number>(() => {
     const s = typeof window !== "undefined" ? Number(localStorage.getItem("kie_usd_rub")) : NaN;
     return Number.isFinite(s) && s > 0 ? s : DEFAULT_USD_RUB;
   });
+
+  const [templates, setTemplates] = useState<PhotoSettingsTemplate[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem(`photo_gen_templates_v1:${storeId}`) || "[]"); } catch { return []; }
+  });
+
+  // Persist current settings on change
+  useEffect(() => {
+    try {
+      localStorage.setItem(settingsKey, JSON.stringify({
+        aspect, modelId, globalPromptId, globalReferenceId, globalPromptText,
+      }));
+    } catch { /* ignore */ }
+  }, [settingsKey, aspect, modelId, globalPromptId, globalReferenceId, globalPromptText]);
+
+  const persistTemplates = useCallback((next: PhotoSettingsTemplate[]) => {
+    setTemplates(next);
+    try { localStorage.setItem(templatesKey, JSON.stringify(next)); } catch { /* ignore */ }
+  }, [templatesKey]);
+
+  const saveAsTemplate = useCallback(() => {
+    const name = window.prompt("Название шаблона настроек:");
+    if (!name || !name.trim()) return;
+    const tpl: PhotoSettingsTemplate = {
+      id: `tpl_${Date.now()}`,
+      name: name.trim(),
+      aspect, modelId, globalPromptId, globalReferenceId, globalPromptText,
+    };
+    persistTemplates([tpl, ...templates]);
+    toast.success(`Шаблон "${tpl.name}" сохранён`);
+  }, [aspect, modelId, globalPromptId, globalReferenceId, globalPromptText, templates, persistTemplates]);
+
+  const applyTemplate = useCallback((id: string) => {
+    const tpl = templates.find((t) => t.id === id);
+    if (!tpl) return;
+    setAspect(tpl.aspect);
+    setModelId(tpl.modelId);
+    setGlobalPromptId(tpl.globalPromptId);
+    setGlobalReferenceId(tpl.globalReferenceId);
+    setGlobalPromptText(tpl.globalPromptText);
+    toast.success(`Шаблон "${tpl.name}" применён`);
+  }, [templates]);
+
+  const deleteTemplate = useCallback((id: string) => {
+    const tpl = templates.find((t) => t.id === id);
+    if (!tpl) return;
+    if (!window.confirm(`Удалить шаблон "${tpl.name}"?`)) return;
+    persistTemplates(templates.filter((t) => t.id !== id));
+  }, [templates, persistTemplates]);
+
+
+
 
   const selectedModel = useMemo(() => KIE_MODELS.find((m) => m.id === modelId) ?? KIE_MODELS[0], [modelId]);
   const pricePerImageRub = selectedModel.priceUsd * usdRub;
@@ -413,7 +485,45 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                   {formatRub(pricePerImageRub)} × {rows.length} = <span className="text-primary">{formatRub(pricePerImageRub * rows.length)}</span>
                 </div>
               </div>
+              <div className="space-y-1 min-w-[200px]">
+                <Label className="text-xs">Сохранённые шаблоны</Label>
+                <div className="flex items-center gap-1">
+                  <Select value="" onValueChange={(v) => applyTemplate(v)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder={templates.length ? "— применить —" : "— нет шаблонов —"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name} · {t.aspect}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" variant="outline" onClick={saveAsTemplate} title="Сохранить текущие настройки как шаблон">
+                    Сохранить
+                  </Button>
+                  {templates.length > 0 && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button size="sm" variant="ghost" title="Удалить шаблон"><Trash2 className="h-4 w-4" /></Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-2 space-y-1">
+                        {templates.map((t) => (
+                          <button key={t.id} type="button"
+                            className="w-full flex items-center justify-between gap-2 px-2 py-1 text-sm rounded hover:bg-muted"
+                            onClick={() => deleteTemplate(t.id)}>
+                            <span className="truncate">{t.name}</span>
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </button>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+              </div>
             </div>
+
 
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1 min-w-[200px]">
