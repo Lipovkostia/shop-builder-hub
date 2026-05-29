@@ -918,6 +918,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [fetchingErrors, setFetchingErrors] = useState(false);
+
   const [disconnecting, setDisconnecting] = useState(false);
 
   const [clientId, setClientId] = useState("");
