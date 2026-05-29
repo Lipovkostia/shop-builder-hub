@@ -214,16 +214,33 @@ Deno.serve(async (req) => {
       if (accErr || !account) throw new Error("Avito аккаунт не найден. Сначала подключите Авито.");
       const token = await getAvitoToken(account.client_id, account.client_secret);
 
-      // 1) Get latest reports (up to 3 to be safe; merge errors across them)
-      const reportsRes = await fetch(`${AVITO_API_BASE}/autoload/v1/reports?per_page=3&page=1`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!reportsRes.ok) {
-        const text = await reportsRes.text();
-        throw new Error(`Avito reports failed [${reportsRes.status}]: ${text}`);
+      // 1) Get latest reports — try v2 then v1 endpoints (Avito changed paths)
+      const reportListUrls = [
+        `${AVITO_API_BASE}/autoload/v2/reports?per_page=3&page=1`,
+        `${AVITO_API_BASE}/autoload/v1/reports?per_page=3&page=1`,
+        `${AVITO_API_BASE}/autoload/v2/reports/last_completed_report`,
+      ];
+      let reportsData: any = null;
+      let lastErr = "";
+      for (const u of reportListUrls) {
+        const r = await fetch(u, { headers: { Authorization: `Bearer ${token}` } });
+        if (r.ok) { reportsData = await r.json(); break; }
+        lastErr = `[${r.status}] ${await r.text()}`;
+        console.error(`reports endpoint ${u} failed: ${lastErr}`);
       }
-      const reportsData = await reportsRes.json();
-      const reports: any[] = reportsData.reports || reportsData.resources || [];
+      if (!reportsData) {
+        return new Response(JSON.stringify({
+          success: false,
+          fallback: true,
+          error: "AVITO_REPORTS_UNAVAILABLE",
+          message: `Авито не вернул список отчётов автозагрузки. Возможно, автозагрузка ещё ни разу не запускалась или у приложения нет прав autoload. Последний ответ: ${lastErr}`,
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      let reports: any[] = reportsData.reports || reportsData.resources || [];
+      // last_completed_report returns a single object
+      if (!reports.length && (reportsData.report_id || reportsData.id)) {
+        reports = [reportsData];
+      }
       if (reports.length === 0) {
         return new Response(JSON.stringify({ success: true, updated: 0, total: 0, message: "Отчёты автозагрузки не найдены" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
