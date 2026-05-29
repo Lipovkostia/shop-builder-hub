@@ -1197,6 +1197,24 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     return undefined;
   };
 
+  // Извлекает подсказку категории из текста комментария модератора.
+  // Пример: «Для дома и дачи → Продукты питания → Мясо, птица, субпродукты»
+  const extractCategorySuggestion = (text: string): string | undefined => {
+    if (!text) return undefined;
+    // Ищем содержимое в любых кавычках
+    const candidates: string[] = [];
+    const re = /[«"„]([^»"”]+)[»"”]/g;
+    let m;
+    while ((m = re.exec(text)) !== null) candidates.push(m[1]);
+    for (const c of candidates) {
+      // Должно содержать разделитель иерархии
+      if (/→|->|>|—/.test(c)) {
+        return c.split(/\s*(?:→|->|>|—)\s*/).map((s) => s.trim()).filter(Boolean).join("---");
+      }
+    }
+    return undefined;
+  };
+
   const handleImportAvitoErrorsFile = async (file: File) => {
     if (!storeId || !avitoFeed) return;
     setImportingErrors(true);
