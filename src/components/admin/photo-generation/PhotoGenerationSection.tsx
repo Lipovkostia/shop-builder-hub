@@ -185,19 +185,17 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
   }, [results, rows, localJobs, persistLocalJobs]);
 
   useEffect(() => {
-    const newRows: PhotoRow[] = [];
-    products.filter((p) => selectedIds.has(p.id)).forEach((p) => {
       const imgs = (p.images ?? []).filter(Boolean);
       if (imgs.length === 0) {
         newRows.push({
           id: `${p.id}::nofoto`, product_id: p.id, product_name: p.name, index: 0,
-          source_url: null, prompt_id: null, reference_id: null, prompt: "", reference_image_url: null,
+          source_url: null, prompt_id: null, reference_id: null, prompt: "", reference_image_url: null, extra_images: [],
         });
       } else {
         imgs.forEach((url, idx) => {
           newRows.push({
             id: `${p.id}::${idx}`, product_id: p.id, product_name: p.name, index: idx,
-            source_url: url, prompt_id: null, reference_id: null, prompt: "", reference_image_url: null,
+            source_url: url, prompt_id: null, reference_id: null, prompt: "", reference_image_url: null, extra_images: [],
           });
         });
       }
