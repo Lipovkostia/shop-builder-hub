@@ -114,7 +114,14 @@ export function CatalogExportDialog({
     setColumns(prev => prev.map(col => ({ ...col, enabled: false })));
   };
 
-        <div className="grid grid-cols-2 gap-2 -mt-2">
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Экспорт прайс-листа "{catalogName}"</DialogTitle>
+        </DialogHeader>
+
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => setStyle('plain')}
@@ -149,24 +156,10 @@ export function CatalogExportDialog({
           </button>
         </div>
 
-        <div className="py-4">
+        <div className="py-2">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm text-muted-foreground">
-              Выберите поля для выгрузки ({enabledCount} из {columns.length}):
-            </p>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={selectAll}>
-                Все
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={deselectAll}>
-                Сбросить
-              </Button>
-
-        
-        <div className="py-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm text-muted-foreground">
-              Выберите поля для выгрузки ({enabledCount} из {columns.length}):
+              Поля для выгрузки ({enabledCount} из {columns.length}):
             </p>
             <div className="flex gap-2">
               <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={selectAll}>
@@ -177,22 +170,22 @@ export function CatalogExportDialog({
               </Button>
             </div>
           </div>
-          
-          <ScrollArea className="h-[300px] pr-4">
+
+          <ScrollArea className="h-[260px] pr-4">
             <div className="space-y-2">
               {columns.map(column => (
-                <div 
-                  key={column.id} 
+                <div
+                  key={column.id}
                   className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
                   onClick={() => toggleColumn(column.id)}
                 >
-                  <Checkbox 
+                  <Checkbox
                     id={column.id}
                     checked={column.enabled}
                     onCheckedChange={() => toggleColumn(column.id)}
                   />
-                  <label 
-                    htmlFor={column.id} 
+                  <label
+                    htmlFor={column.id}
                     className="text-sm font-medium leading-none cursor-pointer flex-1"
                   >
                     {column.label}
@@ -207,8 +200,8 @@ export function CatalogExportDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>
-          <Button 
-            onClick={handleExport} 
+          <Button
+            onClick={handleExport}
             disabled={isExporting || enabledCount === 0}
           >
             {isExporting ? (
@@ -218,8 +211,8 @@ export function CatalogExportDialog({
               </>
             ) : (
               <>
-                <Download className="h-4 w-4 mr-2" />
-                Скачать ({productCount} товаров)
+                {style === 'pretty' ? <Sparkles className="h-4 w-4 mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+                {style === 'pretty' ? 'Скачать красивый' : 'Скачать'} ({productCount})
               </>
             )}
           </Button>
@@ -228,3 +221,4 @@ export function CatalogExportDialog({
     </Dialog>
   );
 }
+
