@@ -38,6 +38,7 @@ import * as XLSX from "xlsx";
 import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
 import { AvitoAiDescriptionWorkspace } from "./AvitoAiDescriptionWorkspace";
+import { AvitoCategoryCombobox } from "./AvitoCategoryCombobox";
 import { AvitoListingVariantsManager } from "./AvitoListingVariantsManager";
 import { Copy as CopyIcon } from "lucide-react";
 
