@@ -185,6 +185,8 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
   }, [results, rows, localJobs, persistLocalJobs]);
 
   useEffect(() => {
+    const newRows: PhotoRow[] = [];
+    products.filter((p) => selectedIds.has(p.id)).forEach((p) => {
       const imgs = (p.images ?? []).filter(Boolean);
       if (imgs.length === 0) {
         newRows.push({
