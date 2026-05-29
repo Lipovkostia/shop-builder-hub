@@ -22,9 +22,11 @@ import {
 } from "@/components/ui/select";
 import {
   ExternalLink, Loader2, Link2, Unlink, RefreshCw, Check, Package, Search, Filter,
+
   MapPin, Calendar, Eye, Image as ImageIcon, X, Download, Settings, Save, Sparkles, Wand2,
-  Plus, Trash2, BookOpen, Clock, ImagePlus,
+  Plus, Trash2, BookOpen, Clock, ImagePlus, AlertCircle, AlertTriangle,
 } from "lucide-react";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -159,6 +161,50 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 // Avito Feed Table with resizable columns
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
 const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, promoAuto: 140, cpcBid: 80, address: 120, avitoId: 110, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
+
+// === Avito validation: detect missing/invalid fields per feed product ===
+export type AvitoIssueKind =
+  | "title_missing" | "title_too_long"
+  | "description_missing" | "description_too_short"
+  | "price_missing"
+  | "images_missing"
+  | "category_missing" | "goodsType_missing" | "goodsSubType_missing"
+  | "address_missing" | "targetAudience_missing"
+  | "contactPhone_missing" | "managerName_missing";
+
+export interface AvitoIssue { kind: AvitoIssueKind; label: string; severity: "error" | "warning"; aiFixable: boolean; }
+
+export function computeAvitoIssues(fp: AvitoFeedProduct, product: Product, d: AvitoDefaults): AvitoIssue[] {
+  const p = fp.avito_params || {};
+  const issues: AvitoIssue[] = [];
+  const title = (p.title || product.name || "").trim();
+  const description = (p.description || product.description || "").trim();
+  const price = Number(p.price ?? product.pricePerUnit ?? 0);
+  const imgs = (p.avitoImages && p.avitoImages.length > 0)
+    ? p.avitoImages
+    : (product.images || []).filter((u: string) => u && !u.startsWith("data:"));
+
+  if (!title) issues.push({ kind: "title_missing", label: "Нет названия", severity: "error", aiFixable: true });
+  else if (title.length > 50) issues.push({ kind: "title_too_long", label: `Название > 50 символов (${title.length})`, severity: "error", aiFixable: true });
+
+  if (!description) issues.push({ kind: "description_missing", label: "Нет описания", severity: "error", aiFixable: true });
+  else if (description.length < 30) issues.push({ kind: "description_too_short", label: `Слишком короткое описание (${description.length})`, severity: "warning", aiFixable: true });
+
+  if (!price || price <= 0) issues.push({ kind: "price_missing", label: "Цена не указана", severity: "error", aiFixable: false });
+  if (imgs.length === 0) issues.push({ kind: "images_missing", label: "Нет фото", severity: "error", aiFixable: false });
+
+  if (!(p.category || d.category)) issues.push({ kind: "category_missing", label: "Нет категории Авито", severity: "error", aiFixable: false });
+  if (!(p.goodsType || d.goodsType)) issues.push({ kind: "goodsType_missing", label: "Не указан вид объявления", severity: "error", aiFixable: false });
+  if (!(p.goodsSubType || d.goodsSubType)) issues.push({ kind: "goodsSubType_missing", label: "Не указан вид товара", severity: "error", aiFixable: false });
+  if (!(p.address || d.address)) issues.push({ kind: "address_missing", label: "Не указан адрес", severity: "error", aiFixable: false });
+  if (!(p.targetAudience || d.targetAudience)) issues.push({ kind: "targetAudience_missing", label: "Не указана аудитория", severity: "warning", aiFixable: false });
+  if (!(p.contactPhone || d.contactPhone)) issues.push({ kind: "contactPhone_missing", label: "Нет телефона", severity: "error", aiFixable: false });
+  if (!(p.managerName || d.managerName)) issues.push({ kind: "managerName_missing", label: "Нет контактного лица", severity: "warning", aiFixable: false });
+
+  return issues;
+}
+
+
 
 // Column filter dropdown component - uses fixed positioning to escape overflow containers
 function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
@@ -1575,12 +1621,26 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         )}
       </div>
 
-      {/* Tabs */}
+      {/* Validation: detect issues per feed product */}
+      {(() => null)()}
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="feed">Товары для Авито ({avitoFeed?.feedProducts.length || 0})</TabsTrigger>
+          <TabsTrigger value="errors" className="data-[state=active]:text-destructive">
+            <AlertCircle className="h-3.5 w-3.5 mr-1" />
+            Объявления с ошибками{(() => {
+              const c = (avitoFeed?.feedProducts || []).filter((fp) => {
+                const p = storeProducts.find((sp) => sp.id === fp.product_id);
+                if (!p) return false;
+                return computeAvitoIssues(fp, p, localDefaults).length > 0;
+              }).length;
+              return c > 0 ? ` (${c})` : "";
+            })()}
+          </TabsTrigger>
           {isConnected && <TabsTrigger value="active">Активные объявления</TabsTrigger>}
         </TabsList>
+
 
         {/* Feed Products Tab */}
         <TabsContent value="feed">
@@ -2085,6 +2145,152 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             </div>
           </div>
         </TabsContent>
+
+        {/* Errors Tab */}
+        <TabsContent value="errors" className="space-y-3">
+          {(() => {
+            const list = (avitoFeed?.feedProducts || [])
+              .map((fp) => {
+                const product = storeProducts.find((sp) => sp.id === fp.product_id);
+                if (!product) return null;
+                const issues = computeAvitoIssues(fp, product, localDefaults);
+                if (!issues.length) return null;
+                return { fp, product, issues };
+              })
+              .filter(Boolean) as { fp: AvitoFeedProduct; product: Product; issues: AvitoIssue[] }[];
+
+            const titleFixable = list.filter((r) => r.issues.some((i) => i.kind === "title_missing" || i.kind === "title_too_long"));
+            const descFixable = list.filter((r) => r.issues.some((i) => i.kind === "description_missing" || i.kind === "description_too_short"));
+            const noImages = list.filter((r) => r.issues.some((i) => i.kind === "images_missing"));
+
+            if (list.length === 0) {
+              return (
+                <Card className="p-8 text-center">
+                  <Check className="h-8 w-8 mx-auto mb-2 text-emerald-600" />
+                  <p className="text-sm font-medium">Все объявления заполнены корректно</p>
+                  <p className="text-xs text-muted-foreground mt-1">Здесь появятся объявления с проблемами: пустые поля, нет фото, длинное название и т.д.</p>
+                </Card>
+              );
+            }
+
+            return (
+              <>
+                <div className="flex items-center justify-between gap-2 flex-wrap rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                    <span className="text-sm font-medium">{list.length} объявлен{list.length === 1 ? "ие" : list.length < 5 ? "ия" : "ий"} с проблемами</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {titleFixable.length > 0 && (
+                      <Button size="sm" variant="outline" onClick={() => openAiForProducts(titleFixable.map((r) => r.product.id), "title")}>
+                        <Wand2 className="h-3.5 w-3.5 mr-1" /> AI исправить названия ({titleFixable.length})
+                      </Button>
+                    )}
+                    {descFixable.length > 0 && (
+                      <Button size="sm" variant="outline" onClick={() => openAiForProducts(descFixable.map((r) => r.product.id), "description")}>
+                        <Sparkles className="h-3.5 w-3.5 mr-1" /> AI исправить описания ({descFixable.length})
+                      </Button>
+                    )}
+                    {noImages.length > 0 && onOpenInPhotoStudio && (
+                      <Button size="sm" variant="outline" onClick={() => onOpenInPhotoStudio(noImages[0].product.id)}>
+                        <ImagePlus className="h-3.5 w-3.5 mr-1" /> Сгенерировать фото ({noImages.length})
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border rounded-lg overflow-hidden">
+                  <ScrollArea className="h-[calc(100vh-280px)]">
+                    <Table>
+                      <TableHeader className="sticky top-0 bg-background z-10">
+                        <TableRow className="text-xs">
+                          <TableHead className="w-14 px-2">Фото</TableHead>
+                          <TableHead className="min-w-[220px] px-2">Товар</TableHead>
+                          <TableHead className="px-2">Проблемы</TableHead>
+                          <TableHead className="w-[280px] px-2 text-right">Действия</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {list.map(({ fp, product, issues }) => {
+                          const imgs = (fp.avito_params?.avitoImages && fp.avito_params.avitoImages.length > 0)
+                            ? fp.avito_params.avitoImages
+                            : (product.images || []);
+                          const firstImg = imgs[0];
+                          const canFixTitle = issues.some((i) => i.kind === "title_missing" || i.kind === "title_too_long");
+                          const canFixDesc = issues.some((i) => i.kind === "description_missing" || i.kind === "description_too_short");
+                          const needPhoto = issues.some((i) => i.kind === "images_missing");
+                          return (
+                            <TableRow key={fp.product_id} className="align-top">
+                              <TableCell className="px-2 py-2">
+                                {firstImg ? (
+                                  <img src={firstImg} alt="" className="w-12 h-12 rounded object-cover" />
+                                ) : (
+                                  <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
+                                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="px-2 py-2">
+                                <div className="text-xs font-medium leading-tight line-clamp-2">{product.name}</div>
+                                {product.sku && <div className="text-[10px] text-muted-foreground mt-1">арт. {product.sku}</div>}
+                              </TableCell>
+                              <TableCell className="px-2 py-2">
+                                <div className="flex flex-wrap gap-1">
+                                  {issues.map((iss, idx) => (
+                                    <Badge
+                                      key={idx}
+                                      variant={iss.severity === "error" ? "destructive" : "secondary"}
+                                      className="text-[10px] font-normal"
+                                    >
+                                      {iss.severity === "error"
+                                        ? <AlertCircle className="h-2.5 w-2.5 mr-1" />
+                                        : <AlertTriangle className="h-2.5 w-2.5 mr-1" />}
+                                      {iss.label}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </TableCell>
+                              <TableCell className="px-2 py-2 text-right">
+                                <div className="flex items-center justify-end gap-1 flex-wrap">
+                                  {canFixTitle && (
+                                    <Button size="sm" variant="outline" className="h-7 text-[11px]"
+                                      onClick={() => openAiForProducts([product.id], "title")}>
+                                      <Wand2 className="h-3 w-3 mr-1" /> AI название
+                                    </Button>
+                                  )}
+                                  {canFixDesc && (
+                                    <Button size="sm" variant="outline" className="h-7 text-[11px]"
+                                      onClick={() => openAiForProducts([product.id], "description")}>
+                                      <Sparkles className="h-3 w-3 mr-1" /> AI описание
+                                    </Button>
+                                  )}
+                                  {needPhoto && onOpenInPhotoStudio && (
+                                    <Button size="sm" variant="outline" className="h-7 text-[11px]"
+                                      onClick={() => onOpenInPhotoStudio(product.id)}>
+                                      <ImagePlus className="h-3 w-3 mr-1" /> Фото
+                                    </Button>
+                                  )}
+                                  <Button size="sm" variant="ghost" className="h-7 text-[11px]"
+                                    onClick={() => { setActiveTab("feed"); setFeedSearchQuery(product.name); }}>
+                                    Открыть
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Кнопки AI открывают окно генерации — там вы задаёте инструкцию и нажимаете «Сгенерировать». Результат сохраняется автоматически и подставляется в объявление.
+                </p>
+              </>
+            );
+          })()}
+        </TabsContent>
+
 
         {/* Active Items Tab */}
         {isConnected && (
