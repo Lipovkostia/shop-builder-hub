@@ -79,12 +79,15 @@ Deno.serve(async (req) => {
 
     // Build XML
     let ads = '';
+    let skippedExcluded = 0;
     for (const fp of feedProducts) {
       const product = (fp as any).products;
       if (!product || product.deleted_at) continue;
 
-      const id = product.id.substring(0, 8);
       const params = (fp.avito_params && typeof fp.avito_params === 'object') ? fp.avito_params : {};
+      if (params.excluded_from_feed === true) { skippedExcluded++; continue; }
+
+      const id = product.id.substring(0, 8);
       const title = escapeXml(params.title || product.name || "Товар");
       const description = escapeXml(params.description || product.description || product.name || "");
       const price = params.Price || params.price || product.price || 0;
