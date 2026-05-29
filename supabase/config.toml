@@ -59,3 +59,10 @@ verify_jwt = false
 
 [functions.avito-bot]
 verify_jwt = false
+
+[functions.store-telegram-webhook]
+verify_jwt = false
+
+[functions.store-telegram-setup]
+verify_jwt = false
+
