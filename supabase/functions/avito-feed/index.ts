@@ -15,6 +15,30 @@ function escapeXml(str: string): string {
     .replace(/'/g, "&apos;");
 }
 
+function buildPromoAutoXml(raw: string): string {
+  const items = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).map((line) => {
+    const [region, budget] = line.split('|').map((s) => (s ?? '').trim());
+    const parts: string[] = [];
+    if (region) parts.push(`        <Region>${escapeXml(region)}</Region>`);
+    if (budget) parts.push(`        <Budget>${escapeXml(budget)}</Budget>`);
+    return parts.length ? `      <Item>\n${parts.join('\n')}\n      </Item>` : '';
+  }).filter(Boolean);
+  return items.length ? `    <PromoAutoOptions>\n${items.join('\n')}\n    </PromoAutoOptions>\n` : '';
+}
+
+function buildPromoManualXml(raw: string): string {
+  const items = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).map((line) => {
+    const [region, bid, limit] = line.split('|').map((s) => (s ?? '').trim());
+    const parts: string[] = [];
+    if (region) parts.push(`        <Region>${escapeXml(region)}</Region>`);
+    if (bid)    parts.push(`        <Bid>${escapeXml(bid)}</Bid>`);
+    if (limit)  parts.push(`        <DailyLimit>${escapeXml(limit)}</DailyLimit>`);
+    return parts.length ? `      <Item>\n${parts.join('\n')}\n      </Item>` : '';
+  }).filter(Boolean);
+  return items.length ? `    <PromoManualOptions>\n${items.join('\n')}\n    </PromoManualOptions>\n` : '';
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -149,23 +173,26 @@ Deno.serve(async (req) => {
       if (avitoNumber) {
         ads += `    <AvitoId>${escapeXml(avitoNumber)}</AvitoId>\n`;
       }
-      // Promo settings
+      // Promo settings — per Avito spec, container with nested <Item>
       const promo = params.promo || '';
       if (promo) {
         ads += `    <Promo>${escapeXml(promo)}</Promo>\n`;
         if (promo === 'Manual') {
-          // Use promoManualOptions directly (multi-line: City|Price|Limit per line)
-          const manualOpts = params.promoManualOptions || '';
-          if (manualOpts) {
-            ads += `    <PromoManualOptions>${escapeXml(manualOpts)}</PromoManualOptions>\n`;
-          } else {
-            // Fallback to legacy separate fields
-            const legacyOpts = [params.promoRegion, params.promoPrice, params.promoLimit].filter(Boolean).join('|');
-            if (legacyOpts) ads += `    <PromoManualOptions>${escapeXml(legacyOpts)}</PromoManualOptions>\n`;
+          let raw = String(params.promoManualOptions || '').trim();
+          if (!raw) {
+            const legacy = [params.promoRegion, params.promoPrice, params.promoLimit]
+              .map((v: any) => (v == null ? '' : String(v))).join('|');
+            if (legacy.replace(/\|/g, '').trim()) raw = legacy;
           }
+          ads += buildPromoManualXml(raw);
         } else if (promo.startsWith('Auto')) {
-          const autoOpts = [params.promoRegion, params.promoBudget].filter(Boolean).join(', ');
-          if (autoOpts) ads += `    <PromoAutoOptions>${escapeXml(autoOpts)}</PromoAutoOptions>\n`;
+          let raw = String(params.promoAutoOptions || '').trim();
+          if (!raw) {
+            const legacy = [params.promoRegion, params.promoBudget]
+              .map((v: any) => (v == null ? '' : String(v))).join('|');
+            if (legacy.replace(/\|/g, '').trim()) raw = legacy;
+          }
+          ads += buildPromoAutoXml(raw);
         }
       }
       // CPC bid

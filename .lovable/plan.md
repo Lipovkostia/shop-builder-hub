@@ -1,59 +1,107 @@
-## Что делаем в разделе «Авито» → «Товары для Авито» и «Объявления с ошибками»
+## Проблема
 
-### 1. Видимый ID объявления в каждой строке
+Авито-валидатор отчитывается «Не до конца заполнен параметр PromoAutoOption или PromoManualOption» для всех 550 объявлений. Причина — в `supabase/functions/avito-feed/index.ts` мы пишем плоский текст:
 
-В таблице товаров фида Авито (и в карточках мобильного вида) показываем короткий ID — это первые 8 символов `product.id` (именно этот ID Авито использует в выгрузке ошибок и в нашем XML-фиде).
+```xml
+<PromoAutoOptions>Москва, 20000</PromoAutoOptions>
+<PromoManualOptions>Москва|1000|10000</PromoManualOptions>
+```
 
-- Слева у названия товара добавляем моноширинный «чип» `#a1b2c3d4`.
-- По клику на чип — копирование в буфер с тостом «ID скопирован».
-- В шапке таблицы добавляем поле «Поиск по ID» — мгновенный фильтр по этим 8 символам, чтобы быстро найти проблемное объявление по ID из Авито/Excel.
+По спецификации Авито эти параметры — контейнеры с вложенными `<Item>` (можно несколько регионов подряд):
 
-### 2. Подсветка строк с ошибками модерации
+```xml
+<PromoAutoOptions>
+  <Item>
+    <Region>Москва</Region>
+    <Budget>20000</Budget>
+  </Item>
+</PromoAutoOptions>
 
-Строка товара, у которого в `avito_params.moderation.messages` есть сообщения с `type: "error"` — подсвечивается:
+<PromoManualOptions>
+  <Item>
+    <Region>Москва</Region>
+    <Bid>1000</Bid>
+    <DailyLimit>10000</DailyLimit>
+  </Item>
+</PromoManualOptions>
+```
 
-- фон строки — мягкий красный (`bg-destructive/10`), левая полоса 3px `border-l-destructive`;
-- бейдж «Ошибка модерации» рядом с названием;
-- при `warning` — янтарная подсветка (`bg-amber-500/10`).
+Поля для Manual: `Region`, `Bid` (цена целевого действия), `DailyLimit` (лимит на день). Для Auto: `Region`, `Budget` (период берётся из `Promo`: `Auto_1`/`Auto_7`/`Auto_30`).
 
-Добавляем над таблицей фильтр-переключатели: «Все / Только с ошибками / Только готовые к заливу / Отключённые».
+## Что меняем
 
-### 3. Перенос комментариев из ячейки «Ошибка» Excel-файла
+Только `supabase/functions/avito-feed/index.ts`, блок «Promo settings» (строки ~152–170). Создаём хелпер, который из уже сохранённых в `avito_params` строк собирает корректный XML.
 
-Сейчас мы берём только текст ячейки «Ошибка». Авито в этой колонке часто прикладывает **комментарий к ячейке** с подробной инструкцией, что именно поправить. SheetJS отдаёт его в `worksheet[addr].c` (массив комментариев).
+### Формат входных данных (как уже хранится в админке)
 
-Дорабатываем `handleImportAvitoErrorsFile`:
+- `params.promoManualOptions` — многострочно, по строке на регион: `Регион|Bid|DailyLimit` (любая из трёх частей может отсутствовать; используем `|` как разделитель, второй разделитель `\n` — между регионами).
+- `params.promoAutoOptions` — многострочно, по строке на регион: `Регион|Budget`.
+- Legacy одиночные поля `promoRegion` + `promoBudget` / `promoPrice` + `promoLimit` — fallback, превращаем в один `<Item>`.
 
-- при разборе строки читаем не только `row[errIdx]`, но и комментарий ячейки: `ws[XLSX.utils.encode_cell({r:i, c:errIdx})].c?.map(x=>x.t).join("\n")`;
-- сохраняем в `moderation.messages[i]` дополнительное поле `hint` (комментарий) и `field` (если в тексте удаётся распознать имя поля — Title/Description/Price/Images и т.п.);
-- структура одного сообщения становится: `{ type: "error"|"warning", text, hint, field? }`.
+### Логика сборки
 
-В UI карточки/строки выводим:
+```ts
+function buildPromoAutoXml(raw: string): string {
+  const items = raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean).map(line => {
+    const [region, budget] = line.split('|').map(s => s?.trim() ?? '');
+    const parts: string[] = [];
+    if (region) parts.push(`        <Region>${escapeXml(region)}</Region>`);
+    if (budget) parts.push(`        <Budget>${escapeXml(budget)}</Budget>`);
+    return parts.length ? `      <Item>\n${parts.join('\n')}\n      </Item>` : '';
+  }).filter(Boolean);
+  return items.length ? `    <PromoAutoOptions>\n${items.join('\n')}\n    </PromoAutoOptions>\n` : '';
+}
 
-- красную плашку «Что исправить» со списком сообщений: `text` жирным + `hint` обычным шрифтом ниже;
-- если распознан `field` — рядом с этим полем редактирования (Title, Description, Price, фото) появляется красная подпись с конкретным указанием Авито;
-- кнопка «Скопировать инструкцию» и существующие AI-кнопки (генерация заголовка/описания) остаются — так можно сразу исправить и перезалить.
+function buildPromoManualXml(raw: string): string {
+  const items = raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean).map(line => {
+    const [region, bid, limit] = line.split('|').map(s => s?.trim() ?? '');
+    const parts: string[] = [];
+    if (region) parts.push(`        <Region>${escapeXml(region)}</Region>`);
+    if (bid)    parts.push(`        <Bid>${escapeXml(bid)}</Bid>`);
+    if (limit)  parts.push(`        <DailyLimit>${escapeXml(limit)}</DailyLimit>`);
+    return parts.length ? `      <Item>\n${parts.join('\n')}\n      </Item>` : '';
+  }).filter(Boolean);
+  return items.length ? `    <PromoManualOptions>\n${items.join('\n')}\n    </PromoManualOptions>\n` : '';
+}
+```
 
-### 4. Временное отключение объявления от автозалива
+Текущий блок заменяем на:
 
-Добавляем флаг `excluded_from_feed: true` в `avito_params` (хранится в существующей jsonb-колонке, миграция БД не нужна).
+```ts
+if (promo) {
+  ads += `    <Promo>${escapeXml(promo)}</Promo>\n`;
+  if (promo === 'Manual') {
+    let raw = (params.promoManualOptions || '').trim();
+    if (!raw) {
+      // legacy fallback → одна строка Region|Bid|DailyLimit
+      raw = [params.promoRegion, params.promoPrice, params.promoLimit]
+              .map(v => v ?? '').join('|');
+      if (raw.replace(/\|/g, '').trim() === '') raw = '';
+    }
+    ads += buildPromoManualXml(raw);
+  } else if (promo.startsWith('Auto')) {
+    let raw = (params.promoAutoOptions || '').trim();
+    if (!raw) {
+      raw = [params.promoRegion, params.promoBudget].map(v => v ?? '').join('|');
+      if (raw.replace(/\|/g, '').trim() === '') raw = '';
+    }
+    ads += buildPromoAutoXml(raw);
+  }
+}
+```
 
-Frontend:
+Если после разбора ни одной валидной строки нет — блок `<PromoAutoOptions>`/`<PromoManualOptions>` не выводим вовсе (Авито считает пустой контейнер ошибкой; лучше его не отдавать, тогда у объявления просто не будет продвижения, но ошибка модерации уйдёт).
 
-- в каждой строке — `Switch` «В автозалив» (по умолчанию включён); выключение пишет `excluded_from_feed = true`;
-- массовое действие в тулбаре выделенных строк: «Отключить от автозалива» / «Включить»;
-- кнопка «Отключить все с ошибками» в шапке вкладки «Объявления с ошибками» — одним кликом убирает из автозалива всё, у чего есть `moderation.messages` с `type:"error"`;
-- отключённые строки визуально приглушены (`opacity-60`), бейдж «Не выгружается».
+### Что НЕ трогаем
 
-Backend (`supabase/functions/avito-feed/index.ts`):
+- Логику ввода в админке (`AvitoSection.tsx`) — формат хранения уже подходящий.
+- Excel-импорт ошибок, флаги `excluded_from_feed`, подсветку — без изменений.
+- Прочие поля XML — без изменений.
 
-- при сборке XML пропускаем `fp`, у которого `fp.avito_params?.excluded_from_feed === true`;
-- в логе/ответе считаем количество пропущенных.
+## Файлы
 
-Это даёт полный контроль: в автозагрузку попадают только объявления, где ошибки уже исправлены.
+- `supabase/functions/avito-feed/index.ts` — заменить блок Promo на структурный вывод с `<Item>`.
 
-### Технические детали
+## Проверка
 
-- Файлы: `src/components/admin/AvitoSection.tsx` (UI: ID-чип, подсветка, фильтры, switch, чтение комментариев), `supabase/functions/avito-feed/index.ts` (skip excluded), при необходимости небольшой helper для парсинга `cell.c`.
-- Данные хранятся в существующем `avito_feed_products.avito_params` (jsonb) — миграции БД не требуются.
-- Совместимость с уже импортированными ошибками сохраняется: старые сообщения без `hint` отображаются как раньше.
+После деплоя edge-функции — открыть `/functions/v1/avito-feed?...` для тестового магазина, убедиться что в XML появились вложенные `<Item><Region>…</Region><Budget>…</Budget></Item>` и прогнать через валидатор Авито.
