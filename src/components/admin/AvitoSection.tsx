@@ -1001,6 +1001,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [detailDialogItem, setDetailDialogItem] = useState<AvitoItem | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [activeTab, setActiveTab] = useState("feed");
+  const [errorsFilter, setErrorsFilter] = useState<"all" | "errors" | "unpublished" | "excluded">("all");
   const [selectedFeedProducts, setSelectedFeedProducts] = useState<Set<string>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [feedSearchQuery, setFeedSearchQuery] = useState("");
