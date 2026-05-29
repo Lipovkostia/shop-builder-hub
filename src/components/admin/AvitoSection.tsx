@@ -1866,7 +1866,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                       <div className="relative">
                         <Search className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                          placeholder="Название, описание, артикул..."
+                          placeholder="Название, артикул, ID (#abc12345)..."
                           value={feedSearchQuery}
                           onChange={(e) => setFeedSearchQuery(e.target.value)}
                           className="h-7 text-xs pl-7"
