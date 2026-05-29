@@ -77,9 +77,13 @@ interface PhotoSettingsTemplate {
 interface Props { storeId: string; preselectedProductId?: string | null; onOpenInAvito?: (productId: string) => void; }
 
 export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenInAvito }: Props) {
-  const settingsKey = useMemo(() => `photo_gen_settings_v1:${storeId}`, [storeId]);
-  const templatesKey = useMemo(() => `photo_gen_templates_v1:${storeId}`, [storeId]);
+  const [products, setProducts] = useState<ProductLite[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [search, setSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [rows, setRows] = useState<PhotoRow[]>([]);
 
+  const settingsKey = useMemo(() => `photo_gen_settings_v1:${storeId}`, [storeId]);
   const templatesKey = useMemo(() => `photo_gen_templates_v1:${storeId}`, [storeId]);
 
   const loadedSettings = useMemo(() => {
@@ -94,6 +98,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const [localJobs, setLocalJobs] = useState<SavedJob[]>([]);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+
   const [modelId, setModelId] = useState<string>(loadedSettings?.modelId ?? KIE_MODELS[0].id);
   const [usdRub, setUsdRub] = useState<number>(() => {
     const s = typeof window !== "undefined" ? Number(localStorage.getItem("kie_usd_rub")) : NaN;
