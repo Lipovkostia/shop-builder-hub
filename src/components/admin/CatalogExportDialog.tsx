@@ -12,6 +12,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
+export interface CatalogExportColumn {
   id: string;
   label: string;
   enabled: boolean;
