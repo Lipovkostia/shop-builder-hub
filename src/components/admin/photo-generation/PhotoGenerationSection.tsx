@@ -72,7 +72,14 @@ interface PhotoSettingsTemplate {
   globalPromptId: string | null;
   globalReferenceId: string | null;
   globalPromptText: string;
+}
+
+interface Props { storeId: string; preselectedProductId?: string | null; onOpenInAvito?: (productId: string) => void; }
+
+export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenInAvito }: Props) {
   const settingsKey = useMemo(() => `photo_gen_settings_v1:${storeId}`, [storeId]);
+  const templatesKey = useMemo(() => `photo_gen_templates_v1:${storeId}`, [storeId]);
+
   const templatesKey = useMemo(() => `photo_gen_templates_v1:${storeId}`, [storeId]);
 
   const loadedSettings = useMemo(() => {
