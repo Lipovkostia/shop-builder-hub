@@ -149,23 +149,26 @@ Deno.serve(async (req) => {
       if (avitoNumber) {
         ads += `    <AvitoId>${escapeXml(avitoNumber)}</AvitoId>\n`;
       }
-      // Promo settings
+      // Promo settings — per Avito spec, container with nested <Item>
       const promo = params.promo || '';
       if (promo) {
         ads += `    <Promo>${escapeXml(promo)}</Promo>\n`;
         if (promo === 'Manual') {
-          // Use promoManualOptions directly (multi-line: City|Price|Limit per line)
-          const manualOpts = params.promoManualOptions || '';
-          if (manualOpts) {
-            ads += `    <PromoManualOptions>${escapeXml(manualOpts)}</PromoManualOptions>\n`;
-          } else {
-            // Fallback to legacy separate fields
-            const legacyOpts = [params.promoRegion, params.promoPrice, params.promoLimit].filter(Boolean).join('|');
-            if (legacyOpts) ads += `    <PromoManualOptions>${escapeXml(legacyOpts)}</PromoManualOptions>\n`;
+          let raw = String(params.promoManualOptions || '').trim();
+          if (!raw) {
+            const legacy = [params.promoRegion, params.promoPrice, params.promoLimit]
+              .map((v: any) => (v == null ? '' : String(v))).join('|');
+            if (legacy.replace(/\|/g, '').trim()) raw = legacy;
           }
+          ads += buildPromoManualXml(raw);
         } else if (promo.startsWith('Auto')) {
-          const autoOpts = [params.promoRegion, params.promoBudget].filter(Boolean).join(', ');
-          if (autoOpts) ads += `    <PromoAutoOptions>${escapeXml(autoOpts)}</PromoAutoOptions>\n`;
+          let raw = String(params.promoAutoOptions || '').trim();
+          if (!raw) {
+            const legacy = [params.promoRegion, params.promoBudget]
+              .map((v: any) => (v == null ? '' : String(v))).join('|');
+            if (legacy.replace(/\|/g, '').trim()) raw = legacy;
+          }
+          ads += buildPromoAutoXml(raw);
         }
       }
       // CPC bid
