@@ -57,6 +57,7 @@ interface PhotoRow {
   reference_id: string | null;
   prompt: string;
   reference_image_url: string | null;
+  extra_images: string[]; // дополнительные изображения (#3, #4, ...)
 }
 
 interface SavedJob { id: string; product_id: string; prompt: string; result_image_url: string; created_at: string; }
