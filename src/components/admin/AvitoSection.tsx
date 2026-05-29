@@ -896,6 +896,20 @@ function AvitoFeedTable({
                       >
                         <CopyIcon className="h-3.5 w-3.5 text-amber-600" />
                       </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        title={excluded ? "Включить в автозалив" : "Отключить от автозалива"}
+                        onClick={() => {
+                          const newParams = { ...(fp.avito_params || {}), excluded_from_feed: !excluded };
+                          onUpdateProductParams(fp.product_id, newParams);
+                        }}
+                      >
+                        {excluded
+                          ? <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                          : <AlertCircle className={`h-3.5 w-3.5 ${hasModError ? "text-destructive" : "text-muted-foreground"}`} />}
+                      </Button>
                       <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeProductFromFeed(fp.product_id)}>
                         <X className="h-3.5 w-3.5" />
                       </Button>
