@@ -64,7 +64,18 @@ interface SavedJob { id: string; product_id: string; prompt: string; result_imag
 
 const ASPECT_PRESETS = ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2", "21:9"] as const;
 
+interface PhotoSettingsTemplate {
+  id: string;
+  name: string;
+  aspect: string;
+  modelId: string;
+  globalPromptId: string | null;
+  globalReferenceId: string | null;
+  globalPromptText: string;
+}
+
 interface Props { storeId: string; preselectedProductId?: string | null; onOpenInAvito?: (productId: string) => void; }
+
 
 export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenInAvito }: Props) {
   const [products, setProducts] = useState<ProductLite[]>([]);
