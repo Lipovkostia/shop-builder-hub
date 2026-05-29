@@ -16,6 +16,7 @@ export interface GenerationTask {
   product_id: string;
   source_image_url: string | null;
   reference_image_url?: string | null;
+  image_urls?: string[] | null;
   prompt: string;
 }
 
@@ -26,12 +27,15 @@ export interface GenerationResult {
   status: "pending" | "success" | "error";
 }
 
-const MAX_PARALLEL = 3;
+const MAX_PARALLEL = 6;
 
 export function useImageGeneration() {
   const [results, setResults] = useState<Record<string, GenerationResult>>({});
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const inFlightRef = useRef(0);
+  const totalRef = useRef(0);
+  const doneRef = useRef(0);
 
   const generateOne = useCallback(async (task: GenerationTask, params: GenerationParams): Promise<GenerationResult> => {
     try {
@@ -40,6 +44,7 @@ export function useImageGeneration() {
           product_id: task.product_id,
           source_image_url: task.source_image_url,
           reference_image_url: task.reference_image_url ?? null,
+          image_urls: task.image_urls ?? null,
           prompt: task.prompt,
           aspect_ratio: params.aspect_ratio,
           width: params.width,
@@ -60,8 +65,10 @@ export function useImageGeneration() {
 
   const generateBatch = useCallback(async (tasks: GenerationTask[], params: GenerationParams) => {
     if (!tasks.length) return;
+    inFlightRef.current += 1;
+    totalRef.current += tasks.length;
     setRunning(true);
-    setProgress({ done: 0, total: tasks.length });
+    setProgress({ done: doneRef.current, total: totalRef.current });
     setResults((prev) => {
       const next = { ...prev };
       tasks.forEach((t) => {
@@ -71,23 +78,28 @@ export function useImageGeneration() {
     });
 
     const queue = [...tasks];
-    let done = 0;
     const workers = Array.from({ length: Math.min(MAX_PARALLEL, queue.length) }, async () => {
       while (queue.length) {
         const t = queue.shift();
         if (!t) break;
         const res = await generateOne(t, params);
         setResults((prev) => ({ ...prev, [t.id]: res }));
-        done += 1;
-        setProgress({ done, total: tasks.length });
+        doneRef.current += 1;
+        setProgress({ done: doneRef.current, total: totalRef.current });
         if (res.status === "error") {
           toast.error(`Ошибка: ${res.error?.slice(0, 120)}`);
         }
       }
     });
     await Promise.all(workers);
-    setRunning(false);
-    toast.success(`Готово: ${tasks.length} изображений`);
+    inFlightRef.current -= 1;
+    if (inFlightRef.current === 0) {
+      setRunning(false);
+      toast.success(`Готово: ${totalRef.current} изображений`);
+      totalRef.current = 0;
+      doneRef.current = 0;
+      setProgress({ done: 0, total: 0 });
+    }
   }, [generateOne]);
 
   const clearResult = useCallback((taskId: string) => {
@@ -102,3 +114,4 @@ export function useImageGeneration() {
 
   return { results, running, progress, generateBatch, generateOne, clearResult, clearAll };
 }
+
