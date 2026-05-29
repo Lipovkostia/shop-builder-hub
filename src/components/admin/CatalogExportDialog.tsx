@@ -43,10 +43,12 @@ interface CatalogExportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   catalogName: string;
-  onExport: (enabledColumns: string[]) => void;
+  onExport: (enabledColumns: string[], pretty: boolean) => void;
   isExporting: boolean;
   productCount: number;
 }
+
+const STYLE_STORAGE_KEY = 'catalog_export_style';
 
 export function CatalogExportDialog({
   open,
@@ -72,6 +74,15 @@ export function CatalogExportDialog({
     return CATALOG_EXPORT_COLUMNS;
   });
 
+  const [style, setStyle] = useState<'plain' | 'pretty'>(() => {
+    const saved = localStorage.getItem(STYLE_STORAGE_KEY);
+    return saved === 'plain' ? 'plain' : 'pretty';
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STYLE_STORAGE_KEY, style);
+  }, [style]);
+
   // Save to localStorage when columns change
   useEffect(() => {
     const columnsState: Record<string, boolean> = {};
@@ -91,8 +102,9 @@ export function CatalogExportDialog({
 
   const handleExport = () => {
     const enabledColumns = columns.filter(c => c.enabled).map(c => c.id);
-    onExport(enabledColumns);
+    onExport(enabledColumns, style === 'pretty');
   };
+
 
   const selectAll = () => {
     setColumns(prev => prev.map(col => ({ ...col, enabled: true })));
