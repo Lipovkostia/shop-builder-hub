@@ -447,11 +447,12 @@ function AvitoFeedTable({
     if (feedPriceFilter === "zero" && price !== 0) return false;
     if (feedPriceFilter === "nonzero" && price === 0) return false;
     if (feedSearchQuery) {
-      const q = feedSearchQuery.toLowerCase();
+      const q = feedSearchQuery.toLowerCase().replace(/^#/, "");
       const title = (params.title || product.name || "").toLowerCase();
       const desc = (params.description || product.description || "").toLowerCase();
       const sku = (product.sku || "").toLowerCase();
-      if (!title.includes(q) && !desc.includes(q) && !sku.includes(q)) return false;
+      const shortId = String(fp.product_id || "").slice(0, 8).toLowerCase();
+      if (!title.includes(q) && !desc.includes(q) && !sku.includes(q) && !shortId.includes(q)) return false;
     }
     return true;
   });
