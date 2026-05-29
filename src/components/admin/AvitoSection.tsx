@@ -1095,6 +1095,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     } catch (err: any) {
       toast({ title: "Ошибка загрузки отчёта", description: err.message, variant: "destructive" });
     } finally { setFetchingErrors(false); }
+  };
 
 
   const handleViewDetail = async (item: AvitoItem) => {
