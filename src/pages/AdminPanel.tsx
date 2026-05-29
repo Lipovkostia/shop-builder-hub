@@ -1946,7 +1946,11 @@ export default function AdminPanel({
           } as CatalogExportProduct;
         });
 
-      exportCatalogToExcel(currentCatalog.name, catalogProducts, enabledColumns);
+      if (pretty) {
+        await exportCatalogToExcelPretty(currentCatalog.name, catalogProducts, enabledColumns);
+      } else {
+        exportCatalogToExcel(currentCatalog.name, catalogProducts, enabledColumns);
+      }
       
       toast({
         title: "Экспорт завершён",
