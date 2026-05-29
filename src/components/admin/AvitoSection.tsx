@@ -2717,6 +2717,31 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                         {m.field && <div className="text-[9px] uppercase text-muted-foreground/70 mt-0.5">поле: {m.field}</div>}
                                       </div>
                                     ))}
+                                    {(() => {
+                                      const sug: string | undefined = (fp.avito_params as any)?.moderation?.suggested_category;
+                                      if (!sug) return null;
+                                      const parts = sug.split("---");
+                                      return (
+                                        <div className="rounded bg-emerald-500/10 border border-emerald-500/30 p-1.5 mt-1.5">
+                                          <div className="text-[10px] uppercase tracking-wide text-emerald-700 dark:text-emerald-400 font-semibold mb-0.5">
+                                            Рекомендуемая категория
+                                          </div>
+                                          <div className="text-[11px] font-medium leading-tight mb-1">
+                                            {parts.join(" → ")}
+                                          </div>
+                                          <Button
+                                            size="sm"
+                                            className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white"
+                                            onClick={async () => {
+                                              await handleInlineParamUpdate(product.id, "category", sug);
+                                              await avitoFeed!.refetch?.();
+                                            }}
+                                          >
+                                            <Check className="h-3 w-3 mr-1" /> Применить категорию
+                                          </Button>
+                                        </div>
+                                      );
+                                    })()}
                                     <Button
                                       size="sm"
                                       variant="outline"
