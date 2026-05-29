@@ -651,16 +651,20 @@ function AvitoFeedTable({
               const hasModError = modMessages.some((m) => !/warn|warning|info/i.test(String(m?.type || "")));
               const hasModWarning = modMessages.length > 0 && !hasModError;
               const excluded = params.excluded_from_feed === true;
+              const modStatus: string | undefined = params.moderation?.status;
+              const notPublished = params.moderation?.published === false;
 
               const rowBg = excluded
                 ? "bg-muted/40 opacity-60"
                 : hasModError
                   ? "bg-destructive/5 border-l-2 border-l-destructive"
-                  : hasModWarning
-                    ? "bg-amber-500/5 border-l-2 border-l-amber-500"
-                    : isDone ? 'bg-green-50 dark:bg-green-950/20'
-                      : isGenerating ? 'bg-yellow-50 dark:bg-yellow-950/20'
-                        : isQueued ? 'bg-muted/20' : '';
+                  : notPublished
+                    ? "bg-amber-500/10 border-l-2 border-l-amber-500"
+                    : hasModWarning
+                      ? "bg-amber-500/5 border-l-2 border-l-amber-500"
+                      : isDone ? 'bg-green-50 dark:bg-green-950/20'
+                        : isGenerating ? 'bg-yellow-50 dark:bg-yellow-950/20'
+                          : isQueued ? 'bg-muted/20' : '';
 
               return (
                 <div key={fp.id} className={`flex border-b text-xs hover:bg-muted/30 items-start transition-colors ${rowBg}`}>
