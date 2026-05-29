@@ -919,6 +919,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [connecting, setConnecting] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [fetchingErrors, setFetchingErrors] = useState(false);
+  const [importingErrors, setImportingErrors] = useState(false);
+  const errorsFileInputRef = useRef<HTMLInputElement>(null);
 
   const [disconnecting, setDisconnecting] = useState(false);
 
