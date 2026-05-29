@@ -172,7 +172,8 @@ export type AvitoIssueKind =
   | "category_missing" | "goodsType_missing" | "goodsSubType_missing"
   | "address_missing" | "targetAudience_missing"
   | "contactPhone_missing" | "managerName_missing"
-  | "avito_moderation";
+  | "avito_moderation"
+  | "not_published";
 
 export interface AvitoIssue { kind: AvitoIssueKind; label: string; severity: "error" | "warning"; aiFixable: boolean; }
 
@@ -205,16 +206,26 @@ export function computeAvitoIssues(fp: AvitoFeedProduct, product: Product, d: Av
 
   // Moderation errors pulled from Avito autoload reports
   const mod = p.moderation;
-  if (mod && Array.isArray(mod.messages)) {
-    for (const m of mod.messages) {
-      if (!m?.text) continue;
-      const sev: "error" | "warning" = /warn|warning|info/i.test(String(m.type || "")) ? "warning" : "error";
+  if (mod) {
+    if (mod.published === false) {
       issues.push({
-        kind: "avito_moderation",
-        label: `Авито: ${m.text}`,
-        severity: sev,
+        kind: "not_published",
+        label: mod.status ? `Не опубликовано: ${mod.status}` : "Не опубликовано на Авито",
+        severity: "warning",
         aiFixable: false,
       });
+    }
+    if (Array.isArray(mod.messages)) {
+      for (const m of mod.messages) {
+        if (!m?.text) continue;
+        const sev: "error" | "warning" = /warn|warning|info/i.test(String(m.type || "")) ? "warning" : "error";
+        issues.push({
+          kind: "avito_moderation",
+          label: `Авито: ${m.text}`,
+          severity: sev,
+          aiFixable: false,
+        });
+      }
     }
   }
 
@@ -640,16 +651,20 @@ function AvitoFeedTable({
               const hasModError = modMessages.some((m) => !/warn|warning|info/i.test(String(m?.type || "")));
               const hasModWarning = modMessages.length > 0 && !hasModError;
               const excluded = params.excluded_from_feed === true;
+              const modStatus: string | undefined = params.moderation?.status;
+              const notPublished = params.moderation?.published === false;
 
               const rowBg = excluded
                 ? "bg-muted/40 opacity-60"
                 : hasModError
                   ? "bg-destructive/5 border-l-2 border-l-destructive"
-                  : hasModWarning
-                    ? "bg-amber-500/5 border-l-2 border-l-amber-500"
-                    : isDone ? 'bg-green-50 dark:bg-green-950/20'
-                      : isGenerating ? 'bg-yellow-50 dark:bg-yellow-950/20'
-                        : isQueued ? 'bg-muted/20' : '';
+                  : notPublished
+                    ? "bg-amber-500/10 border-l-2 border-l-amber-500"
+                    : hasModWarning
+                      ? "bg-amber-500/5 border-l-2 border-l-amber-500"
+                      : isDone ? 'bg-green-50 dark:bg-green-950/20'
+                        : isGenerating ? 'bg-yellow-50 dark:bg-yellow-950/20'
+                          : isQueued ? 'bg-muted/20' : '';
 
               return (
                 <div key={fp.id} className={`flex border-b text-xs hover:bg-muted/30 items-start transition-colors ${rowBg}`}>
@@ -688,6 +703,7 @@ function AvitoFeedTable({
                       {excluded && <span className="text-[9px] px-1 rounded bg-muted text-muted-foreground">не выгр.</span>}
                       {hasModError && <span className="text-[9px] px-1 rounded bg-destructive/15 text-destructive">ошибка</span>}
                       {!hasModError && hasModWarning && <span className="text-[9px] px-1 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400">предупр.</span>}
+                      {notPublished && <span className="text-[9px] px-1 rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 font-medium" title={modStatus || "Не опубликовано на Авито"}>не опубл.{modStatus ? `: ${modStatus}` : ""}</span>}
                     </div>
                     <InlineCell
                       value={params.title || product.name}
@@ -990,6 +1006,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [detailDialogItem, setDetailDialogItem] = useState<AvitoItem | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [activeTab, setActiveTab] = useState("feed");
+  const [errorsFilter, setErrorsFilter] = useState<"all" | "errors" | "unpublished" | "excluded">("all");
   const [selectedFeedProducts, setSelectedFeedProducts] = useState<Set<string>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [feedSearchQuery, setFeedSearchQuery] = useState("");
@@ -1186,6 +1203,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       const wb = XLSX.read(buf, { type: "array", cellNF: false, cellHTML: false });
       // Map: first-8-chars of product UUID -> array of {text, hint, field}
       const errorMap = new Map<string, { text: string; hint?: string; field?: string }[]>();
+      // Map: first-8-chars of product UUID -> raw status text from Avito report
+      const statusMap = new Map<string, string>();
       for (const sheetName of wb.SheetNames) {
         if (sheetName === "Инструкция" || sheetName.startsWith("Спр-")) continue;
         const ws = wb.Sheets[sheetName];
@@ -1194,12 +1213,19 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         const headers = (rows[1] || []) as any[];
         const errIdx = headers.findIndex((h) => String(h || "").trim() === "Ошибка");
         const idIdx = headers.findIndex((h) => String(h || "").trim() === "Уникальный идентификатор объявления");
-        if (errIdx < 0 || idIdx < 0) continue;
+        const statusIdx = headers.findIndex((h) => /^статус/i.test(String(h || "").trim()));
+        if (idIdx < 0) continue;
         for (let i = 4; i < rows.length; i++) {
           const row = rows[i] || [];
           const aid = String(row[idIdx] || "").trim().toLowerCase();
+          if (!aid) continue;
+          if (statusIdx >= 0) {
+            const st = String(row[statusIdx] || "").trim();
+            if (st) statusMap.set(aid, st);
+          }
+          if (errIdx < 0) continue;
           const err = String(row[errIdx] || "").trim();
-          if (!aid || !err) continue;
+          if (!err) continue;
           // Read cell comment from the "Ошибка" cell
           const cellAddr = XLSX.utils.encode_cell({ r: i, c: errIdx });
           const cell = (ws as any)[cellAddr];
@@ -1217,32 +1243,38 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         }
       }
 
-      if (errorMap.size === 0) {
-        toast({ title: "Ошибки не найдены в файле", description: "Колонка «Ошибка» пуста или формат не распознан.", variant: "destructive" });
+      if (errorMap.size === 0 && statusMap.size === 0) {
+        toast({ title: "Данные не найдены в файле", description: "Не удалось распознать колонки «Ошибка» / «Статус» / «Уникальный идентификатор объявления».", variant: "destructive" });
         return;
       }
 
       const checkedAt = new Date().toISOString();
       let updated = 0;
       let matched = 0;
+      let unpublishedCount = 0;
       const feed = avitoFeed.feedProducts || [];
       for (const fp of feed) {
         const prefix = String(fp.product_id || "").slice(0, 8).toLowerCase();
         const errs = errorMap.get(prefix);
-        if (!errs || errs.length === 0) continue;
+        const status = statusMap.get(prefix);
+        if ((!errs || errs.length === 0) && !status) continue;
         matched++;
-        const messages = errs.map((m) => ({
+        const messages = (errs || []).map((m) => ({
           type: /заблокир|удален|отклон/i.test(m.text) ? "error" : "warning",
           text: m.text,
           hint: m.hint,
           field: m.field,
         }));
+        const published = status ? !/не\s*опубл|снят|откло|заблок|удал/i.test(status) : undefined;
+        if (published === false) unpublishedCount++;
         const newParams = {
           ...(fp.avito_params || {}),
           moderation: {
             source: "xlsx_import",
             checked_at: checkedAt,
             file_name: file.name,
+            status: status || undefined,
+            published,
             messages,
           },
         };
@@ -1253,10 +1285,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       }
 
       await avitoFeed.refetch?.();
-      const unmatched = errorMap.size - matched;
+      const totalAvito = new Set([...errorMap.keys(), ...statusMap.keys()]).size;
+      const unmatched = totalAvito - matched;
       toast({
-        title: "Файл ошибок Авито обработан",
-        description: `Распознано в файле: ${errorMap.size}. Сопоставлено с фидом: ${matched}. Обновлено: ${updated}. Не найдено в фиде: ${unmatched}.`,
+        title: "Файл Авито обработан",
+        description: `Объявлений в файле: ${totalAvito}. С ошибками: ${errorMap.size}. Не опубликовано: ${unpublishedCount}. Сопоставлено: ${matched}. Не найдено в фиде: ${unmatched}.`,
       });
     } catch (err: any) {
       console.error("Import avito errors xlsx failed", err);
@@ -2403,7 +2436,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
           {(() => {
 
-            const list = (avitoFeed?.feedProducts || [])
+            const fullList = (avitoFeed?.feedProducts || [])
               .map((fp) => {
                 const product = storeProducts.find((sp) => sp.id === fp.product_id);
                 if (!product) return null;
@@ -2413,11 +2446,52 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
               })
               .filter(Boolean) as { fp: AvitoFeedProduct; product: Product; issues: AvitoIssue[] }[];
 
+            const errorsCount = fullList.filter((r) => r.issues.some((i) => i.severity === "error" && i.kind !== "not_published")).length;
+            const unpublishedCount = fullList.filter((r) => r.issues.some((i) => i.kind === "not_published")).length;
+            const excludedCount = fullList.filter((r) => r.fp.avito_params?.excluded_from_feed === true).length;
+
+            const list = fullList.filter((r) => {
+              if (errorsFilter === "errors") return r.issues.some((i) => i.severity === "error" && i.kind !== "not_published");
+              if (errorsFilter === "unpublished") return r.issues.some((i) => i.kind === "not_published");
+              if (errorsFilter === "excluded") return r.fp.avito_params?.excluded_from_feed === true;
+              return true;
+            });
+
             const titleFixable = list.filter((r) => r.issues.some((i) => i.kind === "title_missing" || i.kind === "title_too_long"));
             const descFixable = list.filter((r) => r.issues.some((i) => i.kind === "description_missing" || i.kind === "description_too_short"));
             const noImages = list.filter((r) => r.issues.some((i) => i.kind === "images_missing"));
 
-            if (list.length === 0) {
+            const filterChips = (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {([
+                  { key: "all", label: `Все`, count: fullList.length },
+                  { key: "errors", label: `Ошибки`, count: errorsCount },
+                  { key: "unpublished", label: `Не опубликованы`, count: unpublishedCount },
+                  { key: "excluded", label: `Отключены от автозалива`, count: excludedCount },
+                ] as const).map((c) => (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => setErrorsFilter(c.key as any)}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                      errorsFilter === c.key
+                        ? c.key === "unpublished"
+                          ? "bg-amber-500/15 border-amber-500/50 text-amber-700 dark:text-amber-400"
+                          : c.key === "errors"
+                            ? "bg-destructive/15 border-destructive/50 text-destructive"
+                            : c.key === "excluded"
+                              ? "bg-muted border-muted-foreground/30 text-foreground"
+                              : "bg-primary/15 border-primary/50 text-primary"
+                        : "bg-background border-border text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {c.label} <span className="ml-1 font-semibold">{c.count}</span>
+                  </button>
+                ))}
+              </div>
+            );
+
+            if (fullList.length === 0) {
               return (
                 <Card className="p-8 text-center">
                   <Check className="h-8 w-8 mx-auto mb-2 text-emerald-600" />
@@ -2429,10 +2503,14 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
             return (
               <>
+                {filterChips}
                 <div className="flex items-center justify-between gap-2 flex-wrap rounded-lg border border-destructive/30 bg-destructive/5 p-3">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-destructive" />
-                    <span className="text-sm font-medium">{list.length} объявлен{list.length === 1 ? "ие" : list.length < 5 ? "ия" : "ий"} с проблемами</span>
+                    <span className="text-sm font-medium">
+                      Показано {list.length} из {fullList.length}
+                      {errorsFilter === "unpublished" ? " (не опубликованные)" : errorsFilter === "errors" ? " (с ошибками)" : errorsFilter === "excluded" ? " (отключены)" : ""}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     {titleFixable.length > 0 && (
@@ -2451,7 +2529,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                       </Button>
                     )}
                     {(() => {
-                      const modList = list.filter((r) => (r.fp.avito_params?.moderation?.messages || []).length > 0 && !r.fp.avito_params?.excluded_from_feed);
+                      const modList = list.filter((r) => (r.issues.some((i) => i.severity === "error" && i.kind !== "not_published") || r.issues.some((i) => i.kind === "not_published")) && !r.fp.avito_params?.excluded_from_feed);
                       if (modList.length === 0) return null;
                       return (
                         <Button
@@ -2471,6 +2549,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     })()}
                   </div>
                 </div>
+
 
                 <div className="border rounded-lg overflow-hidden">
                   <ScrollArea className="h-[calc(100vh-280px)]">
@@ -2495,8 +2574,18 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                           const shortId = String(fp.product_id || "").slice(0, 8);
                           const modMessages: any[] = Array.isArray(fp.avito_params?.moderation?.messages) ? fp.avito_params.moderation.messages : [];
                           const excluded = fp.avito_params?.excluded_from_feed === true;
+                          const modStatus: string | undefined = fp.avito_params?.moderation?.status;
+                          const notPublished = fp.avito_params?.moderation?.published === false;
+                          const hasHardError = issues.some((i) => i.severity === "error" && i.kind !== "not_published");
+                          const rowTone = excluded
+                            ? "opacity-60 bg-muted/30"
+                            : notPublished && !hasHardError
+                              ? "bg-amber-500/10 border-l-4 border-l-amber-500"
+                              : hasHardError
+                                ? "bg-destructive/5 border-l-4 border-l-destructive"
+                                : "";
                           return (
-                            <TableRow key={fp.product_id} className={`align-top ${excluded ? "opacity-60" : ""}`}>
+                            <TableRow key={fp.product_id} className={`align-top ${rowTone}`}>
                               <TableCell className="px-2 py-2">
                                 {firstImg ? (
                                   <img src={firstImg} alt="" className="w-12 h-12 rounded object-cover" />
@@ -2507,14 +2596,21 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                 )}
                               </TableCell>
                               <TableCell className="px-2 py-2">
-                                <button
-                                  type="button"
-                                  title="ID объявления (клик — скопировать)"
-                                  onClick={() => { navigator.clipboard?.writeText(shortId); toast({ title: "ID скопирован", description: shortId }); }}
-                                  className="font-mono text-[10px] px-1 py-0 rounded bg-destructive/10 text-destructive hover:bg-destructive/20 mb-1"
-                                >
-                                  #{shortId}
-                                </button>
+                                <div className="flex items-center gap-1 flex-wrap mb-1">
+                                  <button
+                                    type="button"
+                                    title="ID объявления (клик — скопировать)"
+                                    onClick={() => { navigator.clipboard?.writeText(shortId); toast({ title: "ID скопирован", description: shortId }); }}
+                                    className={`font-mono text-[10px] px-1 py-0 rounded ${hasHardError ? "bg-destructive/10 text-destructive hover:bg-destructive/20" : notPublished ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-500/25" : "bg-muted text-muted-foreground hover:text-foreground"}`}
+                                  >
+                                    #{shortId}
+                                  </button>
+                                  {notPublished && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 font-medium">
+                                      {modStatus ? `не опубл.: ${modStatus}` : "не опубл."}
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="text-xs font-medium leading-tight line-clamp-2">{product.name}</div>
                                 {product.sku && <div className="text-[10px] text-muted-foreground mt-1">арт. {product.sku}</div>}
                                 {excluded && <div className="text-[10px] text-muted-foreground mt-1">не в автозаливе</div>}
