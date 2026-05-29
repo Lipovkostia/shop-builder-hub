@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Sparkles, Loader2, Trash2, Wand2, Check, ImageIcon } from "lucide-react";
+import { Sparkles, Loader2, Trash2, Wand2, Check, ImageIcon, Plus, Upload, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // Cache natural dimensions across renders
 const dimsCache = new Map<string, { w: number; h: number }>();
