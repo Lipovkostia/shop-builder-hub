@@ -1107,6 +1107,85 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     } finally { setFetchingErrors(false); }
   };
 
+  const handleImportAvitoErrorsFile = async (file: File) => {
+    if (!storeId || !avitoFeed) return;
+    setImportingErrors(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      // Map: first-8-chars of product UUID -> array of error messages
+      const errorMap = new Map<string, string[]>();
+      for (const sheetName of wb.SheetNames) {
+        if (sheetName === "Инструкция" || sheetName.startsWith("Спр-")) continue;
+        const ws = wb.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: null });
+        if (rows.length < 5) continue;
+        // Row index 1 (second row) holds parameter names per Avito template
+        const headers = (rows[1] || []) as any[];
+        const errIdx = headers.findIndex((h) => String(h || "").trim() === "Ошибка");
+        const idIdx = headers.findIndex((h) => String(h || "").trim() === "Уникальный идентификатор объявления");
+        if (errIdx < 0 || idIdx < 0) continue;
+        for (let i = 4; i < rows.length; i++) {
+          const row = rows[i] || [];
+          const aid = String(row[idIdx] || "").trim().toLowerCase();
+          const err = String(row[errIdx] || "").trim();
+          if (!aid || !err) continue;
+          const parts = err.split(/;\s*/).map((s) => s.trim()).filter(Boolean);
+          const prev = errorMap.get(aid) || [];
+          errorMap.set(aid, Array.from(new Set([...prev, ...parts])));
+        }
+      }
+
+      if (errorMap.size === 0) {
+        toast({ title: "Ошибки не найдены в файле", description: "Колонка «Ошибка» пуста или формат не распознан.", variant: "destructive" });
+        return;
+      }
+
+      // Match against current feed products by 8-char product_id prefix
+      const checkedAt = new Date().toISOString();
+      let updated = 0;
+      let matched = 0;
+      const feed = avitoFeed.feedProducts || [];
+      for (const fp of feed) {
+        const prefix = String(fp.product_id || "").slice(0, 8).toLowerCase();
+        const errs = errorMap.get(prefix);
+        if (!errs || errs.length === 0) continue;
+        matched++;
+        const messages = errs.map((text) => ({
+          type: /заблокир|удален|отклон/i.test(text) ? "error" : "warning",
+          text,
+        }));
+        const newParams = {
+          ...(fp.avito_params || {}),
+          moderation: {
+            source: "xlsx_import",
+            checked_at: checkedAt,
+            file_name: file.name,
+            messages,
+          },
+        };
+        try {
+          await avitoFeed.updateProductParams(fp.product_id, newParams);
+          updated++;
+        } catch {}
+      }
+
+      await avitoFeed.refetch?.();
+      const unmatched = errorMap.size - matched;
+      toast({
+        title: "Файл ошибок Авито обработан",
+        description: `Распознано в файле: ${errorMap.size}. Сопоставлено с фидом: ${matched}. Обновлено: ${updated}. Не найдено в фиде: ${unmatched}.`,
+      });
+    } catch (err: any) {
+      console.error("Import avito errors xlsx failed", err);
+      toast({ title: "Не удалось разобрать файл", description: err?.message || String(err), variant: "destructive" });
+    } finally {
+      setImportingErrors(false);
+      if (errorsFileInputRef.current) errorsFileInputRef.current.value = "";
+    }
+  };
+
+
 
   const handleViewDetail = async (item: AvitoItem) => {
     setDetailDialogItem(item);
