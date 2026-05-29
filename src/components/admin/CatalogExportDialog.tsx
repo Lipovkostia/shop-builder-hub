@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, Sparkles, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -10,8 +10,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
-export interface CatalogExportColumn {
   id: string;
   label: string;
   enabled: boolean;
