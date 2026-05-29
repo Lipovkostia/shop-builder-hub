@@ -114,12 +114,54 @@ export function CatalogExportDialog({
     setColumns(prev => prev.map(col => ({ ...col, enabled: false })));
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Экспорт прайс-листа "{catalogName}"</DialogTitle>
-        </DialogHeader>
+        <div className="grid grid-cols-2 gap-2 -mt-2">
+          <button
+            type="button"
+            onClick={() => setStyle('plain')}
+            className={cn(
+              "flex flex-col items-start gap-1 rounded-lg border-2 p-3 text-left transition-all",
+              style === 'plain'
+                ? "border-primary bg-primary/5"
+                : "border-border hover:border-muted-foreground/40"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <FileSpreadsheet className="h-4 w-4" />
+              <span className="text-sm font-semibold">Обычная выгрузка</span>
+            </div>
+            <span className="text-xs text-muted-foreground">Простая таблица без оформления</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setStyle('pretty')}
+            className={cn(
+              "flex flex-col items-start gap-1 rounded-lg border-2 p-3 text-left transition-all",
+              style === 'pretty'
+                ? "border-primary bg-primary/5"
+                : "border-border hover:border-muted-foreground/40"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Красивый прайс</span>
+            </div>
+            <span className="text-xs text-muted-foreground">С группировкой по категориям и стилями</span>
+          </button>
+        </div>
+
+        <div className="py-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm text-muted-foreground">
+              Выберите поля для выгрузки ({enabledCount} из {columns.length}):
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={selectAll}>
+                Все
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={deselectAll}>
+                Сбросить
+              </Button>
+
         
         <div className="py-4">
           <div className="flex items-center justify-between mb-3">
