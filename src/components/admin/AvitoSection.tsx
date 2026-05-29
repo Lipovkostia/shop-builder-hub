@@ -2431,7 +2431,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
           {(() => {
 
-            const list = (avitoFeed?.feedProducts || [])
+            const fullList = (avitoFeed?.feedProducts || [])
               .map((fp) => {
                 const product = storeProducts.find((sp) => sp.id === fp.product_id);
                 if (!product) return null;
@@ -2441,11 +2441,52 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
               })
               .filter(Boolean) as { fp: AvitoFeedProduct; product: Product; issues: AvitoIssue[] }[];
 
+            const errorsCount = fullList.filter((r) => r.issues.some((i) => i.severity === "error" && i.kind !== "not_published")).length;
+            const unpublishedCount = fullList.filter((r) => r.issues.some((i) => i.kind === "not_published")).length;
+            const excludedCount = fullList.filter((r) => r.fp.avito_params?.excluded_from_feed === true).length;
+
+            const list = fullList.filter((r) => {
+              if (errorsFilter === "errors") return r.issues.some((i) => i.severity === "error" && i.kind !== "not_published");
+              if (errorsFilter === "unpublished") return r.issues.some((i) => i.kind === "not_published");
+              if (errorsFilter === "excluded") return r.fp.avito_params?.excluded_from_feed === true;
+              return true;
+            });
+
             const titleFixable = list.filter((r) => r.issues.some((i) => i.kind === "title_missing" || i.kind === "title_too_long"));
             const descFixable = list.filter((r) => r.issues.some((i) => i.kind === "description_missing" || i.kind === "description_too_short"));
             const noImages = list.filter((r) => r.issues.some((i) => i.kind === "images_missing"));
 
-            if (list.length === 0) {
+            const filterChips = (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {([
+                  { key: "all", label: `Все`, count: fullList.length },
+                  { key: "errors", label: `Ошибки`, count: errorsCount },
+                  { key: "unpublished", label: `Не опубликованы`, count: unpublishedCount },
+                  { key: "excluded", label: `Отключены от автозалива`, count: excludedCount },
+                ] as const).map((c) => (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => setErrorsFilter(c.key as any)}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                      errorsFilter === c.key
+                        ? c.key === "unpublished"
+                          ? "bg-amber-500/15 border-amber-500/50 text-amber-700 dark:text-amber-400"
+                          : c.key === "errors"
+                            ? "bg-destructive/15 border-destructive/50 text-destructive"
+                            : c.key === "excluded"
+                              ? "bg-muted border-muted-foreground/30 text-foreground"
+                              : "bg-primary/15 border-primary/50 text-primary"
+                        : "bg-background border-border text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {c.label} <span className="ml-1 font-semibold">{c.count}</span>
+                  </button>
+                ))}
+              </div>
+            );
+
+            if (fullList.length === 0) {
               return (
                 <Card className="p-8 text-center">
                   <Check className="h-8 w-8 mx-auto mb-2 text-emerald-600" />
