@@ -634,9 +634,24 @@ function AvitoFeedTable({
               const isGenerating = aiGeneratingIds.has(fp.product_id);
               const isDone = aiDoneIds.has(fp.product_id);
               const isQueued = aiQueuedIds.has(fp.product_id);
+              const shortId = String(fp.product_id || "").slice(0, 8);
+              const modMessages: any[] = Array.isArray(params.moderation?.messages) ? params.moderation.messages : [];
+              const hasModError = modMessages.some((m) => !/warn|warning|info/i.test(String(m?.type || "")));
+              const hasModWarning = modMessages.length > 0 && !hasModError;
+              const excluded = params.excluded_from_feed === true;
+
+              const rowBg = excluded
+                ? "bg-muted/40 opacity-60"
+                : hasModError
+                  ? "bg-destructive/5 border-l-2 border-l-destructive"
+                  : hasModWarning
+                    ? "bg-amber-500/5 border-l-2 border-l-amber-500"
+                    : isDone ? 'bg-green-50 dark:bg-green-950/20'
+                      : isGenerating ? 'bg-yellow-50 dark:bg-yellow-950/20'
+                        : isQueued ? 'bg-muted/20' : '';
 
               return (
-                <div key={fp.id} className={`flex border-b text-xs hover:bg-muted/30 items-start transition-colors ${isDone ? 'bg-green-50 dark:bg-green-950/20' : isGenerating ? 'bg-yellow-50 dark:bg-yellow-950/20' : isQueued ? 'bg-muted/20' : ''}`}>
+                <div key={fp.id} className={`flex border-b text-xs hover:bg-muted/30 items-start transition-colors ${rowBg}`}>
                   <div className="flex-shrink-0 px-2 pt-2.5" style={{ width: colWidths.check }}>
                     <Checkbox
                       checked={selectedFeedProducts.has(fp.product_id)}
@@ -660,6 +675,19 @@ function AvitoFeedTable({
                     )}
                   </div>
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.title }}>
+                    <div className="flex items-center gap-1 px-1.5 pt-0.5">
+                      <button
+                        type="button"
+                        title="ID объявления (клик — скопировать)"
+                        onClick={() => { navigator.clipboard?.writeText(shortId); toast({ title: "ID скопирован", description: shortId }); }}
+                        className={`font-mono text-[10px] px-1 py-0 rounded ${hasModError ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground hover:text-foreground"}`}
+                      >
+                        #{shortId}
+                      </button>
+                      {excluded && <span className="text-[9px] px-1 rounded bg-muted text-muted-foreground">не выгр.</span>}
+                      {hasModError && <span className="text-[9px] px-1 rounded bg-destructive/15 text-destructive">ошибка</span>}
+                      {!hasModError && hasModWarning && <span className="text-[9px] px-1 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400">предупр.</span>}
+                    </div>
                     <InlineCell
                       value={params.title || product.name}
                       onChange={(val) => handleInlineParamUpdate(fp.product_id, "title", val)}
@@ -669,7 +697,21 @@ function AvitoFeedTable({
                     <span className="text-[10px] text-muted-foreground/50 px-1.5">
                       {(params.title || product.name || "").length}/50
                     </span>
+                    {modMessages.length > 0 && (
+                      <div className="px-1.5 pt-1 space-y-0.5">
+                        {modMessages.slice(0, 3).map((m: any, i: number) => (
+                          <div key={i} className="text-[10px] leading-tight">
+                            <div className={hasModError ? "text-destructive font-medium" : "text-amber-700 dark:text-amber-400"}>• {m.text}</div>
+                            {m.hint && <div className="text-muted-foreground italic">{m.hint}</div>}
+                          </div>
+                        ))}
+                        {modMessages.length > 3 && (
+                          <div className="text-[10px] text-muted-foreground">+ ещё {modMessages.length - 3}</div>
+                        )}
+                      </div>
+                    )}
                   </div>
+
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.desc }}>
                     {isGenerating ? (
                       <div className="flex items-center gap-1.5 py-2 text-xs text-muted-foreground">
