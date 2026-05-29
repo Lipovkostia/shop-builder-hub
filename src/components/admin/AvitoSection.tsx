@@ -2493,8 +2493,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                           const canFixTitle = issues.some((i) => i.kind === "title_missing" || i.kind === "title_too_long");
                           const canFixDesc = issues.some((i) => i.kind === "description_missing" || i.kind === "description_too_short");
                           const needPhoto = issues.some((i) => i.kind === "images_missing");
+                          const shortId = String(fp.product_id || "").slice(0, 8);
+                          const modMessages: any[] = Array.isArray(fp.avito_params?.moderation?.messages) ? fp.avito_params.moderation.messages : [];
+                          const excluded = fp.avito_params?.excluded_from_feed === true;
                           return (
-                            <TableRow key={fp.product_id} className="align-top">
+                            <TableRow key={fp.product_id} className={`align-top ${excluded ? "opacity-60" : ""}`}>
                               <TableCell className="px-2 py-2">
                                 {firstImg ? (
                                   <img src={firstImg} alt="" className="w-12 h-12 rounded object-cover" />
@@ -2505,12 +2508,21 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                 )}
                               </TableCell>
                               <TableCell className="px-2 py-2">
+                                <button
+                                  type="button"
+                                  title="ID объявления (клик — скопировать)"
+                                  onClick={() => { navigator.clipboard?.writeText(shortId); toast({ title: "ID скопирован", description: shortId }); }}
+                                  className="font-mono text-[10px] px-1 py-0 rounded bg-destructive/10 text-destructive hover:bg-destructive/20 mb-1"
+                                >
+                                  #{shortId}
+                                </button>
                                 <div className="text-xs font-medium leading-tight line-clamp-2">{product.name}</div>
                                 {product.sku && <div className="text-[10px] text-muted-foreground mt-1">арт. {product.sku}</div>}
+                                {excluded && <div className="text-[10px] text-muted-foreground mt-1">не в автозаливе</div>}
                               </TableCell>
                               <TableCell className="px-2 py-2">
-                                <div className="flex flex-wrap gap-1">
-                                  {issues.map((iss, idx) => (
+                                <div className="flex flex-wrap gap-1 mb-1">
+                                  {issues.filter((i) => i.kind !== "avito_moderation").map((iss, idx) => (
                                     <Badge
                                       key={idx}
                                       variant={iss.severity === "error" ? "destructive" : "secondary"}
@@ -2523,6 +2535,32 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                     </Badge>
                                   ))}
                                 </div>
+                                {modMessages.length > 0 && (
+                                  <div className="rounded border border-destructive/30 bg-destructive/5 p-2 space-y-1.5">
+                                    <div className="text-[10px] uppercase tracking-wide text-destructive font-semibold flex items-center gap-1">
+                                      <AlertCircle className="h-3 w-3" /> Что исправить (по выгрузке Авито)
+                                    </div>
+                                    {modMessages.map((m: any, i: number) => (
+                                      <div key={i} className="text-[11px] leading-snug">
+                                        <div className="font-medium">• {m.text}</div>
+                                        {m.hint && <div className="text-muted-foreground italic whitespace-pre-line">{m.hint}</div>}
+                                        {m.field && <div className="text-[9px] uppercase text-muted-foreground/70 mt-0.5">поле: {m.field}</div>}
+                                      </div>
+                                    ))}
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 text-[10px] mt-1"
+                                      onClick={() => {
+                                        const text = modMessages.map((m: any) => `• ${m.text}${m.hint ? "\n  " + m.hint : ""}`).join("\n");
+                                        navigator.clipboard?.writeText(text);
+                                        toast({ title: "Инструкция скопирована" });
+                                      }}
+                                    >
+                                      <CopyIcon className="h-3 w-3 mr-1" /> Скопировать инструкцию
+                                    </Button>
+                                  </div>
+                                )}
                               </TableCell>
                               <TableCell className="px-2 py-2 text-right">
                                 <div className="flex items-center justify-end gap-1 flex-wrap">
@@ -2544,8 +2582,19 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                       <ImagePlus className="h-3 w-3 mr-1" /> Фото
                                     </Button>
                                   )}
+                                  <Button
+                                    size="sm"
+                                    variant={excluded ? "default" : "outline"}
+                                    className="h-7 text-[11px]"
+                                    onClick={async () => {
+                                      await avitoFeed!.updateProductParams(product.id, { ...(fp.avito_params || {}), excluded_from_feed: !excluded });
+                                      await avitoFeed!.refetch?.();
+                                    }}
+                                  >
+                                    {excluded ? "Вернуть в автозалив" : "Не заливать"}
+                                  </Button>
                                   <Button size="sm" variant="ghost" className="h-7 text-[11px]"
-                                    onClick={() => { setActiveTab("feed"); setFeedSearchQuery(product.name); }}>
+                                    onClick={() => { setActiveTab("feed"); setFeedSearchQuery(shortId); }}>
                                     Открыть
                                   </Button>
                                 </div>
