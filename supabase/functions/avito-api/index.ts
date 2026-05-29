@@ -201,6 +201,140 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (action === "fetch_autoload_errors") {
+      // Pull moderation/autoload errors for the last reports from Avito.
+      // Avito autoload endpoints:
+      //   GET /autoload/v1/reports             — paginated list of reports
+      //   GET /autoload/v2/reports/{id}/items  — items inside a given report
+      const { data: account, error: accErr } = await supabase
+        .from("avito_accounts")
+        .select("*")
+        .eq("store_id", store_id)
+        .single();
+      if (accErr || !account) throw new Error("Avito аккаунт не найден. Сначала подключите Авито.");
+      const token = await getAvitoToken(account.client_id, account.client_secret);
+
+      // 1) Get latest reports (up to 3 to be safe; merge errors across them)
+      const reportsRes = await fetch(`${AVITO_API_BASE}/autoload/v1/reports?per_page=3&page=1`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!reportsRes.ok) {
+        const text = await reportsRes.text();
+        throw new Error(`Avito reports failed [${reportsRes.status}]: ${text}`);
+      }
+      const reportsData = await reportsRes.json();
+      const reports: any[] = reportsData.reports || reportsData.resources || [];
+      if (reports.length === 0) {
+        return new Response(JSON.stringify({ success: true, updated: 0, total: 0, message: "Отчёты автозагрузки не найдены" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Collect messages per ad_id (the XML <Id> we emit)
+      const errorsByAdId = new Map<string, { status: string; messages: { type: string; text: string }[]; avito_id?: number | string; report_id: any; checked_at: string; section?: string; url?: string }>();
+      const checkedAt = new Date().toISOString();
+      let inspected = 0;
+
+      for (const r of reports) {
+        const reportId = r.report_id ?? r.id;
+        if (!reportId) continue;
+        // Paginate items
+        let page = 1;
+        while (true) {
+          const itemsUrl = `${AVITO_API_BASE}/autoload/v2/reports/${reportId}/items?per_page=100&page=${page}`;
+          const ir = await fetch(itemsUrl, { headers: { Authorization: `Bearer ${token}` } });
+          if (!ir.ok) {
+            const text = await ir.text();
+            console.error(`autoload items failed [${ir.status}]: ${text}`);
+            break;
+          }
+          const ij = await ir.json();
+          const items: any[] = ij.items || ij.resources || [];
+          if (items.length === 0) break;
+          inspected += items.length;
+          for (const it of items) {
+            const adId = String(it.ad_id || it.adId || it.ad_external_id || it.external_id || "");
+            if (!adId) continue;
+            // Normalize messages
+            const rawMsgs: any[] = it.messages || it.errors || it.problems || [];
+            const messages = rawMsgs
+              .map((m) => ({
+                type: String(m.type || m.code || m.level || "error"),
+                text: String(m.text || m.description || m.message || m.title || "").trim(),
+              }))
+              .filter((m) => m.text);
+            if (it.error && typeof it.error === "object") {
+              const t = String(it.error.message || it.error.text || "").trim();
+              if (t) messages.push({ type: "error", text: t });
+            }
+            const status = String(it.status || it.section || "");
+            // Only record meaningful problems (blocked / errors / processed_with_errors)
+            const hasIssue =
+              messages.length > 0 ||
+              /block|reject|error|fail|problem|moderation/i.test(status);
+            if (!hasIssue) continue;
+            // Keep the most recent — reports are returned newest-first; do not overwrite later
+            if (!errorsByAdId.has(adId)) {
+              errorsByAdId.set(adId, {
+                status,
+                messages,
+                avito_id: it.avito_id || it.avitoId || it.id,
+                report_id: reportId,
+                checked_at: checkedAt,
+                section: it.section,
+                url: it.url || it.avito_url,
+              });
+            }
+          }
+          if (items.length < 100) break;
+          page++;
+          if (page > 30) break;
+        }
+      }
+
+      // 2) Apply to avito_feed_products by matching XML <Id> = product.id.substring(0,8)
+      const { data: feedRows, error: fErr } = await supabase
+        .from("avito_feed_products")
+        .select("id, product_id, avito_params")
+        .eq("store_id", store_id);
+      if (fErr) throw fErr;
+
+      let updated = 0;
+      for (const row of feedRows || []) {
+        const adId = String(row.product_id).substring(0, 8);
+        const params = (row.avito_params && typeof row.avito_params === "object") ? row.avito_params as any : {};
+        const moderation = errorsByAdId.get(adId) || null;
+        const prev = params.moderation || null;
+        // Detect change to avoid unnecessary writes
+        const same = prev && moderation
+          && prev.status === moderation.status
+          && JSON.stringify(prev.messages || []) === JSON.stringify(moderation.messages);
+        if (moderation) {
+          if (same) continue;
+          const newParams = { ...params, moderation };
+          await supabase.from("avito_feed_products").update({ avito_params: newParams }).eq("id", row.id);
+          updated++;
+        } else if (prev) {
+          // Clear stale moderation block
+          const newParams = { ...params };
+          delete newParams.moderation;
+          await supabase.from("avito_feed_products").update({ avito_params: newParams }).eq("id", row.id);
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          updated,
+          with_errors: errorsByAdId.size,
+          inspected,
+          reports: reports.length,
+          checked_at: checkedAt,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (action === "get_credentials") {
       const { data: account } = await supabase
         .from("avito_accounts")
@@ -213,6 +347,8 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+
 
     if (action === "disconnect") {
       await supabase.from("avito_accounts").delete().eq("store_id", store_id);

@@ -163,6 +163,7 @@ const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
 const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, promoAuto: 140, cpcBid: 80, address: 120, avitoId: 110, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
 
 // === Avito validation: detect missing/invalid fields per feed product ===
+// === Avito validation: detect missing/invalid fields per feed product ===
 export type AvitoIssueKind =
   | "title_missing" | "title_too_long"
   | "description_missing" | "description_too_short"
@@ -170,7 +171,8 @@ export type AvitoIssueKind =
   | "images_missing"
   | "category_missing" | "goodsType_missing" | "goodsSubType_missing"
   | "address_missing" | "targetAudience_missing"
-  | "contactPhone_missing" | "managerName_missing";
+  | "contactPhone_missing" | "managerName_missing"
+  | "avito_moderation";
 
 export interface AvitoIssue { kind: AvitoIssueKind; label: string; severity: "error" | "warning"; aiFixable: boolean; }
 
@@ -201,8 +203,24 @@ export function computeAvitoIssues(fp: AvitoFeedProduct, product: Product, d: Av
   if (!(p.contactPhone || d.contactPhone)) issues.push({ kind: "contactPhone_missing", label: "Нет телефона", severity: "error", aiFixable: false });
   if (!(p.managerName || d.managerName)) issues.push({ kind: "managerName_missing", label: "Нет контактного лица", severity: "warning", aiFixable: false });
 
+  // Moderation errors pulled from Avito autoload reports
+  const mod = p.moderation;
+  if (mod && Array.isArray(mod.messages)) {
+    for (const m of mod.messages) {
+      if (!m?.text) continue;
+      const sev: "error" | "warning" = /warn|warning|info/i.test(String(m.type || "")) ? "warning" : "error";
+      issues.push({
+        kind: "avito_moderation",
+        label: `Авито: ${m.text}`,
+        severity: sev,
+        aiFixable: false,
+      });
+    }
+  }
+
   return issues;
 }
+
 
 
 
@@ -900,6 +918,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [fetchingErrors, setFetchingErrors] = useState(false);
+
   const [disconnecting, setDisconnecting] = useState(false);
 
   const [clientId, setClientId] = useState("");
@@ -1061,6 +1081,22 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       toast({ title: "Ошибка загрузки", description: err.message, variant: "destructive" });
     } finally { setFetching(false); }
   };
+
+  const handleFetchAutoloadErrors = async () => {
+    if (!storeId) return;
+    setFetchingErrors(true);
+    try {
+      const data = await callAvitoApi({ action: "fetch_autoload_errors", store_id: storeId });
+      await avitoFeed?.refetch?.();
+      toast({
+        title: "Ошибки модерации обновлены",
+        description: `Проверено ${data.inspected ?? 0} объявлений, с ошибками: ${data.with_errors ?? 0}, обновлено: ${data.updated ?? 0}`,
+      });
+    } catch (err: any) {
+      toast({ title: "Ошибка загрузки отчёта", description: err.message, variant: "destructive" });
+    } finally { setFetchingErrors(false); }
+  };
+
 
   const handleViewDetail = async (item: AvitoItem) => {
     setDetailDialogItem(item);
@@ -2148,7 +2184,19 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
         {/* Errors Tab */}
         <TabsContent value="errors" className="space-y-3">
+          {isConnected && (
+            <div className="flex items-center justify-between gap-2 flex-wrap rounded-lg border bg-muted/30 p-3">
+              <div className="text-xs text-muted-foreground">
+                Подтянуть причины блокировок и ошибки модерации из последних отчётов автозагрузки Авито
+              </div>
+              <Button size="sm" variant="default" onClick={handleFetchAutoloadErrors} disabled={fetchingErrors}>
+                {fetchingErrors ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+                Обновить ошибки с Авито
+              </Button>
+            </div>
+          )}
           {(() => {
+
             const list = (avitoFeed?.feedProducts || [])
               .map((fp) => {
                 const product = storeProducts.find((sp) => sp.id === fp.product_id);
