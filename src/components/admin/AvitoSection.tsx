@@ -206,16 +206,26 @@ export function computeAvitoIssues(fp: AvitoFeedProduct, product: Product, d: Av
 
   // Moderation errors pulled from Avito autoload reports
   const mod = p.moderation;
-  if (mod && Array.isArray(mod.messages)) {
-    for (const m of mod.messages) {
-      if (!m?.text) continue;
-      const sev: "error" | "warning" = /warn|warning|info/i.test(String(m.type || "")) ? "warning" : "error";
+  if (mod) {
+    if (mod.published === false) {
       issues.push({
-        kind: "avito_moderation",
-        label: `Авито: ${m.text}`,
-        severity: sev,
+        kind: "not_published",
+        label: mod.status ? `Не опубликовано: ${mod.status}` : "Не опубликовано на Авито",
+        severity: "warning",
         aiFixable: false,
       });
+    }
+    if (Array.isArray(mod.messages)) {
+      for (const m of mod.messages) {
+        if (!m?.text) continue;
+        const sev: "error" | "warning" = /warn|warning|info/i.test(String(m.type || "")) ? "warning" : "error";
+        issues.push({
+          kind: "avito_moderation",
+          label: `Авито: ${m.text}`,
+          severity: sev,
+          aiFixable: false,
+        });
+      }
     }
   }
 
