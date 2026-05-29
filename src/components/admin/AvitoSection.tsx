@@ -162,6 +162,50 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
 const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, promoAuto: 140, cpcBid: 80, address: 120, avitoId: 110, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
 
+// === Avito validation: detect missing/invalid fields per feed product ===
+export type AvitoIssueKind =
+  | "title_missing" | "title_too_long"
+  | "description_missing" | "description_too_short"
+  | "price_missing"
+  | "images_missing"
+  | "category_missing" | "goodsType_missing" | "goodsSubType_missing"
+  | "address_missing" | "targetAudience_missing"
+  | "contactPhone_missing" | "managerName_missing";
+
+export interface AvitoIssue { kind: AvitoIssueKind; label: string; severity: "error" | "warning"; aiFixable: boolean; }
+
+export function computeAvitoIssues(fp: AvitoFeedProduct, product: Product, d: AvitoDefaults): AvitoIssue[] {
+  const p = fp.avito_params || {};
+  const issues: AvitoIssue[] = [];
+  const title = (p.title || product.name || "").trim();
+  const description = (p.description || product.description || "").trim();
+  const price = Number(p.price ?? product.pricePerUnit ?? 0);
+  const imgs = (p.avitoImages && p.avitoImages.length > 0)
+    ? p.avitoImages
+    : (product.images || []).filter((u: string) => u && !u.startsWith("data:"));
+
+  if (!title) issues.push({ kind: "title_missing", label: "Нет названия", severity: "error", aiFixable: true });
+  else if (title.length > 50) issues.push({ kind: "title_too_long", label: `Название > 50 символов (${title.length})`, severity: "error", aiFixable: true });
+
+  if (!description) issues.push({ kind: "description_missing", label: "Нет описания", severity: "error", aiFixable: true });
+  else if (description.length < 30) issues.push({ kind: "description_too_short", label: `Слишком короткое описание (${description.length})`, severity: "warning", aiFixable: true });
+
+  if (!price || price <= 0) issues.push({ kind: "price_missing", label: "Цена не указана", severity: "error", aiFixable: false });
+  if (imgs.length === 0) issues.push({ kind: "images_missing", label: "Нет фото", severity: "error", aiFixable: false });
+
+  if (!(p.category || d.category)) issues.push({ kind: "category_missing", label: "Нет категории Авито", severity: "error", aiFixable: false });
+  if (!(p.goodsType || d.goodsType)) issues.push({ kind: "goodsType_missing", label: "Не указан вид объявления", severity: "error", aiFixable: false });
+  if (!(p.goodsSubType || d.goodsSubType)) issues.push({ kind: "goodsSubType_missing", label: "Не указан вид товара", severity: "error", aiFixable: false });
+  if (!(p.address || d.address)) issues.push({ kind: "address_missing", label: "Не указан адрес", severity: "error", aiFixable: false });
+  if (!(p.targetAudience || d.targetAudience)) issues.push({ kind: "targetAudience_missing", label: "Не указана аудитория", severity: "warning", aiFixable: false });
+  if (!(p.contactPhone || d.contactPhone)) issues.push({ kind: "contactPhone_missing", label: "Нет телефона", severity: "error", aiFixable: false });
+  if (!(p.managerName || d.managerName)) issues.push({ kind: "managerName_missing", label: "Нет контактного лица", severity: "warning", aiFixable: false });
+
+  return issues;
+}
+
+
+
 // Column filter dropdown component - uses fixed positioning to escape overflow containers
 function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
   values: string[];
