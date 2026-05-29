@@ -108,7 +108,7 @@ import { useStoreNotificationSettings } from "@/hooks/useStoreNotificationSettin
 import { useMoyskladOrders } from "@/hooks/useMoyskladOrders";
 import { Textarea } from "@/components/ui/textarea";
 import { ImportSourceCard } from "@/components/admin/ImportSourceCard";
-import { downloadExcelTemplate, importProductsFromExcel, ImportProgress, exportProductsToExcel, exportCatalogToExcel, CatalogExportProduct } from "@/lib/excelImport";
+import { downloadExcelTemplate, importProductsFromExcel, ImportProgress, exportProductsToExcel, exportCatalogToExcel, exportCatalogToExcelPretty, CatalogExportProduct } from "@/lib/excelImport";
 import { ExcelImportSection } from "@/components/admin/ExcelImportSection";
 import { CatalogExportDialog } from "@/components/admin/CatalogExportDialog";
 import { CatalogPdfExportDialog } from "@/components/admin/CatalogPdfExportDialog";
