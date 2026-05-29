@@ -129,18 +129,18 @@ Deno.serve(async (req) => {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
     const productImage = body.source_image_url || null;
     const referenceImage = body.reference_image_url || null;
+    const extraImages = Array.isArray(body.image_urls) ? body.image_urls.filter(Boolean) : [];
     const userPrompt = (body.prompt ?? "").replaceAll("{product_name}", product.name).trim();
 
-    if (!userPrompt && !productImage && !referenceImage) {
+    if (!userPrompt && !productImage && !referenceImage && extraImages.length === 0) {
       return new Response(JSON.stringify({ error: "Нужен промпт или изображение" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Если референс пришёл data URL — загрузим в storage, чтобы kie.ai мог его скачать
+    // Если изображение пришло data URL — загрузим в storage, чтобы kie.ai мог его скачать
     async function ensureUrl(maybeDataUrl: string): Promise<string> {
       if (!maybeDataUrl.startsWith("data:")) return maybeDataUrl;
       const match = maybeDataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -155,25 +155,32 @@ Deno.serve(async (req) => {
       return admin.storage.from("product-images").getPublicUrl(path).data.publicUrl;
     }
 
+    // Собираем упорядоченный список: товар, затем референс, затем доп. изображения.
+    // Если клиент уже прислал image_urls — используем его как есть.
     const images: string[] = [];
-    if (productImage) images.push(await ensureUrl(productImage));
-    if (referenceImage) images.push(await ensureUrl(referenceImage));
+    if (extraImages.length > 0) {
+      for (const u of extraImages) images.push(await ensureUrl(u));
+    } else {
+      if (productImage) images.push(await ensureUrl(productImage));
+      if (referenceImage) images.push(await ensureUrl(referenceImage));
+    }
 
     const hasImages = images.length > 0;
-    const hasBoth = !!productImage && !!referenceImage;
     const model = body.model ?? (hasImages ? "google/nano-banana-edit" : "google/nano-banana");
     const aspect_ratio = ALLOWED_AR.has(body.aspect_ratio ?? "") ? body.aspect_ratio! : "1:1";
 
     let finalPrompt: string;
-    if (hasBoth) {
-      const extra = userPrompt ? `\n\nДополнительные указания пользователя: ${userPrompt}` : "";
-      finalPrompt =
-        `Ты получаешь ДВА изображения. ` +
-        `ПЕРВОЕ изображение — это товар "${product.name}", который должен остаться главным объектом по центру композиции: сохрани его форму, упаковку, этикетку, цвета и пропорции БЕЗ изменений. ` +
-        `ВТОРОЕ изображение — это стилистический референс (фон, рамка, текстура, окружение, узор). ` +
-        `Совмести их: помести товар с первого изображения в центр, а вокруг используй стиль, цветовую палитру, рамку и фон со второго изображения. ` +
-        `Результат — единое цельное коммерческое фото товара в стиле референса. Не добавляй текст и не искажай упаковку.` +
-        extra;
+    if (hasImages && images.length >= 2) {
+      const numbered = images.map((_, i) => `Изображение #${i + 1}`).join(", ");
+      const header =
+        `Тебе передано ${images.length} изображени${images.length === 2 ? "я" : "й"} в строгом порядке: ${numbered}. ` +
+        `Изображение #1 — это товар "${product.name}" (главный объект, сохрани его форму, упаковку, этикетку, цвета и пропорции БЕЗ изменений). ` +
+        `Изображения #2${images.length > 2 ? `…#${images.length}` : ""} — референсы (стиль, фон, окружение, персонажи, текстуры). ` +
+        `Следуй инструкции пользователя ниже и используй изображения по их номерам. Не добавляй текст и не искажай товар.\n\n` +
+        `Инструкция пользователя:\n`;
+      finalPrompt = header + (userPrompt || `Помести товар (#1) в сцену/стиль из остальных изображений. Сделай реалистичное коммерческое фото.`);
+    } else if (hasImages) {
+      finalPrompt = userPrompt || `Сгенерируй качественное коммерческое фото товара: ${product.name}`;
     } else {
       finalPrompt = userPrompt || `Сгенерируй качественное коммерческое фото товара: ${product.name}`;
     }
