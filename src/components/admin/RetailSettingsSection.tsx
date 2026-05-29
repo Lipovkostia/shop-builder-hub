@@ -35,6 +35,7 @@ import { TelegramIcon } from "@/components/icons/TelegramIcon";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { ReviewsManagementSection } from "./ReviewsManagementSection";
 import { RetailSeoProductsTab } from "./RetailSeoProductsTab";
+import { StoreTelegramBotPanel } from "./StoreTelegramBotPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { toast as sonnerToast } from "sonner";
 
@@ -277,7 +278,7 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-7 mb-6">
+        <TabsList className="w-full grid grid-cols-8 mb-6">
           <TabsTrigger value="general" className="gap-1.5">
             <Store className="h-4 w-4" />
             <span className="hidden sm:inline">Общее</span>
@@ -297,6 +298,10 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
           <TabsTrigger value="chat" className="gap-1.5">
             <Bot className="h-4 w-4" />
             <span className="hidden sm:inline">Чат</span>
+          </TabsTrigger>
+          <TabsTrigger value="telegram" className="gap-1.5">
+            <TelegramIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">Telegram</span>
           </TabsTrigger>
           <TabsTrigger value="seo" className="gap-1.5">
             <Search className="h-4 w-4" />
@@ -1384,6 +1389,13 @@ export function RetailSettingsSection({ storeId }: RetailSettingsSectionProps) {
               </span>
             </div>
           )}
+        </TabsContent>
+
+        {/* Telegram Mini App tab */}
+        <TabsContent value="telegram" className="space-y-6">
+          <div className="bg-card border border-border rounded-lg p-6">
+            <StoreTelegramBotPanel storeId={storeId} subdomain={settings.subdomain} />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
