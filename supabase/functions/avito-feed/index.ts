@@ -15,6 +15,30 @@ function escapeXml(str: string): string {
     .replace(/'/g, "&apos;");
 }
 
+function buildPromoAutoXml(raw: string): string {
+  const items = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).map((line) => {
+    const [region, budget] = line.split('|').map((s) => (s ?? '').trim());
+    const parts: string[] = [];
+    if (region) parts.push(`        <Region>${escapeXml(region)}</Region>`);
+    if (budget) parts.push(`        <Budget>${escapeXml(budget)}</Budget>`);
+    return parts.length ? `      <Item>\n${parts.join('\n')}\n      </Item>` : '';
+  }).filter(Boolean);
+  return items.length ? `    <PromoAutoOptions>\n${items.join('\n')}\n    </PromoAutoOptions>\n` : '';
+}
+
+function buildPromoManualXml(raw: string): string {
+  const items = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).map((line) => {
+    const [region, bid, limit] = line.split('|').map((s) => (s ?? '').trim());
+    const parts: string[] = [];
+    if (region) parts.push(`        <Region>${escapeXml(region)}</Region>`);
+    if (bid)    parts.push(`        <Bid>${escapeXml(bid)}</Bid>`);
+    if (limit)  parts.push(`        <DailyLimit>${escapeXml(limit)}</DailyLimit>`);
+    return parts.length ? `      <Item>\n${parts.join('\n')}\n      </Item>` : '';
+  }).filter(Boolean);
+  return items.length ? `    <PromoManualOptions>\n${items.join('\n')}\n    </PromoManualOptions>\n` : '';
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
