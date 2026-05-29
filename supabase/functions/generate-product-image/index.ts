@@ -13,6 +13,7 @@ interface RequestBody {
   product_id: string;
   source_image_url?: string | null;
   reference_image_url?: string | null;
+  image_urls?: string[] | null; // новый формат: упорядоченный список изображений (1, 2, 3...)
   prompt?: string | null;
   aspect_ratio?: string;
   width?: number;
