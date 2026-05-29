@@ -1884,7 +1884,7 @@ export default function AdminPanel({
   };
 
   // Export catalog to Excel with selected columns
-  const handleExportCatalog = async (enabledColumns: string[]) => {
+  const handleExportCatalog = async (enabledColumns: string[], pretty: boolean = false) => {
     if (!currentCatalog || !effectiveStoreId) return;
     
     setIsExportingCatalog(true);
