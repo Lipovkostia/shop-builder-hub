@@ -1008,7 +1008,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [detailDialogItem, setDetailDialogItem] = useState<AvitoItem | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [activeTab, setActiveTab] = useState("feed");
-  const [errorsFilter, setErrorsFilter] = useState<"all" | "errors" | "unpublished" | "excluded">("all");
+  const [errorsFilter, setErrorsFilter] = useState<"all" | "errors" | "unpublished" | "excluded" | "file">("all");
   const [selectedFeedProducts, setSelectedFeedProducts] = useState<Set<string>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [feedSearchQuery, setFeedSearchQuery] = useState("");
@@ -1197,6 +1197,24 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     return undefined;
   };
 
+  // Извлекает подсказку категории из текста комментария модератора.
+  // Пример: «Для дома и дачи → Продукты питания → Мясо, птица, субпродукты»
+  const extractCategorySuggestion = (text: string): string | undefined => {
+    if (!text) return undefined;
+    // Ищем содержимое в любых кавычках
+    const candidates: string[] = [];
+    const re = /[«"„]([^»"”]+)[»"”]/g;
+    let m;
+    while ((m = re.exec(text)) !== null) candidates.push(m[1]);
+    for (const c of candidates) {
+      // Должно содержать разделитель иерархии
+      if (/→|->|>|—/.test(c)) {
+        return c.split(/\s*(?:→|->|>|—)\s*/).map((s) => s.trim()).filter(Boolean).join("---");
+      }
+    }
+    return undefined;
+  };
+
   const handleImportAvitoErrorsFile = async (file: File) => {
     if (!storeId || !avitoFeed) return;
     setImportingErrors(true);
@@ -1254,13 +1272,34 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       let updated = 0;
       let matched = 0;
       let unpublishedCount = 0;
+      let cleared = 0;
+      let withSuggestion = 0;
       const feed = avitoFeed.feedProducts || [];
+      // Множество product_id, упомянутых в файле — нужно для зачистки старых данных
+      const matchedProductIds = new Set<string>();
       for (const fp of feed) {
         const prefix = String(fp.product_id || "").slice(0, 8).toLowerCase();
         const errs = errorMap.get(prefix);
         const status = statusMap.get(prefix);
-        if ((!errs || errs.length === 0) && !status) continue;
+        const oldMod = (fp.avito_params as any)?.moderation;
+        if ((!errs || errs.length === 0) && !status) {
+          // Если у товара была старая модерация — стираем (его уже нет в свежем файле, значит исправлен)
+          if (oldMod) {
+            const cleaned = { ...(fp.avito_params || {}) };
+            delete (cleaned as any).moderation;
+            try { await avitoFeed.updateProductParams(fp.product_id, cleaned); cleared++; } catch {}
+          }
+          continue;
+        }
         matched++;
+        matchedProductIds.add(fp.product_id);
+        // Берём первую найденную подсказку категории среди всех комментариев
+        let suggestedCategory: string | undefined;
+        for (const m of errs || []) {
+          const s = extractCategorySuggestion(`${m.text} ${m.hint || ""}`);
+          if (s) { suggestedCategory = s; break; }
+        }
+        if (suggestedCategory) withSuggestion++;
         const messages = (errs || []).map((m) => ({
           type: /заблокир|удален|отклон/i.test(m.text) ? "error" : "warning",
           text: m.text,
@@ -1278,6 +1317,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             status: status || undefined,
             published,
             messages,
+            suggested_category: suggestedCategory,
           },
         };
         try {
@@ -1289,9 +1329,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       await avitoFeed.refetch?.();
       const totalAvito = new Set([...errorMap.keys(), ...statusMap.keys()]).size;
       const unmatched = totalAvito - matched;
+      // Автоматически переключаемся на новый фильтр "из файла"
+      setErrorsFilter("file");
       toast({
         title: "Файл Авито обработан",
-        description: `Объявлений в файле: ${totalAvito}. С ошибками: ${errorMap.size}. Не опубликовано: ${unpublishedCount}. Сопоставлено: ${matched}. Не найдено в фиде: ${unmatched}.`,
+        description: `В файле: ${totalAvito}. С ошибками: ${errorMap.size}. Не опубликовано: ${unpublishedCount}. Сопоставлено: ${matched}. Подсказок категории: ${withSuggestion}. Старых отметок очищено: ${cleared}. Не найдено в фиде: ${unmatched}.`,
       });
     } catch (err: any) {
       console.error("Import avito errors xlsx failed", err);
@@ -2479,11 +2521,13 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             const errorsCount = fullList.filter((r) => r.issues.some((i) => i.severity === "error" && i.kind !== "not_published")).length;
             const unpublishedCount = fullList.filter((r) => r.issues.some((i) => i.kind === "not_published")).length;
             const excludedCount = fullList.filter((r) => r.fp.avito_params?.excluded_from_feed === true).length;
+            const fileCount = fullList.filter((r) => (r.fp.avito_params as any)?.moderation?.source === "xlsx_import").length;
 
             const list = fullList.filter((r) => {
               if (errorsFilter === "errors") return r.issues.some((i) => i.severity === "error" && i.kind !== "not_published");
               if (errorsFilter === "unpublished") return r.issues.some((i) => i.kind === "not_published");
               if (errorsFilter === "excluded") return r.fp.avito_params?.excluded_from_feed === true;
+              if (errorsFilter === "file") return (r.fp.avito_params as any)?.moderation?.source === "xlsx_import";
               return true;
             });
 
@@ -2495,6 +2539,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
               <div className="flex items-center gap-1.5 flex-wrap">
                 {([
                   { key: "all", label: `Все`, count: fullList.length },
+                  { key: "file", label: `Из последнего файла`, count: fileCount },
                   { key: "errors", label: `Ошибки`, count: errorsCount },
                   { key: "unpublished", label: `Не опубликованы`, count: unpublishedCount },
                   { key: "excluded", label: `Отключены от автозалива`, count: excludedCount },
@@ -2558,6 +2603,31 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                         <ImagePlus className="h-3.5 w-3.5 mr-1" /> Сгенерировать фото ({noImages.length})
                       </Button>
                     )}
+                    {(() => {
+                      const catList = list.filter((r) => !!(r.fp.avito_params as any)?.moderation?.suggested_category);
+                      if (catList.length === 0) return null;
+                      return (
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                          onClick={async () => {
+                            let ok = 0;
+                            for (const r of catList) {
+                              const sug = (r.fp.avito_params as any)?.moderation?.suggested_category;
+                              if (!sug) continue;
+                              try {
+                                await handleInlineParamUpdate(r.product.id, "category", sug);
+                                ok++;
+                              } catch {}
+                            }
+                            await avitoFeed!.refetch?.();
+                            toast({ title: `Категории применены: ${ok} из ${catList.length}` });
+                          }}
+                        >
+                          <Check className="h-3.5 w-3.5 mr-1" /> Применить все рекомендации ({catList.length})
+                        </Button>
+                      );
+                    })()}
                     {(() => {
                       const modList = list.filter((r) => (r.issues.some((i) => i.severity === "error" && i.kind !== "not_published") || r.issues.some((i) => i.kind === "not_published")) && !r.fp.avito_params?.excluded_from_feed);
                       if (modList.length === 0) return null;
@@ -2672,6 +2742,31 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                         {m.field && <div className="text-[9px] uppercase text-muted-foreground/70 mt-0.5">поле: {m.field}</div>}
                                       </div>
                                     ))}
+                                    {(() => {
+                                      const sug: string | undefined = (fp.avito_params as any)?.moderation?.suggested_category;
+                                      if (!sug) return null;
+                                      const parts = sug.split("---");
+                                      return (
+                                        <div className="rounded bg-emerald-500/10 border border-emerald-500/30 p-1.5 mt-1.5">
+                                          <div className="text-[10px] uppercase tracking-wide text-emerald-700 dark:text-emerald-400 font-semibold mb-0.5">
+                                            Рекомендуемая категория
+                                          </div>
+                                          <div className="text-[11px] font-medium leading-tight mb-1">
+                                            {parts.join(" → ")}
+                                          </div>
+                                          <Button
+                                            size="sm"
+                                            className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white"
+                                            onClick={async () => {
+                                              await handleInlineParamUpdate(product.id, "category", sug);
+                                              await avitoFeed!.refetch?.();
+                                            }}
+                                          >
+                                            <Check className="h-3 w-3 mr-1" /> Применить категорию
+                                          </Button>
+                                        </div>
+                                      );
+                                    })()}
                                     <Button
                                       size="sm"
                                       variant="outline"
