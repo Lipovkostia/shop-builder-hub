@@ -703,6 +703,7 @@ function AvitoFeedTable({
                       {excluded && <span className="text-[9px] px-1 rounded bg-muted text-muted-foreground">не выгр.</span>}
                       {hasModError && <span className="text-[9px] px-1 rounded bg-destructive/15 text-destructive">ошибка</span>}
                       {!hasModError && hasModWarning && <span className="text-[9px] px-1 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400">предупр.</span>}
+                      {notPublished && <span className="text-[9px] px-1 rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 font-medium" title={modStatus || "Не опубликовано на Авито"}>не опубл.{modStatus ? `: ${modStatus}` : ""}</span>}
                     </div>
                     <InlineCell
                       value={params.title || product.name}
