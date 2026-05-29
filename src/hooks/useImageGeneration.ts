@@ -1,8 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-export interface GenerationParams {
   aspect_ratio: string;
   width?: number;
   height?: number;
