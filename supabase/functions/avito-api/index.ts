@@ -348,7 +348,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    }
+
 
     if (action === "disconnect") {
       await supabase.from("avito_accounts").delete().eq("store_id", store_id);
