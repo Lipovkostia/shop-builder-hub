@@ -485,7 +485,45 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                   {formatRub(pricePerImageRub)} × {rows.length} = <span className="text-primary">{formatRub(pricePerImageRub * rows.length)}</span>
                 </div>
               </div>
+              <div className="space-y-1 min-w-[200px]">
+                <Label className="text-xs">Сохранённые шаблоны</Label>
+                <div className="flex items-center gap-1">
+                  <Select value="" onValueChange={(v) => applyTemplate(v)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder={templates.length ? "— применить —" : "— нет шаблонов —"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name} · {t.aspect}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" variant="outline" onClick={saveAsTemplate} title="Сохранить текущие настройки как шаблон">
+                    Сохранить
+                  </Button>
+                  {templates.length > 0 && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button size="sm" variant="ghost" title="Удалить шаблон"><Trash2 className="h-4 w-4" /></Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-2 space-y-1">
+                        {templates.map((t) => (
+                          <button key={t.id} type="button"
+                            className="w-full flex items-center justify-between gap-2 px-2 py-1 text-sm rounded hover:bg-muted"
+                            onClick={() => deleteTemplate(t.id)}>
+                            <span className="truncate">{t.name}</span>
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </button>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+              </div>
             </div>
+
 
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1 min-w-[200px]">
