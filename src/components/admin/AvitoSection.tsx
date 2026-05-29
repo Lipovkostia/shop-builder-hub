@@ -2283,28 +2283,40 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
               if (f) handleImportAvitoErrorsFile(f);
             }}
           />
-          <div className="flex items-center justify-between gap-2 flex-wrap rounded-lg border bg-muted/30 p-3">
-            <div className="text-xs text-muted-foreground">
-              Загрузите XLSX-файл выгрузки Авито с колонкой «Ошибка» — система найдёт объявления с ошибками по ID и подсветит их ниже. Также можно подтянуть отчёт автозагрузки напрямую.
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => errorsFileInputRef.current?.click()}
-                disabled={importingErrors}
-              >
-                {importingErrors ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
-                Загрузить файл ошибок Авито (XLSX)
-              </Button>
-              {isConnected && (
-                <Button size="sm" variant="default" onClick={handleFetchAutoloadErrors} disabled={fetchingErrors}>
-                  {fetchingErrors ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
-                  Обновить ошибки с Авито
+
+          {/* Видная карточка загрузки ошибок */}
+          <Card className="border-2 border-dashed border-primary/40 bg-primary/5 p-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Upload className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Загрузить файл ошибок Авито</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Загрузите XLSX-файл выгрузки Авито с колонкой «Ошибка». Система найдёт объявления по ID и подсветит проблемы.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button
+                  size="default"
+                  className="h-9 px-4"
+                  onClick={() => errorsFileInputRef.current?.click()}
+                  disabled={importingErrors}
+                >
+                  {importingErrors ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                  Загрузить XLSX
                 </Button>
-              )}
+                {isConnected && (
+                  <Button size="default" variant="outline" className="h-9 px-4" onClick={handleFetchAutoloadErrors} disabled={fetchingErrors}>
+                    {fetchingErrors ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                    Обновить с Авито
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
+          </Card>
 
           {(() => {
 
