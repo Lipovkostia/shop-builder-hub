@@ -172,7 +172,8 @@ export type AvitoIssueKind =
   | "category_missing" | "goodsType_missing" | "goodsSubType_missing"
   | "address_missing" | "targetAudience_missing"
   | "contactPhone_missing" | "managerName_missing"
-  | "avito_moderation";
+  | "avito_moderation"
+  | "not_published";
 
 export interface AvitoIssue { kind: AvitoIssueKind; label: string; severity: "error" | "warning"; aiFixable: boolean; }
 
