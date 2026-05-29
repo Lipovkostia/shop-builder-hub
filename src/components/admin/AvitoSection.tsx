@@ -2273,17 +2273,39 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
         {/* Errors Tab */}
         <TabsContent value="errors" className="space-y-3">
-          {isConnected && (
-            <div className="flex items-center justify-between gap-2 flex-wrap rounded-lg border bg-muted/30 p-3">
-              <div className="text-xs text-muted-foreground">
-                Подтянуть причины блокировок и ошибки модерации из последних отчётов автозагрузки Авито
-              </div>
-              <Button size="sm" variant="default" onClick={handleFetchAutoloadErrors} disabled={fetchingErrors}>
-                {fetchingErrors ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
-                Обновить ошибки с Авито
-              </Button>
+          <input
+            ref={errorsFileInputRef}
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleImportAvitoErrorsFile(f);
+            }}
+          />
+          <div className="flex items-center justify-between gap-2 flex-wrap rounded-lg border bg-muted/30 p-3">
+            <div className="text-xs text-muted-foreground">
+              Загрузите XLSX-файл выгрузки Авито с колонкой «Ошибка» — система найдёт объявления с ошибками по ID и подсветит их ниже. Также можно подтянуть отчёт автозагрузки напрямую.
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => errorsFileInputRef.current?.click()}
+                disabled={importingErrors}
+              >
+                {importingErrors ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
+                Загрузить файл ошибок Авито (XLSX)
+              </Button>
+              {isConnected && (
+                <Button size="sm" variant="default" onClick={handleFetchAutoloadErrors} disabled={fetchingErrors}>
+                  {fetchingErrors ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+                  Обновить ошибки с Авито
+                </Button>
+              )}
+            </div>
+          </div>
+
           {(() => {
 
             const list = (avitoFeed?.feedProducts || [])
