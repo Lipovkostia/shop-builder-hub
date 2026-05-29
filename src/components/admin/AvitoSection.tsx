@@ -1197,6 +1197,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       const wb = XLSX.read(buf, { type: "array", cellNF: false, cellHTML: false });
       // Map: first-8-chars of product UUID -> array of {text, hint, field}
       const errorMap = new Map<string, { text: string; hint?: string; field?: string }[]>();
+      // Map: first-8-chars of product UUID -> raw status text from Avito report
+      const statusMap = new Map<string, string>();
       for (const sheetName of wb.SheetNames) {
         if (sheetName === "Инструкция" || sheetName.startsWith("Спр-")) continue;
         const ws = wb.Sheets[sheetName];
@@ -1205,12 +1207,19 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         const headers = (rows[1] || []) as any[];
         const errIdx = headers.findIndex((h) => String(h || "").trim() === "Ошибка");
         const idIdx = headers.findIndex((h) => String(h || "").trim() === "Уникальный идентификатор объявления");
-        if (errIdx < 0 || idIdx < 0) continue;
+        const statusIdx = headers.findIndex((h) => /^статус/i.test(String(h || "").trim()));
+        if (idIdx < 0) continue;
         for (let i = 4; i < rows.length; i++) {
           const row = rows[i] || [];
           const aid = String(row[idIdx] || "").trim().toLowerCase();
+          if (!aid) continue;
+          if (statusIdx >= 0) {
+            const st = String(row[statusIdx] || "").trim();
+            if (st) statusMap.set(aid, st);
+          }
+          if (errIdx < 0) continue;
           const err = String(row[errIdx] || "").trim();
-          if (!aid || !err) continue;
+          if (!err) continue;
           // Read cell comment from the "Ошибка" cell
           const cellAddr = XLSX.utils.encode_cell({ r: i, c: errIdx });
           const cell = (ws as any)[cellAddr];
@@ -1228,32 +1237,38 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         }
       }
 
-      if (errorMap.size === 0) {
-        toast({ title: "Ошибки не найдены в файле", description: "Колонка «Ошибка» пуста или формат не распознан.", variant: "destructive" });
+      if (errorMap.size === 0 && statusMap.size === 0) {
+        toast({ title: "Данные не найдены в файле", description: "Не удалось распознать колонки «Ошибка» / «Статус» / «Уникальный идентификатор объявления».", variant: "destructive" });
         return;
       }
 
       const checkedAt = new Date().toISOString();
       let updated = 0;
       let matched = 0;
+      let unpublishedCount = 0;
       const feed = avitoFeed.feedProducts || [];
       for (const fp of feed) {
         const prefix = String(fp.product_id || "").slice(0, 8).toLowerCase();
         const errs = errorMap.get(prefix);
-        if (!errs || errs.length === 0) continue;
+        const status = statusMap.get(prefix);
+        if ((!errs || errs.length === 0) && !status) continue;
         matched++;
-        const messages = errs.map((m) => ({
+        const messages = (errs || []).map((m) => ({
           type: /заблокир|удален|отклон/i.test(m.text) ? "error" : "warning",
           text: m.text,
           hint: m.hint,
           field: m.field,
         }));
+        const published = status ? !/не\s*опубл|снят|откло|заблок|удал/i.test(status) : undefined;
+        if (published === false) unpublishedCount++;
         const newParams = {
           ...(fp.avito_params || {}),
           moderation: {
             source: "xlsx_import",
             checked_at: checkedAt,
             file_name: file.name,
+            status: status || undefined,
+            published,
             messages,
           },
         };
@@ -1264,10 +1279,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       }
 
       await avitoFeed.refetch?.();
-      const unmatched = errorMap.size - matched;
+      const totalAvito = new Set([...errorMap.keys(), ...statusMap.keys()]).size;
+      const unmatched = totalAvito - matched;
       toast({
-        title: "Файл ошибок Авито обработан",
-        description: `Распознано в файле: ${errorMap.size}. Сопоставлено с фидом: ${matched}. Обновлено: ${updated}. Не найдено в фиде: ${unmatched}.`,
+        title: "Файл Авито обработан",
+        description: `Объявлений в файле: ${totalAvito}. С ошибками: ${errorMap.size}. Не опубликовано: ${unpublishedCount}. Сопоставлено: ${matched}. Не найдено в фиде: ${unmatched}.`,
       });
     } catch (err: any) {
       console.error("Import avito errors xlsx failed", err);
