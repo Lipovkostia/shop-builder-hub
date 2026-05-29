@@ -72,28 +72,76 @@ interface PhotoSettingsTemplate {
   globalPromptId: string | null;
   globalReferenceId: string | null;
   globalPromptText: string;
-}
+  const settingsKey = useMemo(() => `photo_gen_settings_v1:${storeId}`, [storeId]);
+  const templatesKey = useMemo(() => `photo_gen_templates_v1:${storeId}`, [storeId]);
 
-interface Props { storeId: string; preselectedProductId?: string | null; onOpenInAvito?: (productId: string) => void; }
+  const loadedSettings = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try { return JSON.parse(localStorage.getItem(settingsKey) || "null"); } catch { return null; }
+  }, [settingsKey]);
 
-
-export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenInAvito }: Props) {
-  const [products, setProducts] = useState<ProductLite[]>([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
-  const [search, setSearch] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [rows, setRows] = useState<PhotoRow[]>([]);
-  const [aspect, setAspect] = useState<string>("1:1");
-  const [globalPromptId, setGlobalPromptId] = useState<string | null>(null);
-  const [globalReferenceId, setGlobalReferenceId] = useState<string | null>(null);
-  const [globalPromptText, setGlobalPromptText] = useState("");
+  const [aspect, setAspect] = useState<string>(loadedSettings?.aspect ?? "1:1");
+  const [globalPromptId, setGlobalPromptId] = useState<string | null>(loadedSettings?.globalPromptId ?? null);
+  const [globalReferenceId, setGlobalReferenceId] = useState<string | null>(loadedSettings?.globalReferenceId ?? null);
+  const [globalPromptText, setGlobalPromptText] = useState<string>(loadedSettings?.globalPromptText ?? "");
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const [localJobs, setLocalJobs] = useState<SavedJob[]>([]);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
-  const [modelId, setModelId] = useState<string>(KIE_MODELS[0].id);
+  const [modelId, setModelId] = useState<string>(loadedSettings?.modelId ?? KIE_MODELS[0].id);
   const [usdRub, setUsdRub] = useState<number>(() => {
     const s = typeof window !== "undefined" ? Number(localStorage.getItem("kie_usd_rub")) : NaN;
     return Number.isFinite(s) && s > 0 ? s : DEFAULT_USD_RUB;
+  });
+
+  const [templates, setTemplates] = useState<PhotoSettingsTemplate[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem(`photo_gen_templates_v1:${storeId}`) || "[]"); } catch { return []; }
+  });
+
+  // Persist current settings on change
+  useEffect(() => {
+    try {
+      localStorage.setItem(settingsKey, JSON.stringify({
+        aspect, modelId, globalPromptId, globalReferenceId, globalPromptText,
+      }));
+    } catch { /* ignore */ }
+  }, [settingsKey, aspect, modelId, globalPromptId, globalReferenceId, globalPromptText]);
+
+  const persistTemplates = useCallback((next: PhotoSettingsTemplate[]) => {
+    setTemplates(next);
+    try { localStorage.setItem(templatesKey, JSON.stringify(next)); } catch { /* ignore */ }
+  }, [templatesKey]);
+
+  const saveAsTemplate = useCallback(() => {
+    const name = window.prompt("Название шаблона настроек:");
+    if (!name || !name.trim()) return;
+    const tpl: PhotoSettingsTemplate = {
+      id: `tpl_${Date.now()}`,
+      name: name.trim(),
+      aspect, modelId, globalPromptId, globalReferenceId, globalPromptText,
+    };
+    persistTemplates([tpl, ...templates]);
+    toast.success(`Шаблон "${tpl.name}" сохранён`);
+  }, [aspect, modelId, globalPromptId, globalReferenceId, globalPromptText, templates, persistTemplates]);
+
+  const applyTemplate = useCallback((id: string) => {
+    const tpl = templates.find((t) => t.id === id);
+    if (!tpl) return;
+    setAspect(tpl.aspect);
+    setModelId(tpl.modelId);
+    setGlobalPromptId(tpl.globalPromptId);
+    setGlobalReferenceId(tpl.globalReferenceId);
+    setGlobalPromptText(tpl.globalPromptText);
+    toast.success(`Шаблон "${tpl.name}" применён`);
+  }, [templates]);
+
+  const deleteTemplate = useCallback((id: string) => {
+    const tpl = templates.find((t) => t.id === id);
+    if (!tpl) return;
+    if (!window.confirm(`Удалить шаблон "${tpl.name}"?`)) return;
+    persistTemplates(templates.filter((t) => t.id !== id));
+  }, [templates, persistTemplates]);
+
   });
 
   const selectedModel = useMemo(() => KIE_MODELS.find((m) => m.id === modelId) ?? KIE_MODELS[0], [modelId]);
