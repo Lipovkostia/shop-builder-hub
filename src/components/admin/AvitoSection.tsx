@@ -2498,10 +2498,14 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
             return (
               <>
+                {filterChips}
                 <div className="flex items-center justify-between gap-2 flex-wrap rounded-lg border border-destructive/30 bg-destructive/5 p-3">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-destructive" />
-                    <span className="text-sm font-medium">{list.length} объявлен{list.length === 1 ? "ие" : list.length < 5 ? "ия" : "ий"} с проблемами</span>
+                    <span className="text-sm font-medium">
+                      Показано {list.length} из {fullList.length}
+                      {errorsFilter === "unpublished" ? " (не опубликованные)" : errorsFilter === "errors" ? " (с ошибками)" : errorsFilter === "excluded" ? " (отключены)" : ""}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     {titleFixable.length > 0 && (
@@ -2520,7 +2524,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                       </Button>
                     )}
                     {(() => {
-                      const modList = list.filter((r) => (r.fp.avito_params?.moderation?.messages || []).length > 0 && !r.fp.avito_params?.excluded_from_feed);
+                      const modList = list.filter((r) => (r.issues.some((i) => i.severity === "error" && i.kind !== "not_published") || r.issues.some((i) => i.kind === "not_published")) && !r.fp.avito_params?.excluded_from_feed);
                       if (modList.length === 0) return null;
                       return (
                         <Button
@@ -2540,6 +2544,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     })()}
                   </div>
                 </div>
+
 
                 <div className="border rounded-lg overflow-hidden">
                   <ScrollArea className="h-[calc(100vh-280px)]">
