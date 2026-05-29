@@ -149,7 +149,8 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
     persistTemplates(templates.filter((t) => t.id !== id));
   }, [templates, persistTemplates]);
 
-  });
+
+
 
   const selectedModel = useMemo(() => KIE_MODELS.find((m) => m.id === modelId) ?? KIE_MODELS[0], [modelId]);
   const pricePerImageRub = selectedModel.priceUsd * usdRub;
