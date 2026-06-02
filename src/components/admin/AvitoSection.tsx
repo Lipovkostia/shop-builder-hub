@@ -3083,10 +3083,10 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         onDeleteTemplate={deleteTemplate}
         generating={aiGenerating}
         progress={aiProgress}
-        onGenerate={({ instruction, maxChars }) => {
+        onGenerate={({ instruction, maxChars, priceMode, customPrice }) => {
           setAiInstruction(instruction);
           setAiMaxChars(maxChars);
-          handleAiGenerate({ instruction, maxChars });
+          handleAiGenerate({ instruction, maxChars, priceMode, customPrice });
         }}
       />
 
