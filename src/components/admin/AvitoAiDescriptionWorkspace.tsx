@@ -532,7 +532,7 @@ export function AvitoAiDescriptionWorkspace({
                       {previewProduct?.name || "Название товара"}
                     </div>
                     <div className="text-xl font-bold mt-1">
-                      {previewProduct?.pricePerUnit ? `${Math.round(previewProduct.pricePerUnit).toLocaleString("ru-RU")} ₽` : "—"}
+                      {effectivePrice && effectivePrice > 0 ? `${Math.round(effectivePrice).toLocaleString("ru-RU")} ₽` : (priceMode === "none" ? "цена скрыта" : "—")}
                     </div>
                   </div>
                   <Separator />
