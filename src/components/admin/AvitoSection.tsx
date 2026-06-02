@@ -1385,10 +1385,17 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     await avitoFeed.updateProductParams(productId, newParams);
   }, [avitoFeed, toast]);
   // === AI DESCRIPTION/TITLE GENERATION ===
-  const handleAiGenerate = async (overrides?: { instruction?: string; maxChars?: number }) => {
+  const handleAiGenerate = async (overrides?: { instruction?: string; maxChars?: number; priceMode?: "auto" | "custom" | "none"; customPrice?: number | null }) => {
     if (!avitoFeed) return;
     const effInstruction = overrides?.instruction ?? aiInstruction;
     const effMaxChars = overrides?.maxChars ?? aiMaxChars;
+    const priceMode = overrides?.priceMode ?? "auto";
+    const customPrice = overrides?.customPrice ?? null;
+    const resolvePrice = (raw?: number) => {
+      if (priceMode === "none") return undefined;
+      if (priceMode === "custom") return customPrice && customPrice > 0 ? customPrice : undefined;
+      return raw;
+    };
     if (!avitoFeed) return;
     const targetIds = aiSingleProductId ? [aiSingleProductId] : Array.from(selectedFeedProducts);
     if (targetIds.length === 0) return;
@@ -1416,7 +1423,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
         const productsToGenerate = batchIds.map(pid => {
           const product = storeProducts.find(p => p.id === pid);
-          return product ? { id: pid, name: product.name, description: product.description, price: product.pricePerUnit } : null;
+          return product ? { id: pid, name: product.name, description: product.description, price: resolvePrice(product.pricePerUnit) } : null;
         }).filter(Boolean);
 
         try {
@@ -1436,7 +1443,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
               // post-process placeholders the AI was told to keep verbatim
               const value = rawValue
                 .replace(/\{product_name\}/g, prod?.name ?? "")
-                .replace(/\{price\}/g, prod?.pricePerUnit ? `${Math.round(prod.pricePerUnit)} ₽` : "")
+                .replace(/\{price\}/g, (() => { const ep = resolvePrice(prod?.pricePerUnit); return ep ? `${Math.round(ep)} ₽` : ""; })())
                 .replace(/\{city\}/g, city)
                 .replace(/\{description\}/g, prod?.description ?? "");
               const fp = avitoFeed.feedProducts.find(f => f.product_id === pid);
@@ -3076,10 +3083,10 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         onDeleteTemplate={deleteTemplate}
         generating={aiGenerating}
         progress={aiProgress}
-        onGenerate={({ instruction, maxChars }) => {
+        onGenerate={({ instruction, maxChars, priceMode, customPrice }) => {
           setAiInstruction(instruction);
           setAiMaxChars(maxChars);
-          handleAiGenerate({ instruction, maxChars });
+          handleAiGenerate({ instruction, maxChars, priceMode, customPrice });
         }}
       />
 

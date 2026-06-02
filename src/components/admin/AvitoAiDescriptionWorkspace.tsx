@@ -16,6 +16,8 @@ import {
 import { cn } from "@/lib/utils";
 import { RichTextToolbar } from "./RichTextToolbar";
 
+export type AvitoPriceMode = "auto" | "custom" | "none";
+
 export interface AiTemplate {
   id: string;
   name: string;
@@ -24,6 +26,8 @@ export interface AiTemplate {
   blocks?: { heading: string; main: string; advantages: string; cta: string };
   stopWords?: string;
   preserveCta?: boolean;
+  priceMode?: AvitoPriceMode;
+  customPrice?: number | null;
 }
 
 interface PreviewProduct {
@@ -52,7 +56,7 @@ interface Props {
   // generation
   generating: boolean;
   progress: { done: number; total: number };
-  onGenerate: (compiled: { instruction: string; maxChars: number }) => void;
+  onGenerate: (compiled: { instruction: string; maxChars: number; priceMode: AvitoPriceMode; customPrice: number | null }) => void;
 }
 
 const PLACEHOLDERS = [
@@ -70,11 +74,14 @@ const EMAIL_RE = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
 const TG_RE = /@[a-zA-Z][\w_]{3,}/g;
 const CAPS_RE = /[А-ЯA-Z]{5,}/g;
 
-function fillPlaceholders(text: string, p: PreviewProduct | null, city?: string) {
+function fillPlaceholders(text: string, p: PreviewProduct | null, city?: string, effectivePrice?: number | null) {
   if (!p) return text;
+  const priceStr = effectivePrice === null || effectivePrice === undefined || effectivePrice <= 0
+    ? ""
+    : `${Math.round(effectivePrice)} ₽`;
   return text
     .replace(/\{product_name\}/g, p.name || "")
-    .replace(/\{price\}/g, p.pricePerUnit ? `${Math.round(p.pricePerUnit)} ₽` : "")
+    .replace(/\{price\}/g, priceStr)
     .replace(/\{city\}/g, city || "вашем городе")
     .replace(/\{description\}/g, p.description || "");
 }
@@ -97,6 +104,8 @@ export function AvitoAiDescriptionWorkspace({
   const [device, setDevice] = useState<"mobile" | "desktop">("mobile");
   const [newTplName, setNewTplName] = useState("");
   const [previewExpanded, setPreviewExpanded] = useState(false);
+  const [priceMode, setPriceMode] = useState<AvitoPriceMode>("auto");
+  const [customPrice, setCustomPrice] = useState<string>("");
 
   const instructionRef = useRef<HTMLTextAreaElement>(null);
   const headingRef = useRef<HTMLTextAreaElement>(null);
@@ -150,7 +159,16 @@ export function AvitoAiDescriptionWorkspace({
     return sample;
   }, [useBlocks, heading, main, advantages, cta, instruction]);
 
-  const preview = useMemo(() => fillPlaceholders(previewRaw, previewProduct, city), [previewRaw, previewProduct, city]);
+  const effectivePrice = useMemo<number | null>(() => {
+    if (priceMode === "none") return null;
+    if (priceMode === "custom") {
+      const n = Number(customPrice.replace(/\s/g, "").replace(",", "."));
+      return Number.isFinite(n) && n > 0 ? n : null;
+    }
+    return previewProduct?.pricePerUnit ?? null;
+  }, [priceMode, customPrice, previewProduct]);
+
+  const preview = useMemo(() => fillPlaceholders(previewRaw, previewProduct, city, effectivePrice), [previewRaw, previewProduct, city, effectivePrice]);
 
   // Avito hides text after ~150 chars on mobile under "Показать ещё"
   const CUTOFF = device === "mobile" ? 150 : 300;
@@ -198,6 +216,8 @@ export function AvitoAiDescriptionWorkspace({
     }
     if (tpl.stopWords !== undefined) setStopWords(tpl.stopWords);
     if (tpl.preserveCta !== undefined) setPreserveCta(tpl.preserveCta);
+    if (tpl.priceMode) setPriceMode(tpl.priceMode);
+    if (tpl.customPrice !== undefined && tpl.customPrice !== null) setCustomPrice(String(tpl.customPrice));
   };
 
   const handleSaveTpl = () => {
@@ -213,6 +233,8 @@ export function AvitoAiDescriptionWorkspace({
       blocks: useBlocks ? { heading, main, advantages, cta } : undefined,
       stopWords,
       preserveCta,
+      priceMode,
+      customPrice: priceMode === "custom" ? Number(customPrice) || null : null,
     });
     setNewTplName("");
   };
@@ -242,7 +264,7 @@ export function AvitoAiDescriptionWorkspace({
             )}
             <Button
               size="sm"
-              onClick={() => onGenerate({ instruction: compiledInstruction, maxChars })}
+              onClick={() => onGenerate({ instruction: compiledInstruction, maxChars, priceMode, customPrice: priceMode === "custom" ? (Number(customPrice) || null) : null })}
               disabled={generating || (selectedCount === 0 && !singleProduct)}
             >
               <Wand2 className="h-3.5 w-3.5 mr-1.5" />
@@ -403,6 +425,57 @@ export function AvitoAiDescriptionWorkspace({
                       <p className="text-[10px] text-muted-foreground">AI исключит эти слова. Валидатор справа отметит, если они всё же появились.</p>
                     </div>
 
+                    <div className="space-y-2 rounded-md border p-3 bg-muted/30">
+                      <div className="text-xs font-medium">Цена в описании (плейсхолдер {"{price}"})</div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={priceMode === "auto" ? "default" : "outline"}
+                          className="h-8 text-xs"
+                          onClick={() => setPriceMode("auto")}
+                        >
+                          Авто (из товара)
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={priceMode === "custom" ? "default" : "outline"}
+                          className="h-8 text-xs"
+                          onClick={() => setPriceMode("custom")}
+                        >
+                          Своя цена
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={priceMode === "none" ? "default" : "outline"}
+                          className="h-8 text-xs"
+                          onClick={() => setPriceMode("none")}
+                        >
+                          Не указывать
+                        </Button>
+                      </div>
+                      {priceMode === "custom" && (
+                        <div className="space-y-1">
+                          <Label className="text-[11px] text-muted-foreground">Цена для всех выбранных товаров (₽)</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={customPrice}
+                            onChange={(e) => setCustomPrice(e.target.value)}
+                            placeholder="Например: 2500"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      )}
+                      <p className="text-[10px] text-muted-foreground">
+                        {priceMode === "auto" && "Будет использована себестоимость / цена товара из карточки."}
+                        {priceMode === "custom" && "Эта цена подставится во все сгенерированные описания вместо цены товара."}
+                        {priceMode === "none" && "Плейсхолдер {price} будет удалён — цена в описании не появится."}
+                      </p>
+                    </div>
+
                     <div className="flex items-center justify-between p-2 rounded-md border bg-muted/30">
                       <div className="text-xs">
                         <div className="font-medium">Сохранять CTA в конце</div>
@@ -459,7 +532,7 @@ export function AvitoAiDescriptionWorkspace({
                       {previewProduct?.name || "Название товара"}
                     </div>
                     <div className="text-xl font-bold mt-1">
-                      {previewProduct?.pricePerUnit ? `${Math.round(previewProduct.pricePerUnit).toLocaleString("ru-RU")} ₽` : "—"}
+                      {effectivePrice && effectivePrice > 0 ? `${Math.round(effectivePrice).toLocaleString("ru-RU")} ₽` : (priceMode === "none" ? "цена скрыта" : "—")}
                     </div>
                   </div>
                   <Separator />
