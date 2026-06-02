@@ -425,6 +425,57 @@ export function AvitoAiDescriptionWorkspace({
                       <p className="text-[10px] text-muted-foreground">AI исключит эти слова. Валидатор справа отметит, если они всё же появились.</p>
                     </div>
 
+                    <div className="space-y-2 rounded-md border p-3 bg-muted/30">
+                      <div className="text-xs font-medium">Цена в описании (плейсхолдер {"{price}"})</div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={priceMode === "auto" ? "default" : "outline"}
+                          className="h-8 text-xs"
+                          onClick={() => setPriceMode("auto")}
+                        >
+                          Авто (из товара)
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={priceMode === "custom" ? "default" : "outline"}
+                          className="h-8 text-xs"
+                          onClick={() => setPriceMode("custom")}
+                        >
+                          Своя цена
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={priceMode === "none" ? "default" : "outline"}
+                          className="h-8 text-xs"
+                          onClick={() => setPriceMode("none")}
+                        >
+                          Не указывать
+                        </Button>
+                      </div>
+                      {priceMode === "custom" && (
+                        <div className="space-y-1">
+                          <Label className="text-[11px] text-muted-foreground">Цена для всех выбранных товаров (₽)</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={customPrice}
+                            onChange={(e) => setCustomPrice(e.target.value)}
+                            placeholder="Например: 2500"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      )}
+                      <p className="text-[10px] text-muted-foreground">
+                        {priceMode === "auto" && "Будет использована себестоимость / цена товара из карточки."}
+                        {priceMode === "custom" && "Эта цена подставится во все сгенерированные описания вместо цены товара."}
+                        {priceMode === "none" && "Плейсхолдер {price} будет удалён — цена в описании не появится."}
+                      </p>
+                    </div>
+
                     <div className="flex items-center justify-between p-2 rounded-md border bg-muted/30">
                       <div className="text-xs">
                         <div className="font-medium">Сохранять CTA в конце</div>
