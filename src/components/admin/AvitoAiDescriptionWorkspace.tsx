@@ -56,7 +56,7 @@ interface Props {
   // generation
   generating: boolean;
   progress: { done: number; total: number };
-  onGenerate: (compiled: { instruction: string; maxChars: number }) => void;
+  onGenerate: (compiled: { instruction: string; maxChars: number; priceMode: AvitoPriceMode; customPrice: number | null }) => void;
 }
 
 const PLACEHOLDERS = [
