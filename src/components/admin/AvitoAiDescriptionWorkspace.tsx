@@ -104,6 +104,8 @@ export function AvitoAiDescriptionWorkspace({
   const [device, setDevice] = useState<"mobile" | "desktop">("mobile");
   const [newTplName, setNewTplName] = useState("");
   const [previewExpanded, setPreviewExpanded] = useState(false);
+  const [priceMode, setPriceMode] = useState<AvitoPriceMode>("auto");
+  const [customPrice, setCustomPrice] = useState<string>("");
 
   const instructionRef = useRef<HTMLTextAreaElement>(null);
   const headingRef = useRef<HTMLTextAreaElement>(null);
