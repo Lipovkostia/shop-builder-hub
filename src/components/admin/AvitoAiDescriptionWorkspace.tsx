@@ -216,6 +216,8 @@ export function AvitoAiDescriptionWorkspace({
     }
     if (tpl.stopWords !== undefined) setStopWords(tpl.stopWords);
     if (tpl.preserveCta !== undefined) setPreserveCta(tpl.preserveCta);
+    if (tpl.priceMode) setPriceMode(tpl.priceMode);
+    if (tpl.customPrice !== undefined && tpl.customPrice !== null) setCustomPrice(String(tpl.customPrice));
   };
 
   const handleSaveTpl = () => {
@@ -231,6 +233,8 @@ export function AvitoAiDescriptionWorkspace({
       blocks: useBlocks ? { heading, main, advantages, cta } : undefined,
       stopWords,
       preserveCta,
+      priceMode,
+      customPrice: priceMode === "custom" ? Number(customPrice) || null : null,
     });
     setNewTplName("");
   };
