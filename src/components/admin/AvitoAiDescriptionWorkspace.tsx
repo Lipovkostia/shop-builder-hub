@@ -16,6 +16,8 @@ import {
 import { cn } from "@/lib/utils";
 import { RichTextToolbar } from "./RichTextToolbar";
 
+export type AvitoPriceMode = "auto" | "custom" | "none";
+
 export interface AiTemplate {
   id: string;
   name: string;
@@ -24,6 +26,8 @@ export interface AiTemplate {
   blocks?: { heading: string; main: string; advantages: string; cta: string };
   stopWords?: string;
   preserveCta?: boolean;
+  priceMode?: AvitoPriceMode;
+  customPrice?: number | null;
 }
 
 interface PreviewProduct {
