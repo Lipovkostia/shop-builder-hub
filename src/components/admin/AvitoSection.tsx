@@ -1443,7 +1443,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
               // post-process placeholders the AI was told to keep verbatim
               const value = rawValue
                 .replace(/\{product_name\}/g, prod?.name ?? "")
-                .replace(/\{price\}/g, prod?.pricePerUnit ? `${Math.round(prod.pricePerUnit)} ₽` : "")
+                .replace(/\{price\}/g, (() => { const ep = resolvePrice(prod?.pricePerUnit); return ep ? `${Math.round(ep)} ₽` : ""; })())
                 .replace(/\{city\}/g, city)
                 .replace(/\{description\}/g, prod?.description ?? "");
               const fp = avitoFeed.feedProducts.find(f => f.product_id === pid);
