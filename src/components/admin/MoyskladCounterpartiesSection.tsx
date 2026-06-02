@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useMemo } from "react";
+import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, RefreshCw, Users, Phone, Mail, MapPin, Building2, FileText, ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
+import { Loader2, Search, RefreshCw, Users, Phone, Mail, MapPin, Building2, FileText, ChevronDown, ChevronUp, Copy, Check, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
