@@ -2539,6 +2539,59 @@ export type Database = {
           },
         ]
       }
+      store_telegram_bots: {
+        Row: {
+          bot_id: number | null
+          bot_token: string
+          bot_username: string | null
+          created_at: string
+          enabled: boolean
+          last_error: string | null
+          store_id: string
+          updated_at: string
+          webapp_url: string | null
+          webhook_secret: string
+          webhook_set: boolean
+          welcome_message: string | null
+        }
+        Insert: {
+          bot_id?: number | null
+          bot_token: string
+          bot_username?: string | null
+          created_at?: string
+          enabled?: boolean
+          last_error?: string | null
+          store_id: string
+          updated_at?: string
+          webapp_url?: string | null
+          webhook_secret?: string
+          webhook_set?: boolean
+          welcome_message?: string | null
+        }
+        Update: {
+          bot_id?: number | null
+          bot_token?: string
+          bot_username?: string | null
+          created_at?: string
+          enabled?: boolean
+          last_error?: string | null
+          store_id?: string
+          updated_at?: string
+          webapp_url?: string | null
+          webhook_secret?: string
+          webhook_set?: boolean
+          welcome_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_telegram_bots_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       storefront_chat_messages: {
         Row: {
           content: string

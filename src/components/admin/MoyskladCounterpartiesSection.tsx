@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useMemo } from "react";
+import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, RefreshCw, Users, Phone, Mail, MapPin, Building2, FileText, ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
+import { Loader2, Search, RefreshCw, Users, Phone, Mail, MapPin, Building2, FileText, ChevronDown, ChevronUp, Copy, Check, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -192,10 +193,10 @@ export function MoyskladCounterpartiesSection({ login, password }: Props) {
   const fetchCounterparties = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch all counterparties (paginated)
+      // Fetch all counterparties (paginated, no cap)
       let all: MoyskladCounterparty[] = [];
       let offset = 0;
-      const batchSize = 100;
+      const batchSize = 1000;
       let total = 0;
 
       do {
@@ -212,10 +213,13 @@ export function MoyskladCounterpartiesSection({ login, password }: Props) {
         if (error) throw error;
         if (data.error) throw new Error(data.error);
 
-        all = [...all, ...(data.counterparties || [])];
+        const batch = data.counterparties || [];
+        all = [...all, ...batch];
         total = data.meta?.size || all.length;
         offset += batchSize;
-      } while (offset < total && offset < 1000); // safety cap
+
+        if (batch.length === 0) break;
+      } while (offset < total);
 
       setCounterparties(all);
       setTotalCount(total);
@@ -229,6 +233,90 @@ export function MoyskladCounterpartiesSection({ login, password }: Props) {
       });
     } finally {
       setLoading(false);
+    }
+  }, [login, password, toast]);
+
+  const [exporting, setExporting] = useState(false);
+
+  const exportToExcel = useCallback(async () => {
+    setExporting(true);
+    try {
+      // Always fetch all fresh from server to make sure export is complete
+      let all: MoyskladCounterparty[] = [];
+      let offset = 0;
+      const batchSize = 1000;
+      let total = 0;
+
+      do {
+        const { data, error } = await supabase.functions.invoke("moysklad", {
+          body: {
+            action: "get_counterparties",
+            login,
+            password,
+            counterpartyLimit: batchSize,
+            counterpartyOffset: offset,
+          },
+        });
+        if (error) throw error;
+        if (data.error) throw new Error(data.error);
+        const batch = data.counterparties || [];
+        all = [...all, ...batch];
+        total = data.meta?.size || all.length;
+        offset += batchSize;
+        if (batch.length === 0) break;
+      } while (offset < total);
+
+      const rows = all.map(cp => ({
+        "Имя": cp.name,
+        "Тип": companyTypeLabels[cp.companyType || ""] || cp.companyType || "",
+        "Телефон": cp.phone || "",
+        "Email": cp.email || "",
+        "Факс": cp.fax || "",
+        "Юр. название": cp.legalTitle || "",
+        "Юр. адрес": cp.legalAddress || "",
+        "Факт. адрес": cp.actualAddress || "",
+        "ИНН": cp.inn || "",
+        "КПП": cp.kpp || "",
+        "ОГРН": cp.ogrn || "",
+        "ОГРНИП": cp.ogrnip || "",
+        "ОКПО": cp.okpo || "",
+        "Код": cp.code || "",
+        "Внешний код": cp.externalCode || "",
+        "Номер карты": cp.discountCardNumber || "",
+        "Номер свидетельства": cp.certificateNumber || "",
+        "Дата свидетельства": cp.certificateDate ? new Date(cp.certificateDate).toLocaleDateString("ru-RU") : "",
+        "Описание": cp.description || "",
+        "Теги": cp.tags.join(", "),
+        "Архив": cp.archived ? "Да" : "Нет",
+        "Сумма продаж (₽)": cp.salesAmount ? cp.salesAmount / 100 : 0,
+        "Создан": cp.created ? new Date(cp.created).toLocaleDateString("ru-RU") : "",
+        "Обновлён": cp.updated ? new Date(cp.updated).toLocaleDateString("ru-RU") : "",
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Контрагенты");
+      const fileName = `kontragenty_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+
+      // Also update local view
+      setCounterparties(all);
+      setTotalCount(total);
+      setLoaded(true);
+
+      toast({
+        title: "Экспорт завершён",
+        description: `Выгружено ${all.length} контрагентов`,
+      });
+    } catch (error: any) {
+      console.error("Export error:", error);
+      toast({
+        title: "Ошибка экспорта",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setExporting(false);
     }
   }, [login, password, toast]);
 
@@ -253,17 +341,23 @@ export function MoyskladCounterpartiesSection({ login, password }: Props) {
         <p className="text-sm text-muted-foreground mb-4">
           Загрузите список контрагентов из МойСклад со всеми доступными данными
         </p>
-        <Button onClick={fetchCounterparties}>
-          <Users className="h-4 w-4 mr-2" />
-          Загрузить контрагентов
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={fetchCounterparties}>
+            <Users className="h-4 w-4 mr-2" />
+            Загрузить контрагентов
+          </Button>
+          <Button variant="outline" onClick={exportToExcel} disabled={exporting}>
+            {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+            Скачать всех в Excel
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-primary" />
           <h3 className="text-base font-semibold">Контрагенты</h3>
@@ -271,16 +365,29 @@ export function MoyskladCounterpartiesSection({ login, password }: Props) {
             {filtered.length} из {totalCount}
           </Badge>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={fetchCounterparties}
-          disabled={loading}
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={exportToExcel}
+            disabled={exporting || loading}
+            className="h-8"
+          >
+            {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+            {exporting ? "Выгрузка..." : `Скачать всех в Excel (${totalCount})`}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={fetchCounterparties}
+            disabled={loading}
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          </Button>
+        </div>
       </div>
+
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
