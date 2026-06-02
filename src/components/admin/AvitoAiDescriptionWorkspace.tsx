@@ -159,7 +159,16 @@ export function AvitoAiDescriptionWorkspace({
     return sample;
   }, [useBlocks, heading, main, advantages, cta, instruction]);
 
-  const preview = useMemo(() => fillPlaceholders(previewRaw, previewProduct, city), [previewRaw, previewProduct, city]);
+  const effectivePrice = useMemo<number | null>(() => {
+    if (priceMode === "none") return null;
+    if (priceMode === "custom") {
+      const n = Number(customPrice.replace(/\s/g, "").replace(",", "."));
+      return Number.isFinite(n) && n > 0 ? n : null;
+    }
+    return previewProduct?.pricePerUnit ?? null;
+  }, [priceMode, customPrice, previewProduct]);
+
+  const preview = useMemo(() => fillPlaceholders(previewRaw, previewProduct, city, effectivePrice), [previewRaw, previewProduct, city, effectivePrice]);
 
   // Avito hides text after ~150 chars on mobile under "Показать ещё"
   const CUTOFF = device === "mobile" ? 150 : 300;
