@@ -1385,10 +1385,17 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     await avitoFeed.updateProductParams(productId, newParams);
   }, [avitoFeed, toast]);
   // === AI DESCRIPTION/TITLE GENERATION ===
-  const handleAiGenerate = async (overrides?: { instruction?: string; maxChars?: number }) => {
+  const handleAiGenerate = async (overrides?: { instruction?: string; maxChars?: number; priceMode?: "auto" | "custom" | "none"; customPrice?: number | null }) => {
     if (!avitoFeed) return;
     const effInstruction = overrides?.instruction ?? aiInstruction;
     const effMaxChars = overrides?.maxChars ?? aiMaxChars;
+    const priceMode = overrides?.priceMode ?? "auto";
+    const customPrice = overrides?.customPrice ?? null;
+    const resolvePrice = (raw?: number) => {
+      if (priceMode === "none") return undefined;
+      if (priceMode === "custom") return customPrice && customPrice > 0 ? customPrice : undefined;
+      return raw;
+    };
     if (!avitoFeed) return;
     const targetIds = aiSingleProductId ? [aiSingleProductId] : Array.from(selectedFeedProducts);
     if (targetIds.length === 0) return;
