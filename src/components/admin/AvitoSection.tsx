@@ -1423,7 +1423,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
         const productsToGenerate = batchIds.map(pid => {
           const product = storeProducts.find(p => p.id === pid);
-          return product ? { id: pid, name: product.name, description: product.description, price: product.pricePerUnit } : null;
+          return product ? { id: pid, name: product.name, description: product.description, price: resolvePrice(product.pricePerUnit) } : null;
         }).filter(Boolean);
 
         try {
