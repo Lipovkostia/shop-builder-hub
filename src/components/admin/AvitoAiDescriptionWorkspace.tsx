@@ -264,7 +264,7 @@ export function AvitoAiDescriptionWorkspace({
             )}
             <Button
               size="sm"
-              onClick={() => onGenerate({ instruction: compiledInstruction, maxChars })}
+              onClick={() => onGenerate({ instruction: compiledInstruction, maxChars, priceMode, customPrice: priceMode === "custom" ? (Number(customPrice) || null) : null })}
               disabled={generating || (selectedCount === 0 && !singleProduct)}
             >
               <Wand2 className="h-3.5 w-3.5 mr-1.5" />
