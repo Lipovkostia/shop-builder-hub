@@ -74,11 +74,14 @@ const EMAIL_RE = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
 const TG_RE = /@[a-zA-Z][\w_]{3,}/g;
 const CAPS_RE = /[А-ЯA-Z]{5,}/g;
 
-function fillPlaceholders(text: string, p: PreviewProduct | null, city?: string) {
+function fillPlaceholders(text: string, p: PreviewProduct | null, city?: string, effectivePrice?: number | null) {
   if (!p) return text;
+  const priceStr = effectivePrice === null || effectivePrice === undefined || effectivePrice <= 0
+    ? ""
+    : `${Math.round(effectivePrice)} ₽`;
   return text
     .replace(/\{product_name\}/g, p.name || "")
-    .replace(/\{price\}/g, p.pricePerUnit ? `${Math.round(p.pricePerUnit)} ₽` : "")
+    .replace(/\{price\}/g, priceStr)
     .replace(/\{city\}/g, city || "вашем городе")
     .replace(/\{description\}/g, p.description || "");
 }
