@@ -220,7 +220,7 @@ function PromptBlock({
             Authorization: `Bearer ${session?.access_token ?? ""}`,
           },
           body: JSON.stringify({
-            store_id: (window as any).__currentStoreId ?? "",
+            store_id: storeId,
             prompt: prompt.trim(),
             model,
             aspect_ratio: "4:3",
