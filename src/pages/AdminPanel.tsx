@@ -91,6 +91,7 @@ import { PhotoGenerationSection } from "@/components/admin/photo-generation/Phot
 import { BulkEditPanel } from "@/components/admin/BulkEditPanel";
 import { uploadProductImages, deleteSingleImage, uploadFilesToStorage } from "@/hooks/useProductImages";
 import { ImageGalleryViewer } from "@/components/admin/ImageGalleryViewer";
+import { AvitoImageEditor } from "@/components/admin/AvitoImageEditor";
 import { SyncSettingsPanel, SyncSettings, SyncFieldMapping, defaultSyncSettings } from "@/components/admin/SyncSettingsPanel";
 import { useStoreProducts, StoreProduct } from "@/hooks/useStoreProducts";
 import { useStoreCatalogs, Catalog as StoreCatalog } from "@/hooks/useStoreCatalogs";
@@ -874,6 +875,8 @@ export default function AdminPanel({
   const [editingCatalogName, setEditingCatalogName] = useState(false);
   const [selectedCatalogBulkProducts, setSelectedCatalogBulkProducts] = useState<Set<string>>(new Set());
   const [lastSelectedCatalogProductId, setLastSelectedCatalogProductId] = useState<string | null>(null);
+  const [expandedCatalogImagesId, setExpandedCatalogImagesId] = useState<string | null>(null);
+  const [editingCatalogImageProduct, setEditingCatalogImageProduct] = useState<Product | null>(null);
   const [expandedCatalogId, setExpandedCatalogId] = useState<string | null>(null);
   const [catalogSettingsOpen, setCatalogSettingsOpen] = useState<string | null>(null);
   const [editingCatalogListName, setEditingCatalogListName] = useState<string | null>(null);
@@ -5762,6 +5765,7 @@ export default function AdminPanel({
                             );
                             
                             return (
+                              <React.Fragment key={product.id}>
                               <SortableTableRow
                                 id={product.id}
                                 disabled={!!catalogSortColumn}
@@ -5839,15 +5843,38 @@ export default function AdminPanel({
                                 {/* Фото - из ассортимента (только чтение) */}
                                 {catalogVisibleColumns.photo && (
                                   <ResizableTableCell columnId="photo">
-                                    <div className="flex items-center justify-center">
-                                      {(product.images?.length || 0) > 0 ? (
-                                        <span className="flex items-center gap-0.5 text-green-600">
-                                          <ImageIcon className="h-3.5 w-3.5" />
-                                          <span className="text-[10px]">{product.images?.length}</span>
-                                        </span>
-                                      ) : (
-                                        <ImageIcon className="h-3.5 w-3.5 text-muted-foreground/40" />
-                                      )}
+                                    <div className="flex items-center justify-center gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0 text-violet-600 hover:text-violet-700 hover:bg-violet-500/10"
+                                        title="Открыть AI фоторедактор"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingCatalogImageProduct(product);
+                                        }}
+                                      >
+                                        <Sparkles className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-1 relative"
+                                        title="Показать фото"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setExpandedCatalogImagesId(prev => prev === product.id ? null : product.id);
+                                        }}
+                                      >
+                                        {(product.images?.length || 0) > 0 ? (
+                                          <span className="flex items-center gap-0.5 text-green-600">
+                                            <ImageIcon className="h-3.5 w-3.5" />
+                                            <span className="text-[10px]">{product.images?.length}</span>
+                                          </span>
+                                        ) : (
+                                          <ImageIcon className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                        )}
+                                      </Button>
                                     </div>
                                   </ResizableTableCell>
                                 )}
@@ -6154,6 +6181,39 @@ export default function AdminPanel({
                                   </ResizableTableCell>
                                 )}
                               </SortableTableRow>
+                              {expandedCatalogImagesId === product.id && (
+                                <tr className="bg-muted/30">
+                                  <td colSpan={30} className="px-4 py-3 border-b border-border">
+                                    <ImageGalleryViewer
+                                      images={product.images || []}
+                                      productName={product.name}
+                                      productId={product.id}
+                                      onDeleteImage={async (index) => {
+                                        const newImages = [...(product.images || [])];
+                                        newImages.splice(index, 1);
+                                        await updateProduct({ ...product, images: newImages, image: newImages[0] || "" });
+                                      }}
+                                      onAddImages={async (files) => {
+                                        const fileArray = Array.from(files);
+                                        const startIndex = (product.images || []).length;
+                                        const uploadedUrls = await uploadFilesToStorage(fileArray, product.id, startIndex);
+                                        if (uploadedUrls.length > 0) {
+                                          const newImages = [...(product.images || []), ...uploadedUrls];
+                                          await updateProduct({ ...product, images: newImages, image: product.image || uploadedUrls[0] });
+                                        }
+                                      }}
+                                      onSetMainImage={async (index) => {
+                                        if (!product.images || !product.images[index]) return;
+                                        const newImages = [...product.images];
+                                        const [mainImage] = newImages.splice(index, 1);
+                                        newImages.unshift(mainImage);
+                                        await updateProduct({ ...product, images: newImages, image: mainImage });
+                                      }}
+                                    />
+                                  </td>
+                                </tr>
+                              )}
+                              </React.Fragment>
                             );
                           })}
                       </ResizableTableBody>
@@ -6163,6 +6223,34 @@ export default function AdminPanel({
                 </>
               )}
             </>
+          )}
+
+          {/* AI Photo Editor for catalog products */}
+          {editingCatalogImageProduct && effectiveStoreId && (
+            <AvitoImageEditor
+              open={!!editingCatalogImageProduct}
+              onOpenChange={(open) => { if (!open) setEditingCatalogImageProduct(null); }}
+              productId={editingCatalogImageProduct.id}
+              productName={editingCatalogImageProduct.name}
+              images={editingCatalogImageProduct.images || []}
+              storeId={effectiveStoreId}
+              onSave={async (selectedImages) => {
+                if (selectedImages.length > 0) {
+                  await updateProduct({
+                    ...editingCatalogImageProduct,
+                    images: selectedImages,
+                    image: selectedImages[0],
+                  });
+                }
+                setEditingCatalogImageProduct(null);
+              }}
+              onImagesAdded={(newUrls) => {
+                setEditingCatalogImageProduct(prev => prev ? {
+                  ...prev,
+                  images: [...(prev.images || []), ...newUrls],
+                } : null);
+              }}
+            />
           )}
 
           {effectiveStoreId && activeSection === "visibility" && (
