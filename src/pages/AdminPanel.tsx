@@ -6181,6 +6181,39 @@ export default function AdminPanel({
                                   </ResizableTableCell>
                                 )}
                               </SortableTableRow>
+                              {expandedCatalogImagesId === product.id && (
+                                <tr className="bg-muted/30">
+                                  <td colSpan={30} className="px-4 py-3 border-b border-border">
+                                    <ImageGalleryViewer
+                                      images={product.images || []}
+                                      productName={product.name}
+                                      productId={product.id}
+                                      onDeleteImage={async (index) => {
+                                        const newImages = [...(product.images || [])];
+                                        newImages.splice(index, 1);
+                                        await updateProduct({ ...product, images: newImages, image: newImages[0] || "" });
+                                      }}
+                                      onAddImages={async (files) => {
+                                        const fileArray = Array.from(files);
+                                        const startIndex = (product.images || []).length;
+                                        const uploadedUrls = await uploadFilesToStorage(fileArray, product.id, startIndex);
+                                        if (uploadedUrls.length > 0) {
+                                          const newImages = [...(product.images || []), ...uploadedUrls];
+                                          await updateProduct({ ...product, images: newImages, image: product.image || uploadedUrls[0] });
+                                        }
+                                      }}
+                                      onSetMainImage={async (index) => {
+                                        if (!product.images || !product.images[index]) return;
+                                        const newImages = [...product.images];
+                                        const [mainImage] = newImages.splice(index, 1);
+                                        newImages.unshift(mainImage);
+                                        await updateProduct({ ...product, images: newImages, image: mainImage });
+                                      }}
+                                    />
+                                  </td>
+                                </tr>
+                              )}
+                              </React.Fragment>
                             );
                           })}
                       </ResizableTableBody>
