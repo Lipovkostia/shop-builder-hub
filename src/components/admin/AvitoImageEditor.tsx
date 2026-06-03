@@ -4,12 +4,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Wand2, Image as ImageIcon, Upload, X, Check, Maximize, Layers, Download, Bookmark,
   Eraser, ZoomIn, Sparkles, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { KIE_MODELS } from "./photo-generation/models";
+
 
 
 interface ImageInfo {
