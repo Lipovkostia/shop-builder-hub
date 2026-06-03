@@ -825,14 +825,16 @@ function AvitoFeedTable({
                       type="number"
                     />
                   </div>
-                  {/* Категория магазина (из прайс-листа) */}
-                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.storeCategory }}>
-                    <div className="px-1.5 py-1 text-xs text-muted-foreground truncate" title={
-                      (product.categories || []).map(cid => categoryMap.get(cid) || "").filter(Boolean).join(", ") || "—"
-                    }>
-                      {(product.categories || []).map(cid => categoryMap.get(cid) || "").filter(Boolean).join(", ") || "—"}
+                  {/* Категория магазина (из прайс-листа) — внутренняя */}
+                  {visibleColKeys.has("storeCategory") && (
+                    <div className={`flex-shrink-0 px-1 overflow-hidden ${cellKindBg("storeCategory")}`} style={{ width: colWidths.storeCategory }}>
+                      <div className="px-1.5 py-1 text-xs text-muted-foreground truncate" title={
+                        (product.categories || []).map(cid => categoryMap.get(cid) || "").filter(Boolean).join(", ") || "—"
+                      }>
+                        {(product.categories || []).map(cid => categoryMap.get(cid) || "").filter(Boolean).join(", ") || "—"}
+                      </div>
                     </div>
-                  </div>
+                  )}
                   {/* Категория Авито */}
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.category }}>
                     <AvitoCategoryCombobox
