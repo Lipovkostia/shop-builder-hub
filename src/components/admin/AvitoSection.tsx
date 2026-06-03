@@ -89,6 +89,7 @@ interface AvitoSectionProps {
     removeProductFromFeed: (productId: string) => Promise<void>;
     removeProductsFromFeed: (productIds: string[]) => Promise<void>;
     updateProductParams: (productId: string, params: any) => Promise<void>;
+    assignGroup?: (productIds: string[], groupId: string | null) => Promise<void>;
     refetch: () => Promise<void>;
   };
 }
