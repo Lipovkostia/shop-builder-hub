@@ -545,6 +545,17 @@ export function AvitoImageEditor({
     removeSelected(url);
   };
 
+  const handlePromptGenerated = useCallback(async (newUrl: string) => {
+    const dims = await loadImageDimensions(newUrl);
+    const newImg: ImageInfo = { url: newUrl, ...dims, isGenerated: true };
+    setGeneratedImages(prev => [...prev, newImg]);
+    addSelected(newUrl);
+    setTimeout(() => {
+      scrollViewportRef.current?.scrollTo({ top: scrollViewportRef.current.scrollHeight, behavior: "smooth" });
+    }, 200);
+  }, []);
+
+
   const handleUploadPhotos = useCallback(async (files: FileList | File[]) => {
     const fileArr = Array.from(files).filter(f => f.type.startsWith("image/"));
     if (fileArr.length === 0) return;
