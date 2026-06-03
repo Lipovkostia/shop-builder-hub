@@ -176,11 +176,14 @@ function SelectBadge({
 
 function PromptBlock({
   imageUrl,
+  storeId,
   onGenerated,
 }: {
   imageUrl: string;
+  storeId: string;
   onGenerated: (newUrl: string) => void;
 }) {
+
   const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
   const [useThisPhoto, setUseThisPhoto] = useState(false);
