@@ -119,9 +119,14 @@ export function AvitoSheetsPanel({ storeId }: Props) {
 
         <div className="flex items-center gap-2">
           {!integration?.spreadsheet_id ? (
-            <Button size="sm" onClick={() => callSync("create_spreadsheet")} disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-              Создать таблицу
+            <Button
+              size="sm"
+              onClick={async () => { await callSync("create_spreadsheet"); await callSync("sync"); }}
+              disabled={loading || syncing}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {(loading || syncing) ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+              Создать таблицу и выгрузить товары
             </Button>
           ) : (
             <>
