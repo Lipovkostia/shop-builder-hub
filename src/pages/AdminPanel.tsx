@@ -5765,6 +5765,7 @@ export default function AdminPanel({
                             );
                             
                             return (
+                              <React.Fragment key={product.id}>
                               <SortableTableRow
                                 id={product.id}
                                 disabled={!!catalogSortColumn}
