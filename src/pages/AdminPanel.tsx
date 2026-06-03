@@ -6225,6 +6225,34 @@ export default function AdminPanel({
             </>
           )}
 
+          {/* AI Photo Editor for catalog products */}
+          {editingCatalogImageProduct && effectiveStoreId && (
+            <AvitoImageEditor
+              open={!!editingCatalogImageProduct}
+              onOpenChange={(open) => { if (!open) setEditingCatalogImageProduct(null); }}
+              productId={editingCatalogImageProduct.id}
+              productName={editingCatalogImageProduct.name}
+              images={editingCatalogImageProduct.images || []}
+              storeId={effectiveStoreId}
+              onSave={async (selectedImages) => {
+                if (selectedImages.length > 0) {
+                  await updateProduct({
+                    ...editingCatalogImageProduct,
+                    images: selectedImages,
+                    image: selectedImages[0],
+                  });
+                }
+                setEditingCatalogImageProduct(null);
+              }}
+              onImagesAdded={(newUrls) => {
+                setEditingCatalogImageProduct(prev => prev ? {
+                  ...prev,
+                  images: [...(prev.images || []), ...newUrls],
+                } : null);
+              }}
+            />
+          )}
+
           {effectiveStoreId && activeSection === "visibility" && (
             <>
               <div className="mb-4">
