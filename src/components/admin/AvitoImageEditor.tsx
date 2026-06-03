@@ -783,6 +783,12 @@ export function AvitoImageEditor({
                           onToggle={() => toggleSelect(img.url)}
                           onMove={(d) => moveSelected(img.url, d)}
                         />
+                        <PromptBlock
+                          imageUrl={img.url}
+                          storeId={storeId}
+                          onGenerated={handlePromptGenerated}
+                        />
+
 
                       </div>
                     ))}
