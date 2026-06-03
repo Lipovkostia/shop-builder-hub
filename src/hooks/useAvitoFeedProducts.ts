@@ -9,6 +9,7 @@ export interface AvitoFeedProduct {
   avito_category: string | null;
   avito_address: string | null;
   avito_params: any;
+  group_id: string | null;
   created_at: string;
 }
 
