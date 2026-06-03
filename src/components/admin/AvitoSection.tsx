@@ -24,8 +24,12 @@ import {
   ExternalLink, Loader2, Link2, Unlink, RefreshCw, Check, Package, Search, Filter,
 
   MapPin, Calendar, Eye, Image as ImageIcon, X, Download, Settings, Save, Sparkles, Wand2,
-  Plus, Trash2, BookOpen, Clock, ImagePlus, AlertCircle, AlertTriangle, Upload,
+  Plus, Trash2, BookOpen, Clock, ImagePlus, AlertCircle, AlertTriangle, Upload, Folder, Inbox,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
