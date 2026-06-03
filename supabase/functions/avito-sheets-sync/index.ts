@@ -225,7 +225,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === "import_errors") {
-      const body = await req.clone().json().catch(() => ({}));
       const list: any[] = Array.isArray(body.errors) ? body.errors : [];
       if (list.length) {
         const dbRows = list.map((e: any) => ({
