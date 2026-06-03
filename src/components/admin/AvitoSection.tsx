@@ -45,6 +45,7 @@ import { AvitoAiDescriptionWorkspace } from "./AvitoAiDescriptionWorkspace";
 import { AvitoCategoryCombobox } from "./AvitoCategoryCombobox";
 import { AvitoListingVariantsManager } from "./AvitoListingVariantsManager";
 import { AvitoGroupsSidebar, AvitoGroupBadge } from "./AvitoGroupsSidebar";
+import { AvitoSheetsPanel } from "./AvitoSheetsPanel";
 import { useAvitoProductGroups, AvitoProductGroup, colorClass } from "@/hooks/useAvitoProductGroups";
 import { Copy as CopyIcon } from "lucide-react";
 
@@ -2045,6 +2046,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
         {/* Feed Products Tab */}
         <TabsContent value="feed">
+          <AvitoSheetsPanel storeId={storeId} />
           <div className="flex gap-0 h-[calc(100vh-220px)]">
             {/* Groups Sidebar (internal categorization) */}
             {avitoFeed && (
