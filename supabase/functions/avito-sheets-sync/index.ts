@@ -154,6 +154,69 @@ Deno.serve(async (req) => {
       .update({ last_synced_at: new Date().toISOString() })
       .eq("store_id", storeId);
 
+    if (action === "pull") {
+      const res = await gw(`/spreadsheets/${integration.spreadsheet_id}/values/Товары!A2:K10000`);
+      const values: string[][] = res.values || [];
+      let updated = 0;
+      for (const row of values) {
+        const [product_id, _sku, title, priceRaw, description, category, address] = row;
+        if (!product_id) continue;
+        const price = priceRaw ? Number(String(priceRaw).replace(/[^\d.]/g, "")) : null;
+        const { data: cur } = await supabase
+          .from("avito_feed_products")
+          .select("avito_params")
+          .eq("store_id", storeId).eq("product_id", product_id).maybeSingle();
+        const newParams = { ...((cur?.avito_params as any) || {}), Title: title || undefined, Price: price ?? undefined, Description: description || undefined };
+        const { error } = await supabase.from("avito_feed_products").upsert({
+          store_id: storeId, product_id,
+          avito_category: category || null,
+          avito_address: address || null,
+          avito_params: newParams,
+        }, { onConflict: "store_id,product_id" });
+        if (!error) {
+          updated++;
+          await supabase.from("avito_sheets_change_log").insert({
+            store_id: storeId, source: "sheet→db", product_id,
+            field: "bulk", new_value: JSON.stringify({ title, price, category, address }),
+          });
+        }
+      }
+      await supabase.from("store_google_integrations").update({ last_synced_at: new Date().toISOString() }).eq("store_id", storeId);
+      return new Response(JSON.stringify({ ok: true, updated }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === "import_errors") {
+      const body = await req.clone().json().catch(() => ({}));
+      const list: any[] = Array.isArray(body.errors) ? body.errors : [];
+      if (list.length) {
+        const dbRows = list.map((e: any) => ({
+          store_id: storeId,
+          product_id: e.product_id || null,
+          external_ad_id: e.external_ad_id || e.ad_id || null,
+          field: e.field || null,
+          severity: e.severity || "error",
+          message: e.message || String(e),
+          raw: e,
+        }));
+        await supabase.from("avito_listing_errors").insert(dbRows);
+        const sheetRows = list.map((e: any) => [
+          e.product_id || "", e.external_ad_id || e.ad_id || "", e.field || "",
+          e.severity || "error", e.message || "", new Date().toISOString(),
+        ]);
+        try {
+          await gw(`/spreadsheets/${integration.spreadsheet_id}/values/Ошибки!A1:F1?valueInputOption=RAW`, {
+            method: "PUT",
+            body: JSON.stringify({ values: [["product_id", "ad_id", "field", "severity", "message", "imported_at"]] }),
+          });
+          await gw(`/spreadsheets/${integration.spreadsheet_id}/values/Ошибки!A2:append?valueInputOption=RAW`, {
+            method: "POST",
+            body: JSON.stringify({ values: sheetRows }),
+          });
+        } catch (e) { console.warn("Ошибки sheet push failed", e); }
+      }
+      return new Response(JSON.stringify({ ok: true, imported: list.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     return new Response(JSON.stringify({ ok: true, rows: rows.length, spreadsheetUrl: integration.spreadsheet_url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

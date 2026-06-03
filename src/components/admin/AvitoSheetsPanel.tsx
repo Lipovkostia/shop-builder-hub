@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileSpreadsheet, RefreshCw, ExternalLink, Loader2 } from "lucide-react";
+import { FileSpreadsheet, RefreshCw, ExternalLink, Loader2, ArrowDownToLine, AlertTriangle, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -20,6 +20,8 @@ export function AvitoSheetsPanel({ storeId }: Props) {
   const [integration, setIntegration] = useState<Integration | null>(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [pulling, setPulling] = useState(false);
+  const [errorsCount, setErrorsCount] = useState(0);
 
   const load = async () => {
     const { data } = await supabase
@@ -28,12 +30,18 @@ export function AvitoSheetsPanel({ storeId }: Props) {
       .eq("store_id", storeId)
       .maybeSingle();
     setIntegration(data as any);
+    const { count } = await supabase
+      .from("avito_listing_errors" as any)
+      .select("*", { count: "exact", head: true })
+      .eq("store_id", storeId)
+      .eq("resolved", false);
+    setErrorsCount(count || 0);
   };
 
   useEffect(() => { load(); }, [storeId]);
 
-  const callSync = async (action: "create_spreadsheet" | "sync") => {
-    const setter = action === "create_spreadsheet" ? setLoading : setSyncing;
+  const callSync = async (action: "create_spreadsheet" | "sync" | "pull") => {
+    const setter = action === "create_spreadsheet" ? setLoading : action === "pull" ? setPulling : setSyncing;
     setter(true);
     try {
       const { data, error } = await supabase.functions.invoke("avito-sheets-sync", {
@@ -44,6 +52,8 @@ export function AvitoSheetsPanel({ storeId }: Props) {
       toast.success(
         action === "create_spreadsheet"
           ? "Google Таблица создана"
+          : action === "pull"
+          ? `Обновлено из таблицы: ${(data as any)?.updated ?? 0}`
           : `Синхронизировано: ${(data as any)?.rows ?? 0} строк`,
       );
       await load();
@@ -51,6 +61,35 @@ export function AvitoSheetsPanel({ storeId }: Props) {
       toast.error(e?.message || "Ошибка синхронизации");
     } finally {
       setter(false);
+    }
+  };
+
+  const importErrorsFromFile = async (file: File) => {
+    try {
+      const text = await file.text();
+      let parsed: any[] = [];
+      try {
+        const j = JSON.parse(text);
+        parsed = Array.isArray(j) ? j : j.errors || [];
+      } catch {
+        // CSV: ad_id,field,severity,message
+        const lines = text.split(/\r?\n/).filter(Boolean);
+        const header = lines[0].split(",").map((s) => s.trim().toLowerCase());
+        parsed = lines.slice(1).map((line) => {
+          const cols = line.split(",");
+          const obj: any = {};
+          header.forEach((h, i) => (obj[h] = cols[i]?.trim()));
+          return obj;
+        });
+      }
+      const { data, error } = await supabase.functions.invoke("avito-sheets-sync", {
+        body: { action: "import_errors", storeId, errors: parsed },
+      });
+      if (error) throw error;
+      toast.success(`Импортировано ошибок: ${(data as any)?.imported ?? 0}`);
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message || "Не удалось импортировать");
     }
   };
 
@@ -88,8 +127,28 @@ export function AvitoSheetsPanel({ storeId }: Props) {
             <>
               <Button size="sm" variant="outline" onClick={() => callSync("sync")} disabled={syncing}>
                 {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Синхронизировать сейчас
+                Выгрузить в таблицу
               </Button>
+              <Button size="sm" variant="outline" onClick={() => callSync("pull")} disabled={pulling}>
+                {pulling ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
+                Загрузить из таблицы
+              </Button>
+              <label className="inline-flex">
+                <input
+                  type="file"
+                  accept=".json,.csv,text/csv,application/json"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && importErrorsFromFile(e.target.files[0])}
+                />
+                <Button size="sm" variant="outline" asChild>
+                  <span><Upload className="h-4 w-4" />Импорт ошибок</span>
+                </Button>
+              </label>
+              {errorsCount > 0 && (
+                <Badge variant="destructive" className="gap-1">
+                  <AlertTriangle className="h-3 w-3" /> {errorsCount}
+                </Badge>
+              )}
               {integration.spreadsheet_url && (
                 <Button size="sm" variant="ghost" asChild>
                   <a href={integration.spreadsheet_url} target="_blank" rel="noopener noreferrer">
@@ -104,7 +163,7 @@ export function AvitoSheetsPanel({ storeId }: Props) {
       </div>
       {!integration?.spreadsheet_id && (
         <p className="text-xs text-muted-foreground mt-3">
-          После создания в таблице появятся листы «Товары», «Ошибки», «Лог». Двусторонняя синхронизация (правки из таблицы → в систему) подключим следующим шагом через Apps Script вебхук.
+          После создания в таблице появятся листы «Товары», «Ошибки», «Лог». Правки можно делать прямо в таблице — кнопка «Загрузить из таблицы» подтянет их обратно в систему.
         </p>
       )}
     </Card>
