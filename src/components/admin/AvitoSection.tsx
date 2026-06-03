@@ -602,6 +602,18 @@ function AvitoFeedTable({
 
   return (
     <div className="border rounded-lg overflow-hidden">
+      {/* Color legend: export vs internal columns */}
+      <div className="flex items-center gap-3 px-3 py-1.5 bg-background border-b text-[11px] flex-wrap">
+        <span className="text-muted-foreground font-medium">Колонки:</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-3.5 rounded bg-emerald-200 dark:bg-emerald-900 border border-emerald-300 dark:border-emerald-800" />
+          <span>идут в выгрузку Авито</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-3.5 rounded bg-amber-200 dark:bg-amber-900 border border-amber-300 dark:border-amber-800" />
+          <span>только для вашей фильтрации (не в выгрузке)</span>
+        </span>
+      </div>
       {/* Active filters bar */}
       {activeFilterCount > 0 && (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 border-b text-xs flex-wrap">
@@ -625,12 +637,19 @@ function AvitoFeedTable({
       <div className="overflow-x-auto">
         <div style={{ minWidth: totalWidth }}>
           {/* Header */}
-          <div className="flex bg-muted/50 border-b text-xs font-medium text-muted-foreground select-none">
+          <div className="flex border-b text-xs font-medium text-muted-foreground select-none">
             {cols.map((col) => (
               <div
                 key={col.key}
-                className="relative px-2 py-2 flex-shrink-0 truncate flex items-center"
+                className={`relative px-2 py-2 flex-shrink-0 truncate flex items-center ${headerKindBg(col.key)}`}
                 style={{ width: colWidths[col.key] }}
+                title={
+                  COL_KIND[col.key] === "export"
+                    ? "Это поле уходит в выгрузку Авито"
+                    : COL_KIND[col.key] === "internal"
+                      ? "Внутреннее поле — в выгрузку не попадает"
+                      : undefined
+                }
               >
                 {col.key === "check" ? (
                   <Checkbox
