@@ -2041,6 +2041,27 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         {/* Feed Products Tab */}
         <TabsContent value="feed">
           <div className="flex gap-0 h-[calc(100vh-220px)]">
+            {/* Groups Sidebar (internal categorization) */}
+            {avitoFeed && (
+              <AvitoGroupsSidebar
+                groups={avitoGroups}
+                feedProducts={avitoFeed.feedProducts}
+                selectedGroupId={selectedGroupId}
+                onSelectGroup={setSelectedGroupId}
+                errorIds={new Set(
+                  (avitoFeed.feedProducts || [])
+                    .filter((fp) => {
+                      const p = storeProducts.find((sp) => sp.id === fp.product_id);
+                      if (!p) return false;
+                      return computeAvitoIssues(fp, p, localDefaults).length > 0;
+                    })
+                    .map((fp) => fp.product_id)
+                )}
+                onCreateGroup={createAvitoGroup}
+                onUpdateGroup={updateAvitoGroup}
+                onDeleteGroup={deleteAvitoGroup}
+              />
+            )}
             {/* Left Sidebar - Settings, Filters, Bulk Actions */}
             <div className="w-[260px] min-w-[220px] flex-shrink-0 border-r overflow-y-auto bg-muted/10">
               <ScrollArea className="h-full">
