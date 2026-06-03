@@ -121,12 +121,12 @@ export function AvitoSheetsPanel({ storeId }: Props) {
           {!integration?.spreadsheet_id ? (
             <Button
               size="sm"
-              onClick={async () => { await callSync("create_spreadsheet"); await callSync("sync"); }}
-              disabled={loading || syncing}
+              onClick={() => callSync("create_spreadsheet")}
+              disabled={loading}
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
             >
-              {(loading || syncing) ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-              Создать таблицу и выгрузить товары
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+              Создать таблицу
             </Button>
           ) : (
             <>
@@ -137,7 +137,7 @@ export function AvitoSheetsPanel({ storeId }: Props) {
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
               >
                 {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Обновить товары в Google Таблице
+                Выгрузить товары в таблицу
               </Button>
               <Button size="sm" variant="outline" onClick={() => callSync("pull")} disabled={pulling}>
                 {pulling ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
