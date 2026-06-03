@@ -2646,8 +2646,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                       <p className="text-xs text-muted-foreground">Перейдите в «Ассортимент», выберите товары и нажмите «В Авито»</p>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </TabsContent>
