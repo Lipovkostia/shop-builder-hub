@@ -328,6 +328,7 @@ function AvitoFeedTable({
   aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
   feedSearchQuery, feedPriceFilter, storeId, onUpdateProductParams, onOpenInPhotoStudio,
   autoOpenImageEditorForProductId, onAutoOpenImageEditorHandled,
+  groups, onAssignGroup, onCreateGroup, hideInternal,
 }: {
   feedProducts: AvitoFeedProduct[];
   storeProducts: Product[];
@@ -348,6 +349,10 @@ function AvitoFeedTable({
   onOpenInPhotoStudio?: (productId: string) => void;
   autoOpenImageEditorForProductId?: string | null;
   onAutoOpenImageEditorHandled?: () => void;
+  groups: import("@/hooks/useAvitoProductGroups").AvitoProductGroup[];
+  onAssignGroup: (productIds: string[], groupId: string | null) => Promise<void>;
+  onCreateGroup: (name: string, color?: string) => Promise<import("@/hooks/useAvitoProductGroups").AvitoProductGroup | null>;
+  hideInternal: boolean;
 }) {
   const { toast } = useToast();
   const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
@@ -361,6 +366,7 @@ function AvitoFeedTable({
     setEditingImageProduct({ id: product.id, name: product.name, images: product.images || [] });
     onAutoOpenImageEditorHandled?.();
   }, [autoOpenImageEditorForProductId, storeProducts, onAutoOpenImageEditorHandled]);
+
 
 
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
