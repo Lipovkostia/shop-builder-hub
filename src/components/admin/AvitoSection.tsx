@@ -2503,64 +2503,142 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             {/* Right Area - Table */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
               {/* Bulk actions bar - always visible when there are products */}
-              {avitoFeed && avitoFeed.feedProducts.length > 0 && (
-                <div className="flex items-center gap-2 bg-primary/5 border-b border-primary/20 px-3 py-1.5 flex-shrink-0">
-                  <span className="text-xs font-medium">
-                    {selectedFeedProducts.size > 0 ? `Выбрано: ${selectedFeedProducts.size}` : `Товаров: ${avitoFeed.feedProducts.length}`}
-                  </span>
-                  <div className="flex gap-1.5 ml-auto">
-                    <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => {
-                      const ids = selectedFeedProducts.size > 0 ? Array.from(selectedFeedProducts) : avitoFeed!.feedProducts.map(fp => fp.product_id);
-                      openAiForProducts(ids, "title");
-                    }}>
-                      <Wand2 className="h-3 w-3" /> AI название {selectedFeedProducts.size > 0 ? `(${selectedFeedProducts.size})` : "(все)"}
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => {
-                      const ids = selectedFeedProducts.size > 0 ? Array.from(selectedFeedProducts) : avitoFeed!.feedProducts.map(fp => fp.product_id);
-                      openAiForProducts(ids, "description");
-                    }}>
-                      <Sparkles className="h-3 w-3" /> AI описание {selectedFeedProducts.size > 0 ? `(${selectedFeedProducts.size})` : "(все)"}
-                    </Button>
-                    {selectedFeedProducts.size > 0 && (
-                      <>
-                        <Button size="sm" variant="destructive" className="h-6 text-[10px]" onClick={async () => {
-                          await avitoFeed!.removeProductsFromFeed(Array.from(selectedFeedProducts));
-                          setSelectedFeedProducts(new Set());
-                        }}>
-                          <X className="h-3 w-3 mr-0.5" /> Убрать
+              {avitoFeed && avitoFeed.feedProducts.length > 0 && (() => {
+                const groupFilteredFeed = avitoFeed.feedProducts.filter((fp) => {
+                  if (selectedGroupId === "all") return true;
+                  if (selectedGroupId === "none") return !fp.group_id;
+                  return fp.group_id === selectedGroupId;
+                });
+                const currentGroupName = selectedGroupId === "all"
+                  ? "Все товары"
+                  : selectedGroupId === "none"
+                    ? "Без группы"
+                    : (avitoGroups.find(g => g.id === selectedGroupId)?.name || "Группа");
+                const assignGroupFn = avitoFeed.assignGroup
+                  || (async (ids: string[], gid: string | null) => {
+                    for (const id of ids) {
+                      await avitoFeed.updateProductParams(id, { ...(avitoFeed.feedProducts.find(fp => fp.product_id === id)?.avito_params || {}) });
+                    }
+                  });
+                return (
+                  <>
+                    <div className="flex items-center gap-2 bg-primary/5 border-b border-primary/20 px-3 py-1.5 flex-shrink-0 flex-wrap">
+                      <span className="text-xs font-medium flex items-center gap-1.5">
+                        {selectedGroupId !== "all" && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-background border text-[10px]">
+                            {selectedGroupId !== "none" && (
+                              <span className={`h-2 w-2 rounded-full ${colorClass(avitoGroups.find(g => g.id === selectedGroupId)?.color)}`} />
+                            )}
+                            {currentGroupName}
+                            <button onClick={() => setSelectedGroupId("all")} className="ml-0.5 hover:text-destructive">
+                              <X className="h-2.5 w-2.5" />
+                            </button>
+                          </span>
+                        )}
+                        {selectedFeedProducts.size > 0
+                          ? `Выбрано: ${selectedFeedProducts.size}`
+                          : `Показано: ${groupFilteredFeed.length} из ${avitoFeed.feedProducts.length}`}
+                      </span>
+                      <div className="flex gap-1.5 ml-auto items-center flex-wrap">
+                        <Button
+                          size="sm"
+                          variant={hideInternalCols ? "default" : "outline"}
+                          className="h-6 text-[10px] gap-1"
+                          onClick={() => setHideInternalCols(v => !v)}
+                          title="Скрыть служебные колонки (не идущие в выгрузку)"
+                        >
+                          {hideInternalCols ? "Показать все" : "Только выгрузка"}
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setSelectedFeedProducts(new Set())}>Сбросить</Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
+                        {selectedFeedProducts.size > 0 && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1">
+                                <Folder className="h-3 w-3" /> В группу ({selectedFeedProducts.size})
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                              <DropdownMenuGroup>
+                                <DropdownMenuItem onSelect={async () => {
+                                  await assignGroupFn(Array.from(selectedFeedProducts), null);
+                                  setSelectedFeedProducts(new Set());
+                                }}>
+                                  <Inbox className="h-3.5 w-3.5 mr-2" /> Без группы
+                                </DropdownMenuItem>
+                              </DropdownMenuGroup>
+                              {avitoGroups.length > 0 && <DropdownMenuSeparator />}
+                              <DropdownMenuGroup>
+                                {avitoGroups.map(g => (
+                                  <DropdownMenuItem key={g.id} onSelect={async () => {
+                                    await assignGroupFn(Array.from(selectedFeedProducts), g.id);
+                                    setSelectedFeedProducts(new Set());
+                                  }}>
+                                    <span className={`h-2.5 w-2.5 rounded-full mr-2 ${colorClass(g.color)}`} />
+                                    {g.name}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuGroup>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                        <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => {
+                          const ids = selectedFeedProducts.size > 0 ? Array.from(selectedFeedProducts) : groupFilteredFeed.map(fp => fp.product_id);
+                          openAiForProducts(ids, "title");
+                        }}>
+                          <Wand2 className="h-3 w-3" /> AI название {selectedFeedProducts.size > 0 ? `(${selectedFeedProducts.size})` : "(все)"}
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => {
+                          const ids = selectedFeedProducts.size > 0 ? Array.from(selectedFeedProducts) : groupFilteredFeed.map(fp => fp.product_id);
+                          openAiForProducts(ids, "description");
+                        }}>
+                          <Sparkles className="h-3 w-3" /> AI описание {selectedFeedProducts.size > 0 ? `(${selectedFeedProducts.size})` : "(все)"}
+                        </Button>
+                        {selectedFeedProducts.size > 0 && (
+                          <>
+                            <Button size="sm" variant="destructive" className="h-6 text-[10px]" onClick={async () => {
+                              await avitoFeed.removeProductsFromFeed(Array.from(selectedFeedProducts));
+                              setSelectedFeedProducts(new Set());
+                            }}>
+                              <X className="h-3 w-3 mr-0.5" /> Убрать
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setSelectedFeedProducts(new Set())}>Сбросить</Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
 
-              {/* Table */}
-              <div className="flex-1 overflow-auto">
-                {avitoFeed && avitoFeed.feedProducts.length > 0 ? (
-                  <AvitoFeedTable
-                    feedProducts={avitoFeed.feedProducts}
-                    storeProducts={storeProducts}
-                    storeCategories={storeCategories}
-                    selectedFeedProducts={selectedFeedProducts}
-                    setSelectedFeedProducts={setSelectedFeedProducts}
-                    aiGeneratingIds={aiGeneratingIds}
-                    aiDoneIds={aiDoneIds}
-                    aiQueuedIds={aiQueuedIds}
-                    localDefaults={localDefaults}
-                    handleInlineParamUpdate={handleInlineParamUpdate}
-                    openAiForProducts={openAiForProducts}
-                    removeProductFromFeed={avitoFeed.removeProductFromFeed}
-                    feedSearchQuery={feedSearchQuery}
-                    feedPriceFilter={feedPriceFilter}
-                    storeId={storeId || ""}
-                    onUpdateProductParams={avitoFeed.updateProductParams}
-                    onOpenInPhotoStudio={onOpenInPhotoStudio}
-                    autoOpenImageEditorForProductId={autoOpenImageEditorForProductId}
-                    onAutoOpenImageEditorHandled={onAutoOpenImageEditorHandled}
-                  />
-                ) : (
+                    {/* Table */}
+                    <div className="flex-1 overflow-auto">
+                      <AvitoFeedTable
+                        feedProducts={groupFilteredFeed}
+                        storeProducts={storeProducts}
+                        storeCategories={storeCategories}
+                        selectedFeedProducts={selectedFeedProducts}
+                        setSelectedFeedProducts={setSelectedFeedProducts}
+                        aiGeneratingIds={aiGeneratingIds}
+                        aiDoneIds={aiDoneIds}
+                        aiQueuedIds={aiQueuedIds}
+                        localDefaults={localDefaults}
+                        handleInlineParamUpdate={handleInlineParamUpdate}
+                        openAiForProducts={openAiForProducts}
+                        removeProductFromFeed={avitoFeed.removeProductFromFeed}
+                        feedSearchQuery={feedSearchQuery}
+                        feedPriceFilter={feedPriceFilter}
+                        storeId={storeId || ""}
+                        onUpdateProductParams={avitoFeed.updateProductParams}
+                        onOpenInPhotoStudio={onOpenInPhotoStudio}
+                        autoOpenImageEditorForProductId={autoOpenImageEditorForProductId}
+                        onAutoOpenImageEditorHandled={onAutoOpenImageEditorHandled}
+                        groups={avitoGroups}
+                        onAssignGroup={assignGroupFn}
+                        onCreateGroup={createAvitoGroup}
+                        hideInternal={hideInternalCols}
+                      />
+                    </div>
+                  </>
+                );
+              })()}
+              {(!avitoFeed || avitoFeed.feedProducts.length === 0) && (
+                <div className="flex-1 overflow-auto">
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
                       <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
