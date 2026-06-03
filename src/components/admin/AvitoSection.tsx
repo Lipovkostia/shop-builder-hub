@@ -557,8 +557,9 @@ function AvitoFeedTable({
   }, [preFiltered, storeProducts, columnFilters, sortConfig, categoryMap]);
   const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
 
-  const cols = [
+  const allCols = [
     { key: "check", label: "", resizable: false },
+    { key: "group", label: "Группа", resizable: true },
     { key: "photo", label: "Фото", resizable: false },
     { key: "title", label: "Название", resizable: true },
     { key: "desc", label: "Описание", resizable: true },
@@ -581,6 +582,21 @@ function AvitoFeedTable({
     { key: "imgs", label: "📷", resizable: false },
     { key: "actions", label: "", resizable: false },
   ];
+  const cols = hideInternal ? allCols.filter(c => COL_KIND[c.key] !== "internal") : allCols;
+  const visibleColKeys = new Set(cols.map(c => c.key));
+
+  // Header background tint by column kind
+  const headerKindBg = (k: string): string => {
+    const kind = COL_KIND[k];
+    if (kind === "export") return "bg-emerald-50 dark:bg-emerald-950/30";
+    if (kind === "internal") return "bg-amber-50 dark:bg-amber-950/30";
+    return "bg-muted/50";
+  };
+  const cellKindBg = (k: string): string => {
+    const kind = COL_KIND[k];
+    if (kind === "internal") return "bg-amber-50/40 dark:bg-amber-950/10";
+    return "";
+  };
 
   return (
     <div className="border rounded-lg overflow-hidden">
