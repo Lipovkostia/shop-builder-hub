@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { ShoppingCart as AvitoIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { VirtualProductTable, AllProductsFilters } from "./VirtualProductTable";
