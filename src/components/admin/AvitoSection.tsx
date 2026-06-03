@@ -1081,6 +1081,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [feedSearchQuery, setFeedSearchQuery] = useState("");
   const [feedPriceFilter, setFeedPriceFilter] = useState("all");
 
+  // Product groups (internal categorization, not exported)
+  const { groups: avitoGroups, createGroup: createAvitoGroup, updateGroup: updateAvitoGroup, deleteGroup: deleteAvitoGroup } = useAvitoProductGroups(storeId);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | "all" | "none">("all");
+  const [hideInternalCols, setHideInternalCols] = useState(false);
+
   // AI generation state
   const [aiPromptOpen, setAiPromptOpen] = useState(false);
   const [aiMode, setAiMode] = useState<"description" | "title">("description");
