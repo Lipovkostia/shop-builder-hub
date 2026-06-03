@@ -24,8 +24,12 @@ import {
   ExternalLink, Loader2, Link2, Unlink, RefreshCw, Check, Package, Search, Filter,
 
   MapPin, Calendar, Eye, Image as ImageIcon, X, Download, Settings, Save, Sparkles, Wand2,
-  Plus, Trash2, BookOpen, Clock, ImagePlus, AlertCircle, AlertTriangle, Upload,
+  Plus, Trash2, BookOpen, Clock, ImagePlus, AlertCircle, AlertTriangle, Upload, Folder, Inbox,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -40,6 +44,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { AvitoAiDescriptionWorkspace } from "./AvitoAiDescriptionWorkspace";
 import { AvitoCategoryCombobox } from "./AvitoCategoryCombobox";
 import { AvitoListingVariantsManager } from "./AvitoListingVariantsManager";
+import { AvitoGroupsSidebar, AvitoGroupBadge } from "./AvitoGroupsSidebar";
+import { useAvitoProductGroups, AvitoProductGroup, colorClass } from "@/hooks/useAvitoProductGroups";
 import { Copy as CopyIcon } from "lucide-react";
 
 interface AvitoItem {
@@ -87,6 +93,7 @@ interface AvitoSectionProps {
     removeProductFromFeed: (productId: string) => Promise<void>;
     removeProductsFromFeed: (productIds: string[]) => Promise<void>;
     updateProductParams: (productId: string, params: any) => Promise<void>;
+    assignGroup?: (productIds: string[], groupId: string | null) => Promise<void>;
     refetch: () => Promise<void>;
   };
 }
@@ -161,7 +168,19 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 }
 // Avito Feed Table with resizable columns
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
-const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, promoAuto: 140, cpcBid: 80, address: 120, avitoId: 110, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
+const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, group: 90, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, promoAuto: 140, cpcBid: 80, address: 120, avitoId: 110, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
+
+// Column classification: "export" = goes into Avito XLSX/ZIP, "internal" = only for filtering/grouping
+type ColKind = "export" | "internal" | "system";
+const COL_KIND: Record<string, ColKind> = {
+  check: "system", photo: "system", imgs: "system", actions: "system",
+  group: "internal", storeCategory: "internal",
+  title: "export", desc: "export", price: "export", category: "export",
+  adType: "export", goodsType: "export", promo: "export", promoManual: "export",
+  promoAuto: "export", cpcBid: "export", address: "export", avitoId: "export",
+  avitoNumber: "export", managerName: "export", contactPhone: "export",
+  email: "export", companyName: "export",
+};
 
 // === Avito validation: detect missing/invalid fields per feed product ===
 // === Avito validation: detect missing/invalid fields per feed product ===
@@ -316,6 +335,7 @@ function AvitoFeedTable({
   aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
   feedSearchQuery, feedPriceFilter, storeId, onUpdateProductParams, onOpenInPhotoStudio,
   autoOpenImageEditorForProductId, onAutoOpenImageEditorHandled,
+  groups, onAssignGroup, onCreateGroup, hideInternal,
 }: {
   feedProducts: AvitoFeedProduct[];
   storeProducts: Product[];
@@ -336,6 +356,10 @@ function AvitoFeedTable({
   onOpenInPhotoStudio?: (productId: string) => void;
   autoOpenImageEditorForProductId?: string | null;
   onAutoOpenImageEditorHandled?: () => void;
+  groups: import("@/hooks/useAvitoProductGroups").AvitoProductGroup[];
+  onAssignGroup: (productIds: string[], groupId: string | null) => Promise<void>;
+  onCreateGroup: (name: string, color?: string) => Promise<import("@/hooks/useAvitoProductGroups").AvitoProductGroup | null>;
+  hideInternal: boolean;
 }) {
   const { toast } = useToast();
   const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
@@ -349,6 +373,7 @@ function AvitoFeedTable({
     setEditingImageProduct({ id: product.id, name: product.name, images: product.images || [] });
     onAutoOpenImageEditorHandled?.();
   }, [autoOpenImageEditorForProductId, storeProducts, onAutoOpenImageEditorHandled]);
+
 
 
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
@@ -539,8 +564,9 @@ function AvitoFeedTable({
   }, [preFiltered, storeProducts, columnFilters, sortConfig, categoryMap]);
   const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
 
-  const cols = [
+  const allCols = [
     { key: "check", label: "", resizable: false },
+    { key: "group", label: "Группа", resizable: true },
     { key: "photo", label: "Фото", resizable: false },
     { key: "title", label: "Название", resizable: true },
     { key: "desc", label: "Описание", resizable: true },
@@ -563,9 +589,36 @@ function AvitoFeedTable({
     { key: "imgs", label: "📷", resizable: false },
     { key: "actions", label: "", resizable: false },
   ];
+  const cols = hideInternal ? allCols.filter(c => COL_KIND[c.key] !== "internal") : allCols;
+  const visibleColKeys = new Set(cols.map(c => c.key));
+
+  // Header background tint by column kind
+  const headerKindBg = (k: string): string => {
+    const kind = COL_KIND[k];
+    if (kind === "export") return "bg-emerald-50 dark:bg-emerald-950/30";
+    if (kind === "internal") return "bg-amber-50 dark:bg-amber-950/30";
+    return "bg-muted/50";
+  };
+  const cellKindBg = (k: string): string => {
+    const kind = COL_KIND[k];
+    if (kind === "internal") return "bg-amber-50/40 dark:bg-amber-950/10";
+    return "";
+  };
 
   return (
     <div className="border rounded-lg overflow-hidden">
+      {/* Color legend: export vs internal columns */}
+      <div className="flex items-center gap-3 px-3 py-1.5 bg-background border-b text-[11px] flex-wrap">
+        <span className="text-muted-foreground font-medium">Колонки:</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-3.5 rounded bg-emerald-200 dark:bg-emerald-900 border border-emerald-300 dark:border-emerald-800" />
+          <span>идут в выгрузку Авито</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-3.5 rounded bg-amber-200 dark:bg-amber-900 border border-amber-300 dark:border-amber-800" />
+          <span>только для вашей фильтрации (не в выгрузке)</span>
+        </span>
+      </div>
       {/* Active filters bar */}
       {activeFilterCount > 0 && (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 border-b text-xs flex-wrap">
@@ -589,12 +642,19 @@ function AvitoFeedTable({
       <div className="overflow-x-auto">
         <div style={{ minWidth: totalWidth }}>
           {/* Header */}
-          <div className="flex bg-muted/50 border-b text-xs font-medium text-muted-foreground select-none">
+          <div className="flex border-b text-xs font-medium text-muted-foreground select-none">
             {cols.map((col) => (
               <div
                 key={col.key}
-                className="relative px-2 py-2 flex-shrink-0 truncate flex items-center"
+                className={`relative px-2 py-2 flex-shrink-0 truncate flex items-center ${headerKindBg(col.key)}`}
                 style={{ width: colWidths[col.key] }}
+                title={
+                  COL_KIND[col.key] === "export"
+                    ? "Это поле уходит в выгрузку Авито"
+                    : COL_KIND[col.key] === "internal"
+                      ? "Внутреннее поле — в выгрузку не попадает"
+                      : undefined
+                }
               >
                 {col.key === "check" ? (
                   <Checkbox
@@ -682,6 +742,16 @@ function AvitoFeedTable({
                       }}
                     />
                   </div>
+                  {visibleColKeys.has("group") && (
+                    <div className={`flex-shrink-0 px-1 pt-1.5 ${cellKindBg("group")}`} style={{ width: colWidths.group }}>
+                      <AvitoGroupBadge
+                        currentGroupId={fp.group_id}
+                        groups={groups}
+                        onChange={(gid) => onAssignGroup([fp.product_id], gid)}
+                        onCreateGroup={onCreateGroup}
+                      />
+                    </div>
+                  )}
                   <div className="flex-shrink-0 px-1 py-1 cursor-pointer" style={{ width: colWidths.photo }} onClick={() => setEditingImageProduct({ id: product.id, name: product.name, images: product.images || [] })}>
                     {imageUrl ? (
                       <img src={imageUrl} alt="" className="w-9 h-9 rounded object-cover hover:ring-2 hover:ring-primary transition-all" />
@@ -760,14 +830,16 @@ function AvitoFeedTable({
                       type="number"
                     />
                   </div>
-                  {/* Категория магазина (из прайс-листа) */}
-                  <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.storeCategory }}>
-                    <div className="px-1.5 py-1 text-xs text-muted-foreground truncate" title={
-                      (product.categories || []).map(cid => categoryMap.get(cid) || "").filter(Boolean).join(", ") || "—"
-                    }>
-                      {(product.categories || []).map(cid => categoryMap.get(cid) || "").filter(Boolean).join(", ") || "—"}
+                  {/* Категория магазина (из прайс-листа) — внутренняя */}
+                  {visibleColKeys.has("storeCategory") && (
+                    <div className={`flex-shrink-0 px-1 overflow-hidden ${cellKindBg("storeCategory")}`} style={{ width: colWidths.storeCategory }}>
+                      <div className="px-1.5 py-1 text-xs text-muted-foreground truncate" title={
+                        (product.categories || []).map(cid => categoryMap.get(cid) || "").filter(Boolean).join(", ") || "—"
+                      }>
+                        {(product.categories || []).map(cid => categoryMap.get(cid) || "").filter(Boolean).join(", ") || "—"}
+                      </div>
                     </div>
-                  </div>
+                  )}
                   {/* Категория Авито */}
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.category }}>
                     <AvitoCategoryCombobox
@@ -1013,6 +1085,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [feedSearchQuery, setFeedSearchQuery] = useState("");
   const [feedPriceFilter, setFeedPriceFilter] = useState("all");
+
+  // Product groups (internal categorization, not exported)
+  const { groups: avitoGroups, createGroup: createAvitoGroup, updateGroup: updateAvitoGroup, deleteGroup: deleteAvitoGroup } = useAvitoProductGroups(storeId);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | "all" | "none">("all");
+  const [hideInternalCols, setHideInternalCols] = useState(false);
 
   // AI generation state
   const [aiPromptOpen, setAiPromptOpen] = useState(false);
@@ -1969,6 +2046,27 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         {/* Feed Products Tab */}
         <TabsContent value="feed">
           <div className="flex gap-0 h-[calc(100vh-220px)]">
+            {/* Groups Sidebar (internal categorization) */}
+            {avitoFeed && (
+              <AvitoGroupsSidebar
+                groups={avitoGroups}
+                feedProducts={avitoFeed.feedProducts}
+                selectedGroupId={selectedGroupId}
+                onSelectGroup={setSelectedGroupId}
+                errorIds={new Set(
+                  (avitoFeed.feedProducts || [])
+                    .filter((fp) => {
+                      const p = storeProducts.find((sp) => sp.id === fp.product_id);
+                      if (!p) return false;
+                      return computeAvitoIssues(fp, p, localDefaults).length > 0;
+                    })
+                    .map((fp) => fp.product_id)
+                )}
+                onCreateGroup={createAvitoGroup}
+                onUpdateGroup={updateAvitoGroup}
+                onDeleteGroup={deleteAvitoGroup}
+              />
+            )}
             {/* Left Sidebar - Settings, Filters, Bulk Actions */}
             <div className="w-[260px] min-w-[220px] flex-shrink-0 border-r overflow-y-auto bg-muted/10">
               <ScrollArea className="h-full">
@@ -2409,64 +2507,142 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             {/* Right Area - Table */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
               {/* Bulk actions bar - always visible when there are products */}
-              {avitoFeed && avitoFeed.feedProducts.length > 0 && (
-                <div className="flex items-center gap-2 bg-primary/5 border-b border-primary/20 px-3 py-1.5 flex-shrink-0">
-                  <span className="text-xs font-medium">
-                    {selectedFeedProducts.size > 0 ? `Выбрано: ${selectedFeedProducts.size}` : `Товаров: ${avitoFeed.feedProducts.length}`}
-                  </span>
-                  <div className="flex gap-1.5 ml-auto">
-                    <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => {
-                      const ids = selectedFeedProducts.size > 0 ? Array.from(selectedFeedProducts) : avitoFeed!.feedProducts.map(fp => fp.product_id);
-                      openAiForProducts(ids, "title");
-                    }}>
-                      <Wand2 className="h-3 w-3" /> AI название {selectedFeedProducts.size > 0 ? `(${selectedFeedProducts.size})` : "(все)"}
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => {
-                      const ids = selectedFeedProducts.size > 0 ? Array.from(selectedFeedProducts) : avitoFeed!.feedProducts.map(fp => fp.product_id);
-                      openAiForProducts(ids, "description");
-                    }}>
-                      <Sparkles className="h-3 w-3" /> AI описание {selectedFeedProducts.size > 0 ? `(${selectedFeedProducts.size})` : "(все)"}
-                    </Button>
-                    {selectedFeedProducts.size > 0 && (
-                      <>
-                        <Button size="sm" variant="destructive" className="h-6 text-[10px]" onClick={async () => {
-                          await avitoFeed!.removeProductsFromFeed(Array.from(selectedFeedProducts));
-                          setSelectedFeedProducts(new Set());
-                        }}>
-                          <X className="h-3 w-3 mr-0.5" /> Убрать
+              {avitoFeed && avitoFeed.feedProducts.length > 0 && (() => {
+                const groupFilteredFeed = avitoFeed.feedProducts.filter((fp) => {
+                  if (selectedGroupId === "all") return true;
+                  if (selectedGroupId === "none") return !fp.group_id;
+                  return fp.group_id === selectedGroupId;
+                });
+                const currentGroupName = selectedGroupId === "all"
+                  ? "Все товары"
+                  : selectedGroupId === "none"
+                    ? "Без группы"
+                    : (avitoGroups.find(g => g.id === selectedGroupId)?.name || "Группа");
+                const assignGroupFn = avitoFeed.assignGroup
+                  || (async (ids: string[], gid: string | null) => {
+                    for (const id of ids) {
+                      await avitoFeed.updateProductParams(id, { ...(avitoFeed.feedProducts.find(fp => fp.product_id === id)?.avito_params || {}) });
+                    }
+                  });
+                return (
+                  <>
+                    <div className="flex items-center gap-2 bg-primary/5 border-b border-primary/20 px-3 py-1.5 flex-shrink-0 flex-wrap">
+                      <span className="text-xs font-medium flex items-center gap-1.5">
+                        {selectedGroupId !== "all" && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-background border text-[10px]">
+                            {selectedGroupId !== "none" && (
+                              <span className={`h-2 w-2 rounded-full ${colorClass(avitoGroups.find(g => g.id === selectedGroupId)?.color)}`} />
+                            )}
+                            {currentGroupName}
+                            <button onClick={() => setSelectedGroupId("all")} className="ml-0.5 hover:text-destructive">
+                              <X className="h-2.5 w-2.5" />
+                            </button>
+                          </span>
+                        )}
+                        {selectedFeedProducts.size > 0
+                          ? `Выбрано: ${selectedFeedProducts.size}`
+                          : `Показано: ${groupFilteredFeed.length} из ${avitoFeed.feedProducts.length}`}
+                      </span>
+                      <div className="flex gap-1.5 ml-auto items-center flex-wrap">
+                        <Button
+                          size="sm"
+                          variant={hideInternalCols ? "default" : "outline"}
+                          className="h-6 text-[10px] gap-1"
+                          onClick={() => setHideInternalCols(v => !v)}
+                          title="Скрыть служебные колонки (не идущие в выгрузку)"
+                        >
+                          {hideInternalCols ? "Показать все" : "Только выгрузка"}
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setSelectedFeedProducts(new Set())}>Сбросить</Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
+                        {selectedFeedProducts.size > 0 && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1">
+                                <Folder className="h-3 w-3" /> В группу ({selectedFeedProducts.size})
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                              <DropdownMenuGroup>
+                                <DropdownMenuItem onSelect={async () => {
+                                  await assignGroupFn(Array.from(selectedFeedProducts), null);
+                                  setSelectedFeedProducts(new Set());
+                                }}>
+                                  <Inbox className="h-3.5 w-3.5 mr-2" /> Без группы
+                                </DropdownMenuItem>
+                              </DropdownMenuGroup>
+                              {avitoGroups.length > 0 && <DropdownMenuSeparator />}
+                              <DropdownMenuGroup>
+                                {avitoGroups.map(g => (
+                                  <DropdownMenuItem key={g.id} onSelect={async () => {
+                                    await assignGroupFn(Array.from(selectedFeedProducts), g.id);
+                                    setSelectedFeedProducts(new Set());
+                                  }}>
+                                    <span className={`h-2.5 w-2.5 rounded-full mr-2 ${colorClass(g.color)}`} />
+                                    {g.name}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuGroup>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                        <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => {
+                          const ids = selectedFeedProducts.size > 0 ? Array.from(selectedFeedProducts) : groupFilteredFeed.map(fp => fp.product_id);
+                          openAiForProducts(ids, "title");
+                        }}>
+                          <Wand2 className="h-3 w-3" /> AI название {selectedFeedProducts.size > 0 ? `(${selectedFeedProducts.size})` : "(все)"}
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => {
+                          const ids = selectedFeedProducts.size > 0 ? Array.from(selectedFeedProducts) : groupFilteredFeed.map(fp => fp.product_id);
+                          openAiForProducts(ids, "description");
+                        }}>
+                          <Sparkles className="h-3 w-3" /> AI описание {selectedFeedProducts.size > 0 ? `(${selectedFeedProducts.size})` : "(все)"}
+                        </Button>
+                        {selectedFeedProducts.size > 0 && (
+                          <>
+                            <Button size="sm" variant="destructive" className="h-6 text-[10px]" onClick={async () => {
+                              await avitoFeed.removeProductsFromFeed(Array.from(selectedFeedProducts));
+                              setSelectedFeedProducts(new Set());
+                            }}>
+                              <X className="h-3 w-3 mr-0.5" /> Убрать
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setSelectedFeedProducts(new Set())}>Сбросить</Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
 
-              {/* Table */}
-              <div className="flex-1 overflow-auto">
-                {avitoFeed && avitoFeed.feedProducts.length > 0 ? (
-                  <AvitoFeedTable
-                    feedProducts={avitoFeed.feedProducts}
-                    storeProducts={storeProducts}
-                    storeCategories={storeCategories}
-                    selectedFeedProducts={selectedFeedProducts}
-                    setSelectedFeedProducts={setSelectedFeedProducts}
-                    aiGeneratingIds={aiGeneratingIds}
-                    aiDoneIds={aiDoneIds}
-                    aiQueuedIds={aiQueuedIds}
-                    localDefaults={localDefaults}
-                    handleInlineParamUpdate={handleInlineParamUpdate}
-                    openAiForProducts={openAiForProducts}
-                    removeProductFromFeed={avitoFeed.removeProductFromFeed}
-                    feedSearchQuery={feedSearchQuery}
-                    feedPriceFilter={feedPriceFilter}
-                    storeId={storeId || ""}
-                    onUpdateProductParams={avitoFeed.updateProductParams}
-                    onOpenInPhotoStudio={onOpenInPhotoStudio}
-                    autoOpenImageEditorForProductId={autoOpenImageEditorForProductId}
-                    onAutoOpenImageEditorHandled={onAutoOpenImageEditorHandled}
-                  />
-                ) : (
+                    {/* Table */}
+                    <div className="flex-1 overflow-auto">
+                      <AvitoFeedTable
+                        feedProducts={groupFilteredFeed}
+                        storeProducts={storeProducts}
+                        storeCategories={storeCategories}
+                        selectedFeedProducts={selectedFeedProducts}
+                        setSelectedFeedProducts={setSelectedFeedProducts}
+                        aiGeneratingIds={aiGeneratingIds}
+                        aiDoneIds={aiDoneIds}
+                        aiQueuedIds={aiQueuedIds}
+                        localDefaults={localDefaults}
+                        handleInlineParamUpdate={handleInlineParamUpdate}
+                        openAiForProducts={openAiForProducts}
+                        removeProductFromFeed={avitoFeed.removeProductFromFeed}
+                        feedSearchQuery={feedSearchQuery}
+                        feedPriceFilter={feedPriceFilter}
+                        storeId={storeId || ""}
+                        onUpdateProductParams={avitoFeed.updateProductParams}
+                        onOpenInPhotoStudio={onOpenInPhotoStudio}
+                        autoOpenImageEditorForProductId={autoOpenImageEditorForProductId}
+                        onAutoOpenImageEditorHandled={onAutoOpenImageEditorHandled}
+                        groups={avitoGroups}
+                        onAssignGroup={assignGroupFn}
+                        onCreateGroup={createAvitoGroup}
+                        hideInternal={hideInternalCols}
+                      />
+                    </div>
+                  </>
+                );
+              })()}
+              {(!avitoFeed || avitoFeed.feedProducts.length === 0) && (
+                <div className="flex-1 overflow-auto">
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
                       <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
@@ -2474,8 +2650,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                       <p className="text-xs text-muted-foreground">Перейдите в «Ассортимент», выберите товары и нажмите «В Авито»</p>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </TabsContent>

@@ -9,6 +9,7 @@ export interface AvitoFeedProduct {
   avito_category: string | null;
   avito_address: string | null;
   avito_params: any;
+  group_id: string | null;
   created_at: string;
 }
 
@@ -181,6 +182,24 @@ export function useAvitoFeedProducts(storeId: string | null) {
     }
   }, [storeId, toast]);
 
+  const assignGroup = useCallback(async (productIds: string[], groupId: string | null) => {
+    if (!storeId || productIds.length === 0) return;
+    try {
+      const { error } = await (supabase as any)
+        .from("avito_feed_products")
+        .update({ group_id: groupId })
+        .eq("store_id", storeId)
+        .in("product_id", productIds);
+      if (error) throw error;
+      setFeedProducts(prev => prev.map(fp =>
+        productIds.includes(fp.product_id) ? { ...fp, group_id: groupId } : fp
+      ));
+      toast({ title: groupId ? `Перемещено ${productIds.length} в группу` : `Снято с группы: ${productIds.length}` });
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  }, [storeId, toast]);
+
   const feedProductIds = new Set(feedProducts.map(fp => fp.product_id));
 
   return {
@@ -193,6 +212,7 @@ export function useAvitoFeedProducts(storeId: string | null) {
     removeProductFromFeed,
     removeProductsFromFeed,
     updateProductParams,
+    assignGroup,
     refetch: fetchFeedProducts,
   };
 }
