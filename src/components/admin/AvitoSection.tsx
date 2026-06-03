@@ -40,6 +40,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { AvitoAiDescriptionWorkspace } from "./AvitoAiDescriptionWorkspace";
 import { AvitoCategoryCombobox } from "./AvitoCategoryCombobox";
 import { AvitoListingVariantsManager } from "./AvitoListingVariantsManager";
+import { AvitoGroupsSidebar, AvitoGroupBadge } from "./AvitoGroupsSidebar";
+import { useAvitoProductGroups, AvitoProductGroup, colorClass } from "@/hooks/useAvitoProductGroups";
 import { Copy as CopyIcon } from "lucide-react";
 
 interface AvitoItem {
