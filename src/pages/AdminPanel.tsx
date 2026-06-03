@@ -91,6 +91,7 @@ import { PhotoGenerationSection } from "@/components/admin/photo-generation/Phot
 import { BulkEditPanel } from "@/components/admin/BulkEditPanel";
 import { uploadProductImages, deleteSingleImage, uploadFilesToStorage } from "@/hooks/useProductImages";
 import { ImageGalleryViewer } from "@/components/admin/ImageGalleryViewer";
+import { AvitoImageEditor } from "@/components/admin/AvitoImageEditor";
 import { SyncSettingsPanel, SyncSettings, SyncFieldMapping, defaultSyncSettings } from "@/components/admin/SyncSettingsPanel";
 import { useStoreProducts, StoreProduct } from "@/hooks/useStoreProducts";
 import { useStoreCatalogs, Catalog as StoreCatalog } from "@/hooks/useStoreCatalogs";
