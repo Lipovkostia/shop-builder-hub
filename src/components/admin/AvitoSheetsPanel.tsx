@@ -127,8 +127,28 @@ export function AvitoSheetsPanel({ storeId }: Props) {
             <>
               <Button size="sm" variant="outline" onClick={() => callSync("sync")} disabled={syncing}>
                 {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Синхронизировать сейчас
+                Выгрузить в таблицу
               </Button>
+              <Button size="sm" variant="outline" onClick={() => callSync("pull")} disabled={pulling}>
+                {pulling ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
+                Загрузить из таблицы
+              </Button>
+              <label className="inline-flex">
+                <input
+                  type="file"
+                  accept=".json,.csv,text/csv,application/json"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && importErrorsFromFile(e.target.files[0])}
+                />
+                <Button size="sm" variant="outline" asChild>
+                  <span><Upload className="h-4 w-4" />Импорт ошибок</span>
+                </Button>
+              </label>
+              {errorsCount > 0 && (
+                <Badge variant="destructive" className="gap-1">
+                  <AlertTriangle className="h-3 w-3" /> {errorsCount}
+                </Badge>
+              )}
               {integration.spreadsheet_url && (
                 <Button size="sm" variant="ghost" asChild>
                   <a href={integration.spreadsheet_url} target="_blank" rel="noopener noreferrer">
@@ -143,7 +163,7 @@ export function AvitoSheetsPanel({ storeId }: Props) {
       </div>
       {!integration?.spreadsheet_id && (
         <p className="text-xs text-muted-foreground mt-3">
-          После создания в таблице появятся листы «Товары», «Ошибки», «Лог». Двусторонняя синхронизация (правки из таблицы → в систему) подключим следующим шагом через Apps Script вебхук.
+          После создания в таблице появятся листы «Товары», «Ошибки», «Лог». Правки можно делать прямо в таблице — кнопка «Загрузить из таблицы» подтянет их обратно в систему.
         </p>
       )}
     </Card>
