@@ -7198,6 +7198,15 @@ export default function AdminPanel({
                   return prev;
                 });
               }}
+              onOpenInPriceList={(productId) => {
+                setActiveSection("products");
+                setSearchParams(prev => {
+                  prev.set('section', 'products');
+                  prev.set('productId', productId);
+                  prev.set('fromAvito', '1');
+                  return prev;
+                });
+              }}
             />
           )}
 
