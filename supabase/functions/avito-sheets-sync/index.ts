@@ -69,7 +69,8 @@ Deno.serve(async (req) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const { action, storeId } = await req.json();
+    const body = await req.json();
+    const { action, storeId } = body;
     if (!storeId) throw new Error("storeId required");
 
     // Verify store ownership
