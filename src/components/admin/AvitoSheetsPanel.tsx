@@ -125,9 +125,14 @@ export function AvitoSheetsPanel({ storeId }: Props) {
             </Button>
           ) : (
             <>
-              <Button size="sm" variant="outline" onClick={() => callSync("sync")} disabled={syncing}>
+              <Button
+                size="sm"
+                onClick={() => callSync("sync")}
+                disabled={syncing}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
                 {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Выгрузить в таблицу
+                Обновить товары в Google Таблице
               </Button>
               <Button size="sm" variant="outline" onClick={() => callSync("pull")} disabled={pulling}>
                 {pulling ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
