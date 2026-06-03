@@ -83,6 +83,7 @@ interface AvitoSectionProps {
   products?: Product[];
   storeCategories?: StoreCategory[];
   onOpenInPhotoStudio?: (productId: string) => void;
+  onOpenInPriceList?: (productId: string) => void;
   autoOpenImageEditorForProductId?: string | null;
   onAutoOpenImageEditorHandled?: () => void;
   avitoFeed?: {
@@ -335,7 +336,7 @@ function ColumnFilterDropdown({ values, selected, onSelect, colKey }: {
 function AvitoFeedTable({
   feedProducts, storeProducts, storeCategories, selectedFeedProducts, setSelectedFeedProducts,
   aiGeneratingIds, aiDoneIds, aiQueuedIds, localDefaults, handleInlineParamUpdate, openAiForProducts, removeProductFromFeed,
-  feedSearchQuery, feedPriceFilter, storeId, onUpdateProductParams, onOpenInPhotoStudio,
+  feedSearchQuery, feedPriceFilter, storeId, onUpdateProductParams, onOpenInPhotoStudio, onOpenInPriceList,
   autoOpenImageEditorForProductId, onAutoOpenImageEditorHandled,
   groups, onAssignGroup, onCreateGroup, hideInternal,
 }: {
@@ -356,6 +357,7 @@ function AvitoFeedTable({
   storeId: string;
   onUpdateProductParams: (productId: string, params: any) => Promise<void>;
   onOpenInPhotoStudio?: (productId: string) => void;
+  onOpenInPriceList?: (productId: string) => void;
   autoOpenImageEditorForProductId?: string | null;
   onAutoOpenImageEditorHandled?: () => void;
   groups: import("@/hooks/useAvitoProductGroups").AvitoProductGroup[];
@@ -979,6 +981,17 @@ function AvitoFeedTable({
                           <ImagePlus className="h-3.5 w-3.5 text-emerald-600" />
                         </Button>
                       )}
+                      {onOpenInPriceList && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          title="Открыть в прайс-листе"
+                          onClick={() => onOpenInPriceList(fp.product_id)}
+                        >
+                          <ExternalLink className="h-3.5 w-3.5 text-sky-600" />
+                        </Button>
+                      )}
                       <Button
                         size="icon"
                         variant="ghost"
@@ -1062,7 +1075,7 @@ function AvitoFeedTable({
   );
 }
 
-export function AvitoSection({ storeId, products: storeProducts = [], storeCategories = [], avitoFeed, onOpenInPhotoStudio, autoOpenImageEditorForProductId, onAutoOpenImageEditorHandled }: AvitoSectionProps) {
+export function AvitoSection({ storeId, products: storeProducts = [], storeCategories = [], avitoFeed, onOpenInPhotoStudio, onOpenInPriceList, autoOpenImageEditorForProductId, onAutoOpenImageEditorHandled }: AvitoSectionProps) {
   const { toast } = useToast();
   const [account, setAccount] = useState<AvitoAccount | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2634,6 +2647,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                         storeId={storeId || ""}
                         onUpdateProductParams={avitoFeed.updateProductParams}
                         onOpenInPhotoStudio={onOpenInPhotoStudio}
+                        onOpenInPriceList={onOpenInPriceList}
                         autoOpenImageEditorForProductId={autoOpenImageEditorForProductId}
                         onAutoOpenImageEditorHandled={onAutoOpenImageEditorHandled}
                         groups={avitoGroups}

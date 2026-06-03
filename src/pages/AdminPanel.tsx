@@ -3779,6 +3779,17 @@ export default function AdminPanel({
                 onRemoveFromAvitoFeed={avitoFeed.removeProductsFromFeed}
                 storeCategories={storeCategories}
                 availablePriceTypes={availableMoyskladPriceTypes}
+                preselectedProductId={searchParams.get('productId')}
+                fromAvito={searchParams.get('fromAvito') === '1'}
+                onReturnToAvito={(productId) => {
+                  setActiveSection("avito");
+                  setSearchParams(prev => {
+                    prev.set('section', 'avito');
+                    prev.delete('productId');
+                    prev.delete('fromAvito');
+                    return prev;
+                  });
+                }}
               />
 
               {/* Product Pricing Dialog */}
@@ -7195,6 +7206,15 @@ export default function AdminPanel({
                 setSearchParams(prev => {
                   prev.set('section', 'photo-generation');
                   prev.set('productId', productId);
+                  return prev;
+                });
+              }}
+              onOpenInPriceList={(productId) => {
+                setActiveSection("products");
+                setSearchParams(prev => {
+                  prev.set('section', 'products');
+                  prev.set('productId', productId);
+                  prev.set('fromAvito', '1');
                   return prev;
                 });
               }}

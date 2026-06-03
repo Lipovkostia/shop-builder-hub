@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { ShoppingCart as AvitoIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { VirtualProductTable, AllProductsFilters } from "./VirtualProductTable";
@@ -46,6 +46,9 @@ interface ProductsSectionProps {
   moyskladPassword?: string;
   storeCategories?: StoreCategory[];
   availablePriceTypes?: string[];
+  preselectedProductId?: string | null;
+  fromAvito?: boolean;
+  onReturnToAvito?: (productId: string) => void;
 }
 
 const defaultVisibleColumns: VisibleColumns = {
@@ -112,6 +115,9 @@ export function ProductsSection({
   moyskladPassword,
   storeCategories = [],
   availablePriceTypes = [],
+  preselectedProductId,
+  fromAvito,
+  onReturnToAvito,
 }: ProductsSectionProps) {
   const { toast } = useToast();
   
@@ -494,8 +500,32 @@ export function ProductsSection({
     }));
   }, []);
 
+  // Auto-filter to preselected product (e.g. when navigated from Avito)
+  useEffect(() => {
+    if (preselectedProductId) {
+      const p = products.find(pr => pr.id === preselectedProductId);
+      if (p) setFilters(prev => ({ ...prev, name: p.name, sku: p.sku || "" }));
+    }
+  }, [preselectedProductId, products]);
+
+  const preselected = preselectedProductId
+    ? products.find(p => p.id === preselectedProductId)
+    : null;
+
   return (
     <div className="space-y-4">
+      {fromAvito && preselected && (
+        <div className="flex items-center justify-between gap-3 p-3 rounded-md border border-sky-500/30 bg-sky-500/5">
+          <div className="text-sm">
+            Открыто из Avito: <b>{preselected.name}</b>
+          </div>
+          {onReturnToAvito && (
+            <Button size="sm" variant="outline" onClick={() => onReturnToAvito(preselected.id)}>
+              ← Вернуться в Avito
+            </Button>
+          )}
+        </div>
+      )}
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={onAddProduct} size="sm">
