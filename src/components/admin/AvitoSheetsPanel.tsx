@@ -121,12 +121,12 @@ export function AvitoSheetsPanel({ storeId }: Props) {
           {!integration?.spreadsheet_id ? (
             <Button
               size="sm"
-              onClick={async () => { await callSync("create_spreadsheet"); await callSync("sync"); }}
-              disabled={loading || syncing}
+              onClick={() => callSync("create_spreadsheet")}
+              disabled={loading}
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
             >
-              {(loading || syncing) ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-              Создать таблицу и выгрузить товары
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+              Создать таблицу
             </Button>
           ) : (
             <>
@@ -137,7 +137,7 @@ export function AvitoSheetsPanel({ storeId }: Props) {
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
               >
                 {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Обновить товары в Google Таблице
+                Выгрузить товары в таблицу
               </Button>
               <Button size="sm" variant="outline" onClick={() => callSync("pull")} disabled={pulling}>
                 {pulling ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
@@ -173,11 +173,11 @@ export function AvitoSheetsPanel({ storeId }: Props) {
       </div>
       {!integration?.spreadsheet_id ? (
         <p className="text-xs text-muted-foreground mt-3">
-          После создания в таблице появятся листы «Товары», «Ошибки», «Лог». Правки можно делать прямо в таблице — кнопка «Загрузить из таблицы» подтянет их обратно в систему.
+          Шаг 1 — нажмите <b>«Создать таблицу»</b>. Шаг 2 — откройте таблицу и в Google Sheets дайте доступ <b>«Редактор» для всех, у кого есть ссылка</b>. Шаг 3 — вернитесь сюда и нажмите <b>«Выгрузить товары в таблицу»</b>.
         </p>
       ) : (
         <p className="text-xs text-muted-foreground mt-3">
-          Нажмите <b>«Обновить товары в Google Таблице»</b> — все товары из выгрузки Авито (вкладка «Лента») попадут на лист «Товары». Повторное нажатие перезапишет данные актуальными.
+          Убедитесь, что в Google Таблице открыт доступ <b>«Редактор» по ссылке</b>, иначе выгрузка не сможет записать данные. Затем нажмите <b>«Выгрузить товары в таблицу»</b> — все 529 товаров из вкладки «Лента» попадут на лист «Товары». Повторное нажатие перезапишет данные актуальными.
         </p>
       )}
     </Card>
