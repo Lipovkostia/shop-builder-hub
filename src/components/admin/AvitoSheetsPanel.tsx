@@ -166,9 +166,13 @@ export function AvitoSheetsPanel({ storeId }: Props) {
           )}
         </div>
       </div>
-      {!integration?.spreadsheet_id && (
+      {!integration?.spreadsheet_id ? (
         <p className="text-xs text-muted-foreground mt-3">
           После создания в таблице появятся листы «Товары», «Ошибки», «Лог». Правки можно делать прямо в таблице — кнопка «Загрузить из таблицы» подтянет их обратно в систему.
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground mt-3">
+          Нажмите <b>«Обновить товары в Google Таблице»</b> — все товары из выгрузки Авито (вкладка «Лента») попадут на лист «Товары». Повторное нажатие перезапишет данные актуальными.
         </p>
       )}
     </Card>
