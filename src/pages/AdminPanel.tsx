@@ -5842,15 +5842,38 @@ export default function AdminPanel({
                                 {/* Фото - из ассортимента (только чтение) */}
                                 {catalogVisibleColumns.photo && (
                                   <ResizableTableCell columnId="photo">
-                                    <div className="flex items-center justify-center">
-                                      {(product.images?.length || 0) > 0 ? (
-                                        <span className="flex items-center gap-0.5 text-green-600">
-                                          <ImageIcon className="h-3.5 w-3.5" />
-                                          <span className="text-[10px]">{product.images?.length}</span>
-                                        </span>
-                                      ) : (
-                                        <ImageIcon className="h-3.5 w-3.5 text-muted-foreground/40" />
-                                      )}
+                                    <div className="flex items-center justify-center gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0 text-violet-600 hover:text-violet-700 hover:bg-violet-500/10"
+                                        title="Открыть AI фоторедактор"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingCatalogImageProduct(product);
+                                        }}
+                                      >
+                                        <Sparkles className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-1 relative"
+                                        title="Показать фото"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setExpandedCatalogImagesId(prev => prev === product.id ? null : product.id);
+                                        }}
+                                      >
+                                        {(product.images?.length || 0) > 0 ? (
+                                          <span className="flex items-center gap-0.5 text-green-600">
+                                            <ImageIcon className="h-3.5 w-3.5" />
+                                            <span className="text-[10px]">{product.images?.length}</span>
+                                          </span>
+                                        ) : (
+                                          <ImageIcon className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                        )}
+                                      </Button>
                                     </div>
                                   </ResizableTableCell>
                                 )}
