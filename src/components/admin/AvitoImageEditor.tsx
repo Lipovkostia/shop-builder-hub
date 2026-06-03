@@ -174,7 +174,113 @@ function SelectBadge({
   );
 }
 
+function PromptBlock({
+  imageUrl,
+  onGenerated,
+}: {
+  imageUrl: string;
+  onGenerated: (newUrl: string) => void;
+}) {
+  const { toast } = useToast();
+  const [prompt, setPrompt] = useState("");
+  const [useThisPhoto, setUseThisPhoto] = useState(false);
+  const [model, setModel] = useState<string>("google/nano-banana-2-1k");
+  const [generating, setGenerating] = useState(false);
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+
+  const availableModels = KIE_MODELS.filter(m =>
+    useThisPhoto ? m.supportsEdit : m.supportsTextToImage
+  );
+
+  // auto-switch model if current one doesn't fit the mode
+  useEffect(() => {
+    const cur = KIE_MODELS.find(m => m.id === model);
+    if (!cur) return;
+    if (useThisPhoto && !cur.supportsEdit) setModel("google/nano-banana-2-1k");
+    if (!useThisPhoto && !cur.supportsTextToImage) setModel("google/nano-banana-2-1k");
+  }, [useThisPhoto, model]);
+
+  const handleGenerate = async () => {
+    if (!prompt.trim()) {
+      toast({ title: "Введите промпт", variant: "destructive" });
+      return;
+    }
+    setGenerating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/generate-playground-image`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token ?? ""}`,
+          },
+          body: JSON.stringify({
+            store_id: (window as any).__currentStoreId ?? "",
+            prompt: prompt.trim(),
+            model,
+            aspect_ratio: "4:3",
+            image_urls: useThisPhoto ? [imageUrl] : [],
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "Ошибка генерации");
+      onGenerated(data.url);
+      setPrompt("");
+      toast({ title: "Фото сгенерировано" });
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 p-2 rounded-md border bg-muted/30 space-y-2">
+      <Textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder="Опишите, что сгенерировать..."
+        rows={2}
+        className="text-xs min-h-[44px]"
+      />
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id={`use-${imageUrl}`}
+          checked={useThisPhoto}
+          onCheckedChange={(v) => setUseThisPhoto(!!v)}
+        />
+        <label htmlFor={`use-${imageUrl}`} className="text-[11px] cursor-pointer flex-1">
+          Использовать это фото как основу
+        </label>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <Select value={model} onValueChange={setModel}>
+          <SelectTrigger className="h-7 text-[11px] flex-1"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {availableModels.map(m => (
+              <SelectItem key={m.id} value={m.id} className="text-xs">
+                {m.label} · ${m.priceUsd.toFixed(2)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          size="sm" className="h-7 text-xs"
+          onClick={handleGenerate}
+          disabled={generating || !prompt.trim()}
+        >
+          {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Wand2 className="h-3 w-3 mr-1" />Сгенерировать</>}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function AvitoImageEditor({
+
 
   open, onOpenChange, productId, productName, images, storeId, avitoImages, onSave, onImagesAdded,
 }: AvitoImageEditorProps) {
