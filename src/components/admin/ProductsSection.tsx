@@ -46,6 +46,9 @@ interface ProductsSectionProps {
   moyskladPassword?: string;
   storeCategories?: StoreCategory[];
   availablePriceTypes?: string[];
+  preselectedProductId?: string | null;
+  fromAvito?: boolean;
+  onReturnToAvito?: (productId: string) => void;
 }
 
 const defaultVisibleColumns: VisibleColumns = {
@@ -112,6 +115,9 @@ export function ProductsSection({
   moyskladPassword,
   storeCategories = [],
   availablePriceTypes = [],
+  preselectedProductId,
+  fromAvito,
+  onReturnToAvito,
 }: ProductsSectionProps) {
   const { toast } = useToast();
   
