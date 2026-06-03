@@ -88,7 +88,6 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (action === "connect_spreadsheet") {
-      const body = await req.clone().json();
       const spreadsheetId = body.spreadsheetId;
       const spreadsheetUrl = body.spreadsheetUrl;
       if (!spreadsheetId) throw new Error("spreadsheetId required");
