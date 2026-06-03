@@ -1839,7 +1839,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         }
       }
 
-      let updated = 0;
+      const updates: Array<{ productId: string; params: any }> = [];
       for (let i = dataStartIdx; i < rows.length; i++) {
         const row = rows[i];
         if (!row || row.length === 0) continue;
@@ -1858,7 +1858,9 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
         setIfPresent(idxTitle, "title");
         setIfPresent(idxDesc, "description");
-        if (idxPrice >= 0 && row[idxPrice] !== undefined) params.price = String(row[idxPrice]);
+        if (idxPrice >= 0 && row[idxPrice] !== undefined && String(row[idxPrice]).trim() !== "") {
+          params.price = String(row[idxPrice]);
+        }
         setIfPresent(idxCategory, "category");
         setIfPresent(idxAdType, "goodsType");
         setIfPresent(idxGoodsType, "goodsSubType");
@@ -1872,20 +1874,32 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         setIfPresent(idxTargetAudience, "targetAudience");
         setIfPresent(idxAvitoNumber, "avitoNumber");
         setIfPresent(idxPromo, "promo");
-        // Parse PromoManualOptions: store as-is (multi-line format City|Price|Limit)
         if (idxPromoManual >= 0 && row[idxPromoManual]) {
           params.promoManualOptions = String(row[idxPromoManual]).trim();
         }
-        // Parse PromoAutoOptions: store as-is (multi-line format City|Budget)
         if (idxPromoAuto >= 0 && row[idxPromoAuto]) {
           params.promoAutoOptions = String(row[idxPromoAuto]).trim();
         }
 
-        updated++;
+        updates.push({ productId: fp.product_id, params });
+      }
+
+      // Persist updates in parallel batches — без сохранения изменения не уходили в БД
+      let updated = 0;
+      const BATCH = 25;
+      for (let i = 0; i < updates.length; i += BATCH) {
+        const chunk = updates.slice(i, i + BATCH);
+        await Promise.all(chunk.map(async u => {
+          await avitoFeed.updateProductParams(u.productId, u.params);
+          updated++;
+        }));
       }
 
       await avitoFeed.refetch();
-      toast({ title: `Импортировано: ${updated} товар(ов) обновлено` });
+      toast({
+        title: `Импортировано: ${updated} товар(ов) обновлено`,
+        description: updates.length === 0 ? "Не найдено совпадений по «Уникальный идентификатор». Проверьте, что файл выгружен из этого сервиса." : undefined,
+      });
     } catch (err: any) {
       console.error("Import error:", err);
       toast({ title: "Ошибка импорта", description: err.message, variant: "destructive" });
