@@ -737,6 +737,16 @@ function AvitoFeedTable({
                       }}
                     />
                   </div>
+                  {visibleColKeys.has("group") && (
+                    <div className={`flex-shrink-0 px-1 pt-1.5 ${cellKindBg("group")}`} style={{ width: colWidths.group }}>
+                      <AvitoGroupBadge
+                        currentGroupId={fp.group_id}
+                        groups={groups}
+                        onChange={(gid) => onAssignGroup([fp.product_id], gid)}
+                        onCreateGroup={onCreateGroup}
+                      />
+                    </div>
+                  )}
                   <div className="flex-shrink-0 px-1 py-1 cursor-pointer" style={{ width: colWidths.photo }} onClick={() => setEditingImageProduct({ id: product.id, name: product.name, images: product.images || [] })}>
                     {imageUrl ? (
                       <img src={imageUrl} alt="" className="w-9 h-9 rounded object-cover hover:ring-2 hover:ring-primary transition-all" />
