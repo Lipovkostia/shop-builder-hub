@@ -875,6 +875,8 @@ export default function AdminPanel({
   const [editingCatalogName, setEditingCatalogName] = useState(false);
   const [selectedCatalogBulkProducts, setSelectedCatalogBulkProducts] = useState<Set<string>>(new Set());
   const [lastSelectedCatalogProductId, setLastSelectedCatalogProductId] = useState<string | null>(null);
+  const [expandedCatalogImagesId, setExpandedCatalogImagesId] = useState<string | null>(null);
+  const [editingCatalogImageProduct, setEditingCatalogImageProduct] = useState<Product | null>(null);
   const [expandedCatalogId, setExpandedCatalogId] = useState<string | null>(null);
   const [catalogSettingsOpen, setCatalogSettingsOpen] = useState<string | null>(null);
   const [editingCatalogListName, setEditingCatalogListName] = useState<string | null>(null);
