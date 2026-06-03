@@ -86,6 +86,45 @@ Deno.serve(async (req) => {
       .eq("store_id", storeId)
       .maybeSingle();
 
+    if (action === "connect_spreadsheet") {
+      const body = await req.clone().json();
+      const spreadsheetId = body.spreadsheetId;
+      const spreadsheetUrl = body.spreadsheetUrl;
+      if (!spreadsheetId) throw new Error("spreadsheetId required");
+
+      // Verify access + fetch existing sheet titles
+      let meta: any;
+      try {
+        meta = await gw(`/spreadsheets/${spreadsheetId}?fields=sheets.properties`);
+      } catch (_e) {
+        throw new Error("Не удалось открыть таблицу. Проверьте, что доступ «Редактор по ссылке» включён.");
+      }
+      const existing = new Set((meta.sheets || []).map((s: any) => s.properties?.title));
+      const toAdd = ["Товары", "Ошибки", "Лог"].filter((t) => !existing.has(t));
+      if (toAdd.length) {
+        await gw(`/spreadsheets/${spreadsheetId}:batchUpdate`, {
+          method: "POST",
+          body: JSON.stringify({ requests: toAdd.map((title) => ({ addSheet: { properties: { title } } })) }),
+        });
+      }
+      await gw(`/spreadsheets/${spreadsheetId}/values/Товары!A1:K1?valueInputOption=RAW`, {
+        method: "PUT",
+        body: JSON.stringify({ values: [HEADERS] }),
+      });
+
+      const finalUrl = spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+      const up = await supabase
+        .from("store_google_integrations")
+        .upsert({ store_id: storeId, spreadsheet_id: spreadsheetId, spreadsheet_url: finalUrl, updated_at: new Date().toISOString() }, { onConflict: "store_id" })
+        .select()
+        .single();
+      integration = up.data;
+      return new Response(JSON.stringify({ ok: true, spreadsheetId, spreadsheetUrl: finalUrl }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+
     if (action === "create_spreadsheet" || (action === "sync" && !integration?.spreadsheet_id)) {
       const created = await gw("/spreadsheets", {
         method: "POST",
