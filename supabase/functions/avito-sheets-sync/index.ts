@@ -69,7 +69,8 @@ Deno.serve(async (req) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const { action, storeId } = await req.json();
+    const body = await req.json();
+    const { action, storeId } = body;
     if (!storeId) throw new Error("storeId required");
 
     // Verify store ownership
@@ -87,7 +88,6 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (action === "connect_spreadsheet") {
-      const body = await req.clone().json();
       const spreadsheetId = body.spreadsheetId;
       const spreadsheetUrl = body.spreadsheetUrl;
       if (!spreadsheetId) throw new Error("spreadsheetId required");
@@ -225,7 +225,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === "import_errors") {
-      const body = await req.clone().json().catch(() => ({}));
       const list: any[] = Array.isArray(body.errors) ? body.errors : [];
       if (list.length) {
         const dbRows = list.map((e: any) => ({
