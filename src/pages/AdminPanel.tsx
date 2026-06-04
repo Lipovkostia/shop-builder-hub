@@ -7358,6 +7358,15 @@ export default function AdminPanel({
                   return prev;
                 });
               }}
+              onOpenInPriceList={searchParams.get('fromPriceList') === '1' ? (productId) => {
+                setActiveSection("products");
+                setSearchParams(prev => {
+                  prev.set('section', 'products');
+                  prev.set('productId', productId);
+                  prev.delete('fromPriceList');
+                  return prev;
+                });
+              } : undefined}
             />
           )}
         </main>
