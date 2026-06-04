@@ -3,11 +3,54 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const BUCKET = "ai-history";
+const SUBS_PREFIX = "_telegram_subscribers";
+
 function tg(token: string, method: string, body?: unknown) {
   return fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
+interface Subscriber {
+  chat_id: number;
+  tg_user_id?: number;
+  username?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  phone?: string | null;
+  language_code?: string | null;
+  joined_at: string;
+  last_seen_at: string;
+}
+
+async function loadSubscriber(
+  admin: ReturnType<typeof createClient>,
+  storeId: string,
+  chatId: number
+): Promise<Subscriber | null> {
+  const path = `${SUBS_PREFIX}/${storeId}/${chatId}.json`;
+  const { data } = await admin.storage.from(BUCKET).download(path);
+  if (!data) return null;
+  try {
+    return JSON.parse(await data.text()) as Subscriber;
+  } catch {
+    return null;
+  }
+}
+
+async function saveSubscriber(
+  admin: ReturnType<typeof createClient>,
+  storeId: string,
+  sub: Subscriber
+) {
+  const path = `${SUBS_PREFIX}/${storeId}/${sub.chat_id}.json`;
+  const blob = new Blob([JSON.stringify(sub)], { type: "application/json" });
+  await admin.storage.from(BUCKET).upload(path, blob, {
+    upsert: true,
+    contentType: "application/json",
   });
 }
 
@@ -34,11 +77,52 @@ Deno.serve(async (req) => {
 
     const update = await req.json().catch(() => ({} as any));
     const msg = update.message;
-    if (!msg?.text) return new Response("OK");
-    const chatId = msg.chat.id;
-    const text = (msg.text as string).trim();
+    if (!msg) return new Response("OK");
+    const chatId = msg.chat.id as number;
+    const from = msg.from || {};
+    const nowIso = new Date().toISOString();
+
+    // Always upsert subscriber info from incoming message
+    const existing = await loadSubscriber(admin, storeId, chatId);
+    const subBase: Subscriber = {
+      chat_id: chatId,
+      tg_user_id: from.id,
+      username: from.username ?? existing?.username ?? null,
+      first_name: from.first_name ?? existing?.first_name ?? null,
+      last_name: from.last_name ?? existing?.last_name ?? null,
+      phone: existing?.phone ?? null,
+      language_code: from.language_code ?? existing?.language_code ?? null,
+      joined_at: existing?.joined_at ?? nowIso,
+      last_seen_at: nowIso,
+    };
+
+    // Contact shared
+    if (msg.contact?.phone_number) {
+      subBase.phone = String(msg.contact.phone_number).replace(/[^\d+]/g, "");
+      await saveSubscriber(admin, storeId, subBase);
+
+      await tg(cfg.bot_token, "sendMessage", {
+        chat_id: chatId,
+        text: "✅ Спасибо! Ваш номер сохранён.",
+        reply_markup: { remove_keyboard: true },
+      });
+      await tg(cfg.bot_token, "sendMessage", {
+        chat_id: chatId,
+        text: "Откройте каталог по кнопке ниже 👇",
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🛒 Открыть магазин", web_app: { url: cfg.webapp_url } }],
+          ],
+        },
+      });
+      return new Response("OK");
+    }
+
+    const text = (msg.text as string | undefined)?.trim() ?? "";
 
     if (text.startsWith("/start") || text === "/shop") {
+      await saveSubscriber(admin, storeId, subBase);
+
       const { data: store } = await admin
         .from("stores")
         .select("name")
@@ -47,19 +131,46 @@ Deno.serve(async (req) => {
 
       const greeting =
         cfg.welcome_message ||
-        `👋 Добро пожаловать в *${store?.name || "магазин"}*!\n\nНажмите кнопку ниже, чтобы открыть каталог товаров.`;
+        `👋 Добро пожаловать в *${store?.name || "магазин"}*!`;
 
-      await tg(cfg.bot_token, "sendMessage", {
-        chat_id: chatId,
-        text: greeting,
-        parse_mode: "Markdown",
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "🛒 Открыть магазин", web_app: { url: cfg.webapp_url } }],
-          ],
-        },
-      });
+      // If we don't yet have the phone — ask for contact first
+      if (!subBase.phone) {
+        await tg(cfg.bot_token, "sendMessage", {
+          chat_id: chatId,
+          text:
+            `${greeting}\n\nЧтобы оформлять заказы быстрее, поделитесь номером телефона — нажмите кнопку ниже.`,
+          parse_mode: "Markdown",
+          reply_markup: {
+            keyboard: [
+              [{ text: "📱 Поделиться номером", request_contact: true }],
+            ],
+            resize_keyboard: true,
+            one_time_keyboard: true,
+          },
+        });
+        await tg(cfg.bot_token, "sendMessage", {
+          chat_id: chatId,
+          text: "Или сразу откройте каталог:",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🛒 Открыть магазин", web_app: { url: cfg.webapp_url } }],
+            ],
+          },
+        });
+      } else {
+        await tg(cfg.bot_token, "sendMessage", {
+          chat_id: chatId,
+          text: greeting,
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🛒 Открыть магазин", web_app: { url: cfg.webapp_url } }],
+            ],
+          },
+        });
+      }
     } else {
+      await saveSubscriber(admin, storeId, subBase);
       await tg(cfg.bot_token, "sendMessage", {
         chat_id: chatId,
         text: "Используйте кнопку ниже или /start, чтобы открыть магазин 🛒",
@@ -74,6 +185,6 @@ Deno.serve(async (req) => {
     return new Response("OK");
   } catch (e) {
     console.error("webhook error:", e);
-    return new Response("OK"); // always 200 to Telegram
+    return new Response("OK");
   }
 });
