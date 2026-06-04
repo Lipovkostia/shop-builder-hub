@@ -165,6 +165,8 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
   const { prompts } = useImagePrompts(storeId);
   const { refs } = useImageReferences(storeId);
   const { results, running, progress, generateBatch, clearResult } = useImageGeneration();
+  const aiHistory = useAiHistory(storeId);
+  const [historySaved, setHistorySaved] = useState<Set<string>>(new Set());
 
   const localJobsKey = useMemo(() => `image_generation_pending_v1:${storeId}`, [storeId]);
 
