@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { TelegramSubscribersList } from "@/components/admin/TelegramSubscribersList";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -192,7 +194,13 @@ export function StoreTelegramBotPanel({ storeId, subdomain }: StoreTelegramBotPa
           </Button>
         </div>
       ) : (
-        <div className="space-y-6">
+        <Tabs defaultValue="settings" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="settings">Настройки</TabsTrigger>
+            <TabsTrigger value="subscribers">Подписчики</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="settings" className="space-y-6">
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:bg-emerald-950/30 dark:border-emerald-900">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -242,6 +250,13 @@ export function StoreTelegramBotPanel({ storeId, subdomain }: StoreTelegramBotPa
             </div>
           )}
 
+          <Alert>
+            <AlertDescription className="text-sm">
+              При входе в бота покупатель видит кнопку «📱 Поделиться номером». Как только он
+              нажмёт её — телефон и Telegram-ник появятся во вкладке «Подписчики».
+            </AlertDescription>
+          </Alert>
+
           <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
             <div>
               <div className="font-medium">Бот включён</div>
@@ -273,7 +288,12 @@ export function StoreTelegramBotPanel({ storeId, subdomain }: StoreTelegramBotPa
               Отключить бота
             </Button>
           </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="subscribers">
+            <TelegramSubscribersList storeId={storeId} />
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );
