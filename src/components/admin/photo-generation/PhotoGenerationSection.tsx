@@ -74,9 +74,9 @@ interface PhotoSettingsTemplate {
   globalPromptText: string;
 }
 
-interface Props { storeId: string; preselectedProductId?: string | null; onOpenInAvito?: (productId: string) => void; }
+interface Props { storeId: string; preselectedProductId?: string | null; onOpenInAvito?: (productId: string) => void; onOpenInPriceList?: (productId: string) => void; }
 
-export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenInAvito }: Props) {
+export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenInAvito, onOpenInPriceList }: Props) {
   const [products, setProducts] = useState<ProductLite[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [search, setSearch] = useState("");
