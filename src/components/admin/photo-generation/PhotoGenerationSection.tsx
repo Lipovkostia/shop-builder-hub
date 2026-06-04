@@ -260,6 +260,24 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
     if (unique.length) persistLocalJobs([...unique, ...localJobs].slice(0, 200));
   }, [results, rows, localJobs, persistLocalJobs]);
 
+  // Auto-save each successful generation to AI history bucket
+  useEffect(() => {
+    rows.forEach((row) => {
+      const res = results[row.id];
+      if (res?.status !== "success" || !res.url) return;
+      const key = `${row.id}::${res.url}`;
+      if (historySaved.has(key)) return;
+      setHistorySaved((prev) => { const n = new Set(prev); n.add(key); return n; });
+      aiHistory.add({
+        url: res.url,
+        prompt: row.prompt,
+        model: modelId,
+        source: "photo_generation",
+        productId: row.product_id,
+      });
+    });
+  }, [results, rows, historySaved, aiHistory, modelId]);
+
   useEffect(() => {
     const newRows: PhotoRow[] = [];
     products.filter((p) => selectedIds.has(p.id)).forEach((p) => {
