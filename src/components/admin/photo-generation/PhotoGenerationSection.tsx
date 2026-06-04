@@ -708,19 +708,24 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                         rows={3} className="text-xs"
                       />
                       <div className="flex items-center justify-between gap-1">
-                        <div className="text-[10px] text-muted-foreground">
-                          {imgs.length > 0 && `Передаётся ${imgs.length} изображени${imgs.length === 1 ? "е" : imgs.length < 5 ? "я" : "й"} в порядке #1…#${imgs.length}`}
-                        </div>
                         <div className="flex gap-1">
+                          <Button size="sm" variant="outline" onClick={() => generateRow(r)} disabled={rowPending}>
+                            {rowPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                            Генерировать
+                          </Button>
+                          {onOpenInPriceList && (
+                            <Button size="sm" variant="ghost" onClick={() => onOpenInPriceList(r.product_id)} title="Вернуться к товару в прайс-листе">
+                              ← В прайс-лист
+                            </Button>
+                          )}
                           {onOpenInAvito && (
                             <Button size="sm" variant="ghost" onClick={() => onOpenInAvito(r.product_id)} title="Открыть фото объявления в разделе Авито">
                               <ImageIcon className="h-3 w-3" />В Авито
                             </Button>
                           )}
-                          <Button size="sm" variant="outline" onClick={() => generateRow(r)} disabled={rowPending}>
-                            {rowPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-                            Генерировать
-                          </Button>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {imgs.length > 0 && `Передаётся ${imgs.length} изображени${imgs.length === 1 ? "е" : imgs.length < 5 ? "я" : "й"} в порядке #1…#${imgs.length}`}
                         </div>
                       </div>
                     </div>
