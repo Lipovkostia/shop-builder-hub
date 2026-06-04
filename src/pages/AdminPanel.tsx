@@ -3,7 +3,7 @@ import * as XLSX from "xlsx";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, EyeOff, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut, FileSpreadsheet, Sheet, Upload, Sparkles, RotateCcw, FileText } from "lucide-react";
+import { ArrowLeft, Package, Download, RefreshCw, Check, X, Loader2, Image as ImageIcon, LogIn, Lock, Unlock, ExternalLink, Filter, Plus, ChevronRight, Trash2, FolderOpen, Edit2, Settings, Users, Shield, ChevronDown, ChevronUp, Tag, Store, Clipboard, Link2, Copy, ShoppingCart, Eye, EyeOff, Clock, ChevronsUpDown, Send, MessageCircle, Mail, User, Key, LogOut, FileSpreadsheet, Sheet, Upload, Sparkles, RotateCcw, FileText, Wand2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -5859,6 +5859,24 @@ export default function AdminPanel({
                                       <Button
                                         variant="ghost"
                                         size="sm"
+                                        className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                                        title="Открыть в AI Photo Studio"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setActiveSection("photo-generation");
+                                          setSearchParams(prev => {
+                                            prev.set('section', 'photo-generation');
+                                            prev.set('productId', product.id);
+                                            prev.set('fromPriceList', '1');
+                                            return prev;
+                                          });
+                                        }}
+                                      >
+                                        <Wand2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
                                         className="h-6 px-1 relative"
                                         title="Показать фото"
                                         onClick={(e) => {
@@ -7340,6 +7358,15 @@ export default function AdminPanel({
                   return prev;
                 });
               }}
+              onOpenInPriceList={searchParams.get('fromPriceList') === '1' ? (productId) => {
+                setActiveSection("products");
+                setSearchParams(prev => {
+                  prev.set('section', 'products');
+                  prev.set('productId', productId);
+                  prev.delete('fromPriceList');
+                  return prev;
+                });
+              } : undefined}
             />
           )}
         </main>
