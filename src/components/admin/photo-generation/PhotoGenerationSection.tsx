@@ -44,6 +44,8 @@ import { KIE_MODELS, DEFAULT_USD_RUB, formatRub } from "./models";
 import { PromptsManager } from "./PromptsManager";
 import { ReferencesManager } from "./ReferencesManager";
 import { PlaygroundChat } from "./PlaygroundChat";
+import { HistoryTab } from "./HistoryTab";
+import { useAiHistory } from "@/hooks/useAiHistory";
 
 interface ProductLite { id: string; name: string; images: string[] | null; sku?: string | null; }
 
@@ -163,6 +165,8 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
   const { prompts } = useImagePrompts(storeId);
   const { refs } = useImageReferences(storeId);
   const { results, running, progress, generateBatch, clearResult } = useImageGeneration();
+  const aiHistory = useAiHistory(storeId);
+  const [historySaved, setHistorySaved] = useState<Set<string>>(new Set());
 
   const localJobsKey = useMemo(() => `image_generation_pending_v1:${storeId}`, [storeId]);
 
@@ -255,6 +259,24 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
     const unique = additions.filter((j) => !existing.has(j.id));
     if (unique.length) persistLocalJobs([...unique, ...localJobs].slice(0, 200));
   }, [results, rows, localJobs, persistLocalJobs]);
+
+  // Auto-save each successful generation to AI history bucket
+  useEffect(() => {
+    rows.forEach((row) => {
+      const res = results[row.id];
+      if (res?.status !== "success" || !res.url) return;
+      const key = `${row.id}::${res.url}`;
+      if (historySaved.has(key)) return;
+      setHistorySaved((prev) => { const n = new Set(prev); n.add(key); return n; });
+      aiHistory.add({
+        url: res.url,
+        prompt: row.prompt,
+        model: modelId,
+        source: "photo_generation",
+        productId: row.product_id,
+      });
+    });
+  }, [results, rows, historySaved, aiHistory, modelId]);
 
   useEffect(() => {
     const newRows: PhotoRow[] = [];
@@ -442,6 +464,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
       <Tabs defaultValue="workspace">
         <TabsList>
           <TabsTrigger value="workspace">Рабочая область</TabsTrigger>
+          <TabsTrigger value="history">История генераций</TabsTrigger>
           <TabsTrigger value="prompts">Шаблоны промптов</TabsTrigger>
           <TabsTrigger value="references">Референсы</TabsTrigger>
           <TabsTrigger value="chat">AI-чат</TabsTrigger>
@@ -793,6 +816,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
         <TabsContent value="prompts"><PromptsManager storeId={storeId} /></TabsContent>
         <TabsContent value="references"><ReferencesManager storeId={storeId} /></TabsContent>
         <TabsContent value="chat"><PlaygroundChat storeId={storeId} /></TabsContent>
+        <TabsContent value="history"><HistoryTab storeId={storeId} /></TabsContent>
       </Tabs>
     </div>
   );
