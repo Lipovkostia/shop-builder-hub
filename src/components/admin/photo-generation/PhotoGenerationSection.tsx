@@ -44,6 +44,8 @@ import { KIE_MODELS, DEFAULT_USD_RUB, formatRub } from "./models";
 import { PromptsManager } from "./PromptsManager";
 import { ReferencesManager } from "./ReferencesManager";
 import { PlaygroundChat } from "./PlaygroundChat";
+import { HistoryTab } from "./HistoryTab";
+import { useAiHistory } from "@/hooks/useAiHistory";
 
 interface ProductLite { id: string; name: string; images: string[] | null; sku?: string | null; }
 
@@ -442,6 +444,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
       <Tabs defaultValue="workspace">
         <TabsList>
           <TabsTrigger value="workspace">Рабочая область</TabsTrigger>
+          <TabsTrigger value="history">История генераций</TabsTrigger>
           <TabsTrigger value="prompts">Шаблоны промптов</TabsTrigger>
           <TabsTrigger value="references">Референсы</TabsTrigger>
           <TabsTrigger value="chat">AI-чат</TabsTrigger>
@@ -793,6 +796,7 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
         <TabsContent value="prompts"><PromptsManager storeId={storeId} /></TabsContent>
         <TabsContent value="references"><ReferencesManager storeId={storeId} /></TabsContent>
         <TabsContent value="chat"><PlaygroundChat storeId={storeId} /></TabsContent>
+        <TabsContent value="history"><HistoryTab storeId={storeId} /></TabsContent>
       </Tabs>
     </div>
   );
