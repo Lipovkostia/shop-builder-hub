@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
         product_id: product.id,
         source_image_url: body.source_image_url ?? null,
         reference_image_url: body.reference_image_url ?? null,
-        model,
+        model: rawModel,
         prompt: finalPrompt,
         aspect_ratio,
         result_image_url: url,
