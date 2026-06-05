@@ -11,53 +11,63 @@
  * у kie.ai — оставлено 0 (в UI цена не показывается).
  */
 export type ModelFamily =
-  | "nano-banana"            // google/nano-banana — T2I
-  | "nano-banana-edit"       // google/nano-banana-edit — I2I
-  | "nano-banana-2"          // nano-banana-2 — T2I+I2I, разрешение 1K/2K/4K
-  | "nano-banana-pro"        // nano-banana-pro — I2I, разрешение 1K/2K/4K
-  | "imagen4"                // google/imagen4* — только prompt
-  | "seedream-v3"            // bytedance/seedream — T2I (image_size)
-  | "seedream-v4-t2i"        // bytedance/seedream-v4-text-to-image
-  | "seedream-v4-edit"       // bytedance/seedream-v4-edit (image_urls)
-  | "seedream-4-5-t2i"       // seedream/4.5-text-to-image (aspect_ratio + quality)
-  | "seedream-4-5-edit"      // seedream/4.5-edit (image_urls + quality)
-  | "z-image"                // z-image (aspect_ratio)
-  | "flux2-t2i"              // flux-2/(pro|flex)-text-to-image
-  | "flux2-i2i"              // flux-2/(pro|flex)-image-to-image (input_urls)
-  | "grok-t2i"               // grok-imagine/text-to-image
-  | "grok-i2i"               // grok-imagine/image-to-image (image_urls)
-  | "gpt-image-1-5-t2i"      // gpt-image/1.5-text-to-image
-  | "gpt-image-1-5-i2i"      // gpt-image/1.5-image-to-image (input_urls)
-  | "gpt-image-2-t2i"        // gpt-image-2-text-to-image
-  | "gpt-image-2-i2i"        // gpt-image-2-image-to-image (input_urls)
-  | "ideogram-v3-t2i"        // ideogram/v3-text-to-image
-  | "ideogram-v3-edit"       // ideogram/v3-edit (image_url + mask)
-  | "ideogram-v3-remix"      // ideogram/v3-remix (image_url)
-  | "ideogram-character"     // ideogram/character (reference_image_urls)
-  | "ideogram-character-edit"// ideogram/character-edit (image_url+mask+refs)
-  | "ideogram-character-remix"// ideogram/character-remix (image_url+refs)
-  | "qwen-t2i"               // qwen/text-to-image
-  | "qwen-i2i"               // qwen/image-to-image
-  | "qwen-edit"              // qwen/image-edit
-  | "qwen2-t2i"              // qwen2/text-to-image
-  | "qwen2-edit"             // qwen2/image-edit
-  | "wan-image"              // wan/2-7-image[-pro] (input_urls + resolution + n)
-  | "topaz-upscale"          // topaz/image-upscale (без prompt)
-  | "recraft-utility";       // recraft/remove-background, crisp-upscale (без prompt)
+  | "nano-banana"
+  | "nano-banana-edit"
+  | "nano-banana-2"
+  | "nano-banana-pro"
+  | "imagen4"
+  | "seedream-v3"
+  | "seedream-v4-t2i"
+  | "seedream-v4-edit"
+  | "seedream-4-5-t2i"
+  | "seedream-4-5-edit"
+  | "z-image"
+  | "flux2-t2i"
+  | "flux2-i2i"
+  | "grok-t2i"
+  | "grok-i2i"
+  | "gpt-image-1-5-t2i"
+  | "gpt-image-1-5-i2i"
+  | "gpt-image-2-t2i"
+  | "gpt-image-2-i2i"
+  | "ideogram-v3-t2i"
+  | "ideogram-v3-edit"
+  | "ideogram-v3-remix"
+  | "ideogram-character"
+  | "ideogram-character-edit"
+  | "ideogram-character-remix"
+  | "qwen-t2i"
+  | "qwen-i2i"
+  | "qwen-edit"
+  | "qwen2-t2i"
+  | "qwen2-edit"
+  | "wan-image"
+  | "topaz-upscale"
+  | "recraft-utility"
+  // ───── Видео ─────
+  | "kling-t2v"
+  | "kling-i2v"
+  | "seedance-t2v"
+  | "seedance-i2v"
+  | "hailuo-t2v"
+  | "hailuo-i2v"
+  | "veo3-t2v"
+  | "veo3-i2v";
 
 export interface KieModel {
-  /** Уникальный ключ. Для nano-banana-2 / nano-banana-pro / flux-2 / wan / seedream-v4
-   *  допускается суффикс `:1K|:2K|:4K` — он будет преобразован в параметр resolution. */
+  /** Уникальный ключ. Суффикс `:1K|:2K|:4K` = разрешение, `:5s|:10s` = длительность видео. */
   id: string;
-  /** Имя модели в API kie.ai (без суффикса разрешения). */
+  /** Имя модели в API kie.ai (без суффикса). */
   apiModel: string;
   family: ModelFamily;
   group: string;
   label: string;
-  /** USD за 1 изображение (0 — не показывать цену) */
+  /** USD за 1 генерацию (0 — не показывать цену) */
   priceUsd: number;
   supportsEdit: boolean;
   supportsTextToImage: boolean;
+  /** Тип результата: фото (по умолчанию) или видео */
+  kind?: "image" | "video";
   description?: string;
 }
 
