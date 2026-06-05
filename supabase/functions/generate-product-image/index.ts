@@ -172,14 +172,22 @@ Deno.serve(async (req) => {
     const rawModel = body.model ?? (hasImages ? "google/nano-banana-edit" : "google/nano-banana");
     const aspect_ratio = ALLOWED_AR.has(body.aspect_ratio ?? "") ? body.aspect_ratio! : "1:1";
 
-    // Разбираем суффикс разрешения (`:1K|:2K|:4K`)
+    // Разбираем суффикс: `:1K|:2K|:4K` (разрешение) или `:5s|:10s|:Ns` (длительность видео)
     let model = rawModel;
     let resolution: "1K" | "2K" | "4K" | null = null;
+    let durationSec: number | null = null;
     const resMatch = rawModel.match(/^(.*):(1K|2K|4K)$/);
+    const durMatch = rawModel.match(/^(.*):(\d+)s$/);
     if (resMatch) {
       model = resMatch[1];
       resolution = resMatch[2] as "1K" | "2K" | "4K";
+    } else if (durMatch) {
+      model = durMatch[1];
+      durationSec = parseInt(durMatch[2], 10);
     }
+
+    // Видео-модели kie.ai: kling/seedance/hailuo/veo
+    const isVideo = /^(kling|bytedance\/seedance|minimax\/hailuo|google\/veo)/.test(model);
 
     let finalPrompt: string;
     if (hasImages && images.length >= 2) {
