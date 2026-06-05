@@ -52,9 +52,9 @@ async function kieCreateTask(model: string, input: Record<string, unknown>): Pro
   return taskId;
 }
 
-async function kiePoll(taskId: string, timeoutMs = 180_000): Promise<string> {
+async function kiePoll(taskId: string, timeoutMs = 600_000): Promise<string> {
   const started = Date.now();
-  let delay = 2500;
+  let delay = 3000;
   while (Date.now() - started < timeoutMs) {
     const res = await fetch(`${KIE_BASE}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`, {
       headers: { Authorization: `Bearer ${KIE_API_KEY}` },
@@ -69,14 +69,15 @@ async function kiePoll(taskId: string, timeoutMs = 180_000): Promise<string> {
       let urls: string[] = [];
       try {
         const parsed = typeof rj === "string" ? JSON.parse(rj) : rj;
-        urls = parsed?.resultUrls ?? [];
+        urls = parsed?.resultUrls ?? parsed?.videoUrls ?? parsed?.videos ?? [];
+        if (typeof urls === "string") urls = [urls];
       } catch { /* noop */ }
       if (!urls.length) throw new Error("kie.ai: пустой resultUrls");
       return urls[0];
     }
     if (state === "fail") throw new Error(`kie.ai: ${json?.data?.failMsg ?? json?.data?.failCode ?? "генерация не удалась"}`);
     await new Promise((r) => setTimeout(r, delay));
-    delay = Math.min(delay + 1000, 6000);
+    delay = Math.min(delay + 1000, 8000);
   }
   throw new Error("kie.ai: таймаут ожидания результата");
 }
