@@ -31,20 +31,7 @@ const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const ALLOWED_AR = new Set(["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2", "21:9"]);
 
-// Маппинг aspect_ratio -> image_size для Seedream 4
-function mapAspectToSeedreamSize(ar: string): string {
-  switch (ar) {
-    case "1:1": return "square_hd";
-    case "4:3": return "landscape_4_3";
-    case "3:4": return "portrait_4_3";
-    case "3:2": return "landscape_3_2";
-    case "2:3": return "portrait_3_2";
-    case "16:9": return "landscape_16_9";
-    case "9:16": return "portrait_16_9";
-    case "21:9": return "landscape_21_9";
-    default: return "square_hd";
-  }
-}
+// (мэппинг aspect_ratio → image_size теперь живёт внутри Deno.serve как aspectToImageSizeSymbolic)
 
 async function kieCreateTask(model: string, input: Record<string, unknown>): Promise<string> {
   const res = await fetch(`${KIE_BASE}/api/v1/jobs/createTask`, {
