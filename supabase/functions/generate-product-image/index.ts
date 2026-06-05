@@ -227,7 +227,29 @@ Deno.serve(async (req) => {
     const requiresPrompt = !["topaz/image-upscale", "recraft/remove-background", "recraft/crisp-upscale"].includes(model);
     if (requiresPrompt) input.prompt = finalPrompt;
 
-    if (model === "nano-banana-2" || model === "nano-banana-pro") {
+    // ───── Видео-модели ─────
+    if (isVideo) {
+      // Общие поля для большинства видео-моделей kie.ai
+      if (durationSec) input.duration = String(durationSec);
+      input.aspect_ratio = aspect_ratio;
+      // image-to-video: первое изображение как стартовый кадр
+      if (model.includes("image-to-video") && firstImage) {
+        input.image_url = firstImage;
+      }
+      // Kling — параметры качества
+      if (model.startsWith("kling/")) {
+        input.cfg_scale = 0.5;
+        input.negative_prompt = "";
+      }
+      // Seedance — разрешение
+      if (model.includes("bytedance/seedance")) {
+        input.resolution = "720p";
+      }
+      // Hailuo — разрешение
+      if (model.includes("minimax/hailuo")) {
+        input.resolution = "768P";
+      }
+    } else if (model === "nano-banana-2" || model === "nano-banana-pro") {
       // image_input (массив URL), resolution: 1K/2K/4K, aspect_ratio, output_format
       input.aspect_ratio = aspect_ratio;
       input.resolution = resolution ?? "1K";
