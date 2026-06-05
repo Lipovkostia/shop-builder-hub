@@ -477,14 +477,22 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                 <Label className="text-xs">Модель генерации</Label>
                 <Select value={modelId} onValueChange={setModelId}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-w-[460px]">
                     {KIE_MODELS.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
-                        {m.label} · {formatRub(m.priceUsd * usdRub)}
+                        <div className="flex flex-col gap-0.5 py-0.5">
+                          <span className="text-sm font-medium">{m.label} · {formatRub(m.priceUsd * usdRub)}</span>
+                          {m.description && (
+                            <span className="text-[11px] text-muted-foreground leading-snug whitespace-normal">{m.description}</span>
+                          )}
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {selectedModel.description && (
+                  <p className="text-[11px] text-muted-foreground leading-snug">{selectedModel.description}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Курс USD → ₽</Label>

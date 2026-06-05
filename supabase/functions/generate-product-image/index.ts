@@ -31,6 +31,21 @@ const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const ALLOWED_AR = new Set(["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2", "21:9"]);
 
+// Маппинг aspect_ratio -> image_size для Seedream 4
+function mapAspectToSeedreamSize(ar: string): string {
+  switch (ar) {
+    case "1:1": return "square_hd";
+    case "4:3": return "landscape_4_3";
+    case "3:4": return "portrait_4_3";
+    case "3:2": return "landscape_3_2";
+    case "2:3": return "portrait_3_2";
+    case "16:9": return "landscape_16_9";
+    case "9:16": return "portrait_16_9";
+    case "21:9": return "landscape_21_9";
+    default: return "square_hd";
+  }
+}
+
 async function kieCreateTask(model: string, input: Record<string, unknown>): Promise<string> {
   const res = await fetch(`${KIE_BASE}/api/v1/jobs/createTask`, {
     method: "POST",
@@ -166,8 +181,17 @@ Deno.serve(async (req) => {
     }
 
     const hasImages = images.length > 0;
-    const model = body.model ?? (hasImages ? "google/nano-banana-edit" : "google/nano-banana");
+    const rawModel = body.model ?? (hasImages ? "google/nano-banana-edit" : "google/nano-banana");
     const aspect_ratio = ALLOWED_AR.has(body.aspect_ratio ?? "") ? body.aspect_ratio! : "1:1";
+
+    // Разбираем суффикс разрешения (`:1K|:2K|:4K`) для семейства Nano Banana 2
+    let model = rawModel;
+    let resolution: "1K" | "2K" | "4K" | null = null;
+    const resMatch = rawModel.match(/^(.*):(1K|2K|4K)$/);
+    if (resMatch) {
+      model = resMatch[1];
+      resolution = resMatch[2] as "1K" | "2K" | "4K";
+    }
 
     let finalPrompt: string;
     if (hasImages && images.length >= 2) {
@@ -179,14 +203,37 @@ Deno.serve(async (req) => {
         `Следуй инструкции пользователя ниже и используй изображения по их номерам. Не добавляй текст и не искажай товар.\n\n` +
         `Инструкция пользователя:\n`;
       finalPrompt = header + (userPrompt || `Помести товар (#1) в сцену/стиль из остальных изображений. Сделай реалистичное коммерческое фото.`);
-    } else if (hasImages) {
-      finalPrompt = userPrompt || `Сгенерируй качественное коммерческое фото товара: ${product.name}`;
     } else {
       finalPrompt = userPrompt || `Сгенерируй качественное коммерческое фото товара: ${product.name}`;
     }
 
-    const input: Record<string, unknown> = { prompt: finalPrompt, output_format: "png", aspect_ratio };
-    if (hasImages) input.image_urls = images;
+    // Каждая модель kie.ai принимает свой набор параметров — собираем input под конкретное семейство.
+    // Документация: https://docs.kie.ai/market/...
+    const input: Record<string, unknown> = { prompt: finalPrompt };
+
+    if (model === "nano-banana-2") {
+      // Nano Banana 2: image_input (массив URL), resolution: 1K/2K/4K, aspect_ratio, output_format
+      input.aspect_ratio = aspect_ratio;
+      input.resolution = resolution ?? "1K";
+      input.output_format = "png";
+      if (hasImages) input.image_input = images;
+    } else if (model === "bytedance/seedream-v4-text-to-image") {
+      // Seedream 4 text-to-image: image_size + image_resolution (без входных изображений)
+      input.image_size = mapAspectToSeedreamSize(aspect_ratio);
+      input.image_resolution = resolution ?? "2K";
+      input.max_images = 1;
+    } else if (model === "bytedance/seedream-v4-edit") {
+      // Seedream 4 Edit: image_urls, image_size, image_resolution
+      input.image_size = mapAspectToSeedreamSize(aspect_ratio);
+      input.image_resolution = resolution ?? "2K";
+      input.max_images = 1;
+      if (hasImages) input.image_urls = images;
+    } else {
+      // Nano Banana / Nano Banana Edit (google/*): prompt, image_urls, aspect_ratio, output_format
+      input.aspect_ratio = aspect_ratio;
+      input.output_format = "png";
+      if (hasImages) input.image_urls = images;
+    }
 
 
     const hasJobsTable = await admin.from("image_generation_jobs").select("id").limit(1).then(({ error }) => !error);
@@ -202,7 +249,7 @@ Deno.serve(async (req) => {
           product_id: product.id,
           source_image_url: body.source_image_url ?? null,
           reference_image_url: body.reference_image_url ?? null,
-          model,
+          model: rawModel,
           prompt: finalPrompt,
           aspect_ratio,
           status: "error",
@@ -234,7 +281,7 @@ Deno.serve(async (req) => {
         product_id: product.id,
         source_image_url: body.source_image_url ?? null,
         reference_image_url: body.reference_image_url ?? null,
-        model,
+        model: rawModel,
         prompt: finalPrompt,
         aspect_ratio,
         result_image_url: url,
