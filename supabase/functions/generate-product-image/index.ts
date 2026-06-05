@@ -446,12 +446,17 @@ Deno.serve(async (req) => {
     }
 
     const { bytes, contentType } = await fetchAsBytes(resultUrl);
-    const ext = (contentType.split("/")[1] ?? "png").split(";")[0];
+    const isVideoResult = isVideo || contentType.startsWith("video/");
+    const bucket = isVideoResult ? "product-videos" : "product-images";
+    const ext = isVideoResult
+      ? ((contentType.split("/")[1] ?? "mp4").split(";")[0])
+      : ((contentType.split("/")[1] ?? "png").split(";")[0]);
+    const finalContentType = isVideoResult && !contentType.startsWith("video/") ? "video/mp4" : contentType;
     const path = `${product.id}/ai/${Date.now()}_${Math.floor(Math.random() * 9999)}.${ext}`;
-    const { error: upErr } = await admin.storage.from("product-images").upload(path, bytes, { contentType, upsert: false });
+    const { error: upErr } = await admin.storage.from(bucket).upload(path, bytes, { contentType: finalContentType, upsert: false });
     if (upErr) throw new Error(`Storage: ${upErr.message}`);
 
-    const url = admin.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+    const url = admin.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 
     if (hasJobsTable) {
       const successRow: Record<string, unknown> = {
@@ -473,7 +478,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ url, prompt: finalPrompt, model }), {
+    return new Response(JSON.stringify({ url, prompt: finalPrompt, model, kind: isVideoResult ? "video" : "image" }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: unknown) {
