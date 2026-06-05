@@ -11,53 +11,63 @@
  * у kie.ai — оставлено 0 (в UI цена не показывается).
  */
 export type ModelFamily =
-  | "nano-banana"            // google/nano-banana — T2I
-  | "nano-banana-edit"       // google/nano-banana-edit — I2I
-  | "nano-banana-2"          // nano-banana-2 — T2I+I2I, разрешение 1K/2K/4K
-  | "nano-banana-pro"        // nano-banana-pro — I2I, разрешение 1K/2K/4K
-  | "imagen4"                // google/imagen4* — только prompt
-  | "seedream-v3"            // bytedance/seedream — T2I (image_size)
-  | "seedream-v4-t2i"        // bytedance/seedream-v4-text-to-image
-  | "seedream-v4-edit"       // bytedance/seedream-v4-edit (image_urls)
-  | "seedream-4-5-t2i"       // seedream/4.5-text-to-image (aspect_ratio + quality)
-  | "seedream-4-5-edit"      // seedream/4.5-edit (image_urls + quality)
-  | "z-image"                // z-image (aspect_ratio)
-  | "flux2-t2i"              // flux-2/(pro|flex)-text-to-image
-  | "flux2-i2i"              // flux-2/(pro|flex)-image-to-image (input_urls)
-  | "grok-t2i"               // grok-imagine/text-to-image
-  | "grok-i2i"               // grok-imagine/image-to-image (image_urls)
-  | "gpt-image-1-5-t2i"      // gpt-image/1.5-text-to-image
-  | "gpt-image-1-5-i2i"      // gpt-image/1.5-image-to-image (input_urls)
-  | "gpt-image-2-t2i"        // gpt-image-2-text-to-image
-  | "gpt-image-2-i2i"        // gpt-image-2-image-to-image (input_urls)
-  | "ideogram-v3-t2i"        // ideogram/v3-text-to-image
-  | "ideogram-v3-edit"       // ideogram/v3-edit (image_url + mask)
-  | "ideogram-v3-remix"      // ideogram/v3-remix (image_url)
-  | "ideogram-character"     // ideogram/character (reference_image_urls)
-  | "ideogram-character-edit"// ideogram/character-edit (image_url+mask+refs)
-  | "ideogram-character-remix"// ideogram/character-remix (image_url+refs)
-  | "qwen-t2i"               // qwen/text-to-image
-  | "qwen-i2i"               // qwen/image-to-image
-  | "qwen-edit"              // qwen/image-edit
-  | "qwen2-t2i"              // qwen2/text-to-image
-  | "qwen2-edit"             // qwen2/image-edit
-  | "wan-image"              // wan/2-7-image[-pro] (input_urls + resolution + n)
-  | "topaz-upscale"          // topaz/image-upscale (без prompt)
-  | "recraft-utility";       // recraft/remove-background, crisp-upscale (без prompt)
+  | "nano-banana"
+  | "nano-banana-edit"
+  | "nano-banana-2"
+  | "nano-banana-pro"
+  | "imagen4"
+  | "seedream-v3"
+  | "seedream-v4-t2i"
+  | "seedream-v4-edit"
+  | "seedream-4-5-t2i"
+  | "seedream-4-5-edit"
+  | "z-image"
+  | "flux2-t2i"
+  | "flux2-i2i"
+  | "grok-t2i"
+  | "grok-i2i"
+  | "gpt-image-1-5-t2i"
+  | "gpt-image-1-5-i2i"
+  | "gpt-image-2-t2i"
+  | "gpt-image-2-i2i"
+  | "ideogram-v3-t2i"
+  | "ideogram-v3-edit"
+  | "ideogram-v3-remix"
+  | "ideogram-character"
+  | "ideogram-character-edit"
+  | "ideogram-character-remix"
+  | "qwen-t2i"
+  | "qwen-i2i"
+  | "qwen-edit"
+  | "qwen2-t2i"
+  | "qwen2-edit"
+  | "wan-image"
+  | "topaz-upscale"
+  | "recraft-utility"
+  // ───── Видео ─────
+  | "kling-t2v"
+  | "kling-i2v"
+  | "seedance-t2v"
+  | "seedance-i2v"
+  | "hailuo-t2v"
+  | "hailuo-i2v"
+  | "veo3-t2v"
+  | "veo3-i2v";
 
 export interface KieModel {
-  /** Уникальный ключ. Для nano-banana-2 / nano-banana-pro / flux-2 / wan / seedream-v4
-   *  допускается суффикс `:1K|:2K|:4K` — он будет преобразован в параметр resolution. */
+  /** Уникальный ключ. Суффикс `:1K|:2K|:4K` = разрешение, `:5s|:10s` = длительность видео. */
   id: string;
-  /** Имя модели в API kie.ai (без суффикса разрешения). */
+  /** Имя модели в API kie.ai (без суффикса). */
   apiModel: string;
   family: ModelFamily;
   group: string;
   label: string;
-  /** USD за 1 изображение (0 — не показывать цену) */
+  /** USD за 1 генерацию (0 — не показывать цену) */
   priceUsd: number;
   supportsEdit: boolean;
   supportsTextToImage: boolean;
+  /** Тип результата: фото (по умолчанию) или видео */
+  kind?: "image" | "video";
   description?: string;
 }
 
@@ -597,7 +607,164 @@ export const KIE_MODELS: KieModel[] = [
     supportsTextToImage: false,
     description: "Промпт не нужен. Резкое увеличение разрешения.",
   },
+
+  // ═══════════════════════════════════════════════
+  //                    ВИДЕО
+  // ═══════════════════════════════════════════════
+
+  // ───────────── Kling 2.5 Turbo Pro ─────────────
+  {
+    id: "kling/v2.5-turbo-pro/image-to-video:5s",
+    apiModel: "kling/v2.5-turbo-pro/image-to-video",
+    family: "kling-i2v",
+    group: "🎬 Kling 2.5 Turbo Pro",
+    label: "Kling 2.5 Turbo · фото→видео · 5 сек",
+    priceUsd: 0.21,
+    supportsEdit: true,
+    supportsTextToImage: false,
+    kind: "video",
+    description: "Оживляет ваше фото в 5-секундное видео. Лучшее соотношение цена/качество.",
+  },
+  {
+    id: "kling/v2.5-turbo-pro/image-to-video:10s",
+    apiModel: "kling/v2.5-turbo-pro/image-to-video",
+    family: "kling-i2v",
+    group: "🎬 Kling 2.5 Turbo Pro",
+    label: "Kling 2.5 Turbo · фото→видео · 10 сек",
+    priceUsd: 0.42,
+    supportsEdit: true,
+    supportsTextToImage: false,
+    kind: "video",
+    description: "10-секундное видео из фото. Подходит для рекламы и Reels.",
+  },
+  {
+    id: "kling/v2.5-turbo-pro/text-to-video:5s",
+    apiModel: "kling/v2.5-turbo-pro/text-to-video",
+    family: "kling-t2v",
+    group: "🎬 Kling 2.5 Turbo Pro",
+    label: "Kling 2.5 Turbo · текст→видео · 5 сек",
+    priceUsd: 0.21,
+    supportsEdit: false,
+    supportsTextToImage: true,
+    kind: "video",
+    description: "Генерация видео по текстовому описанию.",
+  },
+  {
+    id: "kling/v2.5-turbo-pro/text-to-video:10s",
+    apiModel: "kling/v2.5-turbo-pro/text-to-video",
+    family: "kling-t2v",
+    group: "🎬 Kling 2.5 Turbo Pro",
+    label: "Kling 2.5 Turbo · текст→видео · 10 сек",
+    priceUsd: 0.42,
+    supportsEdit: false,
+    supportsTextToImage: true,
+    kind: "video",
+    description: "Длинное видео по тексту.",
+  },
+
+  // ───────────── ByteDance Seedance ─────────────
+  {
+    id: "bytedance/seedance-v1-lite-image-to-video:5s",
+    apiModel: "bytedance/seedance-v1-lite-image-to-video",
+    family: "seedance-i2v",
+    group: "🎬 ByteDance Seedance Lite",
+    label: "Seedance Lite · фото→видео · 5 сек",
+    priceUsd: 0.18,
+    supportsEdit: true,
+    supportsTextToImage: false,
+    kind: "video",
+    description: "Дешёвое видео из фото. Хорошо для контента в соцсети.",
+  },
+  {
+    id: "bytedance/seedance-v1-lite-text-to-video:5s",
+    apiModel: "bytedance/seedance-v1-lite-text-to-video",
+    family: "seedance-t2v",
+    group: "🎬 ByteDance Seedance Lite",
+    label: "Seedance Lite · текст→видео · 5 сек",
+    priceUsd: 0.18,
+    supportsEdit: false,
+    supportsTextToImage: true,
+    kind: "video",
+    description: "Бюджетная текст→видео модель.",
+  },
+  {
+    id: "bytedance/seedance-v1-pro-image-to-video:5s",
+    apiModel: "bytedance/seedance-v1-pro-image-to-video",
+    family: "seedance-i2v",
+    group: "🎬 ByteDance Seedance Pro",
+    label: "Seedance Pro · фото→видео · 5 сек",
+    priceUsd: 0.62,
+    supportsEdit: true,
+    supportsTextToImage: false,
+    kind: "video",
+    description: "Премиум-видео из фото. Максимум детализации и плавности.",
+  },
+  {
+    id: "bytedance/seedance-v1-pro-text-to-video:5s",
+    apiModel: "bytedance/seedance-v1-pro-text-to-video",
+    family: "seedance-t2v",
+    group: "🎬 ByteDance Seedance Pro",
+    label: "Seedance Pro · текст→видео · 5 сек",
+    priceUsd: 0.62,
+    supportsEdit: false,
+    supportsTextToImage: true,
+    kind: "video",
+    description: "Премиум-видео по тексту.",
+  },
+
+  // ───────────── MiniMax Hailuo 02 ─────────────
+  {
+    id: "minimax/hailuo-02-image-to-video:6s",
+    apiModel: "minimax/hailuo-02-image-to-video",
+    family: "hailuo-i2v",
+    group: "🎬 MiniMax Hailuo 02",
+    label: "Hailuo 02 · фото→видео · 6 сек",
+    priceUsd: 0.28,
+    supportsEdit: true,
+    supportsTextToImage: false,
+    kind: "video",
+    description: "Реалистичная физика, плавное движение людей и предметов.",
+  },
+  {
+    id: "minimax/hailuo-02-text-to-video:6s",
+    apiModel: "minimax/hailuo-02-text-to-video",
+    family: "hailuo-t2v",
+    group: "🎬 MiniMax Hailuo 02",
+    label: "Hailuo 02 · текст→видео · 6 сек",
+    priceUsd: 0.28,
+    supportsEdit: false,
+    supportsTextToImage: true,
+    kind: "video",
+    description: "Сильная физика и кинематографичность.",
+  },
+
+  // ───────────── Google Veo 3 ─────────────
+  {
+    id: "google/veo3-fast/image-to-video:8s",
+    apiModel: "google/veo3-fast/image-to-video",
+    family: "veo3-i2v",
+    group: "🎬 Google Veo 3",
+    label: "Veo 3 Fast · фото→видео · 8 сек",
+    priceUsd: 0.40,
+    supportsEdit: true,
+    supportsTextToImage: false,
+    kind: "video",
+    description: "Google Veo 3 (быстрая). Видео из фото со звуком.",
+  },
+  {
+    id: "google/veo3-fast/text-to-video:8s",
+    apiModel: "google/veo3-fast/text-to-video",
+    family: "veo3-t2v",
+    group: "🎬 Google Veo 3",
+    label: "Veo 3 Fast · текст→видео · 8 сек",
+    priceUsd: 0.40,
+    supportsEdit: false,
+    supportsTextToImage: true,
+    kind: "video",
+    description: "Google Veo 3 (быстрая) — текст→видео со звуком.",
+  },
 ];
+
 
 export const DEFAULT_USD_RUB = 95;
 

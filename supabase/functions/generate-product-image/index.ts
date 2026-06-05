@@ -52,9 +52,9 @@ async function kieCreateTask(model: string, input: Record<string, unknown>): Pro
   return taskId;
 }
 
-async function kiePoll(taskId: string, timeoutMs = 180_000): Promise<string> {
+async function kiePoll(taskId: string, timeoutMs = 600_000): Promise<string> {
   const started = Date.now();
-  let delay = 2500;
+  let delay = 3000;
   while (Date.now() - started < timeoutMs) {
     const res = await fetch(`${KIE_BASE}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`, {
       headers: { Authorization: `Bearer ${KIE_API_KEY}` },
@@ -69,14 +69,15 @@ async function kiePoll(taskId: string, timeoutMs = 180_000): Promise<string> {
       let urls: string[] = [];
       try {
         const parsed = typeof rj === "string" ? JSON.parse(rj) : rj;
-        urls = parsed?.resultUrls ?? [];
+        urls = parsed?.resultUrls ?? parsed?.videoUrls ?? parsed?.videos ?? [];
+        if (typeof urls === "string") urls = [urls];
       } catch { /* noop */ }
       if (!urls.length) throw new Error("kie.ai: пустой resultUrls");
       return urls[0];
     }
     if (state === "fail") throw new Error(`kie.ai: ${json?.data?.failMsg ?? json?.data?.failCode ?? "генерация не удалась"}`);
     await new Promise((r) => setTimeout(r, delay));
-    delay = Math.min(delay + 1000, 6000);
+    delay = Math.min(delay + 1000, 8000);
   }
   throw new Error("kie.ai: таймаут ожидания результата");
 }
@@ -171,14 +172,22 @@ Deno.serve(async (req) => {
     const rawModel = body.model ?? (hasImages ? "google/nano-banana-edit" : "google/nano-banana");
     const aspect_ratio = ALLOWED_AR.has(body.aspect_ratio ?? "") ? body.aspect_ratio! : "1:1";
 
-    // Разбираем суффикс разрешения (`:1K|:2K|:4K`)
+    // Разбираем суффикс: `:1K|:2K|:4K` (разрешение) или `:5s|:10s|:Ns` (длительность видео)
     let model = rawModel;
     let resolution: "1K" | "2K" | "4K" | null = null;
+    let durationSec: number | null = null;
     const resMatch = rawModel.match(/^(.*):(1K|2K|4K)$/);
+    const durMatch = rawModel.match(/^(.*):(\d+)s$/);
     if (resMatch) {
       model = resMatch[1];
       resolution = resMatch[2] as "1K" | "2K" | "4K";
+    } else if (durMatch) {
+      model = durMatch[1];
+      durationSec = parseInt(durMatch[2], 10);
     }
+
+    // Видео-модели kie.ai: kling/seedance/hailuo/veo
+    const isVideo = /^(kling|bytedance\/seedance|minimax\/hailuo|google\/veo)/.test(model);
 
     let finalPrompt: string;
     if (hasImages && images.length >= 2) {
@@ -218,7 +227,29 @@ Deno.serve(async (req) => {
     const requiresPrompt = !["topaz/image-upscale", "recraft/remove-background", "recraft/crisp-upscale"].includes(model);
     if (requiresPrompt) input.prompt = finalPrompt;
 
-    if (model === "nano-banana-2" || model === "nano-banana-pro") {
+    // ───── Видео-модели ─────
+    if (isVideo) {
+      // Общие поля для большинства видео-моделей kie.ai
+      if (durationSec) input.duration = String(durationSec);
+      input.aspect_ratio = aspect_ratio;
+      // image-to-video: первое изображение как стартовый кадр
+      if (model.includes("image-to-video") && firstImage) {
+        input.image_url = firstImage;
+      }
+      // Kling — параметры качества
+      if (model.startsWith("kling/")) {
+        input.cfg_scale = 0.5;
+        input.negative_prompt = "";
+      }
+      // Seedance — разрешение
+      if (model.includes("bytedance/seedance")) {
+        input.resolution = "720p";
+      }
+      // Hailuo — разрешение
+      if (model.includes("minimax/hailuo")) {
+        input.resolution = "768P";
+      }
+    } else if (model === "nano-banana-2" || model === "nano-banana-pro") {
       // image_input (массив URL), resolution: 1K/2K/4K, aspect_ratio, output_format
       input.aspect_ratio = aspect_ratio;
       input.resolution = resolution ?? "1K";
@@ -415,12 +446,17 @@ Deno.serve(async (req) => {
     }
 
     const { bytes, contentType } = await fetchAsBytes(resultUrl);
-    const ext = (contentType.split("/")[1] ?? "png").split(";")[0];
+    const isVideoResult = isVideo || contentType.startsWith("video/");
+    const bucket = isVideoResult ? "product-videos" : "product-images";
+    const ext = isVideoResult
+      ? ((contentType.split("/")[1] ?? "mp4").split(";")[0])
+      : ((contentType.split("/")[1] ?? "png").split(";")[0]);
+    const finalContentType = isVideoResult && !contentType.startsWith("video/") ? "video/mp4" : contentType;
     const path = `${product.id}/ai/${Date.now()}_${Math.floor(Math.random() * 9999)}.${ext}`;
-    const { error: upErr } = await admin.storage.from("product-images").upload(path, bytes, { contentType, upsert: false });
+    const { error: upErr } = await admin.storage.from(bucket).upload(path, bytes, { contentType: finalContentType, upsert: false });
     if (upErr) throw new Error(`Storage: ${upErr.message}`);
 
-    const url = admin.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+    const url = admin.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 
     if (hasJobsTable) {
       const successRow: Record<string, unknown> = {
@@ -442,7 +478,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ url, prompt: finalPrompt, model }), {
+    return new Response(JSON.stringify({ url, prompt: finalPrompt, model, kind: isVideoResult ? "video" : "image" }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: unknown) {

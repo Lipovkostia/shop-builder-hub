@@ -809,22 +809,36 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                       Выберите товары и нажмите «Сгенерировать». Готовые фото будут здесь до одобрения.
                     </div>
                   )}
-                  {approvable.map((item) => (
+                  {approvable.map((item) => {
+                    const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(item.url) || item.url.includes("/product-videos/");
+                    return (
                     <div key={item.key} className="rounded-lg border border-border p-2 space-y-1">
                       <div className="text-xs text-muted-foreground truncate">{item.productName}</div>
-                      <img src={item.url} alt="" className="w-full rounded object-cover" />
-                      <ImageDims url={item.url} />
+                      {isVideo ? (
+                        <video src={item.url} controls className="w-full rounded" />
+                      ) : (
+                        <>
+                          <img src={item.url} alt="" className="w-full rounded object-cover" />
+                          <ImageDims url={item.url} />
+                        </>
+                      )}
                       <div className="flex items-center justify-between gap-2">
-                        <label className="flex items-center gap-1 text-xs cursor-pointer">
-                          <Checkbox checked={selectedJobIds.has(item.key)} onCheckedChange={() => toggleJob(item.key)} />
-                          Одобрить
-                        </label>
+                        {isVideo ? (
+                          <span className="text-[10px] text-muted-foreground">Видео сохранено в облаке</span>
+                        ) : (
+                          <label className="flex items-center gap-1 text-xs cursor-pointer">
+                            <Checkbox checked={selectedJobIds.has(item.key)} onCheckedChange={() => toggleJob(item.key)} />
+                            Одобрить
+                          </label>
+                        )}
+                        <a href={item.url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">Открыть</a>
                         <Button size="sm" variant="ghost" onClick={() => item.jobId ? hideJob(item.jobId) : item.taskId ? persistLocalJobs(localJobs.filter((j) => j.id !== item.taskId)) : undefined}>
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </ScrollArea>
             </div>
