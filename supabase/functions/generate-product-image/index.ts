@@ -223,27 +223,171 @@ Deno.serve(async (req) => {
       }
     };
 
-    // Каждая модель kie.ai принимает свой набор параметров.
+    // Каждая модель kie.ai принимает свой набор параметров — соответствие
+    // см. в src/components/admin/photo-generation/models.ts (поле `family`).
     // Документация: https://docs.kie.ai/market/...
-    const input: Record<string, unknown> = { prompt: finalPrompt };
+    const input: Record<string, unknown> = {};
+    const firstImage = images[0] ?? null;
+    const requiresPrompt = !["topaz/image-upscale", "recraft/remove-background", "recraft/crisp-upscale"].includes(model);
+    if (requiresPrompt) input.prompt = finalPrompt;
 
-    if (model === "nano-banana-2") {
-      // Nano Banana 2: image_input (массив URL), resolution: 1K/2K/4K, aspect_ratio, output_format
+    if (model === "nano-banana-2" || model === "nano-banana-pro") {
+      // image_input (массив URL), resolution: 1K/2K/4K, aspect_ratio, output_format
       input.aspect_ratio = aspect_ratio;
       input.resolution = resolution ?? "1K";
       input.output_format = "png";
       if (hasImages) input.image_input = images;
     } else if (model === "bytedance/seedream-v4-text-to-image") {
-      // Seedream 4 text-to-image: image_size + image_resolution (без входных изображений)
-      input.image_size = mapAspectToSeedreamSize(aspect_ratio);
+      input.image_size = aspectToImageSizeSymbolic(aspect_ratio);
       input.image_resolution = resolution ?? "2K";
       input.max_images = 1;
     } else if (model === "bytedance/seedream-v4-edit") {
-      // Seedream 4 Edit: image_urls, image_size, image_resolution
-      input.image_size = mapAspectToSeedreamSize(aspect_ratio);
+      input.image_size = aspectToImageSizeSymbolic(aspect_ratio);
       input.image_resolution = resolution ?? "2K";
       input.max_images = 1;
       if (hasImages) input.image_urls = images;
+    } else if (model === "bytedance/seedream") {
+      // Seedream 3.0 T2I: image_size + guidance_scale
+      input.image_size = aspectToImageSizeSymbolic(aspect_ratio);
+      input.guidance_scale = 2.5;
+    } else if (
+      model === "seedream/4.5-text-to-image" ||
+      model === "seedream/5-lite-text-to-image"
+    ) {
+      input.aspect_ratio = aspect_ratio;
+      input.quality = "basic";
+      input.nsfw_checker = false;
+    } else if (
+      model === "seedream/4.5-edit" ||
+      model === "seedream/5-lite-image-to-image"
+    ) {
+      input.aspect_ratio = aspect_ratio;
+      input.quality = "basic";
+      input.nsfw_checker = false;
+      if (hasImages) input.image_urls = images;
+    } else if (model === "z-image") {
+      input.aspect_ratio = aspect_ratio;
+      input.nsfw_checker = false;
+    } else if (
+      model === "google/imagen4" ||
+      model === "google/imagen4-fast" ||
+      model === "google/imagen4-ultra"
+    ) {
+      // Imagen 4 принимает только prompt — никаких дополнительных параметров не нужно.
+    } else if (
+      model === "flux-2/pro-text-to-image" ||
+      model === "flux-2/flex-text-to-image"
+    ) {
+      input.aspect_ratio = aspect_ratio;
+      input.resolution = resolution ?? "1K";
+      input.nsfw_checker = false;
+    } else if (
+      model === "flux-2/pro-image-to-image" ||
+      model === "flux-2/flex-image-to-image"
+    ) {
+      input.aspect_ratio = aspect_ratio;
+      input.resolution = resolution ?? "1K";
+      input.nsfw_checker = false;
+      if (hasImages) input.input_urls = images;
+    } else if (model === "grok-imagine/text-to-image") {
+      input.aspect_ratio = aspect_ratio;
+    } else if (model === "grok-imagine/image-to-image") {
+      if (hasImages) input.image_urls = images;
+    } else if (
+      model === "gpt-image/1.5-text-to-image" ||
+      model === "gpt-image-2-text-to-image"
+    ) {
+      input.aspect_ratio = aspect_ratio;
+    } else if (
+      model === "gpt-image/1.5-image-to-image" ||
+      model === "gpt-image-2-image-to-image"
+    ) {
+      input.aspect_ratio = aspect_ratio;
+      if (hasImages) input.input_urls = images;
+    } else if (model === "ideogram/v3-text-to-image") {
+      input.image_size = aspectToImageSizeSymbolic(aspect_ratio);
+      input.rendering_speed = "BALANCED";
+      input.style = "AUTO";
+      input.expand_prompt = true;
+    } else if (model === "ideogram/v3-edit") {
+      // Inpainting требует mask_url — без него edge-функция ругнётся.
+      input.rendering_speed = "BALANCED";
+      input.expand_prompt = true;
+      if (firstImage) input.image_url = firstImage;
+    } else if (model === "ideogram/v3-remix") {
+      input.image_size = aspectToImageSizeSymbolic(aspect_ratio);
+      input.rendering_speed = "BALANCED";
+      input.style = "AUTO";
+      input.expand_prompt = true;
+      input.strength = 0.8;
+      if (firstImage) input.image_url = firstImage;
+    } else if (model === "ideogram/character") {
+      input.image_size = aspectToImageSizeSymbolic(aspect_ratio);
+      input.rendering_speed = "BALANCED";
+      input.style = "AUTO";
+      input.expand_prompt = true;
+      input.num_images = "1";
+      if (hasImages) input.reference_image_urls = images;
+    } else if (model === "ideogram/character-edit") {
+      input.rendering_speed = "BALANCED";
+      input.style = "AUTO";
+      input.expand_prompt = true;
+      input.num_images = "1";
+      if (firstImage) input.image_url = firstImage;
+      if (images.length > 1) input.reference_image_urls = images.slice(1);
+    } else if (model === "ideogram/character-remix") {
+      input.image_size = aspectToImageSizeSymbolic(aspect_ratio);
+      input.rendering_speed = "BALANCED";
+      input.style = "AUTO";
+      input.expand_prompt = true;
+      if (firstImage) input.image_url = firstImage;
+      if (images.length > 1) input.reference_image_urls = images.slice(1);
+    } else if (model === "qwen/text-to-image") {
+      input.image_size = aspectToImageSizeSymbolic(aspect_ratio);
+      input.num_inference_steps = 30;
+      input.guidance_scale = 2.5;
+      input.output_format = "png";
+      input.acceleration = "none";
+      input.enable_safety_checker = true;
+    } else if (model === "qwen/image-to-image") {
+      input.strength = 0.8;
+      input.num_inference_steps = 30;
+      input.guidance_scale = 2.5;
+      input.output_format = "png";
+      input.acceleration = "none";
+      input.enable_safety_checker = true;
+      if (firstImage) input.image_url = firstImage;
+    } else if (model === "qwen/image-edit") {
+      input.image_size = aspectToImageSizeSymbolic(aspect_ratio);
+      input.num_inference_steps = 25;
+      input.guidance_scale = 4;
+      input.output_format = "png";
+      input.acceleration = "none";
+      input.enable_safety_checker = true;
+      if (firstImage) input.image_url = firstImage;
+    } else if (model === "qwen2/text-to-image") {
+      input.image_size = aspect_ratio; // qwen2 принимает строку вида "16:9"
+      input.output_format = "png";
+      input.seed = 0;
+    } else if (model === "qwen2/image-edit") {
+      input.image_size = aspect_ratio;
+      input.output_format = "png";
+      input.seed = 0;
+      if (firstImage) input.image_url = firstImage;
+    } else if (model === "wan/2-7-image" || model === "wan/2-7-image-pro") {
+      input.n = 1;
+      input.resolution = resolution ?? "2K";
+      input.enable_sequential = false;
+      input.thinking_mode = false;
+      input.watermark = false;
+      if (hasImages) input.input_urls = images;
+    } else if (model === "topaz/image-upscale") {
+      input.upscale_factor = "2";
+      if (firstImage) input.image_url = firstImage;
+      else throw new Error("Topaz Upscale требует исходное изображение");
+    } else if (model === "recraft/remove-background" || model === "recraft/crisp-upscale") {
+      if (firstImage) input.image = firstImage;
+      else throw new Error("Recraft требует исходное изображение");
     } else {
       // Nano Banana / Nano Banana Edit (google/*): prompt, image_urls, aspect_ratio, output_format
       input.aspect_ratio = aspect_ratio;
