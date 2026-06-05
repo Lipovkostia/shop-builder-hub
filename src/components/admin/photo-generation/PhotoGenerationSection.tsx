@@ -477,16 +477,26 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                 <Label className="text-xs">Модель генерации</Label>
                 <Select value={modelId} onValueChange={setModelId}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent className="max-w-[460px]">
-                    {KIE_MODELS.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        <div className="flex flex-col gap-0.5 py-0.5">
-                          <span className="text-sm font-medium">{m.label} · {formatRub(m.priceUsd * usdRub)}</span>
-                          {m.description && (
-                            <span className="text-[11px] text-muted-foreground leading-snug whitespace-normal">{m.description}</span>
-                          )}
+                  <SelectContent className="max-w-[480px] max-h-[480px]">
+                    {Array.from(new Set(KIE_MODELS.map((m) => m.group))).map((groupName) => (
+                      <div key={groupName}>
+                        <div className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/80 font-semibold">
+                          {groupName}
                         </div>
-                      </SelectItem>
+                        {KIE_MODELS.filter((m) => m.group === groupName).map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            <div className="flex flex-col gap-0.5 py-0.5">
+                              <span className="text-sm font-medium">
+                                {m.label}
+                                {m.priceUsd > 0 && <> · {formatRub(m.priceUsd * usdRub)}</>}
+                              </span>
+                              {m.description && (
+                                <span className="text-[11px] text-muted-foreground leading-snug whitespace-normal">{m.description}</span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </div>
                     ))}
                   </SelectContent>
                 </Select>
