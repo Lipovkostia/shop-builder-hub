@@ -823,10 +823,14 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
                         </>
                       )}
                       <div className="flex items-center justify-between gap-2">
-                        <label className="flex items-center gap-1 text-xs cursor-pointer">
-                          <Checkbox checked={selectedJobIds.has(item.key)} onCheckedChange={() => toggleJob(item.key)} />
-                          {isVideo ? "Сохранить" : "Одобрить"}
-                        </label>
+                        {isVideo ? (
+                          <span className="text-[10px] text-muted-foreground">Видео сохранено в облаке</span>
+                        ) : (
+                          <label className="flex items-center gap-1 text-xs cursor-pointer">
+                            <Checkbox checked={selectedJobIds.has(item.key)} onCheckedChange={() => toggleJob(item.key)} />
+                            Одобрить
+                          </label>
+                        )}
                         <a href={item.url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">Открыть</a>
                         <Button size="sm" variant="ghost" onClick={() => item.jobId ? hideJob(item.jobId) : item.taskId ? persistLocalJobs(localJobs.filter((j) => j.id !== item.taskId)) : undefined}>
                           <Trash2 className="h-3 w-3" />
