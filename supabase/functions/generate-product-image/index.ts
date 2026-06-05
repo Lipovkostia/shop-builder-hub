@@ -166,8 +166,17 @@ Deno.serve(async (req) => {
     }
 
     const hasImages = images.length > 0;
-    const model = body.model ?? (hasImages ? "google/nano-banana-edit" : "google/nano-banana");
+    const rawModel = body.model ?? (hasImages ? "google/nano-banana-edit" : "google/nano-banana");
     const aspect_ratio = ALLOWED_AR.has(body.aspect_ratio ?? "") ? body.aspect_ratio! : "1:1";
+
+    // Разбираем суффикс разрешения (`:1K|:2K|:4K`) для семейства Nano Banana 2
+    let model = rawModel;
+    let resolution: "1K" | "2K" | "4K" | null = null;
+    const resMatch = rawModel.match(/^(.*):(1K|2K|4K)$/);
+    if (resMatch) {
+      model = resMatch[1];
+      resolution = resMatch[2] as "1K" | "2K" | "4K";
+    }
 
     let finalPrompt: string;
     if (hasImages && images.length >= 2) {
@@ -179,14 +188,37 @@ Deno.serve(async (req) => {
         `Следуй инструкции пользователя ниже и используй изображения по их номерам. Не добавляй текст и не искажай товар.\n\n` +
         `Инструкция пользователя:\n`;
       finalPrompt = header + (userPrompt || `Помести товар (#1) в сцену/стиль из остальных изображений. Сделай реалистичное коммерческое фото.`);
-    } else if (hasImages) {
-      finalPrompt = userPrompt || `Сгенерируй качественное коммерческое фото товара: ${product.name}`;
     } else {
       finalPrompt = userPrompt || `Сгенерируй качественное коммерческое фото товара: ${product.name}`;
     }
 
-    const input: Record<string, unknown> = { prompt: finalPrompt, output_format: "png", aspect_ratio };
-    if (hasImages) input.image_urls = images;
+    // Каждая модель kie.ai принимает свой набор параметров — собираем input под конкретное семейство.
+    // Документация: https://docs.kie.ai/market/...
+    const input: Record<string, unknown> = { prompt: finalPrompt };
+
+    if (model === "nano-banana-2") {
+      // Nano Banana 2: image_input (массив URL), resolution: 1K/2K/4K, aspect_ratio, output_format
+      input.aspect_ratio = aspect_ratio;
+      input.resolution = resolution ?? "1K";
+      input.output_format = "png";
+      if (hasImages) input.image_input = images;
+    } else if (model === "bytedance/seedream-v4-text-to-image") {
+      // Seedream 4 text-to-image: image_size + image_resolution (без входных изображений)
+      input.image_size = mapAspectToSeedreamSize(aspect_ratio);
+      input.image_resolution = resolution ?? "2K";
+      input.max_images = 1;
+    } else if (model === "bytedance/seedream-v4-edit") {
+      // Seedream 4 Edit: image_urls, image_size, image_resolution
+      input.image_size = mapAspectToSeedreamSize(aspect_ratio);
+      input.image_resolution = resolution ?? "2K";
+      input.max_images = 1;
+      if (hasImages) input.image_urls = images;
+    } else {
+      // Nano Banana / Nano Banana Edit (google/*): prompt, image_urls, aspect_ratio, output_format
+      input.aspect_ratio = aspect_ratio;
+      input.output_format = "png";
+      if (hasImages) input.image_urls = images;
+    }
 
 
     const hasJobsTable = await admin.from("image_generation_jobs").select("id").limit(1).then(({ error }) => !error);
