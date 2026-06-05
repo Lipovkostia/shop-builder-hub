@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
     const rawModel = body.model ?? (hasImages ? "google/nano-banana-edit" : "google/nano-banana");
     const aspect_ratio = ALLOWED_AR.has(body.aspect_ratio ?? "") ? body.aspect_ratio! : "1:1";
 
-    // Разбираем суффикс разрешения (`:1K|:2K|:4K`) для семейства Nano Banana 2
+    // Разбираем суффикс разрешения (`:1K|:2K|:4K`)
     let model = rawModel;
     let resolution: "1K" | "2K" | "4K" | null = null;
     const resMatch = rawModel.match(/^(.*):(1K|2K|4K)$/);
@@ -207,7 +207,23 @@ Deno.serve(async (req) => {
       finalPrompt = userPrompt || `Сгенерируй качественное коммерческое фото товара: ${product.name}`;
     }
 
-    // Каждая модель kie.ai принимает свой набор параметров — собираем input под конкретное семейство.
+    // Маппинг aspect_ratio → image_size для моделей, у которых параметр называется image_size
+    // и принимает символьные значения вида "square_hd" / "landscape_16_9"
+    const aspectToImageSizeSymbolic = (ar: string): string => {
+      switch (ar) {
+        case "1:1": return "square_hd";
+        case "4:3": return "landscape_4_3";
+        case "3:4": return "portrait_4_3";
+        case "3:2": return "landscape_3_2";
+        case "2:3": return "portrait_3_2";
+        case "16:9": return "landscape_16_9";
+        case "9:16": return "portrait_16_9";
+        case "21:9": return "landscape_21_9";
+        default: return "square_hd";
+      }
+    };
+
+    // Каждая модель kie.ai принимает свой набор параметров.
     // Документация: https://docs.kie.ai/market/...
     const input: Record<string, unknown> = { prompt: finalPrompt };
 
