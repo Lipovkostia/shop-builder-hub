@@ -1258,6 +1258,112 @@ export type Database = {
           },
         ]
       }
+      homepage_categories: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name: string
+          parent_id: string | null
+          slug: string | null
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name: string
+          parent_id?: string | null
+          slug?: string | null
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name?: string
+          parent_id?: string | null
+          slug?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homepage_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "homepage_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homepage_products: {
+        Row: {
+          category_id: string | null
+          category_path: string[] | null
+          created_at: string
+          currency: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          images: string[]
+          is_active: boolean
+          name: string
+          price: number | null
+          sku: string | null
+          sort_order: number
+          source_site: string | null
+          source_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          category_path?: string[] | null
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          images?: string[]
+          is_active?: boolean
+          name: string
+          price?: number | null
+          sku?: string | null
+          sort_order?: number
+          source_site?: string | null
+          source_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          category_path?: string[] | null
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          images?: string[]
+          is_active?: boolean
+          name?: string
+          price?: number | null
+          sku?: string | null
+          sort_order?: number
+          source_site?: string | null
+          source_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homepage_products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "homepage_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       landing_info_blocks: {
         Row: {
           created_at: string
