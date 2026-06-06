@@ -130,21 +130,15 @@ Deno.serve(async (req) => {
     const crawlJson = await crawlStart.json();
     if (!crawlStart.ok) {
       const msg = `Firecrawl crawl: ${crawlJson?.error || crawlStart.status}`;
-      await supabase.from("homepage_parse_jobs")
-        .update({ status: "failed", last_error: msg, finished_at: new Date().toISOString() })
-        .eq("id", dbJobId);
+      await updateJob({ status: "failed", last_error: msg, finished_at: new Date().toISOString() });
       return json({ error: msg }, 500);
     }
     const firecrawlJobId: string | undefined = crawlJson?.id || crawlJson?.data?.id;
     if (!firecrawlJobId) {
-      await supabase.from("homepage_parse_jobs")
-        .update({ status: "failed", last_error: "no crawl job id", finished_at: new Date().toISOString() })
-        .eq("id", dbJobId);
+      await updateJob({ status: "failed", last_error: "no crawl job id", finished_at: new Date().toISOString() });
       return json({ error: "Firecrawl: no crawl job id" }, 500);
     }
-    await supabase.from("homepage_parse_jobs")
-      .update({ firecrawl_job_id: firecrawlJobId, status: "scraping" })
-      .eq("id", dbJobId);
+    await updateJob({ firecrawl_job_id: firecrawlJobId, status: "scraping" });
 
     // Background processing
     const catIdByKey = new Map<string, string>();
@@ -215,17 +209,19 @@ Deno.serve(async (req) => {
     }
 
     async function isStopRequested(): Promise<boolean> {
-      const { data } = await supabase
+      if (!dbJobId) return false;
+      const { data, error } = await supabase
         .from("homepage_parse_jobs").select("stop_requested").eq("id", dbJobId).maybeSingle();
+      if (error && isMissingJobsTable(error)) return false;
       return !!(data as any)?.stop_requested;
     }
 
     async function updateProgress(extra: Record<string, unknown> = {}) {
-      await supabase.from("homepage_parse_jobs").update({
+      await updateJob({
         ingested: ingestedCount,
         duplicates: duplicatesCount,
         ...extra,
-      }).eq("id", dbJobId);
+      });
     }
 
     async function cancelFirecrawl() {
@@ -244,10 +240,10 @@ Deno.serve(async (req) => {
         while (Date.now() - startedAt < maxMs) {
           if (await isStopRequested()) {
             await cancelFirecrawl();
-            await supabase.from("homepage_parse_jobs").update({
+            await updateJob({
               status: "stopped", ingested: ingestedCount, duplicates: duplicatesCount,
               finished_at: new Date().toISOString(),
-            }).eq("id", dbJobId);
+            });
             console.log(`[parse-site] stopped by user. ingested=${ingestedCount}`);
             return;
           }
