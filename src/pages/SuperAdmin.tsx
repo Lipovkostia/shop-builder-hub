@@ -26,6 +26,8 @@ import MegacatalogManager from '@/components/admin/MegacatalogManager';
 import TelegramBotSection from '@/components/admin/TelegramBotSection';
 import AiPasswordManager from '@/components/admin/AiPasswordManager';
 import LandingInfoBlocksManager from '@/components/admin/LandingInfoBlocksManager';
+import HomepageVersionManager from '@/components/admin/HomepageVersionManager';
+import RetailPartnersManager from '@/components/admin/RetailPartnersManager';
 
 interface StoreWithCounts {
   id: string;
@@ -581,6 +583,10 @@ export default function SuperAdmin() {
               <LayoutGrid className="h-4 w-4" />
               <span className="hidden sm:inline">Блоки</span>
             </TabsTrigger>
+            <TabsTrigger value="homepage" className="gap-2">
+              <LayoutGrid className="h-4 w-4" />
+              <span className="hidden sm:inline">Главная</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
@@ -1090,6 +1096,12 @@ export default function SuperAdmin() {
           {/* Info Blocks Tab */}
           <TabsContent value="infoblocks" className="space-y-6">
             <LandingInfoBlocksManager />
+          </TabsContent>
+
+          {/* Homepage Tab */}
+          <TabsContent value="homepage" className="space-y-6">
+            <HomepageVersionManager />
+            <RetailPartnersManager />
           </TabsContent>
         </Tabs>
       </main>
