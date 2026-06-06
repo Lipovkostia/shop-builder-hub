@@ -31,7 +31,7 @@ interface Partner {
   sort_order: number;
 }
 
-const CACHE_KEY = "landing_products_cache_v1";
+const CACHE_KEY = "homepage_catalog_cache_v1";
 
 export default function IndexNew() {
   const [products, setProducts] = useState<ShopProduct[]>([]);
@@ -58,7 +58,7 @@ export default function IndexNew() {
       }
     } catch { /* ignore */ }
 
-    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/landing-products`)
+    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homepage-catalog`)
       .then((r) => r.json())
       .then((json) => {
         try { localStorage.setItem(CACHE_KEY, JSON.stringify(json)); } catch { /* ignore */ }
