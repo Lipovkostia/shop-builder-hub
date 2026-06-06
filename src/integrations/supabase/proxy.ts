@@ -55,8 +55,7 @@ if (SUPABASE_HOST && PROJECT_REF && typeof window !== "undefined") {
       super(rewriteUrl(typeof url === "string" ? url : url.toString()), protocols);
     }
   }
-  // @ts-expect-error override
-  window.WebSocket = ProxiedWS;
+  (window as unknown as { WebSocket: typeof WebSocket }).WebSocket = ProxiedWS as unknown as typeof WebSocket;
 }
 
 export {};
