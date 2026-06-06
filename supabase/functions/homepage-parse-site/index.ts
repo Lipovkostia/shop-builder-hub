@@ -23,6 +23,11 @@ function parsePrice(v: unknown): number | null {
   return isFinite(n) ? n : null;
 }
 
+function isMissingJobsTable(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  return e?.code === "PGRST205" || /homepage_parse_jobs/i.test(e?.message || "");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -46,23 +51,29 @@ Deno.serve(async (req) => {
     const action: string = (body?.action || "start").toString();
 
     if (action === "status") {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("homepage_parse_jobs")
         .select("*")
         .order("started_at", { ascending: false })
         .limit(20);
+      if (error) {
+        if (isMissingJobsTable(error)) return json({ jobs: [], jobs_unavailable: true });
+        throw error;
+      }
       return json({ jobs: data || [] });
     }
 
     if (action === "stop") {
       const id = body?.job_id;
       if (!id) return json({ error: "job_id required" }, 400);
-      await supabase.from("homepage_parse_jobs").update({ stop_requested: true }).eq("id", id);
+      const { error } = await supabase.from("homepage_parse_jobs").update({ stop_requested: true }).eq("id", id);
+      if (error && !isMissingJobsTable(error)) throw error;
       return json({ ok: true });
     }
 
     if (action === "clear_finished") {
-      await supabase.from("homepage_parse_jobs").delete().in("status", ["completed", "failed", "cancelled", "stopped"]);
+      const { error } = await supabase.from("homepage_parse_jobs").delete().in("status", ["completed", "failed", "cancelled", "stopped"]);
+      if (error && !isMissingJobsTable(error)) throw error;
       return json({ ok: true });
     }
 
@@ -82,8 +93,15 @@ Deno.serve(async (req) => {
       .insert({ url, host, status: "starting", created_by: userId })
       .select()
       .single();
-    if (jobErr) throw jobErr;
-    const dbJobId: string = (jobRow as any).id;
+    if (jobErr && !isMissingJobsTable(jobErr)) throw jobErr;
+    if (jobErr) console.warn("[parse-site] progress table is not ready, running crawl without persistent job row", jobErr);
+    const dbJobId: string | null = jobRow ? (jobRow as any).id : null;
+
+    async function updateJob(values: Record<string, unknown>) {
+      if (!dbJobId) return;
+      const { error } = await supabase.from("homepage_parse_jobs").update(values).eq("id", dbJobId);
+      if (error && !isMissingJobsTable(error)) console.error("[parse-site] job update failed:", error);
+    }
 
     const schema = {
       type: "object",
