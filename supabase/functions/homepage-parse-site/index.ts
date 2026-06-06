@@ -23,6 +23,11 @@ function parsePrice(v: unknown): number | null {
   return isFinite(n) ? n : null;
 }
 
+function isMissingJobsTable(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  return e?.code === "PGRST205" || /homepage_parse_jobs/i.test(e?.message || "");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -46,23 +51,29 @@ Deno.serve(async (req) => {
     const action: string = (body?.action || "start").toString();
 
     if (action === "status") {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("homepage_parse_jobs")
         .select("*")
         .order("started_at", { ascending: false })
         .limit(20);
+      if (error) {
+        if (isMissingJobsTable(error)) return json({ jobs: [], jobs_unavailable: true });
+        throw error;
+      }
       return json({ jobs: data || [] });
     }
 
     if (action === "stop") {
       const id = body?.job_id;
       if (!id) return json({ error: "job_id required" }, 400);
-      await supabase.from("homepage_parse_jobs").update({ stop_requested: true }).eq("id", id);
+      const { error } = await supabase.from("homepage_parse_jobs").update({ stop_requested: true }).eq("id", id);
+      if (error && !isMissingJobsTable(error)) throw error;
       return json({ ok: true });
     }
 
     if (action === "clear_finished") {
-      await supabase.from("homepage_parse_jobs").delete().in("status", ["completed", "failed", "cancelled", "stopped"]);
+      const { error } = await supabase.from("homepage_parse_jobs").delete().in("status", ["completed", "failed", "cancelled", "stopped"]);
+      if (error && !isMissingJobsTable(error)) throw error;
       return json({ ok: true });
     }
 
@@ -82,8 +93,15 @@ Deno.serve(async (req) => {
       .insert({ url, host, status: "starting", created_by: userId })
       .select()
       .single();
-    if (jobErr) throw jobErr;
-    const dbJobId: string = (jobRow as any).id;
+    if (jobErr && !isMissingJobsTable(jobErr)) throw jobErr;
+    if (jobErr) console.warn("[parse-site] progress table is not ready, running crawl without persistent job row", jobErr);
+    const dbJobId: string | null = jobRow ? (jobRow as any).id : null;
+
+    async function updateJob(values: Record<string, unknown>) {
+      if (!dbJobId) return;
+      const { error } = await supabase.from("homepage_parse_jobs").update(values).eq("id", dbJobId);
+      if (error && !isMissingJobsTable(error)) console.error("[parse-site] job update failed:", error);
+    }
 
     const schema = {
       type: "object",
@@ -112,21 +130,15 @@ Deno.serve(async (req) => {
     const crawlJson = await crawlStart.json();
     if (!crawlStart.ok) {
       const msg = `Firecrawl crawl: ${crawlJson?.error || crawlStart.status}`;
-      await supabase.from("homepage_parse_jobs")
-        .update({ status: "failed", last_error: msg, finished_at: new Date().toISOString() })
-        .eq("id", dbJobId);
+      await updateJob({ status: "failed", last_error: msg, finished_at: new Date().toISOString() });
       return json({ error: msg }, 500);
     }
     const firecrawlJobId: string | undefined = crawlJson?.id || crawlJson?.data?.id;
     if (!firecrawlJobId) {
-      await supabase.from("homepage_parse_jobs")
-        .update({ status: "failed", last_error: "no crawl job id", finished_at: new Date().toISOString() })
-        .eq("id", dbJobId);
+      await updateJob({ status: "failed", last_error: "no crawl job id", finished_at: new Date().toISOString() });
       return json({ error: "Firecrawl: no crawl job id" }, 500);
     }
-    await supabase.from("homepage_parse_jobs")
-      .update({ firecrawl_job_id: firecrawlJobId, status: "scraping" })
-      .eq("id", dbJobId);
+    await updateJob({ firecrawl_job_id: firecrawlJobId, status: "scraping" });
 
     // Background processing
     const catIdByKey = new Map<string, string>();
@@ -197,17 +209,19 @@ Deno.serve(async (req) => {
     }
 
     async function isStopRequested(): Promise<boolean> {
-      const { data } = await supabase
+      if (!dbJobId) return false;
+      const { data, error } = await supabase
         .from("homepage_parse_jobs").select("stop_requested").eq("id", dbJobId).maybeSingle();
+      if (error && isMissingJobsTable(error)) return false;
       return !!(data as any)?.stop_requested;
     }
 
     async function updateProgress(extra: Record<string, unknown> = {}) {
-      await supabase.from("homepage_parse_jobs").update({
+      await updateJob({
         ingested: ingestedCount,
         duplicates: duplicatesCount,
         ...extra,
-      }).eq("id", dbJobId);
+      });
     }
 
     async function cancelFirecrawl() {
@@ -226,10 +240,10 @@ Deno.serve(async (req) => {
         while (Date.now() - startedAt < maxMs) {
           if (await isStopRequested()) {
             await cancelFirecrawl();
-            await supabase.from("homepage_parse_jobs").update({
+            await updateJob({
               status: "stopped", ingested: ingestedCount, duplicates: duplicatesCount,
               finished_at: new Date().toISOString(),
-            }).eq("id", dbJobId);
+            });
             console.log(`[parse-site] stopped by user. ingested=${ingestedCount}`);
             return;
           }
@@ -256,28 +270,28 @@ Deno.serve(async (req) => {
           await updateProgress({ total, completed, status: status === "scraping" ? "scraping" : status });
 
           if (status === "completed" || status === "failed" || status === "cancelled") {
-            await supabase.from("homepage_parse_jobs").update({
+            await updateJob({
               status: status === "completed" ? "completed" : status,
               ingested: ingestedCount, duplicates: duplicatesCount, total, completed,
               finished_at: new Date().toISOString(),
-            }).eq("id", dbJobId);
+            });
             console.log(`[parse-site] done ${host}: status=${status} ingested=${ingestedCount}`);
             return;
           }
           await new Promise((res) => setTimeout(res, 5000));
         }
-        await supabase.from("homepage_parse_jobs").update({
+        await updateJob({
           status: "failed", last_error: "timeout (25 min)",
           ingested: ingestedCount, duplicates: duplicatesCount,
           finished_at: new Date().toISOString(),
-        }).eq("id", dbJobId);
+        });
       } catch (e: any) {
         console.error("background job failed:", e);
-        await supabase.from("homepage_parse_jobs").update({
+        await updateJob({
           status: "failed", last_error: String(e?.message || e),
           ingested: ingestedCount, duplicates: duplicatesCount,
           finished_at: new Date().toISOString(),
-        }).eq("id", dbJobId);
+        });
       }
     };
 
