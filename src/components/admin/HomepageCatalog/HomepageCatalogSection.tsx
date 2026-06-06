@@ -560,7 +560,6 @@ function SiteParserDialog({
 }: { open: boolean; onClose: () => void; onDone: () => void }) {
   const { toast } = useToast();
   const [url, setUrl] = useState("https://streitsale.ru/");
-  const [limit, setLimit] = useState(80);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<any>(null);
 
@@ -573,7 +572,7 @@ function SiteParserDialog({
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homepage-parse-site`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ url, limit }),
+        body: JSON.stringify({ url }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
@@ -593,17 +592,16 @@ function SiteParserDialog({
         <DialogHeader>
           <DialogTitle>Парсинг сайта</DialogTitle>
           <DialogDescription>
-            Соберём товары с указанного сайта (название, картинка, категория, описание) через Firecrawl и добавим в «Главную». Дубли по ссылке пропускаются.
+            Соберём ВСЕ найденные товары: название, фото, цену, описание и полную иерархию категорий (категория → подкатегория → подподкатегория). Дубли по ссылке пропускаются.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div>
             <Label>URL сайта</Label>
             <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com" disabled={running} />
-          </div>
-          <div>
-            <Label>Лимит товаров (1–200)</Label>
-            <Input type="number" min={1} max={200} value={limit} onChange={(e) => setLimit(Number(e.target.value) || 80)} disabled={running} />
+            <div className="text-xs text-muted-foreground mt-1">
+              Без лимита — парсим всё, что найдём (до 5000 страниц за прогон). Большие сайты могут занять несколько минут.
+            </div>
           </div>
           {result && (
             <div className="rounded-lg border bg-muted/50 p-3 text-xs space-y-1">
