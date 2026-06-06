@@ -577,7 +577,10 @@ function SiteParserDialog({
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
       setResult(json);
-      toast({ title: "Парсинг завершён", description: `Добавлено: ${json.added}, пропущено: ${json.skipped_duplicates}` });
+      toast({
+        title: "Парсинг запущен",
+        description: json.message || `Найдено ${json.mapped} ссылок, обрабатывается ${json.to_scrape}. Товары появятся в каталоге по мере парсинга — обновите страницу через минуту.`,
+      });
       onDone();
     } catch (e: any) {
       toast({ title: "Ошибка парсинга", description: e.message, variant: "destructive" });
