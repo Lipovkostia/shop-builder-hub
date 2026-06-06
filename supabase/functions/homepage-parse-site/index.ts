@@ -7,25 +7,12 @@ const corsHeaders = {
 
 const FIRECRAWL_V2 = "https://api.firecrawl.dev/v2";
 
-interface ParsedProduct {
-  name?: string;
-  category?: string;
-  category_path?: string[];
-  image?: string;
-  images?: string[];
-  description?: string;
-  price?: number | string;
-  currency?: string;
-}
-
 function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-zа-я0-9]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 80);
 }
-
 function absoluteUrl(url: string, base: string): string {
   try { return new URL(url, base).toString(); } catch { return url; }
 }
-
 function parsePrice(v: unknown): number | null {
   if (v == null) return null;
   if (typeof v === "number" && isFinite(v)) return v;
@@ -62,51 +49,53 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const url: string = (body?.url || "").trim();
-    // No hard cap — undefined/0/null means "parse everything we find"
     const rawLimit = Number(body?.limit);
-    const limit: number | null = rawLimit && rawLimit > 0 ? Math.floor(rawLimit) : null;
+    const limit: number = rawLimit && rawLimit > 0 ? Math.floor(rawLimit) : 5000;
     if (!url) throw new Error("url required");
 
     const host = new URL(url).host;
 
-    // 1) Map URLs — pull as many as Firecrawl allows
-    const mapRes = await fetch(`${FIRECRAWL_V2}/map`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ url, limit: 5000, includeSubdomains: false }),
-    });
-    const mapJson = await mapRes.json();
-    if (!mapRes.ok) throw new Error(`Firecrawl map: ${mapJson?.error || mapRes.status}`);
-    const allLinks: string[] = (mapJson?.links || mapJson?.data?.links || [])
-      .map((l: any) => typeof l === "string" ? l : l?.url)
-      .filter(Boolean);
-
-    const productPatterns = /\/(product|products|tovar|tovary|item|items|shop|catalog|katalog|p)\//i;
-    let candidateLinks = allLinks.filter((l) => productPatterns.test(l));
-    if (candidateLinks.length === 0) candidateLinks = allLinks;
-    const linksToScrape = limit ? candidateLinks.slice(0, limit) : candidateLinks;
-
-    // 2) Scrape each with JSON extraction (incl. price + hierarchical category)
     const schema = {
       type: "object",
       properties: {
+        is_product: { type: "boolean", description: "true только если это страница КОНКРЕТНОГО товара (не категория, не список, не статья)" },
         name: { type: "string", description: "Название товара" },
         category_path: {
-          type: "array",
-          items: { type: "string" },
-          description: "Полные хлебные крошки категории от верхнего уровня к нижнему, без названия товара. Например ['Сыры','Твёрдые','Пармезан']",
+          type: "array", items: { type: "string" },
+          description: "Хлебные крошки категории от верхнего к нижнему, без названия товара",
         },
-        category: { type: "string", description: "Категория товара (если нет хлебных крошек)" },
-        image: { type: "string", description: "Главное изображение товара (полный URL)" },
-        images: { type: "array", items: { type: "string" }, description: "Все фото товара" },
-        description: { type: "string", description: "Короткое описание" },
-        price: { type: "number", description: "Цена товара в числовом виде" },
-        currency: { type: "string", description: "Валюта (RUB, USD, EUR и т.п.)" },
+        category: { type: "string" },
+        image: { type: "string", description: "Главное фото товара (полный URL)" },
+        images: { type: "array", items: { type: "string" } },
+        description: { type: "string" },
+        price: { type: "number" },
+        currency: { type: "string" },
       },
-      required: ["name"],
+      required: ["is_product"],
     };
 
-    // Categories cache for hierarchical creation
+    // 1. Запускаем асинхронный crawl — Firecrawl сам обойдёт все ссылки внутри сайта.
+    const crawlStart = await fetch(`${FIRECRAWL_V2}/crawl`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url,
+        limit,
+        maxDiscoveryDepth: 5,
+        allowSubdomains: false,
+        crawlEntireDomain: true,
+        scrapeOptions: {
+          formats: [{ type: "json", schema }],
+          onlyMainContent: true,
+        },
+      }),
+    });
+    const crawlJson = await crawlStart.json();
+    if (!crawlStart.ok) throw new Error(`Firecrawl crawl: ${crawlJson?.error || crawlStart.status}`);
+    const jobId: string | undefined = crawlJson?.id || crawlJson?.data?.id;
+    if (!jobId) throw new Error("Firecrawl: no crawl job id");
+
+    // Категории кеш
     const catIdByKey = new Map<string, string>();
     async function ensureCategory(path: string[]): Promise<string | null> {
       const clean = path.map((s) => s.trim()).filter((s) => s && s.length < 120);
@@ -126,12 +115,6 @@ Deno.serve(async (req) => {
             .insert({ name, slug: slugify(name), parent_id: parentId, sort_order: level, is_active: true })
             .select("id").single();
           id = inserted ? (inserted as any).id : null;
-          if (!id) {
-            const { data: again } = parentId
-              ? await supabase.from("homepage_categories").select("id").eq("name", name).eq("parent_id", parentId).limit(1)
-              : await supabase.from("homepage_categories").select("id").eq("name", name).is("parent_id", null).limit(1);
-            id = again && again[0] ? (again[0] as any).id : null;
-          }
         }
         if (!id) return parentId;
         catIdByKey.set(key, id);
@@ -140,75 +123,95 @@ Deno.serve(async (req) => {
       return parentId;
     }
 
-    // Background scrape + insert job — returns immediately, processes asynchronously.
+    const seen = new Set<string>();
+
+    async function ingestDoc(doc: any) {
+      const srcUrl: string = doc?.metadata?.sourceURL || doc?.metadata?.url || doc?.url || "";
+      if (!srcUrl || seen.has(srcUrl)) return;
+      const ex = doc?.json || doc?.extract || doc?.data?.json || null;
+      if (!ex) return;
+      // фильтруем: только товары
+      if (ex.is_product !== true || !ex.name) return;
+      seen.add(srcUrl);
+
+      // дубль по source_url
+      const { data: exist } = await supabase
+        .from("homepage_products").select("id").eq("source_url", srcUrl).limit(1);
+      if (exist && exist[0]) return;
+
+      const path: string[] = Array.isArray(ex.category_path) && ex.category_path.length
+        ? ex.category_path : (ex.category ? [ex.category] : []);
+      const leafId = await ensureCategory(path);
+
+      const mainImg = ex.image ? absoluteUrl(ex.image, srcUrl) : null;
+      const extra = Array.isArray(ex.images) ? ex.images.map((x: string) => absoluteUrl(x, srcUrl)) : [];
+      const allImages = Array.from(new Set([mainImg, ...extra].filter(Boolean) as string[]));
+
+      await supabase.from("homepage_products").insert({
+        name: String(ex.name).trim().slice(0, 500),
+        description: typeof ex.description === "string" ? ex.description.slice(0, 2000) : null,
+        image_url: mainImg,
+        images: allImages,
+        category_id: leafId,
+        category_path: path.length ? path : null,
+        price: parsePrice(ex.price),
+        currency: typeof ex.currency === "string" ? ex.currency.slice(0, 8) : null,
+        source_url: srcUrl,
+        source_site: host,
+        is_active: true,
+      });
+    }
+
     const backgroundJob = async () => {
-      const batchSize = 8;
-      for (let i = 0; i < linksToScrape.length; i += batchSize) {
-        const batch = linksToScrape.slice(i, i + batchSize);
-        const batchResults = await Promise.all(batch.map(async (link) => {
-          try {
-            const r = await fetch(`${FIRECRAWL_V2}/scrape`, {
-              method: "POST",
-              headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ url: link, formats: [{ type: "json", schema }], onlyMainContent: true }),
-            });
-            const j = await r.json();
-            if (!r.ok) return { url: link, error: j?.error || `HTTP ${r.status}` };
-            const extracted = j?.data?.json || j?.json || j?.data?.extract || null;
-            if (!extracted?.name) return { url: link, error: "no name" };
-            return { url: link, data: extracted as ParsedProduct };
-          } catch (err) {
-            return { url: link, error: err instanceof Error ? err.message : String(err) };
-          }
-        }));
+      const startedAt = Date.now();
+      const maxMs = 25 * 60 * 1000; // 25 минут
+      let lastTotal = 0;
 
-        for (const r of batchResults) {
-          if (!r.data) continue;
-          const d = r.data;
-          const path: string[] = Array.isArray(d.category_path) && d.category_path.length
-            ? d.category_path
-            : (d.category ? [d.category] : []);
-          const leafId = await ensureCategory(path);
-
-          const mainImg = d.image ? absoluteUrl(d.image, r.url) : null;
-          const extra = Array.isArray(d.images) ? d.images.map((x) => absoluteUrl(x, r.url)) : [];
-          const allImages = Array.from(new Set([mainImg, ...extra].filter(Boolean) as string[]));
-
-          await supabase.from("homepage_products").insert({
-            name: d.name!.trim().slice(0, 500),
-            description: typeof d.description === "string" ? d.description.slice(0, 2000) : null,
-            image_url: mainImg,
-            images: allImages,
-            category_id: leafId,
-            category_path: path.length ? path : null,
-            price: parsePrice(d.price),
-            currency: typeof d.currency === "string" ? d.currency.slice(0, 8) : null,
-            source_url: r.url,
-            source_site: host,
-            is_active: true,
+      while (Date.now() - startedAt < maxMs) {
+        let next: string | null = `${FIRECRAWL_V2}/crawl/${jobId}`;
+        let pages = 0;
+        let status = "scraping";
+        let total = 0;
+        let completed = 0;
+        while (next) {
+          const r: Response = await fetch(next, {
+            headers: { Authorization: `Bearer ${firecrawlKey}` },
           });
+          const j: any = await r.json();
+          if (!r.ok) { console.error("crawl poll error:", j); break; }
+          status = j?.status || status;
+          total = j?.total ?? total;
+          completed = j?.completed ?? completed;
+          const docs: any[] = j?.data || [];
+          for (const d of docs) {
+            await ingestDoc(d);
+            pages++;
+          }
+          next = j?.next || null;
         }
-        console.log(`[parse-site] progress: ${Math.min(i + batchSize, linksToScrape.length)} / ${linksToScrape.length}`);
+        if (pages !== lastTotal) {
+          console.log(`[parse-site] crawl ${jobId}: ${completed}/${total} status=${status} ingested=${seen.size}`);
+          lastTotal = pages;
+        }
+        if (status === "completed" || status === "failed" || status === "cancelled") break;
+        await new Promise((res) => setTimeout(res, 5000));
       }
-      console.log(`[parse-site] done for ${host}: ${linksToScrape.length} links processed`);
+      console.log(`[parse-site] done ${host}: ingested ${seen.size} products`);
     };
 
-    // Fire and forget — Deno Deploy keeps the worker alive until the promise settles.
-    // @ts-ignore - EdgeRuntime is provided by Supabase Edge Runtime.
+    // @ts-ignore
     if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
       // @ts-ignore
       EdgeRuntime.waitUntil(backgroundJob().catch((e) => console.error("background job failed:", e)));
     } else {
-      // Fallback: don't await, but at least kick it off.
       backgroundJob().catch((e) => console.error("background job failed:", e));
     }
 
     return new Response(JSON.stringify({
       ok: true,
       started: true,
-      mapped: allLinks.length,
-      to_scrape: linksToScrape.length,
-      message: `Парсинг запущен в фоне. Будет обработано ${linksToScrape.length} страниц с ${host}. Товары появятся в каталоге по мере обработки.`,
+      job_id: jobId,
+      message: `Запущен полный обход сайта ${host} (до ${limit} страниц). Товары появятся в каталоге по мере обработки — обновите страницу через 1–3 минуты.`,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Unknown error";
@@ -219,4 +222,3 @@ Deno.serve(async (req) => {
     });
   }
 });
-
