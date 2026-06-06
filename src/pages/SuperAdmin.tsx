@@ -28,6 +28,7 @@ import AiPasswordManager from '@/components/admin/AiPasswordManager';
 import LandingInfoBlocksManager from '@/components/admin/LandingInfoBlocksManager';
 import HomepageVersionManager from '@/components/admin/HomepageVersionManager';
 import RetailPartnersManager from '@/components/admin/RetailPartnersManager';
+import HomepageCatalogSection from '@/components/admin/HomepageCatalog/HomepageCatalogSection';
 
 interface StoreWithCounts {
   id: string;
@@ -583,9 +584,13 @@ export default function SuperAdmin() {
               <LayoutGrid className="h-4 w-4" />
               <span className="hidden sm:inline">Блоки</span>
             </TabsTrigger>
+            <TabsTrigger value="homepage-catalog" className="gap-2">
+              <Package className="h-4 w-4" />
+              <span className="hidden sm:inline">Главная: товары</span>
+            </TabsTrigger>
             <TabsTrigger value="homepage" className="gap-2">
               <LayoutGrid className="h-4 w-4" />
-              <span className="hidden sm:inline">Главная</span>
+              <span className="hidden sm:inline">Главная: настройки</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1098,7 +1103,12 @@ export default function SuperAdmin() {
             <LandingInfoBlocksManager />
           </TabsContent>
 
-          {/* Homepage Tab */}
+          {/* Homepage Catalog Tab */}
+          <TabsContent value="homepage-catalog" className="space-y-6">
+            <HomepageCatalogSection />
+          </TabsContent>
+
+          {/* Homepage Settings Tab */}
           <TabsContent value="homepage" className="space-y-6">
             <HomepageVersionManager />
             <RetailPartnersManager />
