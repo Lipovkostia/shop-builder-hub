@@ -1,11 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { DOMParser, Element } from "https://deno.land/x/deno_dom@v0.1.45/deno-dom-wasm.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const FIRECRAWL_V2 = "https://api.firecrawl.dev/v2";
+const BEE = "https://app.scrapingbee.com/api/v1/";
 
 function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-zа-я0-9]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 80);
@@ -22,33 +23,161 @@ function parsePrice(v: unknown): number | null {
   const n = Number(m[0]);
   return isFinite(n) ? n : null;
 }
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function retryDelayMs(headers: Headers, payload: any): number | null {
-  const retryAfter = headers.get("retry-after");
-  if (retryAfter) {
-    const seconds = Number(retryAfter);
-    if (Number.isFinite(seconds) && seconds > 0) return seconds * 1000;
-    const dateMs = Date.parse(retryAfter);
-    if (Number.isFinite(dateMs)) return Math.max(0, dateMs - Date.now());
-  }
-  const text = `${payload?.error || ""} ${payload?.message || ""}`;
-  const secondsMatch = text.match(/retry after\s*(\d+)\s*s/i);
-  if (secondsMatch) return Number(secondsMatch[1]) * 1000;
-  const resetMatch = text.match(/resets at\s*(.+)$/i);
-  if (resetMatch) {
-    const resetMs = Date.parse(resetMatch[1]);
-    if (Number.isFinite(resetMs)) return Math.max(0, resetMs - Date.now());
-  }
-  return null;
-}
+function sleep(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
 
 function isMissingJobsTable(error: unknown): boolean {
   const e = error as { code?: string; message?: string } | null;
   return e?.code === "PGRST205" || /homepage_parse_jobs/i.test(e?.message || "");
+}
+
+const SKIP_EXT = /\.(jpg|jpeg|png|gif|webp|svg|ico|pdf|zip|rar|mp4|mp3|avi|mov|css|js|xml|json|woff2?|ttf|eot)(\?|$)/i;
+const SKIP_SCHEMES = /^(mailto:|tel:|javascript:|whatsapp:|viber:)/i;
+
+function normalizeUrl(u: string): string {
+  try {
+    const x = new URL(u);
+    x.hash = "";
+    // strip common tracking params
+    ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "yclid", "gclid", "fbclid"].forEach((k) => x.searchParams.delete(k));
+    return x.toString();
+  } catch { return u; }
+}
+
+function pickPrice(doc: any, html: string): { price: number | null; currency: string | null } {
+  // schema.org Product / Offer JSON-LD
+  let price: number | null = null;
+  let currency: string | null = null;
+  const ldNodes = doc.querySelectorAll('script[type="application/ld+json"]');
+  for (const n of ldNodes) {
+    try {
+      const data = JSON.parse((n as Element).textContent || "");
+      const arr = Array.isArray(data) ? data : [data];
+      for (const item of arr) {
+        const items = Array.isArray(item?.["@graph"]) ? item["@graph"] : [item];
+        for (const it of items) {
+          const type = it?.["@type"];
+          const isProduct = type === "Product" || (Array.isArray(type) && type.includes("Product"));
+          if (!isProduct) continue;
+          const offers = Array.isArray(it.offers) ? it.offers[0] : it.offers;
+          if (offers) {
+            const p = parsePrice(offers.price ?? offers.lowPrice ?? offers.highPrice);
+            if (p != null) price = p;
+            if (typeof offers.priceCurrency === "string") currency = offers.priceCurrency;
+          }
+        }
+      }
+    } catch { /* ignore */ }
+  }
+  // microdata / meta
+  if (price == null) {
+    const meta = doc.querySelector('meta[itemprop="price"], meta[property="product:price:amount"], meta[property="og:price:amount"]');
+    if (meta) price = parsePrice((meta as Element).getAttribute("content"));
+  }
+  if (!currency) {
+    const mc = doc.querySelector('meta[itemprop="priceCurrency"], meta[property="product:price:currency"], meta[property="og:price:currency"]');
+    if (mc) currency = (mc as Element).getAttribute("content");
+  }
+  // Fallback: any element with itemprop="price"
+  if (price == null) {
+    const el = doc.querySelector('[itemprop="price"]');
+    if (el) price = parsePrice((el as Element).getAttribute("content") || (el as Element).textContent);
+  }
+  // Russian RUB heuristic from text near "руб" / "₽"
+  if (price == null) {
+    const m = html.match(/(\d[\d\s\u00A0]{1,9}(?:[.,]\d{1,2})?)\s*(?:руб|р\.?|₽|rub)/i);
+    if (m) {
+      price = parsePrice(m[1]);
+      if (price != null && !currency) currency = "RUB";
+    }
+  }
+  return { price, currency };
+}
+
+function pickProductInfo(doc: any, html: string, srcUrl: string) {
+  // Detect if this is a product page
+  const ogType = doc.querySelector('meta[property="og:type"]')?.getAttribute("content") || "";
+  let isProduct = /product/i.test(ogType);
+
+  let name = "";
+  let description = "";
+  let image: string | null = null;
+  const images: string[] = [];
+  let categoryPath: string[] = [];
+
+  // JSON-LD Product
+  const ldNodes = doc.querySelectorAll('script[type="application/ld+json"]');
+  for (const n of ldNodes) {
+    try {
+      const data = JSON.parse((n as Element).textContent || "");
+      const arr = Array.isArray(data) ? data : [data];
+      for (const item of arr) {
+        const items = Array.isArray(item?.["@graph"]) ? item["@graph"] : [item];
+        for (const it of items) {
+          const type = it?.["@type"];
+          if (type === "Product" || (Array.isArray(type) && type.includes("Product"))) {
+            isProduct = true;
+            if (!name && typeof it.name === "string") name = it.name;
+            if (!description && typeof it.description === "string") description = it.description;
+            const img = it.image;
+            if (img) {
+              const list = Array.isArray(img) ? img : [img];
+              for (const i of list) {
+                const u = typeof i === "string" ? i : i?.url;
+                if (typeof u === "string") images.push(absoluteUrl(u, srcUrl));
+              }
+            }
+            if (typeof it.category === "string") categoryPath = it.category.split(/\s*[\/>]\s*/).filter(Boolean);
+          }
+          if (type === "BreadcrumbList") {
+            const items2 = Array.isArray(it.itemListElement) ? it.itemListElement : [];
+            const path = items2
+              .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
+              .map((x: any) => (typeof x.name === "string" ? x.name : (typeof x.item?.name === "string" ? x.item.name : "")))
+              .filter(Boolean);
+            if (path.length && !categoryPath.length) categoryPath = path.slice(0, -1); // last is the product itself usually
+          }
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
+  if (!name) {
+    const h1 = doc.querySelector("h1");
+    if (h1) name = (h1 as Element).textContent?.trim() || "";
+  }
+  if (!name) {
+    const og = doc.querySelector('meta[property="og:title"]');
+    if (og) name = og.getAttribute("content") || "";
+  }
+  if (!image) {
+    const og = doc.querySelector('meta[property="og:image"]');
+    if (og) image = absoluteUrl(og.getAttribute("content") || "", srcUrl);
+  }
+  if (!image && images.length) image = images[0];
+  if (!description) {
+    const md = doc.querySelector('meta[name="description"], meta[property="og:description"]');
+    if (md) description = (md as Element).getAttribute("content") || "";
+  }
+  if (!categoryPath.length) {
+    // breadcrumbs heuristic
+    const bc = doc.querySelector('[class*="breadcrumb" i], nav[aria-label*="bread" i], ol.breadcrumb');
+    if (bc) {
+      const parts = Array.from(bc.querySelectorAll("a, span, li"))
+        .map((el: any) => el.textContent?.trim() || "")
+        .filter((s: string) => s && s.length < 60);
+      if (parts.length > 1) categoryPath = parts.slice(0, -1);
+    }
+  }
+
+  // Stricter product detection: must have name and a price OR explicit og:type product / JSON-LD product
+  const { price, currency } = pickPrice(doc, html);
+
+  // Heuristic: presence of price + "add to cart"-like control
+  if (!isProduct && price != null) {
+    if (/(в\s*корзин|купить|add\s*to\s*cart|buy\s*now|заказать)/i.test(html)) isProduct = true;
+  }
+
+  return { isProduct: !!(isProduct && name), name, description, image, images, categoryPath, price, currency };
 }
 
 Deno.serve(async (req) => {
@@ -59,7 +188,6 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  // Auth: must be super_admin
   const authHeader = req.headers.get("Authorization") || "";
   const token = authHeader.replace(/^Bearer\s+/i, "");
   if (!token) return json({ error: "Unauthorized" }, 401);
@@ -75,10 +203,7 @@ Deno.serve(async (req) => {
 
     if (action === "status") {
       const { data, error } = await supabase
-        .from("homepage_parse_jobs")
-        .select("*")
-        .order("started_at", { ascending: false })
-        .limit(20);
+        .from("homepage_parse_jobs").select("*").order("started_at", { ascending: false }).limit(20);
       if (error) {
         if (isMissingJobsTable(error)) return json({ jobs: [], jobs_unavailable: true });
         throw error;
@@ -101,23 +226,22 @@ Deno.serve(async (req) => {
     }
 
     // === START ===
-    const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
-    if (!firecrawlKey) throw new Error("FIRECRAWL_API_KEY is not configured");
+    const beeKey = Deno.env.get("SCRAPINGBEE_API_KEY");
+    if (!beeKey) throw new Error("SCRAPINGBEE_API_KEY is not configured");
 
     const url: string = (body?.url || "").trim();
     const rawLimit = Number(body?.limit);
-    const limit: number = rawLimit && rawLimit > 0 ? Math.floor(rawLimit) : 5000;
+    const limit: number = rawLimit && rawLimit > 0 ? Math.floor(rawLimit) : 200;
+    const renderJs: boolean = !!body?.render_js;
     if (!url) return json({ error: "url required" }, 400);
-    const host = new URL(url).host;
+    const startUrl = normalizeUrl(url);
+    const host = new URL(startUrl).host;
 
-    // Create job row early so the UI can poll it immediately.
     const { data: jobRow, error: jobErr } = await supabase
       .from("homepage_parse_jobs")
-      .insert({ url, host, status: "starting", created_by: userId })
-      .select()
-      .single();
+      .insert({ url: startUrl, host, status: "starting", created_by: userId })
+      .select().single();
     if (jobErr && !isMissingJobsTable(jobErr)) throw jobErr;
-    if (jobErr) console.warn("[parse-site] progress table is not ready, running crawl without persistent job row", jobErr);
     const dbJobId: string | null = jobRow ? (jobRow as any).id : null;
 
     async function updateJob(values: Record<string, unknown>) {
@@ -126,60 +250,14 @@ Deno.serve(async (req) => {
       if (error && !isMissingJobsTable(error)) console.error("[parse-site] job update failed:", error);
     }
 
-    const schema = {
-      type: "object",
-      properties: {
-        is_product: { type: "boolean", description: "true только если это страница КОНКРЕТНОГО товара" },
-        name: { type: "string" },
-        category_path: { type: "array", items: { type: "string" } },
-        category: { type: "string" },
-        image: { type: "string" },
-        images: { type: "array", items: { type: "string" } },
-        description: { type: "string" },
-        price: { type: "number" },
-        currency: { type: "string" },
-      },
-      required: ["is_product"],
-    };
+    async function isStopRequested(): Promise<boolean> {
+      if (!dbJobId) return false;
+      const { data, error } = await supabase
+        .from("homepage_parse_jobs").select("stop_requested").eq("id", dbJobId).maybeSingle();
+      if (error && isMissingJobsTable(error)) return false;
+      return !!(data as any)?.stop_requested;
+    }
 
-    const crawlPayload = {
-      url, limit, maxDiscoveryDepth: 5, allowSubdomains: false, crawlEntireDomain: true,
-      scrapeOptions: { formats: [{ type: "json", schema }], onlyMainContent: true },
-    };
-    let crawlStart: Response | null = null;
-    let crawlJson: any = null;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      crawlStart = await fetch(`${FIRECRAWL_V2}/crawl`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify(crawlPayload),
-      });
-      crawlJson = await crawlStart.json().catch(() => ({}));
-      if (crawlStart.status !== 429) break;
-      const waitMs = Math.min(Math.max(retryDelayMs(crawlStart.headers, crawlJson) ?? 45_000, 10_000), 90_000);
-      await updateJob({
-        status: "waiting_rate_limit",
-        last_error: `Firecrawl временно ограничил запуск. Автоповтор через ${Math.ceil(waitMs / 1000)} сек.`,
-      });
-      if (attempt < 3) await sleep(waitMs + 1000);
-    }
-    if (!crawlStart) throw new Error("Firecrawl: request was not started");
-    if (!crawlStart.ok) {
-      const rawMsg = String(crawlJson?.error || crawlJson?.message || crawlStart.status);
-      const msg = crawlStart.status === 429
-        ? `Firecrawl сейчас упёрся в лимит запросов. Подождите минуту и нажмите «Запустить» ещё раз. Детали: ${rawMsg}`
-        : `Firecrawl crawl: ${rawMsg}`;
-      await updateJob({ status: "failed", last_error: msg, finished_at: new Date().toISOString() });
-      return json({ error: msg }, 500);
-    }
-    const firecrawlJobId: string | undefined = crawlJson?.id || crawlJson?.data?.id;
-    if (!firecrawlJobId) {
-      await updateJob({ status: "failed", last_error: "no crawl job id", finished_at: new Date().toISOString() });
-      return json({ error: "Firecrawl: no crawl job id" }, 500);
-    }
-    await updateJob({ firecrawl_job_id: firecrawlJobId, status: "scraping" });
-
-    // Background processing
     const catIdByKey = new Map<string, string>();
     async function ensureCategory(path: string[]): Promise<string | null> {
       const clean = path.map((s) => s.trim()).filter((s) => s && s.length < 120);
@@ -207,135 +285,120 @@ Deno.serve(async (req) => {
       return parentId;
     }
 
-    const seen = new Set<string>();
+    async function beeFetch(target: string): Promise<{ html: string; status: number } | null> {
+      const params = new URLSearchParams({
+        api_key: beeKey!,
+        url: target,
+        render_js: renderJs ? "true" : "false",
+        block_resources: "true",
+      });
+      const r = await fetch(`${BEE}?${params.toString()}`);
+      if (!r.ok) {
+        const text = await r.text().catch(() => "");
+        console.error("[bee]", r.status, target, text.slice(0, 200));
+        return { html: "", status: r.status };
+      }
+      const html = await r.text();
+      return { html, status: 200 };
+    }
+
+    const seen = new Set<string>([startUrl]);
+    const queue: string[] = [startUrl];
     let ingestedCount = 0;
     let duplicatesCount = 0;
+    let scrapedCount = 0;
+    let failedCount = 0;
 
-    async function ingestDoc(doc: any) {
-      const srcUrl: string = doc?.metadata?.sourceURL || doc?.metadata?.url || doc?.url || "";
-      if (!srcUrl || seen.has(srcUrl)) return;
-      const ex = doc?.json || doc?.extract || doc?.data?.json || null;
-      if (!ex) return;
-      if (ex.is_product !== true || !ex.name) return;
-      seen.add(srcUrl);
-
-      const { data: exist } = await supabase
-        .from("homepage_products").select("id").eq("source_url", srcUrl).limit(1);
-      if (exist && exist[0]) { duplicatesCount++; return; }
-
-      const path: string[] = Array.isArray(ex.category_path) && ex.category_path.length
-        ? ex.category_path : (ex.category ? [ex.category] : []);
-      const leafId = await ensureCategory(path);
-
-      const mainImg = ex.image ? absoluteUrl(ex.image, srcUrl) : null;
-      const extra = Array.isArray(ex.images) ? ex.images.map((x: string) => absoluteUrl(x, srcUrl)) : [];
-      const allImages = Array.from(new Set([mainImg, ...extra].filter(Boolean) as string[]));
-
-      const { error: insErr } = await supabase.from("homepage_products").insert({
-        name: String(ex.name).trim().slice(0, 500),
-        description: typeof ex.description === "string" ? ex.description.slice(0, 2000) : null,
-        image_url: mainImg,
-        images: allImages,
-        category_id: leafId,
-        category_path: path.length ? path : null,
-        price: parsePrice(ex.price),
-        currency: typeof ex.currency === "string" ? ex.currency.slice(0, 8) : null,
-        source_url: srcUrl,
-        source_site: host,
-        is_active: true,
-      });
-      if (!insErr) ingestedCount++;
-    }
-
-    async function isStopRequested(): Promise<boolean> {
-      if (!dbJobId) return false;
-      const { data, error } = await supabase
-        .from("homepage_parse_jobs").select("stop_requested").eq("id", dbJobId).maybeSingle();
-      if (error && isMissingJobsTable(error)) return false;
-      return !!(data as any)?.stop_requested;
-    }
-
-    async function updateProgress(extra: Record<string, unknown> = {}) {
-      await updateJob({
-        ingested: ingestedCount,
-        duplicates: duplicatesCount,
-        ...extra,
-      });
-    }
-
-    async function cancelFirecrawl() {
-      try {
-        await fetch(`${FIRECRAWL_V2}/crawl/${firecrawlJobId}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${firecrawlKey}` },
-        });
-      } catch (_) { /* ignore */ }
-    }
+    await updateJob({ status: "scraping" });
 
     const backgroundJob = async () => {
       const startedAt = Date.now();
       const maxMs = 25 * 60 * 1000;
       try {
-        while (Date.now() - startedAt < maxMs) {
+        while (queue.length && scrapedCount < limit) {
+          if (Date.now() - startedAt > maxMs) {
+            await updateJob({ status: "failed", last_error: "timeout (25 min)", finished_at: new Date().toISOString(), total: limit, completed: scrapedCount, ingested: ingestedCount, duplicates: duplicatesCount });
+            return;
+          }
           if (await isStopRequested()) {
-            await cancelFirecrawl();
-            await updateJob({
-              status: "stopped", ingested: ingestedCount, duplicates: duplicatesCount,
-              finished_at: new Date().toISOString(),
-            });
-            console.log(`[parse-site] stopped by user. ingested=${ingestedCount}`);
+            await updateJob({ status: "stopped", finished_at: new Date().toISOString(), total: limit, completed: scrapedCount, ingested: ingestedCount, duplicates: duplicatesCount });
             return;
           }
-
-          let next: string | null = `${FIRECRAWL_V2}/crawl/${firecrawlJobId}`;
-          let status = "scraping";
-          let total = 0;
-          let completed = 0;
-          let hitRateLimit = false;
-          while (next) {
-            const r: Response = await fetch(next, { headers: { Authorization: `Bearer ${firecrawlKey}` } });
-            const j: any = await r.json().catch(() => ({}));
-            if (r.status === 429) {
-              const waitMs = Math.min(Math.max(retryDelayMs(r.headers, j) ?? 45_000, 10_000), 90_000);
-              hitRateLimit = true;
-              await updateProgress({
-                status: "waiting_rate_limit",
-                last_error: `Firecrawl временно ограничил проверку результата. Продолжим через ${Math.ceil(waitMs / 1000)} сек.`,
-              });
-              await sleep(waitMs + 1000);
-              break;
+          const target = queue.shift()!;
+          const res = await beeFetch(target);
+          scrapedCount++;
+          if (!res || res.status !== 200 || !res.html) {
+            failedCount++;
+          } else {
+            try {
+              const doc = new DOMParser().parseFromString(res.html, "text/html");
+              if (doc) {
+                // Collect links
+                const anchors = doc.querySelectorAll("a[href]");
+                for (const a of anchors) {
+                  const href = (a as Element).getAttribute("href") || "";
+                  if (!href || SKIP_SCHEMES.test(href)) continue;
+                  const abs = normalizeUrl(absoluteUrl(href, target));
+                  try {
+                    const u = new URL(abs);
+                    if (u.host !== host) continue;
+                    if (SKIP_EXT.test(u.pathname)) continue;
+                    if (seen.has(abs)) continue;
+                    seen.add(abs);
+                    if (queue.length + scrapedCount < limit) queue.push(abs);
+                  } catch { /* ignore */ }
+                }
+                // Product detection & ingest
+                const info = pickProductInfo(doc, res.html, target);
+                if (info.isProduct) {
+                  const { data: exist } = await supabase
+                    .from("homepage_products").select("id").eq("source_url", target).limit(1);
+                  if (exist && exist[0]) {
+                    duplicatesCount++;
+                  } else {
+                    const leafId = await ensureCategory(info.categoryPath);
+                    const allImages = Array.from(new Set([info.image, ...info.images].filter(Boolean) as string[]));
+                    const { error: insErr } = await supabase.from("homepage_products").insert({
+                      name: String(info.name).trim().slice(0, 500),
+                      description: info.description ? info.description.slice(0, 2000) : null,
+                      image_url: info.image,
+                      images: allImages,
+                      category_id: leafId,
+                      category_path: info.categoryPath.length ? info.categoryPath : null,
+                      price: info.price,
+                      currency: info.currency ? info.currency.slice(0, 8) : null,
+                      source_url: target,
+                      source_site: host,
+                      is_active: true,
+                    });
+                    if (!insErr) ingestedCount++;
+                    else console.error("[insert]", insErr);
+                  }
+                }
+              }
+            } catch (e) {
+              console.error("[parse]", target, e);
+              failedCount++;
             }
-            if (!r.ok) { console.error("crawl poll error:", j); break; }
-            status = j?.status || status;
-            total = j?.total ?? total;
-            completed = j?.completed ?? completed;
-            const docs: any[] = j?.data || [];
-            for (const d of docs) {
-              if (await isStopRequested()) break;
-              await ingestDoc(d);
-            }
-            next = j?.next || null;
-            if (await isStopRequested()) break;
           }
-          if (hitRateLimit) continue;
-          await updateProgress({ total, completed, status: status === "scraping" ? "scraping" : status });
 
-          if (status === "completed" || status === "failed" || status === "cancelled") {
+          if (scrapedCount % 5 === 0) {
             await updateJob({
-              status: status === "completed" ? "completed" : status,
-              ingested: ingestedCount, duplicates: duplicatesCount, total, completed,
-              finished_at: new Date().toISOString(),
+              ingested: ingestedCount, duplicates: duplicatesCount,
+              total: Math.min(limit, scrapedCount + queue.length), completed: scrapedCount,
+              status: "scraping",
+              last_error: failedCount ? `${failedCount} страниц не загрузились` : null,
             });
-            console.log(`[parse-site] done ${host}: status=${status} ingested=${ingestedCount}`);
-            return;
           }
-          await sleep(30_000);
         }
+
         await updateJob({
-          status: "failed", last_error: "timeout (25 min)",
+          status: "completed",
           ingested: ingestedCount, duplicates: duplicatesCount,
+          total: scrapedCount, completed: scrapedCount,
           finished_at: new Date().toISOString(),
         });
+        console.log(`[parse-site] done ${host}: scraped=${scrapedCount} ingested=${ingestedCount}`);
       } catch (e: any) {
         console.error("background job failed:", e);
         await updateJob({
@@ -355,8 +418,8 @@ Deno.serve(async (req) => {
     }
 
     return json({
-      ok: true, started: true, job_id: dbJobId, firecrawl_job_id: firecrawlJobId,
-      message: `Запущен полный обход сайта ${host} (до ${limit} страниц).`,
+      ok: true, started: true, job_id: dbJobId,
+      message: `Запущен обход сайта ${host} (до ${limit} страниц) через ScrapingBee.`,
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Unknown error";
