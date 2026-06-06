@@ -249,6 +249,7 @@ Deno.serve(async (req) => {
 
     // Видео-модели kie.ai: kling/seedance/hailuo/veo
     const isVideo = /^(kling|bytedance\/seedance|minimax\/hailuo|google\/veo)/.test(model);
+    const isVeo = model.startsWith("google/veo");
 
     let finalPrompt: string;
     if (hasImages && images.length >= 2) {
@@ -290,11 +291,14 @@ Deno.serve(async (req) => {
 
     // ───── Видео-модели ─────
     if (isVideo) {
+      if (model.includes("image-to-video") && !firstImage) {
+        throw new Error("Для модели фото→видео нужно исходное изображение товара");
+      }
       // Общие поля для большинства видео-моделей kie.ai
       if (durationSec) input.duration = String(durationSec);
-      input.aspect_ratio = aspect_ratio;
+      if (model.includes("text-to-video") && model.startsWith("kling/")) input.aspect_ratio = aspect_ratio;
       // image-to-video: первое изображение как стартовый кадр
-      if (model.includes("image-to-video") && firstImage) {
+      if (!isVeo && model.includes("image-to-video") && firstImage) {
         input.image_url = firstImage;
       }
       // Kling — параметры качества
@@ -309,6 +313,8 @@ Deno.serve(async (req) => {
       // Hailuo — разрешение
       if (model.includes("minimax/hailuo")) {
         input.resolution = "768P";
+        input.prompt_optimizer = true;
+        input.nsfw_checker = false;
       }
     } else if (model === "nano-banana-2" || model === "nano-banana-pro") {
       // image_input (массив URL), resolution: 1K/2K/4K, aspect_ratio, output_format
@@ -479,8 +485,22 @@ Deno.serve(async (req) => {
 
     let resultUrl: string;
     try {
-      const taskId = await kieCreateTask(model, input);
-      resultUrl = await kiePoll(taskId);
+      if (isVeo) {
+        const veoAspect = aspect_ratio === "9:16" ? "9:16" : aspect_ratio === "16:9" ? "16:9" : "Auto";
+        const veoInput: Record<string, unknown> = {
+          prompt: finalPrompt,
+          model: "veo3_fast",
+          aspect_ratio: veoAspect,
+          enableTranslation: true,
+          generationType: firstImage ? "FIRST_AND_LAST_FRAMES_2_VIDEO" : "TEXT_2_VIDEO",
+        };
+        if (firstImage) veoInput.imageUrls = images.slice(0, 2);
+        const taskId = await kieCreateVeoTask(veoInput);
+        resultUrl = await kiePollVeo(taskId);
+      } else {
+        const taskId = await kieCreateTask(normalizeKieModelName(model), input);
+        resultUrl = await kiePoll(taskId);
+      }
     } catch (genErr: unknown) {
       if (hasJobsTable) {
         const errorRow: Record<string, unknown> = {
