@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import { useStoreBySubdomain } from "@/hooks/useUserStore";
 
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const IndexLegacy = lazy(() => import("./pages/IndexLegacy"));
 const TestStore = lazy(() => import("./pages/TestStore"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
 const SuperAdmin = lazy(() => import("./pages/SuperAdmin"));
@@ -182,7 +183,8 @@ const App = () => {
                     <Route path="/index" element={<Index />} />
                     <Route path="/index.html" element={<Index />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/auth" element={<Navigate to="/" replace />} />
+                    <Route path="/auth" element={<IndexLegacy />} />
+                    <Route path="/login" element={<IndexLegacy />} />
                     <Route path="/dashboard" element={<Navigate to="/" replace />} />
                     <Route path="/test-store" element={<TestStore />} />
                     <Route path="/admin" element={<AdminPanel />} />
