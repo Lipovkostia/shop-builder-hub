@@ -23,6 +23,29 @@ function parsePrice(v: unknown): number | null {
   return isFinite(n) ? n : null;
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function retryDelayMs(headers: Headers, payload: any): number | null {
+  const retryAfter = headers.get("retry-after");
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds > 0) return seconds * 1000;
+    const dateMs = Date.parse(retryAfter);
+    if (Number.isFinite(dateMs)) return Math.max(0, dateMs - Date.now());
+  }
+  const text = `${payload?.error || ""} ${payload?.message || ""}`;
+  const secondsMatch = text.match(/retry after\s*(\d+)\s*s/i);
+  if (secondsMatch) return Number(secondsMatch[1]) * 1000;
+  const resetMatch = text.match(/resets at\s*(.+)$/i);
+  if (resetMatch) {
+    const resetMs = Date.parse(resetMatch[1]);
+    if (Number.isFinite(resetMs)) return Math.max(0, resetMs - Date.now());
+  }
+  return null;
+}
+
 function isMissingJobsTable(error: unknown): boolean {
   const e = error as { code?: string; message?: string } | null;
   return e?.code === "PGRST205" || /homepage_parse_jobs/i.test(e?.message || "");
