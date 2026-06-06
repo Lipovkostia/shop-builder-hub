@@ -52,6 +52,67 @@ async function kieCreateTask(model: string, input: Record<string, unknown>): Pro
   return taskId;
 }
 
+function normalizeKieModelName(model: string): string {
+  const aliases: Record<string, string> = {
+    "kling/v2.5-turbo-pro/image-to-video": "kling/v2-5-turbo-image-to-video-pro",
+    "kling/v2.5-turbo-pro/text-to-video": "kling/v2-5-turbo-text-to-video-pro",
+    "bytedance/seedance-v1-lite-image-to-video": "bytedance/v1-lite-image-to-video",
+    "bytedance/seedance-v1-lite-text-to-video": "bytedance/v1-lite-text-to-video",
+    "bytedance/seedance-v1-pro-image-to-video": "bytedance/v1-pro-image-to-video",
+    "bytedance/seedance-v1-pro-text-to-video": "bytedance/v1-pro-text-to-video",
+    "minimax/hailuo-02-image-to-video": "hailuo/02-image-to-video-standard",
+    "minimax/hailuo-02-text-to-video": "hailuo/02-text-to-video-standard",
+  };
+  return aliases[model] ?? model;
+}
+
+async function kieCreateVeoTask(input: Record<string, unknown>): Promise<string> {
+  const res = await fetch(`${KIE_BASE}/api/v1/veo/generate`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${KIE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`kie.ai veo generate ${res.status}: ${text.slice(0, 400)}`);
+  let json: Record<string, unknown>;
+  try { json = JSON.parse(text); } catch { throw new Error(`kie.ai veo generate: некорректный JSON: ${text.slice(0, 200)}`); }
+  if (json?.code && json.code !== 200) throw new Error(`kie.ai veo generate code=${json.code}: ${json?.msg ?? "ошибка"}`);
+  const taskId = json?.data?.taskId;
+  if (!taskId) throw new Error(`kie.ai veo generate: нет taskId. Ответ: ${text.slice(0, 200)}`);
+  return taskId;
+}
+
+async function kiePollVeo(taskId: string, timeoutMs = 900_000): Promise<string> {
+  const started = Date.now();
+  let delay = 5000;
+  while (Date.now() - started < timeoutMs) {
+    const res = await fetch(`${KIE_BASE}/api/v1/veo/record-info?taskId=${encodeURIComponent(taskId)}`, {
+      headers: { Authorization: `Bearer ${KIE_API_KEY}` },
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`kie.ai veo recordInfo ${res.status}: ${text.slice(0, 300)}`);
+    let json: Record<string, unknown>;
+    try { json = JSON.parse(text); } catch { throw new Error("kie.ai veo recordInfo: некорректный JSON"); }
+    if (json?.code && json.code !== 200) throw new Error(`kie.ai veo recordInfo code=${json.code}: ${json?.msg ?? "ошибка"}`);
+    const data = json?.data as Record<string, unknown> | undefined;
+    const successFlag = data?.successFlag;
+    if (successFlag === 1) {
+      const response = data?.response as Record<string, unknown> | undefined;
+      const urls = response?.resultUrls ?? response?.originUrls ?? response?.fullResultUrls;
+      const arr = typeof urls === "string" ? [urls] : Array.isArray(urls) ? urls : [];
+      if (!arr.length) throw new Error("kie.ai veo: пустой resultUrls");
+      return String(arr[0]);
+    }
+    if (successFlag === 2 || successFlag === 3) throw new Error(`kie.ai veo: ${data?.errorMessage ?? data?.errorCode ?? "генерация не удалась"}`);
+    await new Promise((r) => setTimeout(r, delay));
+    delay = Math.min(delay + 2000, 12000);
+  }
+  throw new Error("kie.ai veo: таймаут ожидания результата");
+}
+
 async function kiePoll(taskId: string, timeoutMs = 600_000): Promise<string> {
   const started = Date.now();
   let delay = 3000;
@@ -188,6 +249,7 @@ Deno.serve(async (req) => {
 
     // Видео-модели kie.ai: kling/seedance/hailuo/veo
     const isVideo = /^(kling|bytedance\/seedance|minimax\/hailuo|google\/veo)/.test(model);
+    const isVeo = model.startsWith("google/veo");
 
     let finalPrompt: string;
     if (hasImages && images.length >= 2) {
@@ -229,11 +291,14 @@ Deno.serve(async (req) => {
 
     // ───── Видео-модели ─────
     if (isVideo) {
+      if (model.includes("image-to-video") && !firstImage) {
+        throw new Error("Для модели фото→видео нужно исходное изображение товара");
+      }
       // Общие поля для большинства видео-моделей kie.ai
       if (durationSec) input.duration = String(durationSec);
-      input.aspect_ratio = aspect_ratio;
+      if (model.includes("text-to-video") && model.startsWith("kling/")) input.aspect_ratio = aspect_ratio;
       // image-to-video: первое изображение как стартовый кадр
-      if (model.includes("image-to-video") && firstImage) {
+      if (!isVeo && model.includes("image-to-video") && firstImage) {
         input.image_url = firstImage;
       }
       // Kling — параметры качества
@@ -248,6 +313,8 @@ Deno.serve(async (req) => {
       // Hailuo — разрешение
       if (model.includes("minimax/hailuo")) {
         input.resolution = "768P";
+        input.prompt_optimizer = true;
+        input.nsfw_checker = false;
       }
     } else if (model === "nano-banana-2" || model === "nano-banana-pro") {
       // image_input (массив URL), resolution: 1K/2K/4K, aspect_ratio, output_format
@@ -418,8 +485,22 @@ Deno.serve(async (req) => {
 
     let resultUrl: string;
     try {
-      const taskId = await kieCreateTask(model, input);
-      resultUrl = await kiePoll(taskId);
+      if (isVeo) {
+        const veoAspect = aspect_ratio === "9:16" ? "9:16" : aspect_ratio === "16:9" ? "16:9" : "Auto";
+        const veoInput: Record<string, unknown> = {
+          prompt: finalPrompt,
+          model: "veo3_fast",
+          aspect_ratio: veoAspect,
+          enableTranslation: true,
+          generationType: firstImage ? "FIRST_AND_LAST_FRAMES_2_VIDEO" : "TEXT_2_VIDEO",
+        };
+        if (firstImage) veoInput.imageUrls = images.slice(0, 2);
+        const taskId = await kieCreateVeoTask(veoInput);
+        resultUrl = await kiePollVeo(taskId);
+      } else {
+        const taskId = await kieCreateTask(normalizeKieModelName(model), input);
+        resultUrl = await kiePoll(taskId);
+      }
     } catch (genErr: unknown) {
       if (hasJobsTable) {
         const errorRow: Record<string, unknown> = {

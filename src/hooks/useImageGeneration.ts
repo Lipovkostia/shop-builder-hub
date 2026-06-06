@@ -27,6 +27,25 @@ export interface GenerationResult {
   status: "pending" | "success" | "error";
 }
 
+async function getFunctionErrorMessage(error: unknown): Promise<string> {
+  const fallback = error instanceof Error ? error.message : String(error);
+  const context = (error as { context?: { clone?: () => Response; json?: () => Promise<unknown>; text?: () => Promise<string> } })?.context;
+  try {
+    const response = context?.clone ? context.clone() : context;
+    const body = await response?.json?.();
+    const message = (body as { error?: string; message?: string } | null)?.error ?? (body as { message?: string } | null)?.message;
+    return message || fallback;
+  } catch {
+    try {
+      const response = context?.clone ? context.clone() : context;
+      const text = await response?.text?.();
+      return text || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+}
+
 const MAX_PARALLEL = 6;
 
 export function useImageGeneration() {
@@ -54,7 +73,7 @@ export function useImageGeneration() {
           model: params.model,
         },
       });
-      if (error) throw error;
+      if (error) throw new Error(await getFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
       return { task_id: task.id, url: (data as any)?.url, status: "success" };
     } catch (e: any) {

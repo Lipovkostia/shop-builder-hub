@@ -15,6 +15,25 @@ export interface PlaygroundMessage {
 
 const STORAGE_KEY = "image_playground_messages_v1";
 
+async function getFunctionErrorMessage(error: unknown): Promise<string> {
+  const fallback = error instanceof Error ? error.message : String(error);
+  const context = (error as { context?: { clone?: () => Response; json?: () => Promise<unknown>; text?: () => Promise<string> } })?.context;
+  try {
+    const response = context?.clone ? context.clone() : context;
+    const body = await response?.json?.();
+    const message = (body as { error?: string; message?: string } | null)?.error ?? (body as { message?: string } | null)?.message;
+    return message || fallback;
+  } catch {
+    try {
+      const response = context?.clone ? context.clone() : context;
+      const text = await response?.text?.();
+      return text || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+}
+
 function readMessages(storeId: string | null): PlaygroundMessage[] {
   if (!storeId || typeof window === "undefined") return [];
   try {
@@ -89,7 +108,7 @@ export function useImagePlayground(storeId: string | null) {
       const { data, error } = await supabase.functions.invoke("generate-playground-image", {
         body: { ...params, store_id: storeId },
       });
-      if (error) throw error;
+      if (error) throw new Error(await getFunctionErrorMessage(error));
       const payload = data as { error?: string; url?: string; model?: string } | null;
       if (payload?.error) throw new Error(payload.error);
       const assistantMessage: PlaygroundMessage = {
