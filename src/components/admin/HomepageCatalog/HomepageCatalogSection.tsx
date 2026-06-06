@@ -577,7 +577,10 @@ function SiteParserDialog({
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
       setResult(json);
-      toast({ title: "Парсинг завершён", description: `Добавлено: ${json.added}, пропущено: ${json.skipped_duplicates}` });
+      toast({
+        title: "Парсинг запущен",
+        description: json.message || `Найдено ${json.mapped} ссылок, обрабатывается ${json.to_scrape}. Товары появятся в каталоге по мере парсинга — обновите страницу через минуту.`,
+      });
       onDone();
     } catch (e: any) {
       toast({ title: "Ошибка парсинга", description: e.message, variant: "destructive" });
@@ -605,13 +608,11 @@ function SiteParserDialog({
           </div>
           {result && (
             <div className="rounded-lg border bg-muted/50 p-3 text-xs space-y-1">
-              <div>Найдено ссылок: <b>{result.mapped}</b></div>
-              <div>Просканировано: <b>{result.scraped}</b></div>
-              <div>Извлечено: <b>{result.extracted}</b></div>
-              <div className="text-emerald-600">Добавлено: <b>{result.added}</b></div>
-              <div>Дубли пропущены: <b>{result.skipped_duplicates}</b></div>
-              {result.scrape_errors > 0 && <div className="text-amber-600">Ошибок парсинга: {result.scrape_errors}</div>}
-              {result.failed_inserts > 0 && <div className="text-destructive">Ошибок вставки: {result.failed_inserts}</div>}
+              <div>Найдено ссылок на сайте: <b>{result.mapped}</b></div>
+              <div>В обработке: <b>{result.to_scrape}</b></div>
+              <div className="text-emerald-600">
+                ✓ Парсинг идёт в фоне. Закройте диалог и обновите список товаров через минуту.
+              </div>
             </div>
           )}
         </div>
