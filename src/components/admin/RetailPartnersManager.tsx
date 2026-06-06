@@ -50,13 +50,13 @@ export default function RetailPartnersManager() {
 
   const update = async (id: string, patch: Partial<Partner>) => {
     setPartners((arr) => arr.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-    const { error } = await supabase.from("landing_retail_partners").update(patch).eq("id", id);
+    const { error } = await (supabase as any).from("landing_retail_partners").update(patch).eq("id", id);
     if (error) toast({ title: "Не сохранено", description: error.message, variant: "destructive" });
   };
 
   const remove = async (id: string) => {
     if (!confirm("Удалить партнёра?")) return;
-    const { error } = await supabase.from("landing_retail_partners").delete().eq("id", id);
+    const { error } = await (supabase as any).from("landing_retail_partners").delete().eq("id", id);
     if (error) { toast({ title: "Не удалось удалить", description: error.message, variant: "destructive" }); return; }
     setPartners((arr) => arr.filter((p) => p.id !== id));
   };
@@ -71,8 +71,8 @@ export default function RetailPartnersManager() {
     next[swap] = { ...a, sort_order: b.sort_order };
     setPartners(next);
     await Promise.all([
-      supabase.from("landing_retail_partners").update({ sort_order: a.sort_order }).eq("id", b.id),
-      supabase.from("landing_retail_partners").update({ sort_order: b.sort_order }).eq("id", a.id),
+      (supabase as any).from("landing_retail_partners").update({ sort_order: a.sort_order }).eq("id", b.id),
+      (supabase as any).from("landing_retail_partners").update({ sort_order: b.sort_order }).eq("id", a.id),
     ]);
   };
 
@@ -81,9 +81,9 @@ export default function RetailPartnersManager() {
     try {
       const ext = file.name.split(".").pop() || "jpg";
       const path = `partners/${id}-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("landing-slides").upload(path, file, { upsert: true });
+      const { error: upErr } = await (supabase as any).storage.from("landing-slides").upload(path, file, { upsert: true });
       if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from("landing-slides").getPublicUrl(path);
+      const { data: pub } = (supabase as any).storage.from("landing-slides").getPublicUrl(path);
       await update(id, { image_url: pub.publicUrl });
     } catch (e: any) {
       toast({ title: "Не удалось загрузить", description: e.message, variant: "destructive" });

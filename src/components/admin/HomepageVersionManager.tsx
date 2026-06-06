@@ -14,12 +14,12 @@ export default function HomepageVersionManager() {
   const { toast } = useToast();
 
   useEffect(() => {
-    supabase
+    (supabase as any)
       .from("landing_settings")
       .select("homepage_version")
       .eq("id", "default")
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data }: any) => {
         if (data?.homepage_version) setVersion(data.homepage_version as Version);
         setLoading(false);
       });
@@ -27,7 +27,7 @@ export default function HomepageVersionManager() {
 
   const save = async (v: Version) => {
     setSaving(true);
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("landing_settings")
       .upsert({ id: "default", homepage_version: v }, { onConflict: "id" });
     setSaving(false);
