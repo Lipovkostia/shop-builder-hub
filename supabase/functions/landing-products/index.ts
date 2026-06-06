@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ data: products, categories, access_code: accessCode }),
+        JSON.stringify({ data: products, categories, access_code: accessCode, partners, homepage_version: homepageVersion }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
       }));
 
     return new Response(
-      JSON.stringify({ data: products, categories: [] }),
+      JSON.stringify({ data: products, categories: [], partners, homepage_version: homepageVersion }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
