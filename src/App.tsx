@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import { useStoreBySubdomain } from "@/hooks/useUserStore";
 
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const IndexLegacy = lazy(() => import("./pages/IndexLegacy"));
 const TestStore = lazy(() => import("./pages/TestStore"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
 const SuperAdmin = lazy(() => import("./pages/SuperAdmin"));
