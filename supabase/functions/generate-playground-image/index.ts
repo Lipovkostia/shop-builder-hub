@@ -149,6 +149,7 @@ Deno.serve(async (req) => {
     else if (durMatch) { model = durMatch[1]; durationSec = parseInt(durMatch[2], 10); }
 
     const isVideo = /^(kling|bytedance\/seedance|minimax\/hailuo|google\/veo)/.test(model);
+    const isVeo = model.startsWith("google/veo");
     const firstImage = images[0] ?? null;
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
@@ -158,12 +159,13 @@ Deno.serve(async (req) => {
     };
 
     if (isVideo) {
+      if (model.includes("image-to-video") && !firstImage) throw new Error("Для фото→видео нужно приложить изображение");
       if (durationSec) input.duration = String(durationSec);
-      input.aspect_ratio = aspect_ratio;
-      if (model.includes("image-to-video") && firstImage) input.image_url = firstImage;
+      if (model.includes("text-to-video") && model.startsWith("kling/")) input.aspect_ratio = aspect_ratio;
+      if (!isVeo && model.includes("image-to-video") && firstImage) input.image_url = firstImage;
       if (model.startsWith("kling/")) { input.cfg_scale = 0.5; input.negative_prompt = ""; }
       if (model.includes("bytedance/seedance")) input.resolution = "720p";
-      if (model.includes("minimax/hailuo")) input.resolution = "768P";
+      if (model.includes("minimax/hailuo")) { input.resolution = "768P"; input.prompt_optimizer = true; input.nsfw_checker = false; }
     } else {
       input.output_format = "png";
       input.aspect_ratio = aspect_ratio;
@@ -176,8 +178,22 @@ Deno.serve(async (req) => {
 
     let resultUrl: string;
     try {
-      const taskId = await kieCreateTask(model, input);
-      resultUrl = await kiePoll(taskId);
+      if (isVeo) {
+        const veoAspect = aspect_ratio === "9:16" ? "9:16" : aspect_ratio === "16:9" ? "16:9" : "Auto";
+        const veoInput: Record<string, unknown> = {
+          prompt: input.prompt,
+          model: "veo3_fast",
+          aspect_ratio: veoAspect,
+          enableTranslation: true,
+          generationType: firstImage ? "FIRST_AND_LAST_FRAMES_2_VIDEO" : "TEXT_2_VIDEO",
+        };
+        if (firstImage) veoInput.imageUrls = images.slice(0, 2);
+        const taskId = await kieCreateVeoTask(veoInput);
+        resultUrl = await kiePollVeo(taskId);
+      } else {
+        const taskId = await kieCreateTask(normalizeKieModelName(model), input);
+        resultUrl = await kiePoll(taskId);
+      }
     } catch (genErr: unknown) {
       return new Response(JSON.stringify({ error: genErr instanceof Error ? genErr.message : String(genErr) }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
