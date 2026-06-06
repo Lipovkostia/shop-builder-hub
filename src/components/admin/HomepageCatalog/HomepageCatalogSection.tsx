@@ -555,73 +555,228 @@ function ProductEditDialog({
 
 /* ============== Site parser dialog ============== */
 
+interface ParseJob {
+  id: string;
+  url: string;
+  host: string | null;
+  status: string; // starting | scraping | completed | failed | cancelled | stopped
+  total: number;
+  completed: number;
+  ingested: number;
+  duplicates: number;
+  last_error: string | null;
+  stop_requested: boolean;
+  started_at: string;
+  finished_at: string | null;
+}
+
+const ACTIVE_STATUSES = new Set(["starting", "scraping"]);
+
+async function callParser(action: string, payload: Record<string, unknown> = {}) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homepage-parse-site`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+  return json;
+}
+
+function statusLabel(s: string): { label: string; cls: string } {
+  switch (s) {
+    case "starting": return { label: "Запуск…", cls: "bg-blue-500/15 text-blue-600 border-blue-500/30" };
+    case "scraping": return { label: "Парсит", cls: "bg-amber-500/15 text-amber-600 border-amber-500/30" };
+    case "completed": return { label: "Готово", cls: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" };
+    case "failed": return { label: "Ошибка", cls: "bg-red-500/15 text-red-600 border-red-500/30" };
+    case "stopped": return { label: "Остановлен", cls: "bg-muted text-muted-foreground border-border" };
+    case "cancelled": return { label: "Отменён", cls: "bg-muted text-muted-foreground border-border" };
+    default: return { label: s, cls: "bg-muted text-muted-foreground border-border" };
+  }
+}
+
 function SiteParserDialog({
   open, onClose, onDone,
 }: { open: boolean; onClose: () => void; onDone: () => void }) {
   const { toast } = useToast();
   const [url, setUrl] = useState("https://streitsale.ru/");
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [starting, setStarting] = useState(false);
+  const [jobs, setJobs] = useState<ParseJob[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
-  const run = async () => {
-    setRunning(true);
-    setResult(null);
+  const refresh = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homepage-parse-site`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ url }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
-      setResult(json);
-      toast({
-        title: "Парсинг запущен",
-        description: json.message || `Найдено ${json.mapped} ссылок, обрабатывается ${json.to_scrape}. Товары появятся в каталоге по мере парсинга — обновите страницу через минуту.`,
-      });
+      const r = await callParser("status");
+      setJobs((r?.jobs || []) as ParseJob[]);
+      setLoaded(true);
+    } catch (_) { /* ignore polling errors */ }
+  };
+
+  // Poll while dialog open. Faster cadence if any job is active.
+  useEffect(() => {
+    if (!open) return;
+    refresh();
+    const t = setInterval(() => {
+      refresh();
+      // Notify parent so the products list refreshes during the crawl.
+      if (jobs.some((j) => ACTIVE_STATUSES.has(j.status))) onDone();
+    }, 3000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, jobs.length, jobs.map((j) => j.status).join(",")]);
+
+  const hasActive = jobs.some((j) => ACTIVE_STATUSES.has(j.status));
+
+  const start = async () => {
+    setStarting(true);
+    try {
+      const r = await callParser("start", { url });
+      toast({ title: "Парсинг запущен", description: r?.message || "Идёт в фоне." });
+      await refresh();
       onDone();
     } catch (e: any) {
       toast({ title: "Ошибка парсинга", description: e.message, variant: "destructive" });
     } finally {
-      setRunning(false);
+      setStarting(false);
     }
   };
 
+  const stop = async (jobId: string) => {
+    try {
+      await callParser("stop", { job_id: jobId });
+      toast({ title: "Останавливаем…", description: "Уже спарсенные товары сохранятся." });
+      setJobs((arr) => arr.map((j) => j.id === jobId ? { ...j, stop_requested: true } : j));
+    } catch (e: any) {
+      toast({ title: "Не удалось остановить", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const clearFinished = async () => {
+    try {
+      await callParser("clear_finished");
+      await refresh();
+    } catch (_) { /* ignore */ }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && !running && onClose()}>
-      <DialogContent className="max-w-lg">
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Парсинг сайта</DialogTitle>
           <DialogDescription>
-            Соберём ВСЕ найденные товары: название, фото, цену, описание и полную иерархию категорий (категория → подкатегория → подподкатегория). Дубли по ссылке пропускаются.
+            Соберём все товары: название, фото, цену, описание и иерархию категорий. Дубли по ссылке пропускаются. Парсинг идёт в фоне — можно закрыть окно.
           </DialogDescription>
         </DialogHeader>
+
         <div className="space-y-3 py-2">
           <div>
             <Label>URL сайта</Label>
-            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com" disabled={running} />
+            <div className="flex gap-2 mt-1">
+              <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com" disabled={starting} />
+              <Button onClick={start} disabled={starting || !url.trim()} className="gap-2 shrink-0">
+                {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+                Запустить
+              </Button>
+            </div>
             <div className="text-xs text-muted-foreground mt-1">
-              Без лимита — парсим всё, что найдём (до 5000 страниц за прогон). Большие сайты могут занять несколько минут.
+              До 5000 страниц за прогон. Можно запускать несколько сайтов одновременно.
             </div>
           </div>
-          {result && (
-            <div className="rounded-lg border bg-muted/50 p-3 text-xs space-y-1">
-              <div>Найдено ссылок на сайте: <b>{result.mapped}</b></div>
-              <div>В обработке: <b>{result.to_scrape}</b></div>
-              <div className="text-emerald-600">
-                ✓ Парсинг идёт в фоне. Закройте диалог и обновите список товаров через минуту.
-              </div>
+
+          <div className="border-t pt-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-semibold">Задачи парсинга</div>
+              {jobs.length > 0 && (
+                <Button size="sm" variant="ghost" onClick={clearFinished} className="h-7 text-xs">
+                  Очистить завершённые
+                </Button>
+              )}
             </div>
-          )}
+
+            {!loaded ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : jobs.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">Пока ни одного запуска.</p>
+            ) : (
+              <div className="space-y-2">
+                {jobs.map((j) => {
+                  const st = statusLabel(j.status);
+                  const isActive = ACTIVE_STATUSES.has(j.status);
+                  const pct = j.total > 0 ? Math.min(100, Math.round((j.completed / j.total) * 100)) : (isActive ? 5 : 0);
+                  return (
+                    <div key={j.id} className="rounded-lg border p-3 space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className={cn("text-[10px] h-5 px-1.5", st.cls)}>{st.label}</Badge>
+                        <span className="text-xs font-medium truncate flex-1 min-w-0">{j.host || j.url}</span>
+                        {isActive && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs gap-1"
+                            disabled={j.stop_requested}
+                            onClick={() => stop(j.id)}
+                          >
+                            <X className="h-3 w-3" />
+                            {j.stop_requested ? "Останавливаем…" : "Остановить"}
+                          </Button>
+                        )}
+                      </div>
+
+                      {isActive && (
+                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full bg-primary transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-4 gap-2 text-xs">
+                        <div>
+                          <div className="text-muted-foreground">Страниц</div>
+                          <div className="font-semibold">
+                            {j.completed}{j.total > 0 ? ` / ${j.total}` : ""}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Товаров</div>
+                          <div className="font-semibold text-emerald-600">{j.ingested}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Дубли</div>
+                          <div className="font-semibold">{j.duplicates}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Запущен</div>
+                          <div className="font-semibold">
+                            {new Date(j.started_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {j.last_error && (
+                        <div className="text-xs text-red-600 break-all">Ошибка: {j.last_error}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {hasActive && (
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Можно закрыть окно — парсинг продолжится в фоне. Товары появляются в каталоге по мере обработки.
+              </p>
+            )}
+          </div>
         </div>
+
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={running}>Закрыть</Button>
-          <Button onClick={run} disabled={running || !url.trim()} className="gap-2">
-            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
-            {running ? "Парсинг…" : "Запустить"}
-          </Button>
+          <Button variant="outline" onClick={onClose}>Закрыть</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
