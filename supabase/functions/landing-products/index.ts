@@ -15,14 +15,23 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get landing settings to find catalog access code
-    const { data: settings } = await supabase
-      .from("landing_settings")
-      .select("catalog_access_code")
-      .eq("id", "default")
-      .single();
+    // Get landing settings (access code + homepage version) and partners in parallel
+    const [{ data: settings }, { data: partnersData }] = await Promise.all([
+      supabase
+        .from("landing_settings")
+        .select("catalog_access_code, homepage_version")
+        .eq("id", "default")
+        .single(),
+      supabase
+        .from("landing_retail_partners")
+        .select("id, name, url, image_url, sort_order")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true }),
+    ]);
 
     const accessCode = settings?.catalog_access_code;
+    const homepageVersion = settings?.homepage_version || "new";
+    const partners = partnersData || [];
 
     if (accessCode) {
       // Fetch products and category hierarchy in parallel
