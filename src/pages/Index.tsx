@@ -23,7 +23,7 @@ export default function Index() {
   });
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/landing-products`)
+    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homepage-catalog`)
       .then((r) => r.json())
       .then((json) => {
         const v: Version = json?.homepage_version === "legacy" ? "legacy" : "new";
