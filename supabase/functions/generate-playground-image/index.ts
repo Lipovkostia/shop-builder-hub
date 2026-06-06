@@ -41,6 +41,60 @@ async function kieCreateTask(model: string, input: Record<string, unknown>): Pro
   return taskId;
 }
 
+function normalizeKieModelName(model: string): string {
+  const aliases: Record<string, string> = {
+    "kling/v2.5-turbo-pro/image-to-video": "kling/v2-5-turbo-image-to-video-pro",
+    "kling/v2.5-turbo-pro/text-to-video": "kling/v2-5-turbo-text-to-video-pro",
+    "bytedance/seedance-v1-lite-image-to-video": "bytedance/v1-lite-image-to-video",
+    "bytedance/seedance-v1-lite-text-to-video": "bytedance/v1-lite-text-to-video",
+    "bytedance/seedance-v1-pro-image-to-video": "bytedance/v1-pro-image-to-video",
+    "bytedance/seedance-v1-pro-text-to-video": "bytedance/v1-pro-text-to-video",
+    "minimax/hailuo-02-image-to-video": "hailuo/02-image-to-video-standard",
+    "minimax/hailuo-02-text-to-video": "hailuo/02-text-to-video-standard",
+  };
+  return aliases[model] ?? model;
+}
+
+async function kieCreateVeoTask(input: Record<string, unknown>): Promise<string> {
+  const res = await fetch(`${KIE_BASE}/api/v1/veo/generate`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${KIE_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`kie.ai veo generate ${res.status}: ${text.slice(0, 400)}`);
+  const json = JSON.parse(text);
+  if (json?.code && json.code !== 200) throw new Error(`kie.ai veo code=${json.code}: ${json?.msg ?? ""}`);
+  const taskId = json?.data?.taskId;
+  if (!taskId) throw new Error(`kie.ai veo: нет taskId`);
+  return taskId;
+}
+
+async function kiePollVeo(taskId: string, timeoutMs = 900_000): Promise<string> {
+  const started = Date.now();
+  let delay = 5000;
+  while (Date.now() - started < timeoutMs) {
+    const res = await fetch(`${KIE_BASE}/api/v1/veo/record-info?taskId=${encodeURIComponent(taskId)}`, {
+      headers: { Authorization: `Bearer ${KIE_API_KEY}` },
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`veo recordInfo ${res.status}: ${text.slice(0, 300)}`);
+    const json = JSON.parse(text);
+    if (json?.code && json.code !== 200) throw new Error(`kie.ai veo code=${json.code}: ${json?.msg ?? ""}`);
+    const data = json?.data;
+    if (data?.successFlag === 1) {
+      const urls = data?.response?.resultUrls ?? data?.response?.originUrls ?? data?.response?.fullResultUrls ?? [];
+      const arr = typeof urls === "string" ? [urls] : urls;
+      if (!arr.length) throw new Error("Пустой resultUrls");
+      return arr[0];
+    }
+    if (data?.successFlag === 2 || data?.successFlag === 3) throw new Error(data?.errorMessage ?? data?.errorCode ?? "Veo генерация не удалась");
+    await new Promise((r) => setTimeout(r, delay));
+    delay = Math.min(delay + 2000, 12000);
+  }
+  throw new Error("Veo: таймаут");
+}
+
 async function kiePoll(taskId: string, timeoutMs = 600_000): Promise<string> {
   const started = Date.now();
   let delay = 3000;
