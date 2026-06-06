@@ -182,7 +182,8 @@ const App = () => {
                     <Route path="/index" element={<Index />} />
                     <Route path="/index.html" element={<Index />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/auth" element={<Navigate to="/" replace />} />
+                    <Route path="/auth" element={<IndexLegacy />} />
+                    <Route path="/login" element={<IndexLegacy />} />
                     <Route path="/dashboard" element={<Navigate to="/" replace />} />
                     <Route path="/test-store" element={<TestStore />} />
                     <Route path="/admin" element={<AdminPanel />} />
