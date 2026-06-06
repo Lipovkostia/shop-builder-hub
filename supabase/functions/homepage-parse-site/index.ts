@@ -142,17 +142,33 @@ Deno.serve(async (req) => {
       required: ["is_product"],
     };
 
-    const crawlStart = await fetch(`${FIRECRAWL_V2}/crawl`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url, limit, maxDiscoveryDepth: 5, allowSubdomains: false, crawlEntireDomain: true,
-        scrapeOptions: { formats: [{ type: "json", schema }], onlyMainContent: true },
-      }),
-    });
-    const crawlJson = await crawlStart.json();
+    const crawlPayload = {
+      url, limit, maxDiscoveryDepth: 5, allowSubdomains: false, crawlEntireDomain: true,
+      scrapeOptions: { formats: [{ type: "json", schema }], onlyMainContent: true },
+    };
+    let crawlStart: Response | null = null;
+    let crawlJson: any = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      crawlStart = await fetch(`${FIRECRAWL_V2}/crawl`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify(crawlPayload),
+      });
+      crawlJson = await crawlStart.json().catch(() => ({}));
+      if (crawlStart.status !== 429) break;
+      const waitMs = Math.min(Math.max(retryDelayMs(crawlStart.headers, crawlJson) ?? 45_000, 10_000), 90_000);
+      await updateJob({
+        status: "waiting_rate_limit",
+        last_error: `Firecrawl временно ограничил запуск. Автоповтор через ${Math.ceil(waitMs / 1000)} сек.`,
+      });
+      if (attempt < 3) await sleep(waitMs + 1000);
+    }
+    if (!crawlStart) throw new Error("Firecrawl: request was not started");
     if (!crawlStart.ok) {
-      const msg = `Firecrawl crawl: ${crawlJson?.error || crawlStart.status}`;
+      const rawMsg = String(crawlJson?.error || crawlJson?.message || crawlStart.status);
+      const msg = crawlStart.status === 429
+        ? `Firecrawl сейчас упёрся в лимит запросов. Подождите минуту и нажмите «Запустить» ещё раз. Детали: ${rawMsg}`
+        : `Firecrawl crawl: ${rawMsg}`;
       await updateJob({ status: "failed", last_error: msg, finished_at: new Date().toISOString() });
       return json({ error: msg }, 500);
     }
