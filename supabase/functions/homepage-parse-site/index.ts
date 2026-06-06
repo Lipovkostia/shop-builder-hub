@@ -291,9 +291,20 @@ Deno.serve(async (req) => {
           let status = "scraping";
           let total = 0;
           let completed = 0;
+          let hitRateLimit = false;
           while (next) {
             const r: Response = await fetch(next, { headers: { Authorization: `Bearer ${firecrawlKey}` } });
-            const j: any = await r.json();
+            const j: any = await r.json().catch(() => ({}));
+            if (r.status === 429) {
+              const waitMs = Math.min(Math.max(retryDelayMs(r.headers, j) ?? 45_000, 10_000), 90_000);
+              hitRateLimit = true;
+              await updateProgress({
+                status: "waiting_rate_limit",
+                last_error: `Firecrawl временно ограничил проверку результата. Продолжим через ${Math.ceil(waitMs / 1000)} сек.`,
+              });
+              await sleep(waitMs + 1000);
+              break;
+            }
             if (!r.ok) { console.error("crawl poll error:", j); break; }
             status = j?.status || status;
             total = j?.total ?? total;
@@ -306,6 +317,7 @@ Deno.serve(async (req) => {
             next = j?.next || null;
             if (await isStopRequested()) break;
           }
+          if (hitRateLimit) continue;
           await updateProgress({ total, completed, status: status === "scraping" ? "scraping" : status });
 
           if (status === "completed" || status === "failed" || status === "cancelled") {
