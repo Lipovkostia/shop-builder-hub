@@ -14,12 +14,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const [
-      { data: settings },
-      { data: categoriesData },
-      { data: productsData },
-      { data: partnersData },
-    ] = await Promise.all([
+    const [settingsRes, categoriesRes, productsRes, partnersRes] = await Promise.all([
       supabase.from("landing_settings").select("homepage_version").eq("id", "default").maybeSingle(),
       supabase
         .from("homepage_categories")
@@ -38,6 +33,11 @@ Deno.serve(async (req) => {
         .eq("is_active", true)
         .order("sort_order", { ascending: true }),
     ]);
+
+    const settings = settingsRes.data;
+    const categoriesData = categoriesRes.data;
+    const productsData = productsRes.data;
+    const partnersData = partnersRes.data;
 
     const categories = (categoriesData || []).map((c: any) => ({
       id: c.id,
