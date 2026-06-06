@@ -559,7 +559,7 @@ interface ParseJob {
   id: string;
   url: string;
   host: string | null;
-  status: string; // starting | scraping | completed | failed | cancelled | stopped
+  status: string; // starting | waiting_rate_limit | scraping | completed | failed | cancelled | stopped
   total: number;
   completed: number;
   ingested: number;
@@ -570,7 +570,7 @@ interface ParseJob {
   finished_at: string | null;
 }
 
-const ACTIVE_STATUSES = new Set(["starting", "scraping"]);
+const ACTIVE_STATUSES = new Set(["starting", "waiting_rate_limit", "scraping"]);
 
 async function callParser(action: string, payload: Record<string, unknown> = {}) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -581,13 +581,20 @@ async function callParser(action: string, payload: Record<string, unknown> = {})
     body: JSON.stringify({ action, ...payload }),
   });
   const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+  if (!res.ok) {
+    const message = String(json?.error || `HTTP ${res.status}`);
+    if (res.status === 429 || /rate limit|req\/min|retry after|Firecrawl сейчас упёрся в лимит/i.test(message)) {
+      throw new Error("Firecrawl временно ограничил запросы. Я добавил авто-повторы: подождите около минуты и запустите ещё раз, либо остановите активные задачи.");
+    }
+    throw new Error(message);
+  }
   return json;
 }
 
 function statusLabel(s: string): { label: string; cls: string } {
   switch (s) {
     case "starting": return { label: "Запуск…", cls: "bg-blue-500/15 text-blue-600 border-blue-500/30" };
+    case "waiting_rate_limit": return { label: "Ждёт лимит", cls: "bg-orange-500/15 text-orange-600 border-orange-500/30" };
     case "scraping": return { label: "Парсит", cls: "bg-amber-500/15 text-amber-600 border-amber-500/30" };
     case "completed": return { label: "Готово", cls: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" };
     case "failed": return { label: "Ошибка", cls: "bg-red-500/15 text-red-600 border-red-500/30" };

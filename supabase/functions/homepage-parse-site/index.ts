@@ -23,6 +23,29 @@ function parsePrice(v: unknown): number | null {
   return isFinite(n) ? n : null;
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function retryDelayMs(headers: Headers, payload: any): number | null {
+  const retryAfter = headers.get("retry-after");
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds > 0) return seconds * 1000;
+    const dateMs = Date.parse(retryAfter);
+    if (Number.isFinite(dateMs)) return Math.max(0, dateMs - Date.now());
+  }
+  const text = `${payload?.error || ""} ${payload?.message || ""}`;
+  const secondsMatch = text.match(/retry after\s*(\d+)\s*s/i);
+  if (secondsMatch) return Number(secondsMatch[1]) * 1000;
+  const resetMatch = text.match(/resets at\s*(.+)$/i);
+  if (resetMatch) {
+    const resetMs = Date.parse(resetMatch[1]);
+    if (Number.isFinite(resetMs)) return Math.max(0, resetMs - Date.now());
+  }
+  return null;
+}
+
 function isMissingJobsTable(error: unknown): boolean {
   const e = error as { code?: string; message?: string } | null;
   return e?.code === "PGRST205" || /homepage_parse_jobs/i.test(e?.message || "");
@@ -119,17 +142,33 @@ Deno.serve(async (req) => {
       required: ["is_product"],
     };
 
-    const crawlStart = await fetch(`${FIRECRAWL_V2}/crawl`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url, limit, maxDiscoveryDepth: 5, allowSubdomains: false, crawlEntireDomain: true,
-        scrapeOptions: { formats: [{ type: "json", schema }], onlyMainContent: true },
-      }),
-    });
-    const crawlJson = await crawlStart.json();
+    const crawlPayload = {
+      url, limit, maxDiscoveryDepth: 5, allowSubdomains: false, crawlEntireDomain: true,
+      scrapeOptions: { formats: [{ type: "json", schema }], onlyMainContent: true },
+    };
+    let crawlStart: Response | null = null;
+    let crawlJson: any = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      crawlStart = await fetch(`${FIRECRAWL_V2}/crawl`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify(crawlPayload),
+      });
+      crawlJson = await crawlStart.json().catch(() => ({}));
+      if (crawlStart.status !== 429) break;
+      const waitMs = Math.min(Math.max(retryDelayMs(crawlStart.headers, crawlJson) ?? 45_000, 10_000), 90_000);
+      await updateJob({
+        status: "waiting_rate_limit",
+        last_error: `Firecrawl временно ограничил запуск. Автоповтор через ${Math.ceil(waitMs / 1000)} сек.`,
+      });
+      if (attempt < 3) await sleep(waitMs + 1000);
+    }
+    if (!crawlStart) throw new Error("Firecrawl: request was not started");
     if (!crawlStart.ok) {
-      const msg = `Firecrawl crawl: ${crawlJson?.error || crawlStart.status}`;
+      const rawMsg = String(crawlJson?.error || crawlJson?.message || crawlStart.status);
+      const msg = crawlStart.status === 429
+        ? `Firecrawl сейчас упёрся в лимит запросов. Подождите минуту и нажмите «Запустить» ещё раз. Детали: ${rawMsg}`
+        : `Firecrawl crawl: ${rawMsg}`;
       await updateJob({ status: "failed", last_error: msg, finished_at: new Date().toISOString() });
       return json({ error: msg }, 500);
     }
@@ -252,9 +291,20 @@ Deno.serve(async (req) => {
           let status = "scraping";
           let total = 0;
           let completed = 0;
+          let hitRateLimit = false;
           while (next) {
             const r: Response = await fetch(next, { headers: { Authorization: `Bearer ${firecrawlKey}` } });
-            const j: any = await r.json();
+            const j: any = await r.json().catch(() => ({}));
+            if (r.status === 429) {
+              const waitMs = Math.min(Math.max(retryDelayMs(r.headers, j) ?? 45_000, 10_000), 90_000);
+              hitRateLimit = true;
+              await updateProgress({
+                status: "waiting_rate_limit",
+                last_error: `Firecrawl временно ограничил проверку результата. Продолжим через ${Math.ceil(waitMs / 1000)} сек.`,
+              });
+              await sleep(waitMs + 1000);
+              break;
+            }
             if (!r.ok) { console.error("crawl poll error:", j); break; }
             status = j?.status || status;
             total = j?.total ?? total;
@@ -267,6 +317,7 @@ Deno.serve(async (req) => {
             next = j?.next || null;
             if (await isStopRequested()) break;
           }
+          if (hitRateLimit) continue;
           await updateProgress({ total, completed, status: status === "scraping" ? "scraping" : status });
 
           if (status === "completed" || status === "failed" || status === "cancelled") {
@@ -278,7 +329,7 @@ Deno.serve(async (req) => {
             console.log(`[parse-site] done ${host}: status=${status} ingested=${ingestedCount}`);
             return;
           }
-          await new Promise((res) => setTimeout(res, 5000));
+          await sleep(30_000);
         }
         await updateJob({
           status: "failed", last_error: "timeout (25 min)",
