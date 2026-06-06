@@ -270,28 +270,28 @@ Deno.serve(async (req) => {
           await updateProgress({ total, completed, status: status === "scraping" ? "scraping" : status });
 
           if (status === "completed" || status === "failed" || status === "cancelled") {
-            await supabase.from("homepage_parse_jobs").update({
+            await updateJob({
               status: status === "completed" ? "completed" : status,
               ingested: ingestedCount, duplicates: duplicatesCount, total, completed,
               finished_at: new Date().toISOString(),
-            }).eq("id", dbJobId);
+            });
             console.log(`[parse-site] done ${host}: status=${status} ingested=${ingestedCount}`);
             return;
           }
           await new Promise((res) => setTimeout(res, 5000));
         }
-        await supabase.from("homepage_parse_jobs").update({
+        await updateJob({
           status: "failed", last_error: "timeout (25 min)",
           ingested: ingestedCount, duplicates: duplicatesCount,
           finished_at: new Date().toISOString(),
-        }).eq("id", dbJobId);
+        });
       } catch (e: any) {
         console.error("background job failed:", e);
-        await supabase.from("homepage_parse_jobs").update({
+        await updateJob({
           status: "failed", last_error: String(e?.message || e),
           ingested: ingestedCount, duplicates: duplicatesCount,
           finished_at: new Date().toISOString(),
-        }).eq("id", dbJobId);
+        });
       }
     };
 
