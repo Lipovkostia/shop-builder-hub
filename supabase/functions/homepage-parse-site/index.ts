@@ -329,7 +329,7 @@ Deno.serve(async (req) => {
             console.log(`[parse-site] done ${host}: status=${status} ingested=${ingestedCount}`);
             return;
           }
-          await new Promise((res) => setTimeout(res, 5000));
+          await sleep(30_000);
         }
         await updateJob({
           status: "failed", last_error: "timeout (25 min)",
