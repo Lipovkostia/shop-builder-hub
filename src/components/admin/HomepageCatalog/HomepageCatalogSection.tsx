@@ -581,7 +581,13 @@ async function callParser(action: string, payload: Record<string, unknown> = {})
     body: JSON.stringify({ action, ...payload }),
   });
   const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+  if (!res.ok) {
+    const message = String(json?.error || `HTTP ${res.status}`);
+    if (res.status === 429 || /rate limit|req\/min|retry after|Firecrawl сейчас упёрся в лимит/i.test(message)) {
+      throw new Error("Firecrawl временно ограничил запросы. Я добавил авто-повторы: подождите около минуты и запустите ещё раз, либо остановите активные задачи.");
+    }
+    throw new Error(message);
+  }
   return json;
 }
 
