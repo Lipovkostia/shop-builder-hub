@@ -25,47 +25,74 @@ function parsePrice(v: unknown): number | null {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  // Auth: must be super_admin
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "");
+  if (!token) return json({ error: "Unauthorized" }, 401);
+  const { data: userData } = await supabase.auth.getUser(token);
+  const userId = userData?.user?.id;
+  if (!userId) return json({ error: "Unauthorized" }, 401);
+  const { data: roleOk } = await supabase.rpc("has_platform_role", { _user_id: userId, _role: "super_admin" });
+  if (!roleOk) return json({ error: "Forbidden" }, 403);
 
   try {
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const action: string = (body?.action || "start").toString();
+
+    if (action === "status") {
+      const { data } = await supabase
+        .from("homepage_parse_jobs")
+        .select("*")
+        .order("started_at", { ascending: false })
+        .limit(20);
+      return json({ jobs: data || [] });
+    }
+
+    if (action === "stop") {
+      const id = body?.job_id;
+      if (!id) return json({ error: "job_id required" }, 400);
+      await supabase.from("homepage_parse_jobs").update({ stop_requested: true }).eq("id", id);
+      return json({ ok: true });
+    }
+
+    if (action === "clear_finished") {
+      await supabase.from("homepage_parse_jobs").delete().in("status", ["completed", "failed", "cancelled", "stopped"]);
+      return json({ ok: true });
+    }
+
+    // === START ===
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
     if (!firecrawlKey) throw new Error("FIRECRAWL_API_KEY is not configured");
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-
-    const authHeader = req.headers.get("Authorization") || "";
-    const token = authHeader.replace(/^Bearer\s+/i, "");
-    if (!token) throw new Error("Unauthorized");
-    const { data: userData } = await supabase.auth.getUser(token);
-    const userId = userData?.user?.id;
-    if (!userId) throw new Error("Unauthorized");
-    const { data: roleOk } = await supabase.rpc("has_platform_role", {
-      _user_id: userId, _role: "super_admin",
-    });
-    if (!roleOk) throw new Error("Forbidden");
-
-    const body = await req.json().catch(() => ({}));
     const url: string = (body?.url || "").trim();
     const rawLimit = Number(body?.limit);
     const limit: number = rawLimit && rawLimit > 0 ? Math.floor(rawLimit) : 5000;
-    if (!url) throw new Error("url required");
-
+    if (!url) return json({ error: "url required" }, 400);
     const host = new URL(url).host;
+
+    // Create job row early so the UI can poll it immediately.
+    const { data: jobRow, error: jobErr } = await supabase
+      .from("homepage_parse_jobs")
+      .insert({ url, host, status: "starting", created_by: userId })
+      .select()
+      .single();
+    if (jobErr) throw jobErr;
+    const dbJobId: string = (jobRow as any).id;
 
     const schema = {
       type: "object",
       properties: {
-        is_product: { type: "boolean", description: "true только если это страница КОНКРЕТНОГО товара (не категория, не список, не статья)" },
-        name: { type: "string", description: "Название товара" },
-        category_path: {
-          type: "array", items: { type: "string" },
-          description: "Хлебные крошки категории от верхнего к нижнему, без названия товара",
-        },
+        is_product: { type: "boolean", description: "true только если это страница КОНКРЕТНОГО товара" },
+        name: { type: "string" },
+        category_path: { type: "array", items: { type: "string" } },
         category: { type: "string" },
-        image: { type: "string", description: "Главное фото товара (полный URL)" },
+        image: { type: "string" },
         images: { type: "array", items: { type: "string" } },
         description: { type: "string" },
         price: { type: "number" },
@@ -74,28 +101,34 @@ Deno.serve(async (req) => {
       required: ["is_product"],
     };
 
-    // 1. Запускаем асинхронный crawl — Firecrawl сам обойдёт все ссылки внутри сайта.
     const crawlStart = await fetch(`${FIRECRAWL_V2}/crawl`, {
       method: "POST",
       headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        url,
-        limit,
-        maxDiscoveryDepth: 5,
-        allowSubdomains: false,
-        crawlEntireDomain: true,
-        scrapeOptions: {
-          formats: [{ type: "json", schema }],
-          onlyMainContent: true,
-        },
+        url, limit, maxDiscoveryDepth: 5, allowSubdomains: false, crawlEntireDomain: true,
+        scrapeOptions: { formats: [{ type: "json", schema }], onlyMainContent: true },
       }),
     });
     const crawlJson = await crawlStart.json();
-    if (!crawlStart.ok) throw new Error(`Firecrawl crawl: ${crawlJson?.error || crawlStart.status}`);
-    const jobId: string | undefined = crawlJson?.id || crawlJson?.data?.id;
-    if (!jobId) throw new Error("Firecrawl: no crawl job id");
+    if (!crawlStart.ok) {
+      const msg = `Firecrawl crawl: ${crawlJson?.error || crawlStart.status}`;
+      await supabase.from("homepage_parse_jobs")
+        .update({ status: "failed", last_error: msg, finished_at: new Date().toISOString() })
+        .eq("id", dbJobId);
+      return json({ error: msg }, 500);
+    }
+    const firecrawlJobId: string | undefined = crawlJson?.id || crawlJson?.data?.id;
+    if (!firecrawlJobId) {
+      await supabase.from("homepage_parse_jobs")
+        .update({ status: "failed", last_error: "no crawl job id", finished_at: new Date().toISOString() })
+        .eq("id", dbJobId);
+      return json({ error: "Firecrawl: no crawl job id" }, 500);
+    }
+    await supabase.from("homepage_parse_jobs")
+      .update({ firecrawl_job_id: firecrawlJobId, status: "scraping" })
+      .eq("id", dbJobId);
 
-    // Категории кеш
+    // Background processing
     const catIdByKey = new Map<string, string>();
     async function ensureCategory(path: string[]): Promise<string | null> {
       const clean = path.map((s) => s.trim()).filter((s) => s && s.length < 120);
@@ -124,20 +157,20 @@ Deno.serve(async (req) => {
     }
 
     const seen = new Set<string>();
+    let ingestedCount = 0;
+    let duplicatesCount = 0;
 
     async function ingestDoc(doc: any) {
       const srcUrl: string = doc?.metadata?.sourceURL || doc?.metadata?.url || doc?.url || "";
       if (!srcUrl || seen.has(srcUrl)) return;
       const ex = doc?.json || doc?.extract || doc?.data?.json || null;
       if (!ex) return;
-      // фильтруем: только товары
       if (ex.is_product !== true || !ex.name) return;
       seen.add(srcUrl);
 
-      // дубль по source_url
       const { data: exist } = await supabase
         .from("homepage_products").select("id").eq("source_url", srcUrl).limit(1);
-      if (exist && exist[0]) return;
+      if (exist && exist[0]) { duplicatesCount++; return; }
 
       const path: string[] = Array.isArray(ex.category_path) && ex.category_path.length
         ? ex.category_path : (ex.category ? [ex.category] : []);
@@ -147,7 +180,7 @@ Deno.serve(async (req) => {
       const extra = Array.isArray(ex.images) ? ex.images.map((x: string) => absoluteUrl(x, srcUrl)) : [];
       const allImages = Array.from(new Set([mainImg, ...extra].filter(Boolean) as string[]));
 
-      await supabase.from("homepage_products").insert({
+      const { error: insErr } = await supabase.from("homepage_products").insert({
         name: String(ex.name).trim().slice(0, 500),
         description: typeof ex.description === "string" ? ex.description.slice(0, 2000) : null,
         image_url: mainImg,
@@ -160,65 +193,116 @@ Deno.serve(async (req) => {
         source_site: host,
         is_active: true,
       });
+      if (!insErr) ingestedCount++;
+    }
+
+    async function isStopRequested(): Promise<boolean> {
+      const { data } = await supabase
+        .from("homepage_parse_jobs").select("stop_requested").eq("id", dbJobId).maybeSingle();
+      return !!(data as any)?.stop_requested;
+    }
+
+    async function updateProgress(extra: Record<string, unknown> = {}) {
+      await supabase.from("homepage_parse_jobs").update({
+        ingested: ingestedCount,
+        duplicates: duplicatesCount,
+        ...extra,
+      }).eq("id", dbJobId);
+    }
+
+    async function cancelFirecrawl() {
+      try {
+        await fetch(`${FIRECRAWL_V2}/crawl/${firecrawlJobId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${firecrawlKey}` },
+        });
+      } catch (_) { /* ignore */ }
     }
 
     const backgroundJob = async () => {
       const startedAt = Date.now();
-      const maxMs = 25 * 60 * 1000; // 25 минут
-      let lastTotal = 0;
-
-      while (Date.now() - startedAt < maxMs) {
-        let next: string | null = `${FIRECRAWL_V2}/crawl/${jobId}`;
-        let pages = 0;
-        let status = "scraping";
-        let total = 0;
-        let completed = 0;
-        while (next) {
-          const r: Response = await fetch(next, {
-            headers: { Authorization: `Bearer ${firecrawlKey}` },
-          });
-          const j: any = await r.json();
-          if (!r.ok) { console.error("crawl poll error:", j); break; }
-          status = j?.status || status;
-          total = j?.total ?? total;
-          completed = j?.completed ?? completed;
-          const docs: any[] = j?.data || [];
-          for (const d of docs) {
-            await ingestDoc(d);
-            pages++;
+      const maxMs = 25 * 60 * 1000;
+      try {
+        while (Date.now() - startedAt < maxMs) {
+          if (await isStopRequested()) {
+            await cancelFirecrawl();
+            await supabase.from("homepage_parse_jobs").update({
+              status: "stopped", ingested: ingestedCount, duplicates: duplicatesCount,
+              finished_at: new Date().toISOString(),
+            }).eq("id", dbJobId);
+            console.log(`[parse-site] stopped by user. ingested=${ingestedCount}`);
+            return;
           }
-          next = j?.next || null;
+
+          let next: string | null = `${FIRECRAWL_V2}/crawl/${firecrawlJobId}`;
+          let status = "scraping";
+          let total = 0;
+          let completed = 0;
+          while (next) {
+            const r: Response = await fetch(next, { headers: { Authorization: `Bearer ${firecrawlKey}` } });
+            const j: any = await r.json();
+            if (!r.ok) { console.error("crawl poll error:", j); break; }
+            status = j?.status || status;
+            total = j?.total ?? total;
+            completed = j?.completed ?? completed;
+            const docs: any[] = j?.data || [];
+            for (const d of docs) {
+              if (await isStopRequested()) break;
+              await ingestDoc(d);
+            }
+            next = j?.next || null;
+            if (await isStopRequested()) break;
+          }
+          await updateProgress({ total, completed, status: status === "scraping" ? "scraping" : status });
+
+          if (status === "completed" || status === "failed" || status === "cancelled") {
+            await supabase.from("homepage_parse_jobs").update({
+              status: status === "completed" ? "completed" : status,
+              ingested: ingestedCount, duplicates: duplicatesCount, total, completed,
+              finished_at: new Date().toISOString(),
+            }).eq("id", dbJobId);
+            console.log(`[parse-site] done ${host}: status=${status} ingested=${ingestedCount}`);
+            return;
+          }
+          await new Promise((res) => setTimeout(res, 5000));
         }
-        if (pages !== lastTotal) {
-          console.log(`[parse-site] crawl ${jobId}: ${completed}/${total} status=${status} ingested=${seen.size}`);
-          lastTotal = pages;
-        }
-        if (status === "completed" || status === "failed" || status === "cancelled") break;
-        await new Promise((res) => setTimeout(res, 5000));
+        await supabase.from("homepage_parse_jobs").update({
+          status: "failed", last_error: "timeout (25 min)",
+          ingested: ingestedCount, duplicates: duplicatesCount,
+          finished_at: new Date().toISOString(),
+        }).eq("id", dbJobId);
+      } catch (e: any) {
+        console.error("background job failed:", e);
+        await supabase.from("homepage_parse_jobs").update({
+          status: "failed", last_error: String(e?.message || e),
+          ingested: ingestedCount, duplicates: duplicatesCount,
+          finished_at: new Date().toISOString(),
+        }).eq("id", dbJobId);
       }
-      console.log(`[parse-site] done ${host}: ingested ${seen.size} products`);
     };
 
     // @ts-ignore
     if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
       // @ts-ignore
-      EdgeRuntime.waitUntil(backgroundJob().catch((e) => console.error("background job failed:", e)));
+      EdgeRuntime.waitUntil(backgroundJob());
     } else {
-      backgroundJob().catch((e) => console.error("background job failed:", e));
+      backgroundJob();
     }
 
-    return new Response(JSON.stringify({
-      ok: true,
-      started: true,
-      job_id: jobId,
-      message: `Запущен полный обход сайта ${host} (до ${limit} страниц). Товары появятся в каталоге по мере обработки — обновите страницу через 1–3 минуты.`,
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return json({
+      ok: true, started: true, job_id: dbJobId, firecrawl_job_id: firecrawlJobId,
+      message: `Запущен полный обход сайта ${host} (до ${limit} страниц).`,
+    });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     console.error("homepage-parse-site error:", e);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: msg }, 500);
   }
 });
+
+function json(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
