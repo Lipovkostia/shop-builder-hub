@@ -26,7 +26,7 @@ export default function RetailPartnersManager() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("landing_retail_partners")
       .select("*")
       .order("sort_order", { ascending: true });
@@ -39,7 +39,7 @@ export default function RetailPartnersManager() {
 
   const addNew = async () => {
     const maxOrder = partners.reduce((m, p) => Math.max(m, p.sort_order), -1);
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("landing_retail_partners")
       .insert({ name: "Новый партнёр", url: "https://", sort_order: maxOrder + 1, is_active: true })
       .select()
