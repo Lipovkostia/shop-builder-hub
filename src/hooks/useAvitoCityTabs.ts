@@ -46,18 +46,16 @@ export function useAvitoCityTabs(storeId: string | null) {
       if (error) throw error;
       let list = (data || []) as AvitoCityTab[];
 
-      // Если вкладок нет — создаём дефолтную автоматом.
       if (list.length === 0) {
-        const { data: created, error: cErr } = await (supabase as any)
+        const { data: created } = await (supabase as any)
           .from("avito_city_tabs")
           .insert({ store_id: storeId, name: "Основная", markup_percent: 0, is_default: true, sort_order: 0 })
           .select()
           .single();
-        if (!cErr && created) list = [created as AvitoCityTab];
+        if (created) list = [created as AvitoCityTab];
       }
 
       setTabs(list);
-
       const saved = localStorage.getItem(ACTIVE_KEY(storeId));
       const active = list.find((t) => t.id === saved) || list[0];
       setActiveTabIdState(active?.id || null);
@@ -98,17 +96,16 @@ export function useAvitoCityTabs(storeId: string | null) {
         if (error) throw error;
         const newTab = created as AvitoCityTab;
 
-        // Дублирование карточек из исходной вкладки
+        // Дублируем все карточки из исходной вкладки
         if (input.sourceTabId) {
           const { data: src } = await (supabase as any)
-            .from("avito_city_listings")
-            .select("*")
+            .from("avito_feed_products")
+            .select("product_id, avito_params, group_id, photo_order")
             .eq("tab_id", input.sourceTabId);
-          const sourceListings = (src || []) as any[];
+          const sourceRows = (src || []) as any[];
 
-          if (sourceListings.length > 0) {
-            // Подтянем оригинальные продукты для title/description/price
-            const pids = sourceListings.map((l) => l.product_id);
+          if (sourceRows.length > 0) {
+            const pids = sourceRows.map((r) => r.product_id);
             const { data: prods } = await (supabase as any)
               .from("products")
               .select("id, name, description, price")
@@ -116,33 +113,35 @@ export function useAvitoCityTabs(storeId: string | null) {
             const prodMap = new Map((prods || []).map((p: any) => [p.id, p]));
 
             const city = newTab.city || newTab.name;
-            const rows = sourceListings.map((l) => {
-              const p: any = prodMap.get(l.product_id) || {};
-              const baseTitle = l.title_override || p.name || "";
-              const baseDesc = l.description_override || p.description || "";
-              const basePrice =
-                l.price_override != null ? Number(l.price_override) : Number(p.price) || 0;
-              const seed = `${newTab.id}:${l.product_id}`;
+            const rows = sourceRows.map((r) => {
+              const p: any = prodMap.get(r.product_id) || {};
+              const params = (r.avito_params && typeof r.avito_params === "object") ? { ...r.avito_params } : {};
+              const baseTitle = params.title || p.name || "";
+              const baseDesc = params.description || p.description || "";
+              const basePrice = Number(params.Price ?? params.price ?? p.price ?? 0);
+              const seed = `${newTab.id}:${r.product_id}`;
+
+              params.title = uniqueifyTitle(baseTitle, city, seed);
+              params.description = uniqueifyDescription(baseDesc, city, seed);
+              params.Price = applyMarkup(basePrice, newTab.markup_percent);
+              if (newTab.address) params.Address = newTab.address;
+
               return {
-                tab_id: newTab.id,
                 store_id: storeId,
-                product_id: l.product_id,
-                title_override: uniqueifyTitle(baseTitle, city, seed),
-                description_override: uniqueifyDescription(baseDesc, city, seed),
-                price_override: applyMarkup(basePrice, newTab.markup_percent),
-                photo_order: l.photo_order
-                  ? [...(l.photo_order as number[]).slice(1), (l.photo_order as number[])[0]]
+                tab_id: newTab.id,
+                product_id: r.product_id,
+                avito_params: params,
+                group_id: r.group_id || null,
+                photo_order: r.photo_order
+                  ? [...(r.photo_order as number[]).slice(1), (r.photo_order as number[])[0]]
                   : null,
-                avito_params: l.avito_params || null,
-                group_id: l.group_id || null,
               };
             });
 
-            // Чанками по 200
             for (let i = 0; i < rows.length; i += 200) {
               const chunk = rows.slice(i, i + 200);
               const { error: insErr } = await (supabase as any)
-                .from("avito_city_listings")
+                .from("avito_feed_products")
                 .insert(chunk);
               if (insErr) throw insErr;
             }
