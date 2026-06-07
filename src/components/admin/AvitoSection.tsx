@@ -99,6 +99,15 @@ interface AvitoSectionProps {
     assignGroup?: (productIds: string[], groupId: string | null) => Promise<void>;
     refetch: () => Promise<void>;
   };
+  cityTabs?: {
+    tabs: any[];
+    activeTab: any;
+    activeTabId: string | null;
+    setActiveTabId: (id: string) => void;
+    createTab: (input: any) => Promise<any>;
+    updateTab: (id: string, patch: any) => Promise<void>;
+    deleteTab: (id: string) => Promise<void>;
+  };
 }
 
 // Inline editable cell component
