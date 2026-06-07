@@ -114,7 +114,10 @@ Deno.serve(async (req) => {
       const params = (fp.avito_params && typeof fp.avito_params === 'object') ? fp.avito_params : {};
       if (params.excluded_from_feed === true) { skippedExcluded++; continue; }
 
-      const id = product.id.substring(0, 8);
+      // ID должен быть уникальным в рамках Avito-аккаунта. Чтобы карточки одного товара
+      // в разных вкладках-городах не считались дублями, добавляем к ID суффикс вкладки.
+      const tabSuffix = fp.tab_id ? `-${String(fp.tab_id).replace(/-/g, '').substring(0, 6)}` : '';
+      const id = product.id.substring(0, 8) + tabSuffix;
       const title = escapeXml(params.title || product.name || "Товар");
       const description = escapeXml(params.description || product.description || product.name || "");
       const price = params.Price || params.price || product.price || 0;
