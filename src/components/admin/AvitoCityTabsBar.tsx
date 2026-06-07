@@ -75,15 +75,18 @@ export function AvitoCityTabsBar({ tabs, activeTabId, onSelect, onCreate, onUpda
 
   return (
     <>
-      <div className="flex items-center gap-1 mb-3 flex-wrap border-b border-border pb-2">
+      <div className="flex items-center gap-2 mb-3 flex-wrap rounded-lg border border-primary/30 bg-primary/5 p-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-primary/80 px-2">
+          Города
+        </span>
         {tabs.map((t) => (
           <div
             key={t.id}
             className={cn(
               "group relative flex items-center rounded-md transition-colors",
               t.id === activeTabId
-                ? "bg-primary/10 text-primary border border-primary/40"
-                : "hover:bg-muted",
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "bg-background hover:bg-muted border border-border",
             )}
           >
             <button
@@ -93,12 +96,12 @@ export function AvitoCityTabsBar({ tabs, activeTabId, onSelect, onCreate, onUpda
               <MapPin className="h-3.5 w-3.5" />
               {t.name}
               {t.markup_percent > 0 && (
-                <span className="text-xs opacity-70">+{t.markup_percent}%</span>
+                <span className="text-xs opacity-80">+{t.markup_percent}%</span>
               )}
             </button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="px-1.5 py-1.5 opacity-50 group-hover:opacity-100">
+                <button className="px-1.5 py-1.5 opacity-60 group-hover:opacity-100">
                   <MoreVertical className="h-3.5 w-3.5" />
                 </button>
               </DropdownMenuTrigger>
@@ -123,10 +126,16 @@ export function AvitoCityTabsBar({ tabs, activeTabId, onSelect, onCreate, onUpda
             </DropdownMenu>
           </div>
         ))}
-        <Button size="sm" variant="ghost" onClick={openCreate} className="ml-1">
-          <Plus className="h-4 w-4" /> Новая вкладка
+        <Button
+          size="sm"
+          onClick={openCreate}
+          className="ml-auto gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+        >
+          <Plus className="h-4 w-4" />
+          Новая вкладка-город
         </Button>
       </div>
+
 
       {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

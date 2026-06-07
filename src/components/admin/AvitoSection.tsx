@@ -2050,7 +2050,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       {/* Validation: detect issues per feed product */}
       {(() => null)()}
 
-      {cityTabs && cityTabs.tabs.length > 0 && (
+      {cityTabs && (
         <AvitoCityTabsBar
           tabs={cityTabs.tabs}
           activeTabId={cityTabs.activeTabId}
