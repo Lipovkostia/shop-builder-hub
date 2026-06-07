@@ -90,11 +90,12 @@ export function useAvitoFeedProducts(storeId: string | null, activeTabId: string
     if (!storeId) return;
     setLoading(true);
     try {
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from("avito_feed_products")
         .select("*")
-        .eq("store_id", storeId)
-        .order("created_at", { ascending: false });
+        .eq("store_id", storeId);
+      if (activeTabId) query = query.eq("tab_id", activeTabId);
+      const { data, error } = await query.order("created_at", { ascending: false });
       if (error) throw error;
       setFeedProducts((data || []) as AvitoFeedProduct[]);
     } catch (err: any) {
@@ -102,7 +103,7 @@ export function useAvitoFeedProducts(storeId: string | null, activeTabId: string
     } finally {
       setLoading(false);
     }
-  }, [storeId]);
+  }, [storeId, activeTabId]);
 
   useEffect(() => {
     fetchFeedProducts();
