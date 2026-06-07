@@ -120,6 +120,7 @@ export function useAvitoFeedProducts(storeId: string | null, activeTabId: string
       }
       const rows = newIds.map(pid => ({
         store_id: storeId,
+        tab_id: activeTabId || null,
         product_id: pid,
         ...(priceMap && priceMap[pid] ? { avito_params: { Price: priceMap[pid] } } : {}),
       }));
