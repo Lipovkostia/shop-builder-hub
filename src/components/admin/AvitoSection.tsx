@@ -2050,6 +2050,17 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       {/* Validation: detect issues per feed product */}
       {(() => null)()}
 
+      {cityTabs && cityTabs.tabs.length > 0 && (
+        <AvitoCityTabsBar
+          tabs={cityTabs.tabs}
+          activeTabId={cityTabs.activeTabId}
+          onSelect={cityTabs.setActiveTabId}
+          onCreate={cityTabs.createTab}
+          onUpdate={cityTabs.updateTab}
+          onDelete={cityTabs.deleteTab}
+        />
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="feed">Товары для Авито ({avitoFeed?.feedProducts.length || 0})</TabsTrigger>
