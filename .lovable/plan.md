@@ -1,54 +1,62 @@
-## Цель
-Сделать отдельный пул товаров «для главной страницы», независимый от Ассортимента. Управление в админке такое же, как у Ассортимента (категории, CRUD, поиск, скрытие). Товары попадают туда напрямую — в том числе через парсинг внешних сайтов (первый — `streitsale.ru`). Главная страница (новая витрина) показывает именно эти товары.
+## Что добавляем
 
-## База данных
-Две новые таблицы, полностью независимые от `products` / `categories`:
+Внутри раздела «Авито» появятся **вкладки-города**. Слева, рядом с текущей единственной вкладкой «Товары для Авито», будет «+ Добавить вкладку». Каждая новая вкладка — это отдельный, независимый набор объявлений (карточек) под конкретный город, со своим адресом, своей наценкой и своими title/описаниями.
 
-- `homepage_categories` — `id, name, slug, parent_id, sort_order, image_url, is_active, created_at`
-- `homepage_products` — `id, name, description, image_url, images text[], category_id, source_url, source_site, sku, sort_order, is_active, created_at, updated_at`
+```
+┌──────────────────────────────────────────────────────────────┐
+│ [Москва] [Санкт-Петербург] [+ Новая вкладка]   Ошибки  Актив. │
+└──────────────────────────────────────────────────────────────┘
+        ↑ активная: своя таблица карточек, своя наценка, свой адрес
+```
 
-Публичный доступ на чтение (anon `SELECT` для активных), запись — только `service_role` (используем edge-функции и админ-UI через service role). RLS + GRANT по правилам проекта.
+## Поведение
 
-## Edge-функции
-1. `homepage-catalog` (public GET) — возвращает `{ categories, products, partners, homepage_version }`. Заменяет источник для `IndexNew`. Старая `landing-products` остаётся для совместимости.
-2. `homepage-admin` (POST, требует SuperAdmin) — CRUD-операции над `homepage_products` и `homepage_categories` (create / update / delete / bulk-toggle / reorder).
-3. `homepage-parse-site` (POST, SuperAdmin) — принимает `{ url }`, через Firecrawl (`map` + `scrape` со схемой JSON) вытаскивает товары: имя, картинка, категория, описание, ссылка. Создаёт недостающие категории (по названию из крошек/секции сайта), вставляет товары пачкой. Возвращает сводку: сколько добавлено, сколько пропущено как дубликаты (по `source_url`).
-
-Firecrawl уже подключён (`FIRECRAWL_API_KEY` есть).
-
-## Админка (SuperAdmin → новая вкладка «Главная страница»)
-Текущая вкладка «Главная» становится подразделом «Настройки» (версия + партнёры). Новая вкладка `homepage-catalog` содержит:
-
-- **Парсер сайта** — поле URL + кнопка «Спарсить», прогресс, лог результата. Первый запуск — `https://streitsale.ru/` (запустим сразу после деплоя).
-- **Категории** — дерево с drag-sort, добавить / переименовать / удалить, скрыть.
-- **Товары** — таблица как в Ассортименте: поиск, фильтр по категории, чек-боксы, массовые действия (скрыть / удалить / переместить в категорию). Карточка товара — редактирование имени, описания, картинки (загрузка в bucket `product-images` или внешняя ссылка), категории, статуса.
-- Кнопка «Добавить товар вручную».
-
-UI повторяет паттерны существующих компонентов (`ProductCard`, `WholesaleCategorySidebar`) для единообразия.
-
-## Витрина (`IndexNew`)
-Источник данных переключается с `landing-products` на `homepage-catalog`. Формат полей совпадает — изменений в рендере минимум. Кэш-ключ обновляется (`homepage_cache_v1`).
-
-## Парсинг streitsale.ru
-Сразу после применения миграции вызываем `homepage-parse-site` для `https://streitsale.ru/`. Firecrawl `map` собирает ссылки на товары, `scrape` с JSON-схемой `{ name, price?, image, category, description }` вынимает данные. Категории создаются автоматически из поля `category`. Цены не сохраняем (на главной без цен — как было решено). Картинки храним как внешние URL (не качаем в bucket, чтобы не плодить трафик; bucket — только для ручных загрузок).
-
-## Что НЕ делаем
-- Не трогаем таблицу `products`, `categories`, не ломаем Ассортимент.
-- Не трогаем `/retail/*`, `/wholesale/*`.
-- Не показываем цены на главной.
-- Старый `IndexLegacy` остаётся доступным через переключатель версии.
+1. **Создание вкладки.** Кнопка «+» открывает модалку: «Название вкладки» (по умолчанию пусто, placeholder «Укажите город, например: Санкт-Петербург»), «Адрес/город для Авито», «Наценка, %» (по умолчанию 30).
+2. **Автодублирование.** При создании вкладки все карточки текущей активной вкладки копируются в новую:
+   - цены = исходные × (1 + наценка%)
+   - title уникализируется простыми правилами: добавление города в конец/начало, лёгкая перестановка слов («Свежий X» → «X свежий», добавление эпитета из словаря);
+   - description: убираем/добавляем пару вводных фраз, меняем порядок 1–2 предложений, добавляем абзац «Доставка по {город}»;
+   - порядок фото: первое фото сдвигается на 2-ю позицию (можно потом руками поменять);
+   - всё остальное (категория, параметры Авито, группа) копируется как есть.
+3. **Независимость.** Дальше карточки живут отдельно: правка title/описания/цены/порядка фото в одной вкладке не влияет на другие. Пул фото общий (по `product_id` товара из ассортимента), но каждая карточка хранит свой `photo_order` (массив индексов).
+4. **Синхронизация.** Текущая выгрузка в Google Sheets / фид avito-feed теперь работает в контексте активной вкладки — выгружается только её содержимое. Каждая вкладка может иметь свою связанную Google-таблицу (опционально), либо общий лист с колонкой «Город». На первом шаге — отдельная таблица на вкладку.
+5. **Удаление/переименование вкладки** — контекстное меню на названии вкладки.
 
 ## Технические детали
-- Миграция: `supabase/migrations/20260606130000_homepage_catalog.sql`.
-- Новые файлы:
-  - `supabase/functions/homepage-catalog/index.ts`
-  - `supabase/functions/homepage-admin/index.ts`
-  - `supabase/functions/homepage-parse-site/index.ts`
-  - `src/components/admin/HomepageCatalog/HomepageCatalogSection.tsx` (root)
-  - `src/components/admin/HomepageCatalog/HomepageCategoriesPanel.tsx`
-  - `src/components/admin/HomepageCatalog/HomepageProductsTable.tsx`
-  - `src/components/admin/HomepageCatalog/HomepageProductEditDialog.tsx`
-  - `src/components/admin/HomepageCatalog/HomepageSiteParserDialog.tsx`
-  - `src/hooks/useHomepageCatalog.ts`
-- Изменяем: `src/pages/SuperAdmin.tsx` (новая вкладка), `src/pages/IndexNew.tsx` (источник).
-- TS-типы для новых таблиц — через `(supabase as any)` до автогенерации `types.ts`.
+
+**Новые таблицы (одна миграция):**
+
+- `avito_city_tabs`
+  - `id uuid pk`, `store_id uuid`, `name text`, `city text`, `address text`, `markup_percent numeric default 30`, `is_default boolean`, `sort_order int`, `spreadsheet_id text`, `spreadsheet_url text`, `created_at`, `updated_at`
+- `avito_city_listings` (карточка внутри вкладки)
+  - `id uuid pk`, `tab_id uuid fk → avito_city_tabs`, `store_id uuid`, `product_id uuid fk → products`, `title_override text`, `description_override text`, `price_override numeric`, `photo_order int[]`, `avito_params jsonb`, `group_id uuid null`, `created_at`, `updated_at`
+  - уникальность `(tab_id, product_id)`
+
+GRANTs на обе таблицы (anon — нет, authenticated/service_role — да), RLS через `is_store_owner(store_id, auth.uid())`.
+
+**Миграция данных.** При первом открытии (или сразу в миграции) для каждого store, у которого есть `avito_feed_products`, создаём дефолтную вкладку «Основная» (markup 0%, адрес из `avito_accounts.feed_defaults.address`) и переносим существующие записи в `avito_city_listings`. Старая таблица `avito_feed_products` остаётся как fallback на время, но UI читает только из новой.
+
+**UI-изменения (`AvitoSection.tsx` + новый `useAvitoCityTabs.ts`):**
+
+- Новый хук `useAvitoCityTabs(storeId)`: список вкладок, активная вкладка (persist в localStorage), CRUD, дублирование, обновление наценки.
+- Новый хук `useAvitoCityListings(tabId)`: то же, что текущий `useAvitoFeedProducts`, но с per-tab данными и полями override.
+- В `AvitoSection.tsx` рядом с `TabsList` для feed/errors/active добавляется горизонтальная полоска вкладок-городов (отдельный компонент `<AvitoCityTabsBar />`). Контент вкладки feed целиком работает с активной city-tab.
+- Диалог создания вкладки: `<AvitoCityTabDialog />` — поля name/city/address/markup%, кнопка «Создать и скопировать карточки».
+
+**Уникализация (frontend, без AI):**
+- Функции `uniqueifyTitle(title, city, seed)` и `uniqueifyDescription(desc, city, seed)` в `src/lib/avitoUniqueify.ts`. Детерминированно (seed = product_id+tab_id), чтобы повторный вызов давал тот же текст.
+
+**Edge-функции.** Минимальные правки:
+- `avito-feed/index.ts`: принимает `?tab_id=` (если не передан — дефолтная вкладка), отдаёт листинги из `avito_city_listings` с применёнными override.
+- `avito-sheets-sync/index.ts`: работает с `tab_id`, читает spreadsheet_id из `avito_city_tabs`.
+
+**Что не меняем сейчас:** Avito API publishing endpoint, фото-студию, бот, ошибки/активные объявления (вкладки errors/active — общие по магазину, как сейчас).
+
+## Объём
+
+- 1 миграция (2 таблицы + GRANTs + RLS + перенос данных)
+- 2 новых хука (~200 строк)
+- 2 новых компонента (полоса вкладок + диалог)
+- Точечная правка `AvitoSection.tsx`: заменить `avitoFeed.feedProducts` на `cityListings`, добавить полосу вкладок сверху
+- Правки 2 edge-функций
+- 1 утилита уникализации

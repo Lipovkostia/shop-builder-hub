@@ -37,6 +37,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Product } from "./types";
 import { AvitoImageEditor } from "./AvitoImageEditor";
 import { AvitoFeedProduct, AvitoDefaults } from "@/hooks/useAvitoFeedProducts";
+import { AvitoCityTabsBar } from "./AvitoCityTabsBar";
 import { StoreCategory } from "@/hooks/useStoreCategories";
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
@@ -98,6 +99,15 @@ interface AvitoSectionProps {
     updateProductParams: (productId: string, params: any) => Promise<void>;
     assignGroup?: (productIds: string[], groupId: string | null) => Promise<void>;
     refetch: () => Promise<void>;
+  };
+  cityTabs?: {
+    tabs: any[];
+    activeTab: any;
+    activeTabId: string | null;
+    setActiveTabId: (id: string) => void;
+    createTab: (input: any) => Promise<any>;
+    updateTab: (id: string, patch: any) => Promise<void>;
+    deleteTab: (id: string) => Promise<void>;
   };
 }
 
@@ -1075,7 +1085,7 @@ function AvitoFeedTable({
   );
 }
 
-export function AvitoSection({ storeId, products: storeProducts = [], storeCategories = [], avitoFeed, onOpenInPhotoStudio, onOpenInPriceList, autoOpenImageEditorForProductId, onAutoOpenImageEditorHandled }: AvitoSectionProps) {
+export function AvitoSection({ storeId, products: storeProducts = [], storeCategories = [], avitoFeed, cityTabs, onOpenInPhotoStudio, onOpenInPriceList, autoOpenImageEditorForProductId, onAutoOpenImageEditorHandled }: AvitoSectionProps) {
   const { toast } = useToast();
   const [account, setAccount] = useState<AvitoAccount | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2039,6 +2049,17 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
       {/* Validation: detect issues per feed product */}
       {(() => null)()}
+
+      {cityTabs && cityTabs.tabs.length > 0 && (
+        <AvitoCityTabsBar
+          tabs={cityTabs.tabs}
+          activeTabId={cityTabs.activeTabId}
+          onSelect={cityTabs.setActiveTabId}
+          onCreate={cityTabs.createTab}
+          onUpdate={cityTabs.updateTab}
+          onDelete={cityTabs.deleteTab}
+        />
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>

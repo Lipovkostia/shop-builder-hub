@@ -133,6 +133,7 @@ import { AvitoSection } from "@/components/admin/AvitoSection";
 import { AiAccessSection } from "@/components/admin/AiAccessSection";
 import { OfficeSection } from "@/components/admin/OfficeSection";
 import { useAvitoFeedProducts } from "@/hooks/useAvitoFeedProducts";
+import { useAvitoCityTabs } from "@/hooks/useAvitoCityTabs";
 
 // Removed localStorage keys - now using Supabase
 
@@ -495,8 +496,10 @@ export default function AdminPanel({
     refetch: refetchProducts
   } = useStoreProducts(effectiveStoreId);
   
-  // Avito feed products
-  const avitoFeed = useAvitoFeedProducts(effectiveStoreId);
+  // Avito city tabs (per-city independent listing sets)
+  const avitoCityTabs = useAvitoCityTabs(effectiveStoreId);
+  // Avito feed products (scoped to active city tab)
+  const avitoFeed = useAvitoFeedProducts(effectiveStoreId, avitoCityTabs.activeTabId);
   
   // Catalogs from Supabase
   const {
@@ -7299,6 +7302,7 @@ export default function AdminPanel({
               storeId={effectiveStoreId} 
               products={allProducts}
               avitoFeed={avitoFeed}
+              cityTabs={avitoCityTabs}
               storeCategories={storeCategories}
               autoOpenImageEditorForProductId={searchParams.get('editImagesFor')}
               onAutoOpenImageEditorHandled={() => {
