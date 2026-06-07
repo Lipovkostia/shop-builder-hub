@@ -78,11 +78,14 @@ Deno.serve(async (req) => {
     const defaultCompanyName = fd.companyName || "";
     const defaultTargetAudience = fd.targetAudience || "";
 
-    // Get feed products with product data
-    const { data: feedProducts, error } = await supabase
+    // Get feed products with product data; optionally scope by tab_id (city tab)
+    const tabId = url.searchParams.get("tab_id");
+    let feedQuery = supabase
       .from("avito_feed_products")
       .select("*, products(*)")
       .eq("store_id", storeId);
+    if (tabId) feedQuery = feedQuery.eq("tab_id", tabId);
+    const { data: feedProducts, error } = await feedQuery;
 
     if (error) throw error;
 
