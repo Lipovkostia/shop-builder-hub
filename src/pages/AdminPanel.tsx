@@ -496,8 +496,10 @@ export default function AdminPanel({
     refetch: refetchProducts
   } = useStoreProducts(effectiveStoreId);
   
-  // Avito feed products
-  const avitoFeed = useAvitoFeedProducts(effectiveStoreId);
+  // Avito city tabs (per-city independent listing sets)
+  const avitoCityTabs = useAvitoCityTabs(effectiveStoreId);
+  // Avito feed products (scoped to active city tab)
+  const avitoFeed = useAvitoFeedProducts(effectiveStoreId, avitoCityTabs.activeTabId);
   
   // Catalogs from Supabase
   const {
