@@ -540,6 +540,51 @@ export type Database = {
           },
         ]
       }
+      avito_city_tabs: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          id: string
+          is_default: boolean
+          markup_percent: number
+          name: string
+          sort_order: number
+          spreadsheet_id: string | null
+          spreadsheet_url: string | null
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          markup_percent?: number
+          name: string
+          sort_order?: number
+          spreadsheet_id?: string | null
+          spreadsheet_url?: string | null
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          markup_percent?: number
+          name?: string
+          sort_order?: number
+          spreadsheet_id?: string | null
+          spreadsheet_url?: string | null
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       avito_feed_products: {
         Row: {
           avito_address: string | null
@@ -547,8 +592,10 @@ export type Database = {
           avito_params: Json | null
           created_at: string | null
           id: string
+          photo_order: number[] | null
           product_id: string
           store_id: string
+          tab_id: string | null
         }
         Insert: {
           avito_address?: string | null
@@ -556,8 +603,10 @@ export type Database = {
           avito_params?: Json | null
           created_at?: string | null
           id?: string
+          photo_order?: number[] | null
           product_id: string
           store_id: string
+          tab_id?: string | null
         }
         Update: {
           avito_address?: string | null
@@ -565,8 +614,10 @@ export type Database = {
           avito_params?: Json | null
           created_at?: string | null
           id?: string
+          photo_order?: number[] | null
           product_id?: string
           store_id?: string
+          tab_id?: string | null
         }
         Relationships: [
           {
@@ -581,6 +632,13 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avito_feed_products_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: false
+            referencedRelation: "avito_city_tabs"
             referencedColumns: ["id"]
           },
         ]
