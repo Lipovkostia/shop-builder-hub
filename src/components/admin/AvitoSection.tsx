@@ -37,6 +37,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Product } from "./types";
 import { AvitoImageEditor } from "./AvitoImageEditor";
 import { AvitoFeedProduct, AvitoDefaults } from "@/hooks/useAvitoFeedProducts";
+import { AvitoCityTabsBar } from "./AvitoCityTabsBar";
 import { StoreCategory } from "@/hooks/useStoreCategories";
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
