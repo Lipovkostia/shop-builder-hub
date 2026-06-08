@@ -1798,7 +1798,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         const params = fp.avito_params || {};
         const title = (params.title || product.name || "").substring(0, 50);
         const description = params.description || product.description || product.name || "";
-        const price = params.price || product.pricePerUnit || 0;
+        const price = Number(params.Price) || Number(params.price) || Number(product.pricePerUnit) || 0;
 
         productRows.push([
           params.avitoId || product.id.substring(0, 10),
