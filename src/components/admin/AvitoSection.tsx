@@ -493,7 +493,7 @@ function AvitoFeedTable({
     const product = storeProducts.find(p => p.id === fp.product_id);
     if (!product) return false;
     const params = fp.avito_params || {};
-    const price = Number(params.price || params.Price || product.pricePerUnit || 0);
+    const price = Number(params.Price) || Number(params.price) || Number(product.pricePerUnit) || 0;
     if (feedPriceFilter === "zero" && price !== 0) return false;
     if (feedPriceFilter === "nonzero" && price === 0) return false;
     if (feedSearchQuery) {
