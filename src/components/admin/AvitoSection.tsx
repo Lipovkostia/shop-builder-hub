@@ -215,7 +215,7 @@ export function computeAvitoIssues(fp: AvitoFeedProduct, product: Product, d: Av
   const issues: AvitoIssue[] = [];
   const title = (p.title || product.name || "").trim();
   const description = (p.description || product.description || "").trim();
-  const price = Number(p.price ?? product.pricePerUnit ?? 0);
+  const price = Number(p.Price) || Number(p.price) || Number(product.pricePerUnit) || 0;
   const imgs = (p.avitoImages && p.avitoImages.length > 0)
     ? p.avitoImages
     : (product.images || []).filter((u: string) => u && !u.startsWith("data:"));
