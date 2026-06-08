@@ -591,6 +591,7 @@ export type Database = {
           avito_category: string | null
           avito_params: Json | null
           created_at: string | null
+          group_id: string | null
           id: string
           photo_order: number[] | null
           product_id: string
@@ -602,6 +603,7 @@ export type Database = {
           avito_category?: string | null
           avito_params?: Json | null
           created_at?: string | null
+          group_id?: string | null
           id?: string
           photo_order?: number[] | null
           product_id: string
@@ -613,6 +615,7 @@ export type Database = {
           avito_category?: string | null
           avito_params?: Json | null
           created_at?: string | null
+          group_id?: string | null
           id?: string
           photo_order?: number[] | null
           product_id?: string
@@ -620,6 +623,13 @@ export type Database = {
           tab_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "avito_feed_products_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "avito_product_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "avito_feed_products_product_id_fkey"
             columns: ["product_id"]
