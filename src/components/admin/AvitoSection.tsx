@@ -838,8 +838,8 @@ function AvitoFeedTable({
                   </div>
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.price }}>
                     <InlineCell
-                      value={String(params.price || params.Price || product.pricePerUnit || 0)}
-                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "price", val)}
+                      value={String(Number(params.Price) || Number(params.price) || Number(product.pricePerUnit) || 0)}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "Price", val)}
                       placeholder="0"
                       type="number"
                     />
