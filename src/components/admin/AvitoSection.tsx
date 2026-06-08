@@ -215,7 +215,7 @@ export function computeAvitoIssues(fp: AvitoFeedProduct, product: Product, d: Av
   const issues: AvitoIssue[] = [];
   const title = (p.title || product.name || "").trim();
   const description = (p.description || product.description || "").trim();
-  const price = Number(p.price ?? product.pricePerUnit ?? 0);
+  const price = Number(p.Price) || Number(p.price) || Number(product.pricePerUnit) || 0;
   const imgs = (p.avitoImages && p.avitoImages.length > 0)
     ? p.avitoImages
     : (product.images || []).filter((u: string) => u && !u.startsWith("data:"));
@@ -493,7 +493,7 @@ function AvitoFeedTable({
     const product = storeProducts.find(p => p.id === fp.product_id);
     if (!product) return false;
     const params = fp.avito_params || {};
-    const price = Number(params.price || params.Price || product.pricePerUnit || 0);
+    const price = Number(params.Price) || Number(params.price) || Number(product.pricePerUnit) || 0;
     if (feedPriceFilter === "zero" && price !== 0) return false;
     if (feedPriceFilter === "nonzero" && price === 0) return false;
     if (feedSearchQuery) {
@@ -554,8 +554,8 @@ function AvitoFeedTable({
             valB = (paramsB.title || productB.name || "").toLowerCase();
             break;
           case "price": {
-            const numA = Number(paramsA.price || paramsA.Price || productA.pricePerUnit || 0);
-            const numB = Number(paramsB.price || paramsB.Price || productB.pricePerUnit || 0);
+            const numA = Number(paramsA.Price) || Number(paramsA.price) || Number(productA.pricePerUnit) || 0;
+            const numB = Number(paramsB.Price) || Number(paramsB.price) || Number(productB.pricePerUnit) || 0;
             return sortConfig.direction === 'asc' ? numA - numB : numB - numA;
           }
           case "storeCategory":
@@ -838,8 +838,8 @@ function AvitoFeedTable({
                   </div>
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.price }}>
                     <InlineCell
-                      value={String(params.price || params.Price || product.pricePerUnit || 0)}
-                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "price", val)}
+                      value={String(Number(params.Price) || Number(params.price) || Number(product.pricePerUnit) || 0)}
+                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "Price", val)}
                       placeholder="0"
                       type="number"
                     />
@@ -1640,7 +1640,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         const images = product.images || [];
         const title = (params.title || product.name || "").substring(0, 50);
         const description = params.description || product.description || product.name || "";
-        const price = params.price || product.pricePerUnit || 0;
+        const price = Number(params.Price) || Number(params.price) || Number(product.pricePerUnit) || 0;
 
         // Download images and add to ZIP — skip small/thumbnail images
         const imageNames: string[] = [];
@@ -1798,7 +1798,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         const params = fp.avito_params || {};
         const title = (params.title || product.name || "").substring(0, 50);
         const description = params.description || product.description || product.name || "";
-        const price = params.price || product.pricePerUnit || 0;
+        const price = Number(params.Price) || Number(params.price) || Number(product.pricePerUnit) || 0;
 
         productRows.push([
           params.avitoId || product.id.substring(0, 10),
