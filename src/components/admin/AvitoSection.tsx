@@ -554,8 +554,8 @@ function AvitoFeedTable({
             valB = (paramsB.title || productB.name || "").toLowerCase();
             break;
           case "price": {
-            const numA = Number(paramsA.price || paramsA.Price || productA.pricePerUnit || 0);
-            const numB = Number(paramsB.price || paramsB.Price || productB.pricePerUnit || 0);
+            const numA = Number(paramsA.Price) || Number(paramsA.price) || Number(productA.pricePerUnit) || 0;
+            const numB = Number(paramsB.Price) || Number(paramsB.price) || Number(productB.pricePerUnit) || 0;
             return sortConfig.direction === 'asc' ? numA - numB : numB - numA;
           }
           case "storeCategory":
