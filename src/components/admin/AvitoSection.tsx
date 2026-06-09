@@ -2104,6 +2104,10 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                 onCreateGroup={createAvitoGroup}
                 onUpdateGroup={updateAvitoGroup}
                 onDeleteGroup={deleteAvitoGroup}
+                storeProducts={storeProducts as any}
+                storeCategories={storeCategories as any}
+                selectedCategoryId={selectedSourceCategoryId}
+                onSelectCategory={setSelectedSourceCategoryId}
               />
             )}
             {/* Left Sidebar - Settings, Filters, Bulk Actions */}
