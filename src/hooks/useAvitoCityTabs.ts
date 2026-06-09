@@ -87,6 +87,7 @@ export function useAvitoCityTabs(storeId: string | null, accountId: string | nul
           .from("avito_city_tabs")
           .insert({
             store_id: storeId,
+            account_id: accountId,
             name: input.name.trim(),
             city: input.city?.trim() || null,
             address: input.address?.trim() || null,
