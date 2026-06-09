@@ -29,6 +29,7 @@ import LandingInfoBlocksManager from '@/components/admin/LandingInfoBlocksManage
 import HomepageVersionManager from '@/components/admin/HomepageVersionManager';
 import RetailPartnersManager from '@/components/admin/RetailPartnersManager';
 import HomepageCatalogSection from '@/components/admin/HomepageCatalog/HomepageCatalogSection';
+import HomepageImportFromSellers from '@/components/admin/HomepageCatalog/HomepageImportFromSellers';
 
 interface StoreWithCounts {
   id: string;
