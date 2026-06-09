@@ -38,6 +38,7 @@ import { Product } from "./types";
 import { AvitoImageEditor } from "./AvitoImageEditor";
 import { AvitoFeedProduct, AvitoDefaults } from "@/hooks/useAvitoFeedProducts";
 import { AvitoCityTabsBar } from "./AvitoCityTabsBar";
+import { AvitoAccountsBar } from "./AvitoAccountsBar";
 import { StoreCategory } from "@/hooks/useStoreCategories";
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
