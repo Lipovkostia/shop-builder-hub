@@ -1315,6 +1315,33 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     } finally { setDisconnecting(false); }
   };
 
+  const handleFetchStats = async () => {
+    if (!storeId) return;
+    setStatsLoading(true);
+    try {
+      // Make sure we have item titles cached for nicer table
+      if (items.length === 0) {
+        try {
+          const itemsData = await callAvitoApi({ action: "fetch_items", store_id: storeId });
+          setItems(itemsData.items || []);
+        } catch {/* ignore — stats can still load */}
+      }
+      const data = await callAvitoApi({
+        action: "fetch_stats",
+        store_id: storeId,
+        date_from: statsDateFrom,
+        date_to: statsDateTo,
+      });
+      setStatsData(data.stats || []);
+      setStatsMeta({ dateFrom: data.dateFrom, dateTo: data.dateTo, total: data.total });
+      toast({ title: `Статистика загружена: ${data.stats?.length || 0} объявлений` });
+    } catch (err: any) {
+      toast({ title: "Ошибка загрузки статистики", description: err.message, variant: "destructive" });
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
   const handleFetchItems = async () => {
     if (!storeId) return;
     setFetching(true);
