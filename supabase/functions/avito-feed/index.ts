@@ -38,6 +38,24 @@ function buildPromoManualXml(raw: string): string {
   return items.length ? `    <PromoManualOptions>\n${items.join('\n')}\n    </PromoManualOptions>\n` : '';
 }
 
+function applyTitlePrefix(title: string, prefix: string): string {
+  const p = (prefix || '').trim();
+  if (!p) return title || '';
+  const t = (title || '').trim();
+  if (/^опт\b[\s:.,\-]*/i.test(t)) return t;
+  return `${p} ${t}`.replace(/\s{2,}/g, ' ').trim();
+}
+
+function applyDescriptionFirstLine(desc: string, firstLine: string): string {
+  const fl = (firstLine || '').trim();
+  if (!fl) return desc || '';
+  const d = (desc || '').trim();
+  if (d.slice(0, 300).toLowerCase().includes(fl.toLowerCase())) return d;
+  return d ? `${fl}\n\n${d}` : fl;
+}
+
+
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
