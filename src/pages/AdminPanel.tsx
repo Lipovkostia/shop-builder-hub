@@ -134,6 +134,7 @@ import { AiAccessSection } from "@/components/admin/AiAccessSection";
 import { OfficeSection } from "@/components/admin/OfficeSection";
 import { useAvitoFeedProducts } from "@/hooks/useAvitoFeedProducts";
 import { useAvitoCityTabs } from "@/hooks/useAvitoCityTabs";
+import { useAvitoAccounts } from "@/hooks/useAvitoAccounts";
 
 // Removed localStorage keys - now using Supabase
 
