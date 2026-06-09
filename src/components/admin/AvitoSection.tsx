@@ -1111,6 +1111,18 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [feedSearchQuery, setFeedSearchQuery] = useState("");
   const [feedPriceFilter, setFeedPriceFilter] = useState("all");
 
+  // Stats tab
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const weekAgoStr = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const [statsDateFrom, setStatsDateFrom] = useState(weekAgoStr);
+  const [statsDateTo, setStatsDateTo] = useState(todayStr);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsData, setStatsData] = useState<any[]>([]);
+  const [statsMeta, setStatsMeta] = useState<{ dateFrom: string; dateTo: string; total: number } | null>(null);
+  const [statsExpandedId, setStatsExpandedId] = useState<number | null>(null);
+  const [statsSearch, setStatsSearch] = useState("");
+  const [statsSort, setStatsSort] = useState<"views" | "contacts" | "favorites">("views");
+
   // Product groups (internal categorization, not exported)
   const { groups: avitoGroups, createGroup: createAvitoGroup, updateGroup: updateAvitoGroup, deleteGroup: deleteAvitoGroup } = useAvitoProductGroups(storeId);
   const [selectedGroupId, setSelectedGroupId] = useState<string | "all" | "none">("all");
@@ -1301,6 +1313,33 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     } catch (err: any) {
       toast({ title: "Ошибка", description: err.message, variant: "destructive" });
     } finally { setDisconnecting(false); }
+  };
+
+  const handleFetchStats = async () => {
+    if (!storeId) return;
+    setStatsLoading(true);
+    try {
+      // Make sure we have item titles cached for nicer table
+      if (items.length === 0) {
+        try {
+          const itemsData = await callAvitoApi({ action: "fetch_items", store_id: storeId });
+          setItems(itemsData.items || []);
+        } catch {/* ignore — stats can still load */}
+      }
+      const data = await callAvitoApi({
+        action: "fetch_stats",
+        store_id: storeId,
+        date_from: statsDateFrom,
+        date_to: statsDateTo,
+      });
+      setStatsData(data.stats || []);
+      setStatsMeta({ dateFrom: data.dateFrom, dateTo: data.dateTo, total: data.total });
+      toast({ title: `Статистика загружена: ${data.stats?.length || 0} объявлений` });
+    } catch (err: any) {
+      toast({ title: "Ошибка загрузки статистики", description: err.message, variant: "destructive" });
+    } finally {
+      setStatsLoading(false);
+    }
   };
 
   const handleFetchItems = async () => {
@@ -2128,6 +2167,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             })()}
           </TabsTrigger>
           {isConnected && <TabsTrigger value="active">Активные объявления</TabsTrigger>}
+          {isConnected && <TabsTrigger value="stats">Статистика</TabsTrigger>}
         </TabsList>
 
 
@@ -3238,6 +3278,218 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
               <Card className="p-8 text-center">
                 <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">Нажмите «Загрузить объявления», чтобы импортировать активные объявления с Авито</p>
+              </Card>
+            )}
+          </TabsContent>
+        )}
+
+        {/* Statistics Tab */}
+        {isConnected && (
+          <TabsContent value="stats" className="space-y-3">
+            <div className="flex items-end justify-between gap-2 flex-wrap">
+              <div className="flex items-end gap-2 flex-wrap">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[11px] text-muted-foreground">С даты</Label>
+                  <Input
+                    type="date"
+                    value={statsDateFrom}
+                    max={statsDateTo}
+                    onChange={(e) => setStatsDateFrom(e.target.value)}
+                    className="h-8 text-xs w-40"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[11px] text-muted-foreground">По дату</Label>
+                  <Input
+                    type="date"
+                    value={statsDateTo}
+                    min={statsDateFrom}
+                    max={todayStr}
+                    onChange={(e) => setStatsDateTo(e.target.value)}
+                    className="h-8 text-xs w-40"
+                  />
+                </div>
+                <div className="flex gap-1">
+                  {[
+                    { label: "7 дней", days: 7 },
+                    { label: "14 дней", days: 14 },
+                    { label: "30 дней", days: 30 },
+                  ].map((p) => (
+                    <Button
+                      key={p.days}
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs"
+                      onClick={() => {
+                        const to = new Date();
+                        const from = new Date(to.getTime() - p.days * 24 * 60 * 60 * 1000);
+                        setStatsDateTo(to.toISOString().slice(0, 10));
+                        setStatsDateFrom(from.toISOString().slice(0, 10));
+                      }}
+                    >
+                      {p.label}
+                    </Button>
+                  ))}
+                </div>
+                <Select value={statsSort} onValueChange={(v) => setStatsSort(v as any)}>
+                  <SelectTrigger className="h-8 text-xs w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="views">Сортировка: просмотры</SelectItem>
+                    <SelectItem value="contacts">Сортировка: контакты</SelectItem>
+                    <SelectItem value="favorites">Сортировка: избранное</SelectItem>
+                  </SelectContent>
+                </Select>
+                {statsData.length > 0 && (
+                  <div className="relative">
+                    <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Поиск..."
+                      value={statsSearch}
+                      onChange={(e) => setStatsSearch(e.target.value)}
+                      className="h-8 text-xs pl-8 w-48"
+                    />
+                  </div>
+                )}
+              </div>
+              <Button size="sm" onClick={handleFetchStats} disabled={statsLoading}>
+                {statsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+                Загрузить статистику
+              </Button>
+            </div>
+
+            {statsMeta && (() => {
+              const totalViews = statsData.reduce((s, it) => s + (it.stats || []).reduce((a: number, d: any) => a + (d.uniqViews || 0), 0), 0);
+              const totalContacts = statsData.reduce((s, it) => s + (it.stats || []).reduce((a: number, d: any) => a + (d.uniqContacts || 0), 0), 0);
+              const totalFavs = statsData.reduce((s, it) => s + (it.stats || []).reduce((a: number, d: any) => a + (d.uniqFavorites || 0), 0), 0);
+              return (
+                <Card className="p-3 flex gap-6 text-xs flex-wrap">
+                  <div><span className="text-muted-foreground">Период: </span><span className="font-medium">{statsMeta.dateFrom} — {statsMeta.dateTo}</span></div>
+                  <div><span className="text-muted-foreground">Объявлений: </span><span className="font-medium">{statsMeta.total}</span></div>
+                  <div><span className="text-muted-foreground">Просмотров: </span><span className="font-semibold text-primary">{totalViews.toLocaleString("ru")}</span></div>
+                  <div><span className="text-muted-foreground">Контактов: </span><span className="font-semibold text-primary">{totalContacts.toLocaleString("ru")}</span></div>
+                  <div><span className="text-muted-foreground">В избранное: </span><span className="font-semibold text-primary">{totalFavs.toLocaleString("ru")}</span></div>
+                </Card>
+              );
+            })()}
+
+            {statsData.length > 0 ? (
+              <div className="border rounded-lg overflow-hidden">
+                <ScrollArea className="w-full">
+                  <div className="min-w-[900px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="text-xs">
+                          <TableHead className="w-10 px-2">№</TableHead>
+                          <TableHead className="w-14 px-2">Фото</TableHead>
+                          <TableHead className="min-w-[260px] px-2">Объявление</TableHead>
+                          <TableHead className="w-24 px-2 text-right">Просмотры</TableHead>
+                          <TableHead className="w-24 px-2 text-right">Контакты</TableHead>
+                          <TableHead className="w-24 px-2 text-right">Избранное</TableHead>
+                          <TableHead className="w-16 px-2 text-center">CR%</TableHead>
+                          <TableHead className="w-10 px-2"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {statsData
+                          .map((row) => {
+                            const days = row.stats || [];
+                            const views = days.reduce((a: number, d: any) => a + (d.uniqViews || 0), 0);
+                            const contacts = days.reduce((a: number, d: any) => a + (d.uniqContacts || 0), 0);
+                            const favs = days.reduce((a: number, d: any) => a + (d.uniqFavorites || 0), 0);
+                            return { ...row, _views: views, _contacts: contacts, _favs: favs };
+                          })
+                          .filter((row) => {
+                            if (!statsSearch.trim()) return true;
+                            const item = items.find((it) => Number(it.id) === Number(row.itemId));
+                            const hay = `${row.itemId} ${item?.title || ""}`.toLowerCase();
+                            return hay.includes(statsSearch.toLowerCase());
+                          })
+                          .sort((a, b) => {
+                            const key = statsSort === "views" ? "_views" : statsSort === "contacts" ? "_contacts" : "_favs";
+                            return (b as any)[key] - (a as any)[key];
+                          })
+                          .map((row, index) => {
+                            const item = items.find((it) => Number(it.id) === Number(row.itemId));
+                            const imageUrl = item?.images?.[0]?.["640x480"] || item?.images?.[0]?.url || null;
+                            const cr = row._views > 0 ? ((row._contacts / row._views) * 100).toFixed(1) : "—";
+                            const isExpanded = statsExpandedId === Number(row.itemId);
+                            return (
+                              <>
+                                <TableRow
+                                  key={row.itemId}
+                                  className="cursor-pointer hover:bg-muted/50"
+                                  onClick={() => setStatsExpandedId(isExpanded ? null : Number(row.itemId))}
+                                >
+                                  <TableCell className="px-2 text-xs text-muted-foreground">{index + 1}</TableCell>
+                                  <TableCell className="px-2">
+                                    {imageUrl ? <img src={imageUrl} alt="" className="w-10 h-10 rounded object-cover" /> : (
+                                      <div className="w-10 h-10 rounded bg-muted flex items-center justify-center"><Package className="h-4 w-4 text-muted-foreground" /></div>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="px-2">
+                                    <div className="font-medium text-xs leading-tight line-clamp-2">{item?.title || `Объявление ${row.itemId}`}</div>
+                                    <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
+                                      <span>ID: {row.itemId}</span>
+                                      {item?.url && (
+                                        <a href={item.url.startsWith("http") ? item.url : `https://www.avito.ru${item.url}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-0.5 hover:text-foreground">
+                                          <ExternalLink className="h-3 w-3" /> открыть
+                                        </a>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="px-2 text-right font-semibold text-xs">{row._views.toLocaleString("ru")}</TableCell>
+                                  <TableCell className="px-2 text-right font-semibold text-xs">{row._contacts.toLocaleString("ru")}</TableCell>
+                                  <TableCell className="px-2 text-right font-semibold text-xs">{row._favs.toLocaleString("ru")}</TableCell>
+                                  <TableCell className="px-2 text-center text-xs text-muted-foreground">{cr === "—" ? "—" : `${cr}%`}</TableCell>
+                                  <TableCell className="px-2 text-center">
+                                    <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                                  </TableCell>
+                                </TableRow>
+                                {isExpanded && (
+                                  <TableRow key={`${row.itemId}-days`} className="bg-muted/30">
+                                    <TableCell colSpan={8} className="p-3">
+                                      <div className="text-[11px] font-medium mb-2 text-muted-foreground">Статистика по дням</div>
+                                      <div className="overflow-x-auto">
+                                        <table className="text-xs w-full">
+                                          <thead>
+                                            <tr className="border-b">
+                                              <th className="text-left py-1 pr-3 font-medium">Дата</th>
+                                              <th className="text-right py-1 px-3 font-medium">Просмотры</th>
+                                              <th className="text-right py-1 px-3 font-medium">Контакты</th>
+                                              <th className="text-right py-1 pl-3 font-medium">Избранное</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {(row.stats || []).slice().sort((a: any, b: any) => String(a.date).localeCompare(String(b.date))).map((d: any) => (
+                                              <tr key={d.date} className="border-b border-muted">
+                                                <td className="py-1 pr-3 text-muted-foreground">{d.date}</td>
+                                                <td className="py-1 px-3 text-right">{(d.uniqViews || 0).toLocaleString("ru")}</td>
+                                                <td className="py-1 px-3 text-right">{(d.uniqContacts || 0).toLocaleString("ru")}</td>
+                                                <td className="py-1 pl-3 text-right">{(d.uniqFavorites || 0).toLocaleString("ru")}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                              </>
+                            );
+                          })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </ScrollArea>
+              </div>
+            ) : (
+              <Card className="p-8 text-center">
+                <Eye className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Выберите период и нажмите «Загрузить статистику». Авито вернёт уникальные просмотры, контакты и добавления в избранное по дням для всех активных объявлений.
+                </p>
               </Card>
             )}
           </TabsContent>

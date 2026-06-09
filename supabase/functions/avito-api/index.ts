@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { action, store_id, client_id, client_secret, item_id, price: newPrice } = await req.json();
+    const { action, store_id, client_id, client_secret, item_id, price: newPrice, date_from, date_to, item_ids } = await req.json();
 
     if (action === "save_credentials") {
       // Save or update Avito credentials
@@ -361,6 +361,97 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, account }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "fetch_stats") {
+      // Fetch per-item daily statistics from Avito.
+      // Body: { store_id, date_from: 'YYYY-MM-DD', date_to: 'YYYY-MM-DD', item_ids?: (string|number)[] }
+      // Avito API: POST /stats/v1/accounts/{user_id}/items
+      //   { dateFrom, dateTo, fields: ["uniqViews","uniqContacts","uniqFavorites"], itemIds: number[], periodGrouping: "day" }
+      // Limits: up to 200 itemIds per request, range up to 270 days.
+      const { data: account, error: accErr } = await supabase
+        .from("avito_accounts")
+        .select("*")
+        .eq("store_id", store_id)
+        .single();
+      if (accErr || !account) throw new Error("Avito аккаунт не найден. Сначала подключите Авито.");
+      if (!account.avito_user_id) throw new Error("avito_user_id отсутствует — переподключите Авито (Test connection).");
+
+      const today = new Date();
+      const defaultTo = today.toISOString().slice(0, 10);
+      const defaultFromDate = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const dateTo = (date_to && String(date_to)) || defaultTo;
+      const dateFrom = (date_from && String(date_from)) || defaultFromDate.toISOString().slice(0, 10);
+
+      const token = await getAvitoToken(account.client_id, account.client_secret);
+
+      // Resolve list of item ids: either provided or all active items
+      let ids: number[] = [];
+      if (Array.isArray(item_ids) && item_ids.length > 0) {
+        ids = item_ids.map((x: any) => Number(x)).filter((n) => Number.isFinite(n));
+      } else {
+        // Fetch active items (paginated)
+        let page = 1;
+        const perPage = 100;
+        while (true) {
+          const u = `${AVITO_API_BASE}/core/v1/items?per_page=${perPage}&page=${page}&status=active`;
+          const r = await fetch(u, { headers: { Authorization: `Bearer ${token}` } });
+          if (!r.ok) {
+            const text = await r.text();
+            throw new Error(`Avito items failed [${r.status}]: ${text}`);
+          }
+          const j = await r.json();
+          const res = (j.resources || []) as any[];
+          for (const it of res) {
+            const id = Number(it.id);
+            if (Number.isFinite(id)) ids.push(id);
+          }
+          if (res.length < perPage) break;
+          page++;
+          if (page > 50) break;
+        }
+      }
+
+      if (ids.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, stats: [], dateFrom, dateTo, total: 0 }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const fields = ["uniqViews", "uniqContacts", "uniqFavorites"];
+      const allStats: any[] = [];
+      // Batch by 200
+      for (let i = 0; i < ids.length; i += 200) {
+        const batch = ids.slice(i, i + 200);
+        const url = `${AVITO_API_BASE}/stats/v1/accounts/${account.avito_user_id}/items`;
+        const r = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            dateFrom,
+            dateTo,
+            fields,
+            itemIds: batch,
+            periodGrouping: "day",
+          }),
+        });
+        if (!r.ok) {
+          const text = await r.text();
+          throw new Error(`Avito stats failed [${r.status}]: ${text}`);
+        }
+        const j = await r.json();
+        const items = j?.result?.items || j?.items || [];
+        allStats.push(...items);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, stats: allStats, dateFrom, dateTo, total: ids.length }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
