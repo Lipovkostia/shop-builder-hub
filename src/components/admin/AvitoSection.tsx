@@ -2167,6 +2167,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             })()}
           </TabsTrigger>
           {isConnected && <TabsTrigger value="active">Активные объявления</TabsTrigger>}
+          {isConnected && <TabsTrigger value="stats">Статистика</TabsTrigger>}
         </TabsList>
 
 
