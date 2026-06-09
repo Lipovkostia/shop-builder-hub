@@ -42,12 +42,14 @@ interface Props {
 export function AvitoGroupsSidebar({
   groups, feedProducts, selectedGroupId, onSelectGroup,
   errorIds, onCreateGroup, onUpdateGroup, onDeleteGroup,
+  storeProducts = [], storeCategories = [], selectedCategoryId = null, onSelectCategory,
 }: Props) {
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState("slate");
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
 
   const totalCount = feedProducts.length;
   const noneCount = feedProducts.filter(fp => !fp.group_id).length;
