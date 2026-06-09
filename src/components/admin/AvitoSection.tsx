@@ -2351,10 +2351,22 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         </div>
         {isConnected && (
           <Badge variant="outline" className="gap-1 text-primary border-primary/30">
-            <Check className="h-3 w-3" /> Подключено: {account.profile_name}
+            <Check className="h-3 w-3" /> Подключено: {activeAccount?.label || activeAccount?.profile_name || account?.profile_name}
           </Badge>
         )}
       </div>
+
+      {accounts && (
+        <AvitoAccountsBar
+          accounts={accounts.accounts as any}
+          activeAccountId={accounts.activeAccountId}
+          onSelect={accounts.setActiveAccountId}
+          onCreate={accounts.createAccount}
+          onRename={async (id, label) => { await accounts.updateAccount(id, { label }); }}
+          onSetDefault={accounts.setDefaultAccount}
+          onDelete={accounts.deleteAccount}
+        />
+      )}
 
       {/* Validation: detect issues per feed product */}
       {(() => null)()}
@@ -2369,6 +2381,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
           onDelete={cityTabs.deleteTab}
         />
       )}
+
 
       {restoreReport && (
         <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs space-y-1">
