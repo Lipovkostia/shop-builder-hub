@@ -1292,27 +1292,33 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
+  const activeAccountId = accounts?.activeAccountId || null;
+  const activeAccount = accounts?.activeAccount || null;
+
   const callAvitoApi = useCallback(async (body: any) => {
+    const merged = { account_id: activeAccountId, ...body };
     const res = await fetch(
       `https://${projectId}.supabase.co/functions/v1/avito-api`,
-      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(merged) }
     );
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "Ошибка API Авито");
     return data;
-  }, [projectId]);
+  }, [projectId, activeAccountId]);
 
+  // Sync local account state with the active account from accounts hook.
   useEffect(() => {
-    if (!storeId) return;
-    setLoading(true);
-    callAvitoApi({ action: "get_credentials", store_id: storeId })
-      .then((data) => {
-        setAccount(data.account || null);
-        if (data.account) { setClientId(data.account.client_id); setClientSecret(data.account.client_secret); }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [storeId, callAvitoApi]);
+    if (activeAccount) {
+      setAccount(activeAccount as AvitoAccount);
+      setClientId(activeAccount.client_id || "");
+      setClientSecret(activeAccount.client_secret || "");
+      setLoading(false);
+    } else if (accounts && accounts.accounts.length === 0) {
+      setAccount(null);
+      setClientId(""); setClientSecret("");
+      setLoading(false);
+    }
+  }, [activeAccount, accounts?.accounts?.length]);
 
   const handleConnect = async () => {
     if (!storeId || !clientId.trim() || !clientSecret.trim()) {
@@ -1320,21 +1326,31 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     }
     setConnecting(true);
     try {
-      const data = await callAvitoApi({ action: "test_connection", store_id: storeId, client_id: clientId.trim(), client_secret: clientSecret.trim() });
+      // If no active account exists, create on the fly.
+      const createNew = !activeAccountId;
+      const data = await callAvitoApi({
+        action: "test_connection",
+        store_id: storeId,
+        client_id: clientId.trim(),
+        client_secret: clientSecret.trim(),
+        create_new: createNew,
+      });
       toast({ title: "Авито подключён!", description: `Профиль: ${data.user?.name || data.user?.email || data.user?.id}` });
-      const acc = await callAvitoApi({ action: "get_credentials", store_id: storeId });
-      setAccount(acc.account);
+      if (accounts?.refetch) await accounts.refetch();
+      // If a brand-new account was created on the fly, select it
+      if (data.account_id && accounts?.setActiveAccountId) accounts.setActiveAccountId(data.account_id);
     } catch (err: any) {
       toast({ title: "Ошибка подключения", description: err.message, variant: "destructive" });
     } finally { setConnecting(false); }
   };
 
   const handleDisconnect = async () => {
-    if (!storeId) return;
+    if (!storeId || !activeAccountId) return;
     setDisconnecting(true);
     try {
       await callAvitoApi({ action: "disconnect", store_id: storeId });
       setAccount(null); setClientId(""); setClientSecret(""); setItems([]);
+      if (accounts?.refetch) await accounts.refetch();
       toast({ title: "Авито отключён" });
     } catch (err: any) {
       toast({ title: "Ошибка", description: err.message, variant: "destructive" });
