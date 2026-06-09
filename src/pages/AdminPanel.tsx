@@ -7306,6 +7306,7 @@ export default function AdminPanel({
               products={allProducts}
               avitoFeed={avitoFeed}
               cityTabs={avitoCityTabs}
+              accounts={avitoAccounts}
               storeCategories={storeCategories}
               autoOpenImageEditorForProductId={searchParams.get('editImagesFor')}
               onAutoOpenImageEditorHandled={() => {
