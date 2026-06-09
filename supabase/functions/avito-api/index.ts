@@ -450,8 +450,51 @@ Deno.serve(async (req) => {
         allStats.push(...items);
       }
 
+      // Best-effort: per-item spend from operations history.
+      const spendByItem: Record<string, number> = {};
+      let spendTotal = 0;
+      let spendError: string | null = null;
+      try {
+        const dateTimeFrom = `${dateFrom}T00:00:00Z`;
+        const dateTimeTo = `${dateTo}T23:59:59Z`;
+        const opsResp = await fetch(`${AVITO_API_BASE}/core/v1/accounts/operations_history`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ dateTimeFrom, dateTimeTo }),
+        });
+        if (opsResp.ok) {
+          const opsJson = await opsResp.json();
+          const ops: any[] = opsJson?.operations || opsJson?.result?.operations || [];
+          for (const op of ops) {
+            const itemId = op.itemId ?? op.item_id;
+            const amt = Number(op.amountRub ?? op.amount_rub ?? op.amountTotal ?? op.amount_total ?? 0);
+            if (!Number.isFinite(amt) || amt === 0) continue;
+            spendTotal += amt;
+            if (itemId != null) {
+              const key = String(itemId);
+              spendByItem[key] = (spendByItem[key] || 0) + amt;
+            }
+          }
+        } else {
+          spendError = `[${opsResp.status}] ${await opsResp.text()}`;
+          console.error("operations_history failed:", spendError);
+        }
+      } catch (e: any) {
+        spendError = e?.message || String(e);
+        console.error("operations_history exception:", spendError);
+      }
+
       return new Response(
-        JSON.stringify({ success: true, stats: allStats, dateFrom, dateTo, total: ids.length }),
+        JSON.stringify({
+          success: true,
+          stats: allStats,
+          dateFrom,
+          dateTo,
+          total: ids.length,
+          spendByItem,
+          spendTotal,
+          spendError,
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
