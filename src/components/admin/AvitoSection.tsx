@@ -1330,6 +1330,41 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     } finally { setDisconnecting(false); }
   };
 
+  const [restoringFeed, setRestoringFeed] = useState(false);
+  const [restoreReport, setRestoreReport] = useState<null | {
+    total_active_on_avito: number; inserted: number; skipped_existing: number;
+    unmatched_count: number; unmatched: { itemId: any; title: string }[];
+  }>(null);
+  const handleRestoreFromAvito = async () => {
+    if (!storeId) return;
+    if (!confirm("Запросить активные объявления у Авито и восстановить их в фиде? Уже существующие пары (товар + вкладка) будут пропущены.")) return;
+    setRestoringFeed(true);
+    try {
+      const data = await callAvitoApi({
+        action: "restore_feed_from_active",
+        store_id: storeId,
+        tab_id: cityTabs?.activeTabId || null,
+      });
+      setRestoreReport({
+        total_active_on_avito: data.total_active_on_avito || 0,
+        inserted: data.inserted || 0,
+        skipped_existing: data.skipped_existing || 0,
+        unmatched_count: data.unmatched_count || 0,
+        unmatched: data.unmatched || [],
+      });
+      toast({
+        title: "Восстановление завершено",
+        description: `Авито: ${data.total_active_on_avito}, добавлено: ${data.inserted}, пропущено: ${data.skipped_existing}, не сопоставлено: ${data.unmatched_count}`,
+      });
+      await avitoFeed?.refetch?.();
+    } catch (err: any) {
+      toast({ title: "Ошибка восстановления", description: err.message, variant: "destructive" });
+    } finally {
+      setRestoringFeed(false);
+    }
+  };
+
+
   const handleFetchStats = async () => {
     if (!storeId) return;
     setStatsLoading(true);
