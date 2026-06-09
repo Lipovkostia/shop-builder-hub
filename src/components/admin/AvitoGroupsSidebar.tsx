@@ -236,6 +236,104 @@ export function AvitoGroupsSidebar({
           label="Без группы"
           count={noneCount}
         />
+
+        {onSelectCategory && (() => {
+          // Compute counts per category (including products in subcategories)
+          const productById = new Map<string, SidebarProduct>();
+          storeProducts.forEach(p => productById.set(p.id, p));
+          const catById = new Map<string, SidebarCat>();
+          storeCategories.forEach(c => catById.set(c.id, c));
+          const childMap = new Map<string, SidebarCat[]>();
+          for (const c of storeCategories) {
+            if (c.parent_id) {
+              const arr = childMap.get(c.parent_id) || [];
+              arr.push(c); childMap.set(c.parent_id, arr);
+            }
+          }
+          const directCount = new Map<string, number>();
+          for (const fp of feedProducts) {
+            const p = productById.get(fp.product_id);
+            if (!p) continue;
+            const ids = new Set<string>([
+              ...(p.category ? [p.category] : []),
+              ...(p.categories || []),
+            ]);
+            for (const id of ids) directCount.set(id, (directCount.get(id) || 0) + 1);
+          }
+          const totalCount = new Map<string, number>();
+          const calc = (id: string): number => {
+            if (totalCount.has(id)) return totalCount.get(id)!;
+            let n = directCount.get(id) || 0;
+            for (const k of childMap.get(id) || []) n += calc(k.id);
+            totalCount.set(id, n);
+            return n;
+          };
+          for (const c of storeCategories) calc(c.id);
+
+          const roots = storeCategories.filter(c => !c.parent_id || !catById.has(c.parent_id!));
+          const visibleRoots = roots.filter(r => (totalCount.get(r.id) || 0) > 0);
+          if (visibleRoots.length === 0) return null;
+
+          const toggleExpand = (id: string) => {
+            setExpandedCats(prev => {
+              const next = new Set(prev);
+              if (next.has(id)) next.delete(id); else next.add(id);
+              return next;
+            });
+          };
+
+          const renderCat = (c: SidebarCat, depth: number): React.ReactNode => {
+            const kids = (childMap.get(c.id) || []).filter(k => (totalCount.get(k.id) || 0) > 0);
+            const expanded = expandedCats.has(c.id);
+            const active = selectedCategoryId === c.id;
+            return (
+              <div key={c.id}>
+                <div
+                  className={`group flex items-center gap-1 pr-2 py-1 rounded-md cursor-pointer text-xs transition-colors ${
+                    active ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted/60"
+                  }`}
+                  style={{ paddingLeft: `${depth * 10 + 6}px` }}
+                  onClick={() => onSelectCategory(active ? null : c.id)}
+                >
+                  {kids.length > 0 ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleExpand(c.id); }}
+                      className="h-3.5 w-3.5 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                    >
+                      {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                    </button>
+                  ) : (
+                    <span className="w-3.5" />
+                  )}
+                  <Tag className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                  <span className="flex-1 truncate">{c.name}</span>
+                  <Badge variant="secondary" className="text-[10px] h-4 px-1.5 min-w-[20px] justify-center">
+                    {totalCount.get(c.id) || 0}
+                  </Badge>
+                </div>
+                {expanded && kids.map(k => renderCat(k, depth + 1))}
+              </div>
+            );
+          };
+
+          return (
+            <>
+              <div className="mt-2 mb-1 px-2 flex items-center justify-between">
+                <h4 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Категории прайса</h4>
+                {selectedCategoryId && (
+                  <button
+                    onClick={() => onSelectCategory(null)}
+                    className="text-[10px] text-muted-foreground hover:text-foreground"
+                    title="Сбросить фильтр"
+                  >
+                    сброс
+                  </button>
+                )}
+              </div>
+              {visibleRoots.map(r => renderCat(r, 0))}
+            </>
+          );
+        })()}
       </div>
 
       <div className="p-2 border-t text-[10px] text-muted-foreground bg-muted/10">
