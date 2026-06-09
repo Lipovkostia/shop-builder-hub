@@ -1111,6 +1111,18 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [feedSearchQuery, setFeedSearchQuery] = useState("");
   const [feedPriceFilter, setFeedPriceFilter] = useState("all");
 
+  // Stats tab
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const weekAgoStr = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const [statsDateFrom, setStatsDateFrom] = useState(weekAgoStr);
+  const [statsDateTo, setStatsDateTo] = useState(todayStr);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsData, setStatsData] = useState<any[]>([]);
+  const [statsMeta, setStatsMeta] = useState<{ dateFrom: string; dateTo: string; total: number } | null>(null);
+  const [statsExpandedId, setStatsExpandedId] = useState<number | null>(null);
+  const [statsSearch, setStatsSearch] = useState("");
+  const [statsSort, setStatsSort] = useState<"views" | "contacts" | "favorites">("views");
+
   // Product groups (internal categorization, not exported)
   const { groups: avitoGroups, createGroup: createAvitoGroup, updateGroup: updateAvitoGroup, deleteGroup: deleteAvitoGroup } = useAvitoProductGroups(storeId);
   const [selectedGroupId, setSelectedGroupId] = useState<string | "all" | "none">("all");
