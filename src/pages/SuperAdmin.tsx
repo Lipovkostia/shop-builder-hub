@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image, LayoutDashboard, LogOut, Mail, Lock, Loader2, Package, Sparkles, Link2, Globe, Bot, UserPlus, X, LayoutGrid } from 'lucide-react';
+import { Search, ExternalLink, Copy, ChevronLeft, ChevronRight, Shield, Store, Users, User, Image, LayoutDashboard, LogOut, Mail, Lock, Loader2, Package, Sparkles, Link2, Globe, Bot, UserPlus, X, LayoutGrid, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,6 +29,7 @@ import LandingInfoBlocksManager from '@/components/admin/LandingInfoBlocksManage
 import HomepageVersionManager from '@/components/admin/HomepageVersionManager';
 import RetailPartnersManager from '@/components/admin/RetailPartnersManager';
 import HomepageCatalogSection from '@/components/admin/HomepageCatalog/HomepageCatalogSection';
+import HomepageImportFromSellers from '@/components/admin/HomepageCatalog/HomepageImportFromSellers';
 
 interface StoreWithCounts {
   id: string;
@@ -588,6 +589,10 @@ export default function SuperAdmin() {
               <Package className="h-4 w-4" />
               <span className="hidden sm:inline">Главная: товары</span>
             </TabsTrigger>
+            <TabsTrigger value="homepage-import" className="gap-2">
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Импорт прайсов</span>
+            </TabsTrigger>
             <TabsTrigger value="homepage" className="gap-2">
               <LayoutGrid className="h-4 w-4" />
               <span className="hidden sm:inline">Главная: настройки</span>
@@ -1107,6 +1112,13 @@ export default function SuperAdmin() {
           <TabsContent value="homepage-catalog" className="space-y-6">
             <HomepageCatalogSection />
           </TabsContent>
+
+          {/* Homepage Import from sellers' catalogs */}
+          <TabsContent value="homepage-import" className="space-y-6">
+            <HomepageImportFromSellers />
+          </TabsContent>
+
+
 
           {/* Homepage Settings Tab */}
           <TabsContent value="homepage" className="space-y-6">
