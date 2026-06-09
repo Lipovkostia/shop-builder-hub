@@ -109,6 +109,17 @@ interface AvitoSectionProps {
     updateTab: (id: string, patch: any) => Promise<void>;
     deleteTab: (id: string) => Promise<void>;
   };
+  accounts?: {
+    accounts: any[];
+    activeAccount: any;
+    activeAccountId: string | null;
+    setActiveAccountId: (id: string) => void;
+    createAccount: (label: string) => Promise<any>;
+    updateAccount: (id: string, patch: any) => Promise<void>;
+    setDefaultAccount: (id: string) => Promise<void>;
+    deleteAccount: (id: string) => Promise<void>;
+    refetch: () => Promise<void>;
+  };
 }
 
 // Inline editable cell component
