@@ -163,7 +163,7 @@ export function useAvitoCityTabs(storeId: string | null, accountId: string | nul
         return null;
       }
     },
-    [storeId, tabs.length, fetchTabs, setActiveTabId],
+    [storeId, accountId, tabs.length, fetchTabs, setActiveTabId],
   );
 
   const updateTab = useCallback(
