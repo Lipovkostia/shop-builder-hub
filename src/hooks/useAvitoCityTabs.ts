@@ -132,6 +132,7 @@ export function useAvitoCityTabs(storeId: string | null, accountId: string | nul
 
               return {
                 store_id: storeId,
+                account_id: accountId,
                 tab_id: newTab.id,
                 product_id: r.product_id,
                 avito_params: params,
