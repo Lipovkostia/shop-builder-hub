@@ -1114,6 +1114,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   // Product groups (internal categorization, not exported)
   const { groups: avitoGroups, createGroup: createAvitoGroup, updateGroup: updateAvitoGroup, deleteGroup: deleteAvitoGroup } = useAvitoProductGroups(storeId);
   const [selectedGroupId, setSelectedGroupId] = useState<string | "all" | "none">("all");
+  const [selectedSourceCategoryId, setSelectedSourceCategoryId] = useState<string | null>(null);
   const [hideInternalCols, setHideInternalCols] = useState(false);
 
   // AI generation state
