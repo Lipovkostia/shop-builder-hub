@@ -3570,6 +3570,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                               <TableHead className="w-16 px-2 text-center">CR%</TableHead>
                               <TableHead className="w-24 px-2 text-right">Расходы</TableHead>
                               <TableHead className="w-24 px-2 text-right">Цена контакта</TableHead>
+                              <TableHead className="w-32 px-2 text-center">AI</TableHead>
                               <TableHead className="w-10 px-2"></TableHead>
                             </TableRow>
                           </TableHeader>
