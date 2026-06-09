@@ -82,17 +82,17 @@ export function useAvitoFeedProducts(storeId: string | null, activeTabId: string
     setDefaults(newDefaults);
     if (storeId) {
       localStorage.setItem(AVITO_DEFAULTS_KEY + storeId, JSON.stringify(newDefaults));
-      // Also persist to DB for edge function access
+      // Also persist to DB for edge function access — per active account
       try {
-        await (supabase as any)
-          .from("avito_accounts")
-          .update({ feed_defaults: newDefaults })
-          .eq("store_id", storeId);
+        let q = (supabase as any).from("avito_accounts").update({ feed_defaults: newDefaults });
+        if (accountId) q = q.eq("id", accountId);
+        else q = q.eq("store_id", storeId);
+        await q;
       } catch (err) {
         console.error("Error saving feed defaults to DB:", err);
       }
     }
-  }, [storeId]);
+  }, [storeId, accountId]);
 
   const fetchFeedProducts = useCallback(async () => {
     if (!storeId) return;
@@ -102,6 +102,7 @@ export function useAvitoFeedProducts(storeId: string | null, activeTabId: string
         .from("avito_feed_products")
         .select("*")
         .eq("store_id", storeId);
+      if (accountId) query = query.eq("account_id", accountId);
       if (activeTabId) query = query.eq("tab_id", activeTabId);
       const { data, error } = await query.order("created_at", { ascending: false });
       if (error) throw error;
@@ -111,7 +112,7 @@ export function useAvitoFeedProducts(storeId: string | null, activeTabId: string
     } finally {
       setLoading(false);
     }
-  }, [storeId, activeTabId]);
+  }, [storeId, activeTabId, accountId]);
 
   useEffect(() => {
     fetchFeedProducts();
@@ -128,6 +129,7 @@ export function useAvitoFeedProducts(storeId: string | null, activeTabId: string
       }
       const rows = newIds.map(pid => ({
         store_id: storeId,
+        account_id: accountId || null,
         tab_id: activeTabId || null,
         product_id: pid,
         ...(priceMap && priceMap[pid] ? { avito_params: { Price: priceMap[pid] } } : {}),
@@ -142,7 +144,7 @@ export function useAvitoFeedProducts(storeId: string | null, activeTabId: string
       toast({ title: "Ошибка", description: err.message, variant: "destructive" });
       return false;
     }
-  }, [storeId, feedProducts, fetchFeedProducts, toast]);
+  }, [storeId, accountId, activeTabId, feedProducts, fetchFeedProducts, toast]);
 
   const scopeTab = <T extends { eq: (k: string, v: any) => T }>(q: T): T =>
     (activeTabId ? q.eq("tab_id", activeTabId) : q);
