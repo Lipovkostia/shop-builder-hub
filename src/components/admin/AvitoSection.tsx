@@ -1161,9 +1161,10 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const enrichedStoreProducts = useMemo(() => {
     return storeProducts.map(p => {
       const extra = productCategoriesMap[p.id] || [];
+      const ownCat = (p as any).category_id || (p as any).category || undefined;
       const all = new Set<string>(extra);
-      if (p.category_id) all.add(p.category_id);
-      return { ...p, category: p.category_id || undefined, categories: Array.from(all) } as any;
+      if (ownCat) all.add(ownCat);
+      return { ...p, category: ownCat, categories: Array.from(all) } as any;
     });
   }, [storeProducts, productCategoriesMap]);
 
