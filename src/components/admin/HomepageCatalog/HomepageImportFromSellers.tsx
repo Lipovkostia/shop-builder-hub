@@ -227,10 +227,27 @@ export default function HomepageImportFromSellers() {
         is_active: true,
       }));
 
-      const { error: upErr } = await sb
+      // Manual upsert: fetch existing by source_url, then update or insert.
+      const sourceUrls = productRows.map((r) => r.source_url);
+      const { data: existing } = await sb
         .from("homepage_products")
-        .upsert(productRows, { onConflict: "source_url" });
-      if (upErr) throw upErr;
+        .select("id, source_url")
+        .in("source_url", sourceUrls);
+      const existingMap = new Map<string, string>();
+      (existing || []).forEach((r: any) => existingMap.set(r.source_url, r.id));
+
+      const toInsert = productRows.filter((r) => !existingMap.has(r.source_url));
+      const toUpdate = productRows.filter((r) => existingMap.has(r.source_url));
+
+      if (toInsert.length > 0) {
+        const { error: insErr } = await sb.from("homepage_products").insert(toInsert);
+        if (insErr) throw insErr;
+      }
+      for (const row of toUpdate) {
+        const id = existingMap.get(row.source_url)!;
+        const { error: updErr } = await sb.from("homepage_products").update(row).eq("id", id);
+        if (updErr) throw updErr;
+      }
 
       toast({
         title: "Импорт завершён",
