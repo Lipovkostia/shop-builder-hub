@@ -3399,13 +3399,15 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                   ))}
                 </div>
                 <Select value={statsSort} onValueChange={(v) => setStatsSort(v as any)}>
-                  <SelectTrigger className="h-8 text-xs w-40">
+                  <SelectTrigger className="h-8 text-xs w-44">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="views">Сортировка: просмотры</SelectItem>
                     <SelectItem value="contacts">Сортировка: контакты</SelectItem>
                     <SelectItem value="favorites">Сортировка: избранное</SelectItem>
+                    <SelectItem value="spend">Сортировка: расходы</SelectItem>
+                    <SelectItem value="cpa">Сортировка: цена контакта</SelectItem>
                   </SelectContent>
                 </Select>
                 {statsData.length > 0 && (
