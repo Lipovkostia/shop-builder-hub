@@ -170,9 +170,10 @@ export default function IndexNew() {
               className="pl-11 h-11 lg:h-12 text-base rounded-xl border-2 focus-visible:ring-primary"
             />
           </div>
-          <Link to="/auth?tab=customer" className="hidden sm:block">
-            <Button variant="outline" size="sm" className="gap-2">
-              <LogIn className="h-4 w-4" /> Вход
+          <Link to="/auth?tab=customer" className="shrink-0">
+            <Button variant="outline" size="sm" className="gap-1.5 px-2.5 sm:px-3">
+              <LogIn className="h-4 w-4" />
+              <span className="hidden xs:inline sm:inline">Вход</span>
             </Button>
           </Link>
         </div>
