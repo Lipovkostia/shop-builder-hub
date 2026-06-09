@@ -1135,6 +1135,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [analystLoading, setAnalystLoading] = useState(false);
   const [analystResult, setAnalystResult] = useState<string>("");
   const [analystModel, setAnalystModel] = useState("openai/gpt-4o-mini");
+  const [analystRecommendations, setAnalystRecommendations] = useState<Array<{ itemId: number; action: string; reason: string }>>([]);
+  const [applyingRecs, setApplyingRecs] = useState(false);
 
   // Product groups (internal categorization, not exported)
   const { groups: avitoGroups, createGroup: createAvitoGroup, updateGroup: updateAvitoGroup, deleteGroup: deleteAvitoGroup } = useAvitoProductGroups(storeId);
@@ -1401,12 +1403,98 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || "Ошибка анализа");
       setAnalystResult(data.analysis || "");
-      toast({ title: "Анализ готов" });
+      setAnalystRecommendations(Array.isArray(data.recommendations) ? data.recommendations : []);
+      toast({ title: "Анализ готов", description: `Рекомендаций: ${(data.recommendations || []).length}` });
     } catch (err: any) {
       toast({ title: "Ошибка AI-анализа", description: err.message, variant: "destructive" });
     } finally {
       setAnalystLoading(false);
     }
+  };
+
+  // Map itemId -> recommendation for quick row lookup
+  const recommendationsMap = useMemo(() => {
+    const m = new Map<number, { action: string; reason: string }>();
+    for (const r of analystRecommendations) {
+      const id = Number(r.itemId);
+      if (Number.isFinite(id)) m.set(id, { action: r.action, reason: r.reason });
+    }
+    return m;
+  }, [analystRecommendations]);
+
+  const recBadge = (action: string) => {
+    switch (action) {
+      case "remove": return { label: "🔴 Снять", cls: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300" };
+      case "lower_bid": return { label: "📉 Снизить", cls: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300" };
+      case "raise_bid": return { label: "📈 Поднять", cls: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300" };
+      case "optimize": return { label: "🟡 Оптимизировать", cls: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-300" };
+      case "keep": return { label: "🟢 Топ", cls: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300" };
+      default: return { label: action, cls: "bg-muted text-muted-foreground border-border" };
+    }
+  };
+
+  const handleApplyRecommendations = async () => {
+    const toRemove = analystRecommendations.filter((r) => r.action === "remove").map((r) => Number(r.itemId)).filter(Number.isFinite);
+    if (toRemove.length === 0) {
+      toast({ title: "Нет объявлений для снятия", description: "AI не пометил красным ни одного объявления." });
+      return;
+    }
+    if (!confirm(`Снять с публикации ${toRemove.length} объявление(й), помеченные AI как 🔴?\n\nЭто действие необратимо через API — повторно опубликовать можно только вручную в кабинете Авито.`)) return;
+    setApplyingRecs(true);
+    try {
+      const data = await callAvitoApi({ action: "stop_items", store_id: storeId, item_ids: toRemove });
+      toast({
+        title: "Готово",
+        description: `Снято: ${data.stopped || 0}, ошибок: ${data.failed || 0}`,
+        variant: (data.failed || 0) > 0 ? "destructive" : "default",
+      });
+    } catch (err: any) {
+      toast({ title: "Ошибка применения", description: err.message, variant: "destructive" });
+    } finally {
+      setApplyingRecs(false);
+    }
+  };
+
+  const handleExportAnalysisExcel = () => {
+    if (statsData.length === 0) {
+      toast({ title: "Нет данных для экспорта", variant: "destructive" });
+      return;
+    }
+    const rows = statsData.map((row: any) => {
+      const days = row.stats || [];
+      const views = days.reduce((a: number, d: any) => a + (d.uniqViews || 0), 0);
+      const contacts = days.reduce((a: number, d: any) => a + (d.uniqContacts || 0), 0);
+      const favorites = days.reduce((a: number, d: any) => a + (d.uniqFavorites || 0), 0);
+      const spend = Number(statsSpendByItem[String(row.itemId)] || 0);
+      const cr = views > 0 ? +((contacts / views) * 100).toFixed(2) : 0;
+      const cpa = contacts > 0 ? +(spend / contacts).toFixed(2) : 0;
+      const item = items.find((it) => Number(it.id) === Number(row.itemId));
+      const rec = recommendationsMap.get(Number(row.itemId));
+      return {
+        ID: row.itemId,
+        "Название": item?.title || "",
+        "Цена ₽": item?.price || 0,
+        "Просмотры": views,
+        "Контакты": contacts,
+        "Избранное": favorites,
+        "CR %": cr,
+        "Расходы ₽": +spend.toFixed(2),
+        "CPA ₽": cpa,
+        "AI-рекомендация": rec ? recBadge(rec.action).label : "",
+        "AI-причина": rec?.reason || "",
+        "Ссылка": item?.url ? (item.url.startsWith("http") ? item.url : `https://www.avito.ru${item.url}`) : "",
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Аналитика");
+    if (analystResult) {
+      const wsA = XLSX.utils.aoa_to_sheet([["AI-анализ"], ...analystResult.split("\n").map((l) => [l])]);
+      XLSX.utils.book_append_sheet(wb, wsA, "AI-анализ");
+    }
+    const period = statsMeta ? `${statsMeta.dateFrom}_${statsMeta.dateTo}` : new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `avito_stats_${period}.xlsx`);
+    toast({ title: "Excel выгружен" });
   };
 
   const handleFetchItems = async () => {
@@ -3426,7 +3514,14 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                 {statsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
                 Загрузить статистику
               </Button>
+              <Button size="sm" variant="outline" onClick={handleExportAnalysisExcel} disabled={statsData.length === 0}>
+                Excel
+              </Button>
             </div>
+
+            <Card className="p-2 text-[11px] text-muted-foreground border-dashed">
+              ℹ️ Позиция объявления в поиске Авито недоступна через публичный API (эндпоинт <code>position</code> есть только во внутреннем кабинете). Если Авито откроет публичный метод — добавим колонку автоматически.
+            </Card>
 
             {statsMeta && (() => {
               const totalViews = statsData.reduce((s, it) => s + (it.stats || []).reduce((a: number, d: any) => a + (d.uniqViews || 0), 0), 0);
@@ -3475,6 +3570,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                               <TableHead className="w-16 px-2 text-center">CR%</TableHead>
                               <TableHead className="w-24 px-2 text-right">Расходы</TableHead>
                               <TableHead className="w-24 px-2 text-right">Цена контакта</TableHead>
+                              <TableHead className="w-32 px-2 text-center">AI</TableHead>
                               <TableHead className="w-10 px-2"></TableHead>
                             </TableRow>
                           </TableHeader>
@@ -3512,7 +3608,13 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                   <>
                                     <TableRow
                                       key={row.itemId}
-                                      className="cursor-pointer hover:bg-muted/50"
+                                      className={`cursor-pointer hover:bg-muted/50 ${
+                                        recommendationsMap.get(Number(row.itemId))?.action === "remove" ? "bg-red-50/60 dark:bg-red-950/20" :
+                                        recommendationsMap.get(Number(row.itemId))?.action === "lower_bid" ? "bg-orange-50/60 dark:bg-orange-950/20" :
+                                        recommendationsMap.get(Number(row.itemId))?.action === "raise_bid" ? "bg-blue-50/60 dark:bg-blue-950/20" :
+                                        recommendationsMap.get(Number(row.itemId))?.action === "optimize" ? "bg-yellow-50/60 dark:bg-yellow-950/20" :
+                                        recommendationsMap.get(Number(row.itemId))?.action === "keep" ? "bg-emerald-50/60 dark:bg-emerald-950/20" : ""
+                                      }`}
                                       onClick={() => setStatsExpandedId(isExpanded ? null : Number(row.itemId))}
                                     >
                                       <TableCell className="px-2 text-xs text-muted-foreground">{index + 1}</TableCell>
@@ -3539,12 +3641,20 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                       <TableCell className="px-2 text-right text-xs font-medium">{row._spend > 0 ? `${row._spend.toLocaleString("ru", { maximumFractionDigits: 2 })} ₽` : "—"}</TableCell>
                                       <TableCell className="px-2 text-right text-xs">{row._cpa > 0 ? `${row._cpa.toLocaleString("ru", { maximumFractionDigits: 0 })} ₽` : "—"}</TableCell>
                                       <TableCell className="px-2 text-center">
+                                        {(() => {
+                                          const rec = recommendationsMap.get(Number(row.itemId));
+                                          if (!rec) return <span className="text-[10px] text-muted-foreground">—</span>;
+                                          const b = recBadge(rec.action);
+                                          return <Badge variant="outline" className={`text-[10px] ${b.cls}`} title={rec.reason}>{b.label}</Badge>;
+                                        })()}
+                                      </TableCell>
+                                      <TableCell className="px-2 text-center">
                                         <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                                       </TableCell>
                                     </TableRow>
                                     {isExpanded && (
                                       <TableRow key={`${row.itemId}-days`} className="bg-muted/30">
-                                        <TableCell colSpan={10} className="p-3">
+                                        <TableCell colSpan={11} className="p-3">
                                           <div className="text-[11px] font-medium mb-2 text-muted-foreground">Статистика по дням</div>
                                           <div className="overflow-x-auto">
                                             <table className="text-xs w-full">
@@ -3649,23 +3759,56 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                 )}
 
                 {analystResult && !analystLoading && (
-                  <Card className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-medium flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                        Результат анализа
+                  <>
+                    {analystRecommendations.length > 0 && (() => {
+                      const counts = analystRecommendations.reduce((acc: Record<string, number>, r) => {
+                        acc[r.action] = (acc[r.action] || 0) + 1; return acc;
+                      }, {});
+                      const removeCount = counts["remove"] || 0;
+                      return (
+                        <Card className="p-3 flex items-center justify-between gap-3 flex-wrap">
+                          <div className="flex items-center gap-2 flex-wrap text-xs">
+                            <span className="text-muted-foreground">Рекомендации AI:</span>
+                            {(["remove","lower_bid","optimize","raise_bid","keep"] as const).map((a) => {
+                              const n = counts[a] || 0;
+                              if (!n) return null;
+                              const b = recBadge(a);
+                              return <Badge key={a} variant="outline" className={`text-[10px] ${b.cls}`}>{b.label}: {n}</Badge>;
+                            })}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" variant="outline" onClick={handleExportAnalysisExcel}>Excel</Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              disabled={applyingRecs || removeCount === 0}
+                              onClick={handleApplyRecommendations}
+                            >
+                              {applyingRecs ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                              Применить рекомендации {removeCount > 0 ? `(снять ${removeCount})` : ""}
+                            </Button>
+                          </div>
+                        </Card>
+                      );
+                    })()}
+                    <Card className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-medium flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                          Результат анализа
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs"
+                          onClick={() => { navigator.clipboard.writeText(analystResult); toast({ title: "Скопировано" }); }}
+                        >
+                          Копировать
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 text-xs"
-                        onClick={() => { navigator.clipboard.writeText(analystResult); toast({ title: "Скопировано" }); }}
-                      >
-                        Копировать
-                      </Button>
-                    </div>
-                    <div className="text-xs whitespace-pre-wrap leading-relaxed">{analystResult}</div>
-                  </Card>
+                      <div className="text-xs whitespace-pre-wrap leading-relaxed">{analystResult}</div>
+                    </Card>
+                  </>
                 )}
 
                 {!analystResult && !analystLoading && statsData.length === 0 && (
