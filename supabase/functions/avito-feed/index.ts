@@ -95,6 +95,14 @@ Deno.serve(async (req) => {
     const defaultEmail = fd.email || "";
     const defaultCompanyName = fd.companyName || "";
     const defaultTargetAudience = fd.targetAudience || "";
+    const defaultTitlePrefix = (fd.titlePrefix !== undefined && fd.titlePrefix !== null)
+      ? String(fd.titlePrefix)
+      : "Опт:";
+    const defaultDescriptionFirstLine = (fd.descriptionFirstLine !== undefined && fd.descriptionFirstLine !== null)
+      ? String(fd.descriptionFirstLine)
+      : "Продажа только в опт от 15 тыс. ₽ заказ";
+    const applyGlobalPrefix = fd.applyGlobalPrefix !== false; // default ON
+
 
     // Get feed products with product data; optionally scope by tab_id (city tab)
     const tabId = url.searchParams.get("tab_id");
