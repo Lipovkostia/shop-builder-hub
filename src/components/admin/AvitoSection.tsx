@@ -3459,123 +3459,223 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
               </TabsList>
 
               <TabsContent value="table" className="space-y-3 mt-3">
-              <div className="border rounded-lg overflow-hidden">
-                <ScrollArea className="w-full">
-                  <div className="min-w-[900px]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="text-xs">
-                          <TableHead className="w-10 px-2">№</TableHead>
-                          <TableHead className="w-14 px-2">Фото</TableHead>
-                          <TableHead className="min-w-[260px] px-2">Объявление</TableHead>
-                          <TableHead className="w-24 px-2 text-right">Просмотры</TableHead>
-                          <TableHead className="w-24 px-2 text-right">Контакты</TableHead>
-                          <TableHead className="w-24 px-2 text-right">Избранное</TableHead>
-                          <TableHead className="w-16 px-2 text-center">CR%</TableHead>
-                          <TableHead className="w-10 px-2"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {statsData
-                          .map((row) => {
-                            const days = row.stats || [];
-                            const views = days.reduce((a: number, d: any) => a + (d.uniqViews || 0), 0);
-                            const contacts = days.reduce((a: number, d: any) => a + (d.uniqContacts || 0), 0);
-                            const favs = days.reduce((a: number, d: any) => a + (d.uniqFavorites || 0), 0);
-                            return { ...row, _views: views, _contacts: contacts, _favs: favs };
-                          })
-                          .filter((row) => {
-                            if (!statsSearch.trim()) return true;
-                            const item = items.find((it) => Number(it.id) === Number(row.itemId));
-                            const hay = `${row.itemId} ${item?.title || ""}`.toLowerCase();
-                            return hay.includes(statsSearch.toLowerCase());
-                          })
-                          .sort((a, b) => {
-                            const key = statsSort === "views" ? "_views" : statsSort === "contacts" ? "_contacts" : "_favs";
-                            return (b as any)[key] - (a as any)[key];
-                          })
-                          .map((row, index) => {
-                            const item = items.find((it) => Number(it.id) === Number(row.itemId));
-                            const imageUrl = item?.images?.[0]?.["640x480"] || item?.images?.[0]?.url || null;
-                            const cr = row._views > 0 ? ((row._contacts / row._views) * 100).toFixed(1) : "—";
-                            const isExpanded = statsExpandedId === Number(row.itemId);
-                            return (
-                              <>
-                                <TableRow
-                                  key={row.itemId}
-                                  className="cursor-pointer hover:bg-muted/50"
-                                  onClick={() => setStatsExpandedId(isExpanded ? null : Number(row.itemId))}
-                                >
-                                  <TableCell className="px-2 text-xs text-muted-foreground">{index + 1}</TableCell>
-                                  <TableCell className="px-2">
-                                    {imageUrl ? <img src={imageUrl} alt="" className="w-10 h-10 rounded object-cover" /> : (
-                                      <div className="w-10 h-10 rounded bg-muted flex items-center justify-center"><Package className="h-4 w-4 text-muted-foreground" /></div>
+                {statsData.length > 0 ? (
+                  <div className="border rounded-lg overflow-hidden">
+                    <ScrollArea className="w-full">
+                      <div className="min-w-[1100px]">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="text-xs">
+                              <TableHead className="w-10 px-2">№</TableHead>
+                              <TableHead className="w-14 px-2">Фото</TableHead>
+                              <TableHead className="min-w-[240px] px-2">Объявление</TableHead>
+                              <TableHead className="w-20 px-2 text-right">Просмотры</TableHead>
+                              <TableHead className="w-20 px-2 text-right">Контакты</TableHead>
+                              <TableHead className="w-20 px-2 text-right">Избранное</TableHead>
+                              <TableHead className="w-16 px-2 text-center">CR%</TableHead>
+                              <TableHead className="w-24 px-2 text-right">Расходы</TableHead>
+                              <TableHead className="w-24 px-2 text-right">Цена контакта</TableHead>
+                              <TableHead className="w-10 px-2"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {statsData
+                              .map((row) => {
+                                const days = row.stats || [];
+                                const views = days.reduce((a: number, d: any) => a + (d.uniqViews || 0), 0);
+                                const contacts = days.reduce((a: number, d: any) => a + (d.uniqContacts || 0), 0);
+                                const favs = days.reduce((a: number, d: any) => a + (d.uniqFavorites || 0), 0);
+                                const spend = Number(statsSpendByItem[String(row.itemId)] || 0);
+                                const cpa = contacts > 0 ? spend / contacts : 0;
+                                return { ...row, _views: views, _contacts: contacts, _favs: favs, _spend: spend, _cpa: cpa };
+                              })
+                              .filter((row) => {
+                                if (!statsSearch.trim()) return true;
+                                const item = items.find((it) => Number(it.id) === Number(row.itemId));
+                                const hay = `${row.itemId} ${item?.title || ""}`.toLowerCase();
+                                return hay.includes(statsSearch.toLowerCase());
+                              })
+                              .sort((a, b) => {
+                                const key = statsSort === "views" ? "_views"
+                                  : statsSort === "contacts" ? "_contacts"
+                                  : statsSort === "favorites" ? "_favs"
+                                  : statsSort === "spend" ? "_spend"
+                                  : "_cpa";
+                                return (b as any)[key] - (a as any)[key];
+                              })
+                              .map((row, index) => {
+                                const item = items.find((it) => Number(it.id) === Number(row.itemId));
+                                const imageUrl = item?.images?.[0]?.["640x480"] || item?.images?.[0]?.url || null;
+                                const cr = row._views > 0 ? ((row._contacts / row._views) * 100).toFixed(1) : "—";
+                                const isExpanded = statsExpandedId === Number(row.itemId);
+                                return (
+                                  <>
+                                    <TableRow
+                                      key={row.itemId}
+                                      className="cursor-pointer hover:bg-muted/50"
+                                      onClick={() => setStatsExpandedId(isExpanded ? null : Number(row.itemId))}
+                                    >
+                                      <TableCell className="px-2 text-xs text-muted-foreground">{index + 1}</TableCell>
+                                      <TableCell className="px-2">
+                                        {imageUrl ? <img src={imageUrl} alt="" className="w-10 h-10 rounded object-cover" /> : (
+                                          <div className="w-10 h-10 rounded bg-muted flex items-center justify-center"><Package className="h-4 w-4 text-muted-foreground" /></div>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="px-2">
+                                        <div className="font-medium text-xs leading-tight line-clamp-2">{item?.title || `Объявление ${row.itemId}`}</div>
+                                        <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
+                                          <span>ID: {row.itemId}</span>
+                                          {item?.url && (
+                                            <a href={item.url.startsWith("http") ? item.url : `https://www.avito.ru${item.url}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-0.5 hover:text-foreground">
+                                              <ExternalLink className="h-3 w-3" /> открыть
+                                            </a>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="px-2 text-right font-semibold text-xs">{row._views.toLocaleString("ru")}</TableCell>
+                                      <TableCell className="px-2 text-right font-semibold text-xs">{row._contacts.toLocaleString("ru")}</TableCell>
+                                      <TableCell className="px-2 text-right font-semibold text-xs">{row._favs.toLocaleString("ru")}</TableCell>
+                                      <TableCell className="px-2 text-center text-xs text-muted-foreground">{cr === "—" ? "—" : `${cr}%`}</TableCell>
+                                      <TableCell className="px-2 text-right text-xs font-medium">{row._spend > 0 ? `${row._spend.toLocaleString("ru", { maximumFractionDigits: 2 })} ₽` : "—"}</TableCell>
+                                      <TableCell className="px-2 text-right text-xs">{row._cpa > 0 ? `${row._cpa.toLocaleString("ru", { maximumFractionDigits: 0 })} ₽` : "—"}</TableCell>
+                                      <TableCell className="px-2 text-center">
+                                        <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                                      </TableCell>
+                                    </TableRow>
+                                    {isExpanded && (
+                                      <TableRow key={`${row.itemId}-days`} className="bg-muted/30">
+                                        <TableCell colSpan={10} className="p-3">
+                                          <div className="text-[11px] font-medium mb-2 text-muted-foreground">Статистика по дням</div>
+                                          <div className="overflow-x-auto">
+                                            <table className="text-xs w-full">
+                                              <thead>
+                                                <tr className="border-b">
+                                                  <th className="text-left py-1 pr-3 font-medium">Дата</th>
+                                                  <th className="text-right py-1 px-3 font-medium">Просмотры</th>
+                                                  <th className="text-right py-1 px-3 font-medium">Контакты</th>
+                                                  <th className="text-right py-1 pl-3 font-medium">Избранное</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                {(row.stats || []).slice().sort((a: any, b: any) => String(a.date).localeCompare(String(b.date))).map((d: any) => (
+                                                  <tr key={d.date} className="border-b border-muted">
+                                                    <td className="py-1 pr-3 text-muted-foreground">{d.date}</td>
+                                                    <td className="py-1 px-3 text-right">{(d.uniqViews || 0).toLocaleString("ru")}</td>
+                                                    <td className="py-1 px-3 text-right">{(d.uniqContacts || 0).toLocaleString("ru")}</td>
+                                                    <td className="py-1 pl-3 text-right">{(d.uniqFavorites || 0).toLocaleString("ru")}</td>
+                                                  </tr>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        </TableCell>
+                                      </TableRow>
                                     )}
-                                  </TableCell>
-                                  <TableCell className="px-2">
-                                    <div className="font-medium text-xs leading-tight line-clamp-2">{item?.title || `Объявление ${row.itemId}`}</div>
-                                    <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
-                                      <span>ID: {row.itemId}</span>
-                                      {item?.url && (
-                                        <a href={item.url.startsWith("http") ? item.url : `https://www.avito.ru${item.url}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-0.5 hover:text-foreground">
-                                          <ExternalLink className="h-3 w-3" /> открыть
-                                        </a>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="px-2 text-right font-semibold text-xs">{row._views.toLocaleString("ru")}</TableCell>
-                                  <TableCell className="px-2 text-right font-semibold text-xs">{row._contacts.toLocaleString("ru")}</TableCell>
-                                  <TableCell className="px-2 text-right font-semibold text-xs">{row._favs.toLocaleString("ru")}</TableCell>
-                                  <TableCell className="px-2 text-center text-xs text-muted-foreground">{cr === "—" ? "—" : `${cr}%`}</TableCell>
-                                  <TableCell className="px-2 text-center">
-                                    <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                                  </TableCell>
-                                </TableRow>
-                                {isExpanded && (
-                                  <TableRow key={`${row.itemId}-days`} className="bg-muted/30">
-                                    <TableCell colSpan={8} className="p-3">
-                                      <div className="text-[11px] font-medium mb-2 text-muted-foreground">Статистика по дням</div>
-                                      <div className="overflow-x-auto">
-                                        <table className="text-xs w-full">
-                                          <thead>
-                                            <tr className="border-b">
-                                              <th className="text-left py-1 pr-3 font-medium">Дата</th>
-                                              <th className="text-right py-1 px-3 font-medium">Просмотры</th>
-                                              <th className="text-right py-1 px-3 font-medium">Контакты</th>
-                                              <th className="text-right py-1 pl-3 font-medium">Избранное</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {(row.stats || []).slice().sort((a: any, b: any) => String(a.date).localeCompare(String(b.date))).map((d: any) => (
-                                              <tr key={d.date} className="border-b border-muted">
-                                                <td className="py-1 pr-3 text-muted-foreground">{d.date}</td>
-                                                <td className="py-1 px-3 text-right">{(d.uniqViews || 0).toLocaleString("ru")}</td>
-                                                <td className="py-1 px-3 text-right">{(d.uniqContacts || 0).toLocaleString("ru")}</td>
-                                                <td className="py-1 pl-3 text-right">{(d.uniqFavorites || 0).toLocaleString("ru")}</td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </TableCell>
-                                  </TableRow>
-                                )}
-                              </>
-                            );
-                          })}
-                      </TableBody>
-                    </Table>
+                                  </>
+                                );
+                              })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
                   </div>
-                </ScrollArea>
-              </div>
-            ) : (
-              <Card className="p-8 text-center">
-                <Eye className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Выберите период и нажмите «Загрузить статистику». Авито вернёт уникальные просмотры, контакты и добавления в избранное по дням для всех активных объявлений.
-                </p>
-              </Card>
-            )}
+                ) : (
+                  <Card className="p-8 text-center">
+                    <Eye className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Выберите период и нажмите «Загрузить статистику». Авито вернёт уникальные просмотры, контакты и добавления в избранное по дням для всех активных объявлений.
+                    </p>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="analyst" className="space-y-3 mt-3">
+                <Card className="p-3 space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">Робот-аналитик</span>
+                      <Badge variant="secondary" className="text-[10px]">AI</Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select value={analystModel} onValueChange={setAnalystModel}>
+                        <SelectTrigger className="h-8 text-xs w-56">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="openai/gpt-4o-mini">GPT-4o mini (быстрый)</SelectItem>
+                          <SelectItem value="openai/gpt-4o">GPT-4o (точный)</SelectItem>
+                          <SelectItem value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</SelectItem>
+                          <SelectItem value="google/gemini-2.0-flash">Gemini 2.0 Flash</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button size="sm" onClick={handleRunAnalyst} disabled={analystLoading || statsData.length === 0}>
+                        {analystLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
+                        Запустить анализ
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">Промпт (инструкция AI) — можно менять и задавать свои вопросы</Label>
+                    <Textarea
+                      value={analystPrompt}
+                      onChange={(e) => setAnalystPrompt(e.target.value)}
+                      rows={6}
+                      className="text-xs font-mono mt-1"
+                      placeholder="Опишите, что хотите проанализировать..."
+                    />
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-[10px] text-muted-foreground">
+                        AI получит агрегаты по каждому объявлению: просмотры, контакты, избранное, расходы, цену.
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-[10px]"
+                        onClick={() => setAnalystPrompt(DEFAULT_ANALYST_PROMPT)}
+                      >
+                        Сбросить промпт
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+
+                {analystLoading && (
+                  <Card className="p-8 text-center">
+                    <Loader2 className="h-6 w-6 mx-auto mb-2 animate-spin text-primary" />
+                    <p className="text-xs text-muted-foreground">Анализирую {statsData.length} объявлений...</p>
+                  </Card>
+                )}
+
+                {analystResult && !analystLoading && (
+                  <Card className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-medium flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        Результат анализа
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs"
+                        onClick={() => { navigator.clipboard.writeText(analystResult); toast({ title: "Скопировано" }); }}
+                      >
+                        Копировать
+                      </Button>
+                    </div>
+                    <div className="text-xs whitespace-pre-wrap leading-relaxed">{analystResult}</div>
+                  </Card>
+                )}
+
+                {!analystResult && !analystLoading && statsData.length === 0 && (
+                  <Card className="p-8 text-center">
+                    <Sparkles className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Сначала загрузите статистику (вкладка «Таблица»), затем запустите анализ.</p>
+                  </Card>
+                )}
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         )}
       </Tabs>
