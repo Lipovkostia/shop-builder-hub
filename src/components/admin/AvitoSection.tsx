@@ -3432,6 +3432,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
               const totalViews = statsData.reduce((s, it) => s + (it.stats || []).reduce((a: number, d: any) => a + (d.uniqViews || 0), 0), 0);
               const totalContacts = statsData.reduce((s, it) => s + (it.stats || []).reduce((a: number, d: any) => a + (d.uniqContacts || 0), 0), 0);
               const totalFavs = statsData.reduce((s, it) => s + (it.stats || []).reduce((a: number, d: any) => a + (d.uniqFavorites || 0), 0), 0);
+              const cpaTotal = totalContacts > 0 ? (statsSpendTotal / totalContacts) : 0;
               return (
                 <Card className="p-3 flex gap-6 text-xs flex-wrap">
                   <div><span className="text-muted-foreground">Период: </span><span className="font-medium">{statsMeta.dateFrom} — {statsMeta.dateTo}</span></div>
@@ -3439,11 +3440,25 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                   <div><span className="text-muted-foreground">Просмотров: </span><span className="font-semibold text-primary">{totalViews.toLocaleString("ru")}</span></div>
                   <div><span className="text-muted-foreground">Контактов: </span><span className="font-semibold text-primary">{totalContacts.toLocaleString("ru")}</span></div>
                   <div><span className="text-muted-foreground">В избранное: </span><span className="font-semibold text-primary">{totalFavs.toLocaleString("ru")}</span></div>
+                  <div><span className="text-muted-foreground">Расходы: </span><span className="font-semibold text-destructive">{statsSpendTotal.toLocaleString("ru", { maximumFractionDigits: 2 })} ₽</span></div>
+                  <div><span className="text-muted-foreground">Цена контакта: </span><span className="font-semibold">{cpaTotal > 0 ? `${cpaTotal.toLocaleString("ru", { maximumFractionDigits: 0 })} ₽` : "—"}</span></div>
+                  {statsSpendError && (
+                    <div className="text-amber-600 text-[11px] w-full">⚠ Расходы недоступны: {statsSpendError}. Возможно, у приложения нет прав operations.</div>
+                  )}
                 </Card>
               );
             })()}
 
-            {statsData.length > 0 ? (
+            <Tabs value={statsSubTab} onValueChange={(v) => setStatsSubTab(v as any)}>
+              <TabsList>
+                <TabsTrigger value="table">Таблица</TabsTrigger>
+                <TabsTrigger value="analyst">
+                  <Sparkles className="h-3.5 w-3.5 mr-1 text-primary" />
+                  Робот-аналитик
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="table" className="space-y-3 mt-3">
               <div className="border rounded-lg overflow-hidden">
                 <ScrollArea className="w-full">
                   <div className="min-w-[900px]">
