@@ -2551,11 +2551,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
               {/* Bulk actions bar - always visible when there are products */}
               {avitoFeed && avitoFeed.feedProducts.length > 0 && (() => {
-                const groupFilteredFeed = avitoFeed.feedProducts.filter((fp) => {
-                  if (selectedGroupId === "all") return true;
-                  if (selectedGroupId === "none") return !fp.group_id;
-                  return fp.group_id === selectedGroupId;
-                });
+                // (filtering computed below, with category filter included)
                 const descendantCatIds = (() => {
                   if (!selectedSourceCategoryId) return null;
                   const set = new Set<string>([selectedSourceCategoryId]);
