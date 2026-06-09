@@ -2342,6 +2342,29 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         />
       )}
 
+      {restoreReport && (
+        <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <div className="font-semibold">Результат восстановления фида из Авито</div>
+            <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setRestoreReport(null)}>
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+          <div>Активных на Авито: <b>{restoreReport.total_active_on_avito}</b> · Добавлено в фид: <b className="text-primary">{restoreReport.inserted}</b> · Уже было: {restoreReport.skipped_existing} · Не сопоставлено: <b className="text-destructive">{restoreReport.unmatched_count}</b></div>
+          {restoreReport.unmatched.length > 0 && (
+            <details className="mt-1">
+              <summary className="cursor-pointer text-muted-foreground">Показать не сопоставленные ({restoreReport.unmatched.length})</summary>
+              <ul className="mt-1 max-h-40 overflow-y-auto space-y-0.5">
+                {restoreReport.unmatched.map((u, i) => (
+                  <li key={i} className="truncate"><span className="text-muted-foreground">#{String(u.itemId)}</span> — {u.title || "(без названия)"}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
+
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="feed">Товары для Авито ({avitoFeed?.feedProducts.length || 0})</TabsTrigger>
