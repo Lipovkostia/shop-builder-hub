@@ -135,18 +135,24 @@ export const uploadFileToStorage = async (
   imageIndex: number
 ): Promise<ImageUploadResult | null> => {
   try {
-    const ext = file.name.split('.').pop() || 'jpg';
-    const fileName = `${productId}/${Date.now()}_${imageIndex}.${ext}`;
+    const rawExt = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const extMap: Record<string, string> = {
+      jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+      webp: "image/webp", gif: "image/gif", heic: "image/heic",
+      heif: "image/heif", bmp: "image/bmp", tif: "image/tiff", tiff: "image/tiff",
+      svg: "image/svg+xml", avif: "image/avif",
+    };
+    const contentType = file.type && file.type !== "application/octet-stream"
+      ? file.type
+      : (extMap[rawExt] || "image/jpeg");
+    const fileName = `${productId}/${Date.now()}_${imageIndex}.${rawExt}`;
 
     const { data, error } = await supabase.storage
       .from("product-images")
-      .upload(fileName, file, {
-        contentType: file.type,
-        upsert: true,
-      });
+      .upload(fileName, file, { contentType, upsert: true });
 
     if (error) {
-      console.error("Error uploading file:", error);
+      console.error("Error uploading file:", error, { fileName, contentType, size: file.size });
       return null;
     }
 
@@ -154,10 +160,7 @@ export const uploadFileToStorage = async (
       .from("product-images")
       .getPublicUrl(fileName);
 
-    return {
-      url: urlData.publicUrl,
-      path: fileName,
-    };
+    return { url: urlData.publicUrl, path: fileName };
   } catch (err) {
     console.error("Error in uploadFileToStorage:", err);
     return null;
