@@ -2734,7 +2734,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     <div className="flex-1 overflow-auto">
                       <AvitoFeedTable
                         feedProducts={groupFilteredFeed}
-                        storeProducts={storeProducts}
+                        storeProducts={enrichedStoreProducts as any}
                         storeCategories={storeCategories}
                         selectedFeedProducts={selectedFeedProducts}
                         setSelectedFeedProducts={setSelectedFeedProducts}
