@@ -501,6 +501,37 @@ Deno.serve(async (req) => {
 
 
 
+    if (action === "stop_items") {
+      // Mass-stop ads. Body: { store_id, item_ids: number[] }
+      const { data: account, error: accErr } = await supabase
+        .from("avito_accounts").select("*").eq("store_id", store_id).single();
+      if (accErr || !account) throw new Error("Avito аккаунт не найден.");
+      if (!account.avito_user_id) throw new Error("avito_user_id отсутствует — переподключите Авито.");
+      const token = await getAvitoToken(account.client_id, account.client_secret);
+      const ids = Array.isArray(item_ids) ? item_ids.map((x: any) => Number(x)).filter(Number.isFinite) : [];
+      const results: { itemId: number; ok: boolean; error?: string }[] = [];
+      for (const id of ids) {
+        try {
+          // Avito: stop publication
+          const url = `${AVITO_API_BASE}/core/v1/accounts/${account.avito_user_id}/items/${id}/stop`;
+          const r = await fetch(url, { method: "PUT", headers: { Authorization: `Bearer ${token}` } });
+          if (!r.ok) {
+            const t = await r.text();
+            results.push({ itemId: id, ok: false, error: `[${r.status}] ${t.slice(0, 200)}` });
+          } else {
+            results.push({ itemId: id, ok: true });
+          }
+        } catch (e: any) {
+          results.push({ itemId: id, ok: false, error: e.message || String(e) });
+        }
+      }
+      const success = results.filter((x) => x.ok).length;
+      const failed = results.filter((x) => !x.ok).length;
+      return new Response(JSON.stringify({ success: true, stopped: success, failed, results }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "disconnect") {
       await supabase.from("avito_accounts").delete().eq("store_id", store_id);
       return new Response(
