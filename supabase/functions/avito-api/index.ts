@@ -532,6 +532,126 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "restore_feed_from_active") {
+      // Re-create avito_feed_products entries from Avito's active items.
+      // Match by: 1) saved avitoNumber in any existing feed_product, 2) exact name (normalized).
+      // Body: { store_id, tab_id?: string | null }
+      const { data: account, error: accErr } = await supabase
+        .from("avito_accounts").select("*").eq("store_id", store_id).single();
+      if (accErr || !account) throw new Error("Avito аккаунт не найден. Сначала подключите Авито.");
+      const token = await getAvitoToken(account.client_id, account.client_secret);
+
+      // 1) Fetch all active items
+      const allItems: any[] = [];
+      {
+        let page = 1;
+        const perPage = 100;
+        while (true) {
+          const u = `${AVITO_API_BASE}/core/v1/items?per_page=${perPage}&page=${page}&status=active`;
+          const r = await fetch(u, { headers: { Authorization: `Bearer ${token}` } });
+          if (!r.ok) throw new Error(`Avito items failed [${r.status}]: ${await r.text()}`);
+          const j = await r.json();
+          const res = (j.resources || []) as any[];
+          allItems.push(...res);
+          if (res.length < perPage) break;
+          page++;
+          if (page > 100) break;
+        }
+      }
+
+      // 2) Load store products (active, not deleted)
+      const { data: storeProducts, error: spErr } = await supabase
+        .from("products")
+        .select("id, name, sku")
+        .eq("store_id", store_id)
+        .is("deleted_at", null);
+      if (spErr) throw spErr;
+
+      const normalize = (s: string) => String(s || "")
+        .toLowerCase()
+        .replace(/[\s\u00A0]+/g, " ")
+        .replace(/[«»"'`]/g, "")
+        .replace(/[^\p{L}\p{N}\s]/gu, "")
+        .trim();
+      const byName = new Map<string, string>(); // norm name -> product_id
+      for (const p of storeProducts || []) {
+        const key = normalize(p.name || "");
+        if (key && !byName.has(key)) byName.set(key, p.id);
+      }
+
+      // 3) Existing feed rows: index by saved avitoNumber and by product_id
+      const { data: existing } = await supabase
+        .from("avito_feed_products")
+        .select("id, product_id, tab_id, avito_params")
+        .eq("store_id", store_id);
+      const byAvitoNumber = new Map<string, string>(); // avitoNumber -> product_id
+      const existingPairs = new Set<string>();
+      for (const row of existing || []) {
+        const an = String((row.avito_params as any)?.avitoNumber || (row.avito_params as any)?.AvitoId || "");
+        if (an) byAvitoNumber.set(an, row.product_id);
+        existingPairs.add(`${row.tab_id || ""}::${row.product_id}`);
+      }
+
+      const targetTabId = tab_id || null;
+      const toInsert: any[] = [];
+      const unmatched: { itemId: any; title: string }[] = [];
+      const seenProducts = new Set<string>();
+
+      for (const it of allItems) {
+        const avitoNumber = String(it.id || it.item_id || "");
+        const itemTitle = String(it.title || it.name || "").trim();
+        const itemPrice = Number(it.price ?? it.priceRub ?? 0) || 0;
+        const itemAddress = String(it.address || "").trim();
+
+        let productId: string | undefined = byAvitoNumber.get(avitoNumber);
+        if (!productId) productId = byName.get(normalize(itemTitle));
+
+        if (!productId) {
+          unmatched.push({ itemId: avitoNumber, title: itemTitle });
+          continue;
+        }
+        if (seenProducts.has(productId)) continue;
+        seenProducts.add(productId);
+        const pairKey = `${targetTabId || ""}::${productId}`;
+        if (existingPairs.has(pairKey)) continue;
+
+        toInsert.push({
+          store_id,
+          tab_id: targetTabId,
+          product_id: productId,
+          avito_address: itemAddress || null,
+          avito_params: {
+            title: itemTitle || undefined,
+            Price: itemPrice || undefined,
+            address: itemAddress || undefined,
+            avitoNumber: avitoNumber || undefined,
+            avitoStatus: "active",
+          },
+        });
+      }
+
+      let inserted = 0;
+      if (toInsert.length > 0) {
+        // Insert in chunks of 500
+        for (let i = 0; i < toInsert.length; i += 500) {
+          const chunk = toInsert.slice(i, i + 500);
+          const { error: insErr } = await supabase.from("avito_feed_products").insert(chunk);
+          if (insErr) throw new Error(`DB insert failed: ${insErr.message}`);
+          inserted += chunk.length;
+        }
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        total_active_on_avito: allItems.length,
+        matched: toInsert.length + (allItems.length - toInsert.length - unmatched.length),
+        inserted,
+        skipped_existing: allItems.length - toInsert.length - unmatched.length,
+        unmatched_count: unmatched.length,
+        unmatched: unmatched.slice(0, 50),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     if (action === "disconnect") {
       await supabase.from("avito_accounts").delete().eq("store_id", store_id);
       return new Response(
