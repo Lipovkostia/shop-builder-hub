@@ -1347,11 +1347,65 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       });
       setStatsData(data.stats || []);
       setStatsMeta({ dateFrom: data.dateFrom, dateTo: data.dateTo, total: data.total });
+      setStatsSpendByItem(data.spendByItem || {});
+      setStatsSpendTotal(Number(data.spendTotal) || 0);
+      setStatsSpendError(data.spendError || null);
       toast({ title: `Статистика загружена: ${data.stats?.length || 0} объявлений` });
     } catch (err: any) {
       toast({ title: "Ошибка загрузки статистики", description: err.message, variant: "destructive" });
     } finally {
       setStatsLoading(false);
+    }
+  };
+
+  const handleRunAnalyst = async () => {
+    if (statsData.length === 0) {
+      toast({ title: "Сначала загрузите статистику", variant: "destructive" });
+      return;
+    }
+    setAnalystLoading(true);
+    setAnalystResult("");
+    try {
+      try { if (storeId) localStorage.setItem(`avito_analyst_prompt_${storeId}`, analystPrompt); } catch {}
+      // Build compact payload for AI
+      const payload = statsData.map((row: any) => {
+        const days = row.stats || [];
+        const views = days.reduce((a: number, d: any) => a + (d.uniqViews || 0), 0);
+        const contacts = days.reduce((a: number, d: any) => a + (d.uniqContacts || 0), 0);
+        const favorites = days.reduce((a: number, d: any) => a + (d.uniqFavorites || 0), 0);
+        const item = items.find((it) => Number(it.id) === Number(row.itemId));
+        const spend = Number(statsSpendByItem[String(row.itemId)] || 0);
+        return {
+          id: row.itemId,
+          title: item?.title || "",
+          price: item?.price || 0,
+          views, contacts, favorites, spend,
+        };
+      });
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/avito-stats-analyst`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            store_id: storeId,
+            system_prompt: analystPrompt,
+            user_prompt: analystPrompt,
+            items: payload,
+            date_from: statsMeta?.dateFrom,
+            date_to: statsMeta?.dateTo,
+            model: analystModel,
+          }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "Ошибка анализа");
+      setAnalystResult(data.analysis || "");
+      toast({ title: "Анализ готов" });
+    } catch (err: any) {
+      toast({ title: "Ошибка AI-анализа", description: err.message, variant: "destructive" });
+    } finally {
+      setAnalystLoading(false);
     }
   };
 
