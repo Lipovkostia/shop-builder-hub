@@ -2926,7 +2926,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                         <p className="text-[9px] text-muted-foreground">XML-фид:</p>
                         <div className="flex gap-1">
                           {(() => {
-                            const urlStr = `https://${projectId}.supabase.co/functions/v1/avito-feed?store_id=${storeId}`;
+                            const urlStr = `https://${projectId}.supabase.co/functions/v1/avito-feed?store_id=${storeId}${activeAccountId ? `&account=${activeAccountId}` : ""}`;
                             return (
                               <Button size="sm" variant="outline" className="h-6 text-[10px] w-full" onClick={() => { navigator.clipboard.writeText(urlStr); toast({ title: "Ссылка скопирована" }); }}>
                                 Копировать ссылку фида
