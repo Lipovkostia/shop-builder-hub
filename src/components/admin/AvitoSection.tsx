@@ -1135,6 +1135,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [analystLoading, setAnalystLoading] = useState(false);
   const [analystResult, setAnalystResult] = useState<string>("");
   const [analystModel, setAnalystModel] = useState("openai/gpt-4o-mini");
+  const [analystRecommendations, setAnalystRecommendations] = useState<Array<{ itemId: number; action: string; reason: string }>>([]);
+  const [applyingRecs, setApplyingRecs] = useState(false);
 
   // Product groups (internal categorization, not exported)
   const { groups: avitoGroups, createGroup: createAvitoGroup, updateGroup: updateAvitoGroup, deleteGroup: deleteAvitoGroup } = useAvitoProductGroups(storeId);
