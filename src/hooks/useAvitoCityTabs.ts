@@ -18,9 +18,10 @@ export interface AvitoCityTab {
   updated_at: string;
 }
 
-const ACTIVE_KEY = (storeId: string) => `avito_active_city_tab_${storeId}`;
+const ACTIVE_KEY = (storeId: string, accountId: string | null) =>
+  `avito_active_city_tab_${storeId}_${accountId || "default"}`;
 
-export function useAvitoCityTabs(storeId: string | null) {
+export function useAvitoCityTabs(storeId: string | null, accountId: string | null = null) {
   const [tabs, setTabs] = useState<AvitoCityTab[]>([]);
   const [activeTabId, setActiveTabIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -28,35 +29,37 @@ export function useAvitoCityTabs(storeId: string | null) {
   const setActiveTabId = useCallback(
     (id: string | null) => {
       setActiveTabIdState(id);
-      if (storeId && id) localStorage.setItem(ACTIVE_KEY(storeId), id);
+      if (storeId && id) localStorage.setItem(ACTIVE_KEY(storeId, accountId), id);
     },
-    [storeId],
+    [storeId, accountId],
   );
 
   const fetchTabs = useCallback(async () => {
     if (!storeId) return;
     setLoading(true);
     try {
-      const { data, error } = await (supabase as any)
+      let q = (supabase as any)
         .from("avito_city_tabs")
         .select("*")
-        .eq("store_id", storeId)
+        .eq("store_id", storeId);
+      if (accountId) q = q.eq("account_id", accountId);
+      const { data, error } = await q
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
       let list = (data || []) as AvitoCityTab[];
 
-      if (list.length === 0) {
+      if (list.length === 0 && accountId) {
         const { data: created } = await (supabase as any)
           .from("avito_city_tabs")
-          .insert({ store_id: storeId, name: "Основная", markup_percent: 0, is_default: true, sort_order: 0 })
+          .insert({ store_id: storeId, account_id: accountId, name: "Основная", markup_percent: 0, is_default: true, sort_order: 0 })
           .select()
           .single();
         if (created) list = [created as AvitoCityTab];
       }
 
       setTabs(list);
-      const saved = localStorage.getItem(ACTIVE_KEY(storeId));
+      const saved = localStorage.getItem(ACTIVE_KEY(storeId, accountId));
       const active = list.find((t) => t.id === saved) || list[0];
       setActiveTabIdState(active?.id || null);
     } catch (e: any) {
@@ -64,7 +67,7 @@ export function useAvitoCityTabs(storeId: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [storeId]);
+  }, [storeId, accountId]);
 
   useEffect(() => {
     fetchTabs();
@@ -84,6 +87,7 @@ export function useAvitoCityTabs(storeId: string | null) {
           .from("avito_city_tabs")
           .insert({
             store_id: storeId,
+            account_id: accountId,
             name: input.name.trim(),
             city: input.city?.trim() || null,
             address: input.address?.trim() || null,
@@ -128,6 +132,7 @@ export function useAvitoCityTabs(storeId: string | null) {
 
               return {
                 store_id: storeId,
+                account_id: accountId,
                 tab_id: newTab.id,
                 product_id: r.product_id,
                 avito_params: params,
@@ -158,7 +163,7 @@ export function useAvitoCityTabs(storeId: string | null) {
         return null;
       }
     },
-    [storeId, tabs.length, fetchTabs, setActiveTabId],
+    [storeId, accountId, tabs.length, fetchTabs, setActiveTabId],
   );
 
   const updateTab = useCallback(

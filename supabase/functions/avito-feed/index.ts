@@ -65,6 +65,7 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const storeId = url.searchParams.get("store_id");
+    const accountIdParam = url.searchParams.get("account") || url.searchParams.get("account_id");
 
     if (!storeId) {
       return new Response("Missing store_id", { status: 400, headers: corsHeaders });
@@ -74,12 +75,22 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get avito account with feed_defaults
-    const { data: avitoAccount } = await supabase
-      .from("avito_accounts")
-      .select("*")
-      .eq("store_id", storeId)
-      .single();
+    // Get avito account: by id if provided, else default-for-store
+    let avitoAccount: any = null;
+    if (accountIdParam) {
+      const { data } = await supabase
+        .from("avito_accounts").select("*").eq("id", accountIdParam).maybeSingle();
+      avitoAccount = data;
+    } else {
+      const { data } = await supabase
+        .from("avito_accounts").select("*")
+        .eq("store_id", storeId)
+        .order("is_default", { ascending: false })
+        .order("created_at", { ascending: true })
+        .limit(1);
+      avitoAccount = (data && data[0]) || null;
+    }
+    const accountId = avitoAccount?.id || null;
 
     const fd = (avitoAccount?.feed_defaults && typeof avitoAccount.feed_defaults === 'object') ? avitoAccount.feed_defaults as any : {};
 
@@ -104,12 +115,13 @@ Deno.serve(async (req) => {
     const applyGlobalPrefix = fd.applyGlobalPrefix !== false; // default ON
 
 
-    // Get feed products with product data; optionally scope by tab_id (city tab)
+    // Get feed products with product data; scope by account_id (if any) and optionally by tab_id
     const tabId = url.searchParams.get("tab_id");
     let feedQuery = supabase
       .from("avito_feed_products")
       .select("*, products(*)")
       .eq("store_id", storeId);
+    if (accountId) feedQuery = feedQuery.eq("account_id", accountId);
     if (tabId) feedQuery = feedQuery.eq("tab_id", tabId);
     const { data: feedProducts, error } = await feedQuery;
 
