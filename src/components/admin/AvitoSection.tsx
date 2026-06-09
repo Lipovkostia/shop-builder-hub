@@ -78,6 +78,10 @@ interface AvitoAccount {
   avito_user_id: number | null;
   profile_name: string | null;
   last_sync: string | null;
+  label?: string | null;
+  is_default?: boolean;
+  sort_order?: number;
+  feed_defaults?: any;
 }
 
 interface AvitoSectionProps {
