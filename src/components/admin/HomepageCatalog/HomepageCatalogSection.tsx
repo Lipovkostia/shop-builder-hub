@@ -335,6 +335,21 @@ function CategoriesPanel({
     onChange(categories.filter((c) => c.id !== id));
   };
 
+  const removeEmpty = async () => {
+    const emptyIds = categories.filter((c) => (counts.get(c.id) || 0) === 0).map((c) => c.id);
+    if (emptyIds.length === 0) {
+      toast({ title: "Пустых категорий нет" });
+      return;
+    }
+    if (!confirm(`Удалить пустых категорий: ${emptyIds.length}?`)) return;
+    const { error } = await sb.from("homepage_categories").delete().in("id", emptyIds);
+    if (error) { toast({ title: "Ошибка", description: error.message, variant: "destructive" }); return; }
+    onChange(categories.filter((c) => !emptyIds.includes(c.id)));
+    toast({ title: "Удалено", description: `Категорий: ${emptyIds.length}` });
+  };
+
+
+
   const move = async (id: string, dir: -1 | 1) => {
     const idx = categories.findIndex((c) => c.id === id);
     const swap = idx + dir;
@@ -423,6 +438,15 @@ function CategoriesPanel({
         />
         <Button size="sm" onClick={create} className="h-8 px-2"><Plus className="h-4 w-4" /></Button>
       </div>
+
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={removeEmpty}
+        className="w-full h-8 text-xs gap-1"
+      >
+        <Trash2 className="h-3 w-3" /> Удалить пустые категории
+      </Button>
     </div>
   );
 }

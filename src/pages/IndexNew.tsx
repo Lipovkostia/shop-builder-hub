@@ -70,12 +70,45 @@ export default function IndexNew() {
       .catch(() => setLoading(false));
   }, []);
 
-  // Build category tree
-  const { roots, childMap } = useMemo(() => {
+  // Direct product counts per category id
+  const directCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of products) {
+      const ids = new Set<string>([
+        ...(p.category_id ? [p.category_id] : []),
+        ...(p.setting_categories || []),
+      ]);
+      for (const id of ids) m.set(id, (m.get(id) || 0) + 1);
+    }
+    return m;
+  }, [products]);
+
+  // Build category tree (only categories that have products, directly or via descendants)
+  const { roots, childMap, totalCounts } = useMemo(() => {
+    const allChildMap = new Map<string, ShopCategory[]>();
+    for (const c of categories) {
+      if (c.parent_id) {
+        const arr = allChildMap.get(c.parent_id) || [];
+        arr.push(c);
+        allChildMap.set(c.parent_id, arr);
+      }
+    }
+    const totalCounts = new Map<string, number>();
+    const computeTotal = (id: string): number => {
+      if (totalCounts.has(id)) return totalCounts.get(id)!;
+      let total = directCounts.get(id) || 0;
+      for (const k of allChildMap.get(id) || []) total += computeTotal(k.id);
+      totalCounts.set(id, total);
+      return total;
+    };
+    for (const c of categories) computeTotal(c.id);
+
+    // Keep only categories whose subtree has products
     const childMap = new Map<string, ShopCategory[]>();
     const roots: ShopCategory[] = [];
     for (const c of categories) {
-      if (c.parent_id) {
+      if ((totalCounts.get(c.id) || 0) === 0) continue;
+      if (c.parent_id && (totalCounts.get(c.parent_id) || 0) > 0) {
         const arr = childMap.get(c.parent_id) || [];
         arr.push(c);
         childMap.set(c.parent_id, arr);
@@ -83,8 +116,8 @@ export default function IndexNew() {
         roots.push(c);
       }
     }
-    return { roots, childMap };
-  }, [categories]);
+    return { roots, childMap, totalCounts };
+  }, [categories, directCounts]);
 
   // Collect selected + descendant ids
   const selectedIds = useMemo(() => {
@@ -181,7 +214,8 @@ export default function IndexNew() {
                           isSel ? "bg-primary/10 text-primary font-semibold" : "hover:bg-muted text-foreground"
                         )}
                       >
-                        <span className="truncate">{cat.name}</span>
+                        <span className="truncate flex-1">{cat.name}</span>
+                        <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{totalCounts.get(cat.id) || 0}</span>
                         {kids.length > 0 && (expanded ? <ChevronDown className="h-3.5 w-3.5 opacity-60 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 opacity-60 shrink-0" />)}
                       </button>
                       {expanded && kids.length > 0 && (
