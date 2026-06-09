@@ -3608,7 +3608,13 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                   <>
                                     <TableRow
                                       key={row.itemId}
-                                      className="cursor-pointer hover:bg-muted/50"
+                                      className={`cursor-pointer hover:bg-muted/50 ${
+                                        recommendationsMap.get(Number(row.itemId))?.action === "remove" ? "bg-red-50/60 dark:bg-red-950/20" :
+                                        recommendationsMap.get(Number(row.itemId))?.action === "lower_bid" ? "bg-orange-50/60 dark:bg-orange-950/20" :
+                                        recommendationsMap.get(Number(row.itemId))?.action === "raise_bid" ? "bg-blue-50/60 dark:bg-blue-950/20" :
+                                        recommendationsMap.get(Number(row.itemId))?.action === "optimize" ? "bg-yellow-50/60 dark:bg-yellow-950/20" :
+                                        recommendationsMap.get(Number(row.itemId))?.action === "keep" ? "bg-emerald-50/60 dark:bg-emerald-950/20" : ""
+                                      }`}
                                       onClick={() => setStatsExpandedId(isExpanded ? null : Number(row.itemId))}
                                     >
                                       <TableCell className="px-2 text-xs text-muted-foreground">{index + 1}</TableCell>
@@ -3635,12 +3641,20 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                       <TableCell className="px-2 text-right text-xs font-medium">{row._spend > 0 ? `${row._spend.toLocaleString("ru", { maximumFractionDigits: 2 })} ₽` : "—"}</TableCell>
                                       <TableCell className="px-2 text-right text-xs">{row._cpa > 0 ? `${row._cpa.toLocaleString("ru", { maximumFractionDigits: 0 })} ₽` : "—"}</TableCell>
                                       <TableCell className="px-2 text-center">
+                                        {(() => {
+                                          const rec = recommendationsMap.get(Number(row.itemId));
+                                          if (!rec) return <span className="text-[10px] text-muted-foreground">—</span>;
+                                          const b = recBadge(rec.action);
+                                          return <Badge variant="outline" className={`text-[10px] ${b.cls}`} title={rec.reason}>{b.label}</Badge>;
+                                        })()}
+                                      </TableCell>
+                                      <TableCell className="px-2 text-center">
                                         <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                                       </TableCell>
                                     </TableRow>
                                     {isExpanded && (
                                       <TableRow key={`${row.itemId}-days`} className="bg-muted/30">
-                                        <TableCell colSpan={10} className="p-3">
+                                        <TableCell colSpan={11} className="p-3">
                                           <div className="text-[11px] font-medium mb-2 text-muted-foreground">Статистика по дням</div>
                                           <div className="overflow-x-auto">
                                             <table className="text-xs w-full">
