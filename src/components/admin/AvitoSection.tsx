@@ -1119,9 +1119,22 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsData, setStatsData] = useState<any[]>([]);
   const [statsMeta, setStatsMeta] = useState<{ dateFrom: string; dateTo: string; total: number } | null>(null);
+  const [statsSpendByItem, setStatsSpendByItem] = useState<Record<string, number>>({});
+  const [statsSpendTotal, setStatsSpendTotal] = useState(0);
+  const [statsSpendError, setStatsSpendError] = useState<string | null>(null);
   const [statsExpandedId, setStatsExpandedId] = useState<number | null>(null);
   const [statsSearch, setStatsSearch] = useState("");
-  const [statsSort, setStatsSort] = useState<"views" | "contacts" | "favorites">("views");
+  const [statsSort, setStatsSort] = useState<"views" | "contacts" | "favorites" | "spend" | "cpa">("views");
+  const [statsSubTab, setStatsSubTab] = useState<"table" | "analyst">("table");
+
+  // AI analyst
+  const DEFAULT_ANALYST_PROMPT = "Проанализируй эффективность каждого объявления за период. Выдели:\n1) Какие СНЯТЬ — расходуют деньги без контактов.\n2) Где СНИЗИТЬ ставку — много просмотров, мало контактов (переплата за охват).\n3) Где ПОДНЯТЬ ставку — высокая конверсия, мало охвата.\n4) ТОП-эффективные — оставить как есть.\nПриведи конкретные ID и краткие причины.";
+  const [analystPrompt, setAnalystPrompt] = useState<string>(() => {
+    try { return localStorage.getItem(`avito_analyst_prompt_${storeId || ""}`) || DEFAULT_ANALYST_PROMPT; } catch { return DEFAULT_ANALYST_PROMPT; }
+  });
+  const [analystLoading, setAnalystLoading] = useState(false);
+  const [analystResult, setAnalystResult] = useState<string>("");
+  const [analystModel, setAnalystModel] = useState("openai/gpt-4o-mini");
 
   // Product groups (internal categorization, not exported)
   const { groups: avitoGroups, createGroup: createAvitoGroup, updateGroup: updateAvitoGroup, deleteGroup: deleteAvitoGroup } = useAvitoProductGroups(storeId);
