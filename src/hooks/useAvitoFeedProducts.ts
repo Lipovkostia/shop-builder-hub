@@ -39,7 +39,7 @@ export interface AvitoDefaults {
 
 const AVITO_DEFAULTS_KEY = "avito_defaults_";
 
-export function useAvitoFeedProducts(storeId: string | null, activeTabId: string | null = null) {
+export function useAvitoFeedProducts(storeId: string | null, activeTabId: string | null = null, accountId: string | null = null) {
   const { toast } = useToast();
   const [feedProducts, setFeedProducts] = useState<AvitoFeedProduct[]>([]);
   const [loading, setLoading] = useState(false);
