@@ -2798,9 +2798,44 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                           </Select>
                         </div>
                       </div>
+                      <div className="space-y-1.5 border-t pt-2 mt-2">
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Префикс в фиде (XML)</p>
+                        <div className="flex items-center gap-1.5">
+                          <Checkbox
+                            id="avito-apply-prefix"
+                            checked={localDefaults.applyGlobalPrefix !== false}
+                            onCheckedChange={(v) => setLocalDefaults(p => ({ ...p, applyGlobalPrefix: v !== false }))}
+                          />
+                          <Label htmlFor="avito-apply-prefix" className="text-[10px] cursor-pointer">
+                            Добавлять «Опт:» и первую строку ко всем объявлениям
+                          </Label>
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px]">Префикс заголовка</Label>
+                          <Input
+                            className="h-7 text-xs"
+                            value={localDefaults.titlePrefix ?? "Опт:"}
+                            onChange={(e) => setLocalDefaults(p => ({ ...p, titlePrefix: e.target.value }))}
+                            placeholder="Опт:"
+                          />
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px]">Первая строка описания</Label>
+                          <Textarea
+                            className="text-xs min-h-[44px]"
+                            value={localDefaults.descriptionFirstLine ?? "Продажа только в опт от 15 тыс. ₽ заказ"}
+                            onChange={(e) => setLocalDefaults(p => ({ ...p, descriptionFirstLine: e.target.value }))}
+                            placeholder="Продажа только в опт от 15 тыс. ₽ заказ"
+                          />
+                        </div>
+                        <p className="text-[9px] text-muted-foreground">
+                          Применяется на лету при сборке XML-фида ко всем вкладкам-городам — карточки в БД не меняются.
+                        </p>
+                      </div>
                       <Button size="sm" className="h-7 text-xs w-full" onClick={() => { avitoFeed?.saveDefaults(localDefaults); toast({ title: "Настройки сохранены" }); }}>
                         <Save className="h-3 w-3 mr-1" /> Сохранить
                       </Button>
+
                     </CollapsibleContent>
                   </Collapsible>
 
