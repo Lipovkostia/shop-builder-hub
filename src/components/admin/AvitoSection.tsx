@@ -3759,23 +3759,56 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                 )}
 
                 {analystResult && !analystLoading && (
-                  <Card className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-medium flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                        Результат анализа
+                  <>
+                    {analystRecommendations.length > 0 && (() => {
+                      const counts = analystRecommendations.reduce((acc: Record<string, number>, r) => {
+                        acc[r.action] = (acc[r.action] || 0) + 1; return acc;
+                      }, {});
+                      const removeCount = counts["remove"] || 0;
+                      return (
+                        <Card className="p-3 flex items-center justify-between gap-3 flex-wrap">
+                          <div className="flex items-center gap-2 flex-wrap text-xs">
+                            <span className="text-muted-foreground">Рекомендации AI:</span>
+                            {(["remove","lower_bid","optimize","raise_bid","keep"] as const).map((a) => {
+                              const n = counts[a] || 0;
+                              if (!n) return null;
+                              const b = recBadge(a);
+                              return <Badge key={a} variant="outline" className={`text-[10px] ${b.cls}`}>{b.label}: {n}</Badge>;
+                            })}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" variant="outline" onClick={handleExportAnalysisExcel}>Excel</Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              disabled={applyingRecs || removeCount === 0}
+                              onClick={handleApplyRecommendations}
+                            >
+                              {applyingRecs ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                              Применить рекомендации {removeCount > 0 ? `(снять ${removeCount})` : ""}
+                            </Button>
+                          </div>
+                        </Card>
+                      );
+                    })()}
+                    <Card className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-medium flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                          Результат анализа
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs"
+                          onClick={() => { navigator.clipboard.writeText(analystResult); toast({ title: "Скопировано" }); }}
+                        >
+                          Копировать
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 text-xs"
-                        onClick={() => { navigator.clipboard.writeText(analystResult); toast({ title: "Скопировано" }); }}
-                      >
-                        Копировать
-                      </Button>
-                    </div>
-                    <div className="text-xs whitespace-pre-wrap leading-relaxed">{analystResult}</div>
-                  </Card>
+                      <div className="text-xs whitespace-pre-wrap leading-relaxed">{analystResult}</div>
+                    </Card>
+                  </>
                 )}
 
                 {!analystResult && !analystLoading && statsData.length === 0 && (
