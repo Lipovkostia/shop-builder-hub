@@ -1117,6 +1117,57 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [selectedSourceCategoryId, setSelectedSourceCategoryId] = useState<string | null>(null);
   const [hideInternalCols, setHideInternalCols] = useState(false);
 
+  // Map productId -> category IDs aggregated from catalog_product_settings (across all store catalogs)
+  const [productCategoriesMap, setProductCategoriesMap] = useState<Record<string, string[]>>({});
+  useEffect(() => {
+    if (!storeId || !avitoFeed?.feedProducts?.length) {
+      setProductCategoriesMap({});
+      return;
+    }
+    const productIds = Array.from(new Set(avitoFeed.feedProducts.map(fp => fp.product_id)));
+    if (productIds.length === 0) { setProductCategoriesMap({}); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const map: Record<string, Set<string>> = {};
+        // chunk to avoid url length issues
+        const CHUNK = 200;
+        for (let i = 0; i < productIds.length; i += CHUNK) {
+          const slice = productIds.slice(i, i + CHUNK);
+          const { data, error } = await (supabase as any)
+            .from("catalog_product_settings")
+            .select("product_id, categories, primary_category_id")
+            .in("product_id", slice);
+          if (error) throw error;
+          for (const row of (data || [])) {
+            const set = map[row.product_id] || new Set<string>();
+            if (row.primary_category_id) set.add(row.primary_category_id);
+            if (Array.isArray(row.categories)) row.categories.forEach((c: string) => c && set.add(c));
+            map[row.product_id] = set;
+          }
+        }
+        if (cancelled) return;
+        const result: Record<string, string[]> = {};
+        for (const [k, v] of Object.entries(map)) result[k] = Array.from(v);
+        setProductCategoriesMap(result);
+      } catch (err) {
+        console.error("Failed to load product->categories map", err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [storeId, avitoFeed?.feedProducts]);
+
+  // Enrich store products with `category` (from category_id) and `categories` array (from catalog settings)
+  const enrichedStoreProducts = useMemo(() => {
+    return storeProducts.map(p => {
+      const extra = productCategoriesMap[p.id] || [];
+      const ownCat = (p as any).category_id || (p as any).category || undefined;
+      const all = new Set<string>(extra);
+      if (ownCat) all.add(ownCat);
+      return { ...p, category: ownCat, categories: Array.from(all) } as any;
+    });
+  }, [storeProducts, productCategoriesMap]);
+
   // AI generation state
   const [aiPromptOpen, setAiPromptOpen] = useState(false);
   const [aiMode, setAiMode] = useState<"description" | "title">("description");
@@ -2104,7 +2155,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                 onCreateGroup={createAvitoGroup}
                 onUpdateGroup={updateAvitoGroup}
                 onDeleteGroup={deleteAvitoGroup}
-                storeProducts={storeProducts as any}
+                storeProducts={enrichedStoreProducts as any}
                 storeCategories={storeCategories as any}
                 selectedCategoryId={selectedSourceCategoryId}
                 onSelectCategory={setSelectedSourceCategoryId}
@@ -2572,7 +2623,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                   if (selectedGroupId === "none" && fp.group_id) return false;
                   if (selectedGroupId !== "all" && selectedGroupId !== "none" && fp.group_id !== selectedGroupId) return false;
                   if (descendantCatIds) {
-                    const p = storeProducts.find(sp => sp.id === fp.product_id);
+                    const p = enrichedStoreProducts.find(sp => sp.id === fp.product_id);
                     if (!p) return false;
                     const ids = [
                       ...((p as any).category ? [(p as any).category] : []),
