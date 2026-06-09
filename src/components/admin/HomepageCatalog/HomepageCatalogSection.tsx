@@ -346,6 +346,9 @@ function CategoriesPanel({
     if (error) { toast({ title: "Ошибка", description: error.message, variant: "destructive" }); return; }
     onChange(categories.filter((c) => !emptyIds.includes(c.id)));
     toast({ title: "Удалено", description: `Категорий: ${emptyIds.length}` });
+  };
+
+
 
   const move = async (id: string, dir: -1 | 1) => {
     const idx = categories.findIndex((c) => c.id === id);
