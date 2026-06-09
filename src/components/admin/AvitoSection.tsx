@@ -2746,8 +2746,22 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                           </Button>
                         )}
                       </div>
+                      {isConnected && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 text-xs w-full"
+                          onClick={handleRestoreFromAvito}
+                          disabled={restoringFeed}
+                          title="Запросить активные объявления из Авито и добавить их в фид (сопоставление по avito-id и названию)"
+                        >
+                          {restoringFeed ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                          {restoringFeed ? "Восстановление..." : "Восстановить фид из Авито"}
+                        </Button>
+                      )}
                     </CollapsibleContent>
                   </Collapsible>
+
 
                   {/* Settings Defaults */}
                   <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
