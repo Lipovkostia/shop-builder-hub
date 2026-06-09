@@ -2556,6 +2556,36 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                   if (selectedGroupId === "none") return !fp.group_id;
                   return fp.group_id === selectedGroupId;
                 });
+                const descendantCatIds = (() => {
+                  if (!selectedSourceCategoryId) return null;
+                  const set = new Set<string>([selectedSourceCategoryId]);
+                  const childMap = new Map<string, string[]>();
+                  for (const c of storeCategories) {
+                    if (c.parent_id) {
+                      const arr = childMap.get(c.parent_id) || [];
+                      arr.push(c.id); childMap.set(c.parent_id, arr);
+                    }
+                  }
+                  const walk = (id: string) => {
+                    for (const k of childMap.get(id) || []) { set.add(k); walk(k); }
+                  };
+                  walk(selectedSourceCategoryId);
+                  return set;
+                })();
+                const groupFilteredFeed = avitoFeed.feedProducts.filter((fp) => {
+                  if (selectedGroupId === "none" && fp.group_id) return false;
+                  if (selectedGroupId !== "all" && selectedGroupId !== "none" && fp.group_id !== selectedGroupId) return false;
+                  if (descendantCatIds) {
+                    const p = storeProducts.find(sp => sp.id === fp.product_id);
+                    if (!p) return false;
+                    const ids = [
+                      ...((p as any).category ? [(p as any).category] : []),
+                      ...((p as any).categories || []),
+                    ];
+                    if (!ids.some(id => descendantCatIds.has(id))) return false;
+                  }
+                  return true;
+                });
                 const currentGroupName = selectedGroupId === "all"
                   ? "Все товары"
                   : selectedGroupId === "none"
