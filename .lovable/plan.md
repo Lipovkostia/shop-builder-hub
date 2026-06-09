@@ -1,36 +1,89 @@
-## Что делаем
 
-1. **Восстановление выгрузки из Авито API**
-   - В разделе «Авито» → «Товары для Авито» добавляю кнопку **«Восстановить из Авито»**.
-   - Кнопка вызывает edge-функцию `avito-api` с новым экшеном `restore_feed_from_active`:
-     - получает список всех активных объявлений аккаунта (`GET /core/v1/items` с фильтром `status=active`, постранично);
-     - для каждого объявления подтягивает `GET /core/v1/accounts/{user_id}/items/{id}` (title, description, price, category, address, images, avito id);
-     - сопоставляет с товарами магазина по нескольким ключам по очереди: внешний `AvitoId` (если ранее был сохранён) → точный матч по названию (case-insensitive, trim) → нормализованный матч (без лишних пробелов/знаков);
-     - если товар найден — создаёт запись в `avito_feed_products` (привязка к **активной city-tab**, либо к дефолтной, если выбрано «ко всем» — см. п.3) с `avito_params` = { title, description, price, address, avitoNumber, … };
-     - если не найден — показываем в отчёте список «не сопоставлено» с возможностью вручную выбрать товар.
-   - По завершении показывается отчёт: восстановлено N, не сопоставлено M.
+## Цель
 
-2. **Префикс «Опт: » в заголовке + первая строка описания** (глобально в шаблоне, без перезаписи карточек)
-   - Правлю edge-функцию `avito-feed/index.ts`: при рендере каждого `<Ad>` (и обычные feed-карточки, и variant-карточки):
-     - `title` → если ещё не начинается на `Опт:` / `Опт ` — префиксую `Опт: ` к итоговому title;
-     - `description` → если первая строка не содержит фразу — добавляю первой строкой `Продажа только в опт от 15 тыс. ₽ заказ\n\n`.
-   - Поведение применяется ко **всем city-tab** автоматически (это серверный шаблон).
-   - Тексты префикса и первой строки описания выношу в `feed_defaults` (`avito_accounts.feed_defaults.titlePrefix` и `descriptionPrefix`), с дефолтами «Опт: » и «Продажа только в опт от 15 тыс. ₽ заказ» — чтобы потом редактировать без правок кода.
+Во вкладке «Авито» сделать переключатель аккаунтов сверху: можно добавить несколько аккаунтов Авито (client_id/secret), переключаться между ними и видеть для каждого свою рабочую область — города-вкладки, товары для фида, активные объявления, статистику, бот, аналитика, фид XML.
 
-3. **UI в настройках Авито**
-   - В блок «Настройки фида» (feed_defaults) добавляю 2 поля:
-     - «Префикс заголовка» (по умолчанию `Опт: `)
-     - «Первая строка описания» (textarea, по умолчанию `Продажа только в опт от 15 тыс. ₽ заказ`)
-   - Чекбокс «Применять префикс/первую строку ко всем объявлениям» (вкл по умолчанию).
+## Что меняется
 
-## Технически
+### 1. БД (миграция)
 
-- **Edge `avito-api`**: новый action `restore_feed_from_active` (paginated `/items?status=active`, затем детали; идемпотентный upsert в `avito_feed_products` по `(tab_id, product_id)`).
-- **Edge `avito-feed`**: обёртки `applyTitlePrefix(title, prefix)` и `applyDescriptionPrefix(desc, line)` с проверкой «уже содержит» — чтобы повторные включения не задваивали текст. Применяются и к `feedProducts`, и к `variants`.
-- **БД**: схема не меняется, только jsonb `feed_defaults`. Миграция не нужна.
-- **Frontend `AvitoSection.tsx`**: кнопка «Восстановить из Авито» + диалог-отчёт; 2 новых поля в форме настроек фида.
+- `avito_accounts`: убрать UNIQUE на `store_id`, добавить `is_default boolean`, `sort_order int`, `label text` (отображаемое имя на пилюле, по умолчанию = profile_name).
+- `avito_city_tabs`: добавить колонку `account_id uuid references avito_accounts(id) on delete cascade`, индекс. Существующую вкладку «Основная» привязать к текущему единственному аккаунту магазина.
+- `avito_feed_products`: добавить `account_id uuid references avito_accounts(id) on delete cascade`, индекс. Бэкфил по `tab_id → city_tabs.account_id` или по единственному аккаунту магазина.
+- RLS остаётся через `store_id` (политики не трогаем).
+- GRANT'ы уже есть на этих таблицах.
 
-## Что НЕ делаем
+### 2. Edge функции
 
-- Не трогаем уже существующие `title_override`/`description_override` в карточках — префикс добавляется поверх итогового текста на этапе сборки XML.
-- Не публикуем ничего в Авито принудительно — Авито сам подхватит обновлённый фид по расписанию автозагрузки.
+- `avito-api`:
+  - Принимает опциональный `account_id` во всех экшенах. Если не передан — берётся `is_default` либо первый.
+  - Все `.eq("store_id", ...).single()` заменяются на `.eq("id", account_id)` (или fallback по store_id+default).
+  - Новые экшены: `list_accounts`, `set_default_account`, `update_account_label`. `connect/save_credentials/disconnect` работают per-account (`account_id` опционален при создании нового).
+  - `restore_feed_from_active` и статистика — для выбранного account_id, вставка в `avito_feed_products` с `account_id` и `tab_id` активной вкладки этого аккаунта.
+- `avito-feed`:
+  - URL получает параметр `?account=<id>` (или сохраняем обратную совместимость: без параметра отдаём дефолтный аккаунт магазина).
+  - Подгружает только city_tabs/feed_products этого account_id, `feed_defaults` берёт из его записи `avito_accounts`.
+
+### 3. UI — `src/components/admin/AvitoSection.tsx`
+
+Сверху, над блоком «Города», добавляется панель **«Аккаунты Авито»**:
+
+```text
+[● Вероника ✓подкл]  [○ Аккаунт 2]  [+ Добавить аккаунт]   [⚙ переименовать] [★ сделать основным] [🗑 удалить]
+```
+
+- Пилюли-табы аккаунтов (как сейчас вкладки-города), активный подсвечен зелёным, рядом бэйдж «Подключено/Не подключено».
+- Кнопка «+ Добавить аккаунт» → диалог с полями Client ID / Client Secret / Название → создаёт строку в `avito_accounts` и сразу делает её активной, подгружает profile_name из Avito API.
+- Контекстное меню на пилюле: переименовать, сделать основным, отключить (очистить токены), удалить (с подтверждением — каскадом удалит city_tabs и feed_products).
+- Активный `account_id` хранится в `localStorage` per-store (как сейчас `activeTabId` для городов).
+- Все существующие блоки (Города, Товары для Авито, Объявления с ошибками, Активные объявления, Статистика, API подключение, Настройки, Категории) фильтруются по активному account_id.
+- Бэйдж «Подключено: …» в шапке показывает имя активного аккаунта.
+- Кнопка «Скопировать ссылку на фид» подставляет `?account=<id>`.
+
+### 4. Хуки
+
+- `useAvitoAccounts(storeId)` — новый: список аккаунтов, активный, CRUD, setActive.
+- `useAvitoCityTabs` — принимает `accountId`, фильтрует и создаёт вкладки с `account_id`.
+- `useAvitoFeedProducts` — принимает `accountId`, фильтрует и пишет `account_id`.
+- `useAvitoBot` — уже привязан к `avito_account_id`, передаём активный.
+
+### 5. Что не меняется
+
+- Схема товаров магазина, общие категории, фото-студия (она per-store).
+- Логика префиксов «Опт:», восстановления фида, AI-аналитика — переиспользуются, просто per-account.
+- RLS-политики на public таблицах.
+
+## Технические детали
+
+**Миграция (укрупнённо):**
+```sql
+alter table public.avito_accounts drop constraint avito_accounts_store_id_key;
+alter table public.avito_accounts
+  add column is_default boolean not null default false,
+  add column sort_order int not null default 0,
+  add column label text;
+update public.avito_accounts set is_default = true, label = coalesce(profile_name, 'Аккаунт');
+
+alter table public.avito_city_tabs add column account_id uuid references public.avito_accounts(id) on delete cascade;
+create index idx_avito_city_tabs_account on public.avito_city_tabs(account_id);
+update public.avito_city_tabs t set account_id = (
+  select a.id from public.avito_accounts a where a.store_id = t.store_id and a.is_default limit 1
+);
+
+alter table public.avito_feed_products add column account_id uuid references public.avito_accounts(id) on delete cascade;
+create index idx_avito_feed_products_account on public.avito_feed_products(account_id);
+update public.avito_feed_products fp set account_id = (
+  select ct.account_id from public.avito_city_tabs ct where ct.id = fp.tab_id
+);
+```
+
+**Backwards-compat фида:** `avito-feed` без `?account=` → дефолтный аккаунт магазина, чтобы уже настроенные в Авито URL продолжали работать.
+
+## Файлы
+
+- новая миграция `supabase/migrations/*_avito_multi_account.sql`
+- `supabase/functions/avito-api/index.ts` (account_id во всех экшенах + list/set_default/update_label)
+- `supabase/functions/avito-feed/index.ts` (читаем ?account=)
+- новый `src/hooks/useAvitoAccounts.ts`
+- `src/hooks/useAvitoCityTabs.ts`, `src/hooks/useAvitoFeedProducts.ts` (фильтр по accountId)
+- `src/components/admin/AvitoSection.tsx` (панель аккаунтов сверху + проброс accountId везде)
