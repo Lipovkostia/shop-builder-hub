@@ -272,8 +272,12 @@ Deno.serve(async (req) => {
 
       const id = `v-${String(v.id).substring(0, 10)}`;
       const params = (v.avito_params && typeof v.avito_params === "object") ? v.avito_params : {};
-      const title = escapeXml(v.title || product.name || "Товар");
-      const description = escapeXml(v.description || product.description || product.name || "");
+      const rawTitleV = v.title || product.name || "Товар";
+      const rawDescriptionV = v.description || product.description || product.name || "";
+      const finalTitleV = applyGlobalPrefix ? applyTitlePrefix(rawTitleV, defaultTitlePrefix) : rawTitleV;
+      const finalDescriptionV = applyGlobalPrefix ? applyDescriptionFirstLine(rawDescriptionV, defaultDescriptionFirstLine) : rawDescriptionV;
+      const title = escapeXml(finalTitleV);
+      const description = escapeXml(finalDescriptionV);
       const price = v.price ?? params.Price ?? params.price ?? product.price ?? 0;
       let rawCategoryV = v.avito_category || params.category || defaultCategory;
       let derivedGoodsSubTypeV = params.GoodsType || params.goodsSubType || "";
