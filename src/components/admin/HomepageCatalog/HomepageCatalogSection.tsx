@@ -438,6 +438,15 @@ function CategoriesPanel({
         />
         <Button size="sm" onClick={create} className="h-8 px-2"><Plus className="h-4 w-4" /></Button>
       </div>
+
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={removeEmpty}
+        className="w-full h-8 text-xs gap-1"
+      >
+        <Trash2 className="h-3 w-3" /> Удалить пустые категории
+      </Button>
     </div>
   );
 }
