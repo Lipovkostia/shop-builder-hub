@@ -1330,6 +1330,41 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     } finally { setDisconnecting(false); }
   };
 
+  const [restoringFeed, setRestoringFeed] = useState(false);
+  const [restoreReport, setRestoreReport] = useState<null | {
+    total_active_on_avito: number; inserted: number; skipped_existing: number;
+    unmatched_count: number; unmatched: { itemId: any; title: string }[];
+  }>(null);
+  const handleRestoreFromAvito = async () => {
+    if (!storeId) return;
+    if (!confirm("Запросить активные объявления у Авито и восстановить их в фиде? Уже существующие пары (товар + вкладка) будут пропущены.")) return;
+    setRestoringFeed(true);
+    try {
+      const data = await callAvitoApi({
+        action: "restore_feed_from_active",
+        store_id: storeId,
+        tab_id: cityTabs?.activeTabId || null,
+      });
+      setRestoreReport({
+        total_active_on_avito: data.total_active_on_avito || 0,
+        inserted: data.inserted || 0,
+        skipped_existing: data.skipped_existing || 0,
+        unmatched_count: data.unmatched_count || 0,
+        unmatched: data.unmatched || [],
+      });
+      toast({
+        title: "Восстановление завершено",
+        description: `Авито: ${data.total_active_on_avito}, добавлено: ${data.inserted}, пропущено: ${data.skipped_existing}, не сопоставлено: ${data.unmatched_count}`,
+      });
+      await avitoFeed?.refetch?.();
+    } catch (err: any) {
+      toast({ title: "Ошибка восстановления", description: err.message, variant: "destructive" });
+    } finally {
+      setRestoringFeed(false);
+    }
+  };
+
+
   const handleFetchStats = async () => {
     if (!storeId) return;
     setStatsLoading(true);
@@ -2307,6 +2342,29 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
         />
       )}
 
+      {restoreReport && (
+        <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <div className="font-semibold">Результат восстановления фида из Авито</div>
+            <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setRestoreReport(null)}>
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+          <div>Активных на Авито: <b>{restoreReport.total_active_on_avito}</b> · Добавлено в фид: <b className="text-primary">{restoreReport.inserted}</b> · Уже было: {restoreReport.skipped_existing} · Не сопоставлено: <b className="text-destructive">{restoreReport.unmatched_count}</b></div>
+          {restoreReport.unmatched.length > 0 && (
+            <details className="mt-1">
+              <summary className="cursor-pointer text-muted-foreground">Показать не сопоставленные ({restoreReport.unmatched.length})</summary>
+              <ul className="mt-1 max-h-40 overflow-y-auto space-y-0.5">
+                {restoreReport.unmatched.map((u, i) => (
+                  <li key={i} className="truncate"><span className="text-muted-foreground">#{String(u.itemId)}</span> — {u.title || "(без названия)"}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
+
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="feed">Товары для Авито ({avitoFeed?.feedProducts.length || 0})</TabsTrigger>
@@ -2711,8 +2769,22 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                           </Button>
                         )}
                       </div>
+                      {isConnected && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 text-xs w-full"
+                          onClick={handleRestoreFromAvito}
+                          disabled={restoringFeed}
+                          title="Запросить активные объявления из Авито и добавить их в фид (сопоставление по avito-id и названию)"
+                        >
+                          {restoringFeed ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                          {restoringFeed ? "Восстановление..." : "Восстановить фид из Авито"}
+                        </Button>
+                      )}
                     </CollapsibleContent>
                   </Collapsible>
+
 
                   {/* Settings Defaults */}
                   <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
@@ -2749,9 +2821,44 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                           </Select>
                         </div>
                       </div>
+                      <div className="space-y-1.5 border-t pt-2 mt-2">
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Префикс в фиде (XML)</p>
+                        <div className="flex items-center gap-1.5">
+                          <Checkbox
+                            id="avito-apply-prefix"
+                            checked={localDefaults.applyGlobalPrefix !== false}
+                            onCheckedChange={(v) => setLocalDefaults(p => ({ ...p, applyGlobalPrefix: v !== false }))}
+                          />
+                          <Label htmlFor="avito-apply-prefix" className="text-[10px] cursor-pointer">
+                            Добавлять «Опт:» и первую строку ко всем объявлениям
+                          </Label>
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px]">Префикс заголовка</Label>
+                          <Input
+                            className="h-7 text-xs"
+                            value={localDefaults.titlePrefix ?? "Опт:"}
+                            onChange={(e) => setLocalDefaults(p => ({ ...p, titlePrefix: e.target.value }))}
+                            placeholder="Опт:"
+                          />
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px]">Первая строка описания</Label>
+                          <Textarea
+                            className="text-xs min-h-[44px]"
+                            value={localDefaults.descriptionFirstLine ?? "Продажа только в опт от 15 тыс. ₽ заказ"}
+                            onChange={(e) => setLocalDefaults(p => ({ ...p, descriptionFirstLine: e.target.value }))}
+                            placeholder="Продажа только в опт от 15 тыс. ₽ заказ"
+                          />
+                        </div>
+                        <p className="text-[9px] text-muted-foreground">
+                          Применяется на лету при сборке XML-фида ко всем вкладкам-городам — карточки в БД не меняются.
+                        </p>
+                      </div>
                       <Button size="sm" className="h-7 text-xs w-full" onClick={() => { avitoFeed?.saveDefaults(localDefaults); toast({ title: "Настройки сохранены" }); }}>
                         <Save className="h-3 w-3 mr-1" /> Сохранить
                       </Button>
+
                     </CollapsibleContent>
                   </Collapsible>
 

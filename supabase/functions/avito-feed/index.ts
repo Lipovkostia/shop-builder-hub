@@ -38,6 +38,24 @@ function buildPromoManualXml(raw: string): string {
   return items.length ? `    <PromoManualOptions>\n${items.join('\n')}\n    </PromoManualOptions>\n` : '';
 }
 
+function applyTitlePrefix(title: string, prefix: string): string {
+  const p = (prefix || '').trim();
+  if (!p) return title || '';
+  const t = (title || '').trim();
+  if (/^опт\b[\s:.,\-]*/i.test(t)) return t;
+  return `${p} ${t}`.replace(/\s{2,}/g, ' ').trim();
+}
+
+function applyDescriptionFirstLine(desc: string, firstLine: string): string {
+  const fl = (firstLine || '').trim();
+  if (!fl) return desc || '';
+  const d = (desc || '').trim();
+  if (d.slice(0, 300).toLowerCase().includes(fl.toLowerCase())) return d;
+  return d ? `${fl}\n\n${d}` : fl;
+}
+
+
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -77,6 +95,14 @@ Deno.serve(async (req) => {
     const defaultEmail = fd.email || "";
     const defaultCompanyName = fd.companyName || "";
     const defaultTargetAudience = fd.targetAudience || "";
+    const defaultTitlePrefix = (fd.titlePrefix !== undefined && fd.titlePrefix !== null)
+      ? String(fd.titlePrefix)
+      : "Опт:";
+    const defaultDescriptionFirstLine = (fd.descriptionFirstLine !== undefined && fd.descriptionFirstLine !== null)
+      ? String(fd.descriptionFirstLine)
+      : "Продажа только в опт от 15 тыс. ₽ заказ";
+    const applyGlobalPrefix = fd.applyGlobalPrefix !== false; // default ON
+
 
     // Get feed products with product data; optionally scope by tab_id (city tab)
     const tabId = url.searchParams.get("tab_id");
@@ -118,8 +144,12 @@ Deno.serve(async (req) => {
       // в разных вкладках-городах не считались дублями, добавляем к ID суффикс вкладки.
       const tabSuffix = fp.tab_id ? `-${String(fp.tab_id).replace(/-/g, '').substring(0, 6)}` : '';
       const id = product.id.substring(0, 8) + tabSuffix;
-      const title = escapeXml(params.title || product.name || "Товар");
-      const description = escapeXml(params.description || product.description || product.name || "");
+      const rawTitle = params.title || product.name || "Товар";
+      const rawDescription = params.description || product.description || product.name || "";
+      const finalTitle = applyGlobalPrefix ? applyTitlePrefix(rawTitle, defaultTitlePrefix) : rawTitle;
+      const finalDescription = applyGlobalPrefix ? applyDescriptionFirstLine(rawDescription, defaultDescriptionFirstLine) : rawDescription;
+      const title = escapeXml(finalTitle);
+      const description = escapeXml(finalDescription);
       const price = params.Price || params.price || product.price || 0;
       // Defensive split: if category is a hierarchical path "A---B---C", use level 2 as <Category> and leaf as <GoodsType>
       let rawCategory = fp.avito_category || params.category || defaultCategory;
@@ -242,8 +272,12 @@ Deno.serve(async (req) => {
 
       const id = `v-${String(v.id).substring(0, 10)}`;
       const params = (v.avito_params && typeof v.avito_params === "object") ? v.avito_params : {};
-      const title = escapeXml(v.title || product.name || "Товар");
-      const description = escapeXml(v.description || product.description || product.name || "");
+      const rawTitleV = v.title || product.name || "Товар";
+      const rawDescriptionV = v.description || product.description || product.name || "";
+      const finalTitleV = applyGlobalPrefix ? applyTitlePrefix(rawTitleV, defaultTitlePrefix) : rawTitleV;
+      const finalDescriptionV = applyGlobalPrefix ? applyDescriptionFirstLine(rawDescriptionV, defaultDescriptionFirstLine) : rawDescriptionV;
+      const title = escapeXml(finalTitleV);
+      const description = escapeXml(finalDescriptionV);
       const price = v.price ?? params.Price ?? params.price ?? product.price ?? 0;
       let rawCategoryV = v.avito_category || params.category || defaultCategory;
       let derivedGoodsSubTypeV = params.GoodsType || params.goodsSubType || "";

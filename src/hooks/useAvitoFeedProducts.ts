@@ -31,7 +31,11 @@ export interface AvitoDefaults {
   promoPrice: string;
   promoLimit: string;
   cpcBid: string;
+  titlePrefix?: string;
+  descriptionFirstLine?: string;
+  applyGlobalPrefix?: boolean;
 }
+
 
 const AVITO_DEFAULTS_KEY = "avito_defaults_";
 
@@ -57,7 +61,11 @@ export function useAvitoFeedProducts(storeId: string | null, activeTabId: string
     promoPrice: "",
     promoLimit: "",
     cpcBid: "",
+    titlePrefix: "Опт:",
+    descriptionFirstLine: "Продажа только в опт от 15 тыс. ₽ заказ",
+    applyGlobalPrefix: true,
   });
+
 
   // Load defaults from localStorage
   useEffect(() => {
