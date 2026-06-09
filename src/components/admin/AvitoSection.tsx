@@ -1403,12 +1403,98 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || "Ошибка анализа");
       setAnalystResult(data.analysis || "");
-      toast({ title: "Анализ готов" });
+      setAnalystRecommendations(Array.isArray(data.recommendations) ? data.recommendations : []);
+      toast({ title: "Анализ готов", description: `Рекомендаций: ${(data.recommendations || []).length}` });
     } catch (err: any) {
       toast({ title: "Ошибка AI-анализа", description: err.message, variant: "destructive" });
     } finally {
       setAnalystLoading(false);
     }
+  };
+
+  // Map itemId -> recommendation for quick row lookup
+  const recommendationsMap = useMemo(() => {
+    const m = new Map<number, { action: string; reason: string }>();
+    for (const r of analystRecommendations) {
+      const id = Number(r.itemId);
+      if (Number.isFinite(id)) m.set(id, { action: r.action, reason: r.reason });
+    }
+    return m;
+  }, [analystRecommendations]);
+
+  const recBadge = (action: string) => {
+    switch (action) {
+      case "remove": return { label: "🔴 Снять", cls: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300" };
+      case "lower_bid": return { label: "📉 Снизить", cls: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300" };
+      case "raise_bid": return { label: "📈 Поднять", cls: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300" };
+      case "optimize": return { label: "🟡 Оптимизировать", cls: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-300" };
+      case "keep": return { label: "🟢 Топ", cls: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300" };
+      default: return { label: action, cls: "bg-muted text-muted-foreground border-border" };
+    }
+  };
+
+  const handleApplyRecommendations = async () => {
+    const toRemove = analystRecommendations.filter((r) => r.action === "remove").map((r) => Number(r.itemId)).filter(Number.isFinite);
+    if (toRemove.length === 0) {
+      toast({ title: "Нет объявлений для снятия", description: "AI не пометил красным ни одного объявления." });
+      return;
+    }
+    if (!confirm(`Снять с публикации ${toRemove.length} объявление(й), помеченные AI как 🔴?\n\nЭто действие необратимо через API — повторно опубликовать можно только вручную в кабинете Авито.`)) return;
+    setApplyingRecs(true);
+    try {
+      const data = await callAvitoApi({ action: "stop_items", store_id: storeId, item_ids: toRemove });
+      toast({
+        title: "Готово",
+        description: `Снято: ${data.stopped || 0}, ошибок: ${data.failed || 0}`,
+        variant: (data.failed || 0) > 0 ? "destructive" : "default",
+      });
+    } catch (err: any) {
+      toast({ title: "Ошибка применения", description: err.message, variant: "destructive" });
+    } finally {
+      setApplyingRecs(false);
+    }
+  };
+
+  const handleExportAnalysisExcel = () => {
+    if (statsData.length === 0) {
+      toast({ title: "Нет данных для экспорта", variant: "destructive" });
+      return;
+    }
+    const rows = statsData.map((row: any) => {
+      const days = row.stats || [];
+      const views = days.reduce((a: number, d: any) => a + (d.uniqViews || 0), 0);
+      const contacts = days.reduce((a: number, d: any) => a + (d.uniqContacts || 0), 0);
+      const favorites = days.reduce((a: number, d: any) => a + (d.uniqFavorites || 0), 0);
+      const spend = Number(statsSpendByItem[String(row.itemId)] || 0);
+      const cr = views > 0 ? +((contacts / views) * 100).toFixed(2) : 0;
+      const cpa = contacts > 0 ? +(spend / contacts).toFixed(2) : 0;
+      const item = items.find((it) => Number(it.id) === Number(row.itemId));
+      const rec = recommendationsMap.get(Number(row.itemId));
+      return {
+        ID: row.itemId,
+        "Название": item?.title || "",
+        "Цена ₽": item?.price || 0,
+        "Просмотры": views,
+        "Контакты": contacts,
+        "Избранное": favorites,
+        "CR %": cr,
+        "Расходы ₽": +spend.toFixed(2),
+        "CPA ₽": cpa,
+        "AI-рекомендация": rec ? recBadge(rec.action).label : "",
+        "AI-причина": rec?.reason || "",
+        "Ссылка": item?.url ? (item.url.startsWith("http") ? item.url : `https://www.avito.ru${item.url}`) : "",
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Аналитика");
+    if (analystResult) {
+      const wsA = XLSX.utils.aoa_to_sheet([["AI-анализ"], ...analystResult.split("\n").map((l) => [l])]);
+      XLSX.utils.book_append_sheet(wb, wsA, "AI-анализ");
+    }
+    const period = statsMeta ? `${statsMeta.dateFrom}_${statsMeta.dateTo}` : new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `avito_stats_${period}.xlsx`);
+    toast({ title: "Excel выгружен" });
   };
 
   const handleFetchItems = async () => {
