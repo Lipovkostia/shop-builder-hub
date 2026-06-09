@@ -31,7 +31,11 @@ export interface AvitoDefaults {
   promoPrice: string;
   promoLimit: string;
   cpcBid: string;
+  titlePrefix?: string;
+  descriptionFirstLine?: string;
+  applyGlobalPrefix?: boolean;
 }
+
 
 const AVITO_DEFAULTS_KEY = "avito_defaults_";
 
