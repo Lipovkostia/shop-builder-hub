@@ -589,6 +589,10 @@ export default function SuperAdmin() {
               <Package className="h-4 w-4" />
               <span className="hidden sm:inline">Главная: товары</span>
             </TabsTrigger>
+            <TabsTrigger value="homepage-import" className="gap-2">
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Импорт прайсов</span>
+            </TabsTrigger>
             <TabsTrigger value="homepage" className="gap-2">
               <LayoutGrid className="h-4 w-4" />
               <span className="hidden sm:inline">Главная: настройки</span>
