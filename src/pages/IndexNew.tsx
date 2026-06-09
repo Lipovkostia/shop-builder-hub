@@ -214,7 +214,8 @@ export default function IndexNew() {
                           isSel ? "bg-primary/10 text-primary font-semibold" : "hover:bg-muted text-foreground"
                         )}
                       >
-                        <span className="truncate">{cat.name}</span>
+                        <span className="truncate flex-1">{cat.name}</span>
+                        <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{totalCounts.get(cat.id) || 0}</span>
                         {kids.length > 0 && (expanded ? <ChevronDown className="h-3.5 w-3.5 opacity-60 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 opacity-60 shrink-0" />)}
                       </button>
                       {expanded && kids.length > 0 && (
