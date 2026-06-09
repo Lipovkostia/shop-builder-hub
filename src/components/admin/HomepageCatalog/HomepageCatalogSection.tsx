@@ -335,6 +335,18 @@ function CategoriesPanel({
     onChange(categories.filter((c) => c.id !== id));
   };
 
+  const removeEmpty = async () => {
+    const emptyIds = categories.filter((c) => (counts.get(c.id) || 0) === 0).map((c) => c.id);
+    if (emptyIds.length === 0) {
+      toast({ title: "Пустых категорий нет" });
+      return;
+    }
+    if (!confirm(`Удалить пустых категорий: ${emptyIds.length}?`)) return;
+    const { error } = await sb.from("homepage_categories").delete().in("id", emptyIds);
+    if (error) { toast({ title: "Ошибка", description: error.message, variant: "destructive" }); return; }
+    onChange(categories.filter((c) => !emptyIds.includes(c.id)));
+    toast({ title: "Удалено", description: `Категорий: ${emptyIds.length}` });
+
   const move = async (id: string, dir: -1 | 1) => {
     const idx = categories.findIndex((c) => c.id === id);
     const swap = idx + dir;
