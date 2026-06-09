@@ -9,9 +9,20 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuGroup, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Folder, FolderOpen, Inbox, MoreHorizontal, Pencil, Trash2, AlertCircle } from "lucide-react";
+import { Plus, Folder, FolderOpen, Inbox, MoreHorizontal, Pencil, Trash2, AlertCircle, Tag, ChevronRight, ChevronDown } from "lucide-react";
 import { AvitoProductGroup, AVITO_GROUP_COLORS, colorClass } from "@/hooks/useAvitoProductGroups";
 import { AvitoFeedProduct } from "@/hooks/useAvitoFeedProducts";
+
+interface SidebarProduct {
+  id: string;
+  category?: string;
+  categories?: string[];
+}
+interface SidebarCat {
+  id: string;
+  name: string;
+  parent_id: string | null;
+}
 
 interface Props {
   groups: AvitoProductGroup[];
@@ -22,6 +33,10 @@ interface Props {
   onCreateGroup: (name: string, color?: string) => Promise<AvitoProductGroup | null>;
   onUpdateGroup: (id: string, patch: Partial<Pick<AvitoProductGroup, "name" | "color" | "sort_order">>) => Promise<void>;
   onDeleteGroup: (id: string) => Promise<void>;
+  storeProducts?: SidebarProduct[];
+  storeCategories?: SidebarCat[];
+  selectedCategoryId?: string | null;
+  onSelectCategory?: (id: string | null) => void;
 }
 
 export function AvitoGroupsSidebar({
