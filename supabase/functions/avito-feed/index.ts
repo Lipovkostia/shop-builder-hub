@@ -144,8 +144,12 @@ Deno.serve(async (req) => {
       // в разных вкладках-городах не считались дублями, добавляем к ID суффикс вкладки.
       const tabSuffix = fp.tab_id ? `-${String(fp.tab_id).replace(/-/g, '').substring(0, 6)}` : '';
       const id = product.id.substring(0, 8) + tabSuffix;
-      const title = escapeXml(params.title || product.name || "Товар");
-      const description = escapeXml(params.description || product.description || product.name || "");
+      const rawTitle = params.title || product.name || "Товар";
+      const rawDescription = params.description || product.description || product.name || "";
+      const finalTitle = applyGlobalPrefix ? applyTitlePrefix(rawTitle, defaultTitlePrefix) : rawTitle;
+      const finalDescription = applyGlobalPrefix ? applyDescriptionFirstLine(rawDescription, defaultDescriptionFirstLine) : rawDescription;
+      const title = escapeXml(finalTitle);
+      const description = escapeXml(finalDescription);
       const price = params.Price || params.price || product.price || 0;
       // Defensive split: if category is a hierarchical path "A---B---C", use level 2 as <Category> and leaf as <GoodsType>
       let rawCategory = fp.avito_category || params.category || defaultCategory;
