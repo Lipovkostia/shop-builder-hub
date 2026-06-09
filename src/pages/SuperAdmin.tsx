@@ -1113,6 +1113,13 @@ export default function SuperAdmin() {
             <HomepageCatalogSection />
           </TabsContent>
 
+          {/* Homepage Import from sellers' catalogs */}
+          <TabsContent value="homepage-import" className="space-y-6">
+            <HomepageImportFromSellers />
+          </TabsContent>
+
+
+
           {/* Homepage Settings Tab */}
           <TabsContent value="homepage" className="space-y-6">
             <HomepageVersionManager />
