@@ -2623,7 +2623,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                   if (selectedGroupId === "none" && fp.group_id) return false;
                   if (selectedGroupId !== "all" && selectedGroupId !== "none" && fp.group_id !== selectedGroupId) return false;
                   if (descendantCatIds) {
-                    const p = storeProducts.find(sp => sp.id === fp.product_id);
+                    const p = enrichedStoreProducts.find(sp => sp.id === fp.product_id);
                     if (!p) return false;
                     const ids = [
                       ...((p as any).category ? [(p as any).category] : []),
