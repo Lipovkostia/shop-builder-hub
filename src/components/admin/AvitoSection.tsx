@@ -3514,7 +3514,14 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                 {statsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
                 Загрузить статистику
               </Button>
+              <Button size="sm" variant="outline" onClick={handleExportAnalysisExcel} disabled={statsData.length === 0}>
+                Excel
+              </Button>
             </div>
+
+            <Card className="p-2 text-[11px] text-muted-foreground border-dashed">
+              ℹ️ Позиция объявления в поиске Авито недоступна через публичный API (эндпоинт <code>position</code> есть только во внутреннем кабинете). Если Авито откроет публичный метод — добавим колонку автоматически.
+            </Card>
 
             {statsMeta && (() => {
               const totalViews = statsData.reduce((s, it) => s + (it.stats || []).reduce((a: number, d: any) => a + (d.uniqViews || 0), 0), 0);
