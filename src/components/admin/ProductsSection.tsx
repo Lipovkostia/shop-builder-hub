@@ -228,14 +228,24 @@ export function ProductsSection({
 
   // Filtered products
   const filteredProducts = useMemo(() => {
+    // Умный поиск: разбиваем запрос на токены и ищем все токены в любом порядке
+    const tokenize = (s: string) => s.toLowerCase().split(/\s+/).filter(Boolean);
+    const matchesAllTokens = (haystack: string, query: string) => {
+      const tokens = tokenize(query);
+      if (tokens.length === 0) return true;
+      const h = haystack.toLowerCase();
+      return tokens.every((t) => h.includes(t));
+    };
     return products.filter((product) => {
-      if (filters.name && !product.name.toLowerCase().includes(filters.name.toLowerCase())) {
+      if (filters.name) {
+        // Ищем токены в названии + SKU + описании для большей гибкости
+        const haystack = `${product.name || ""} ${product.sku || ""} ${product.description || ""}`;
+        if (!matchesAllTokens(haystack, filters.name)) return false;
+      }
+      if (filters.sku && !matchesAllTokens(product.sku || "", filters.sku)) {
         return false;
       }
-      if (filters.sku && !(product.sku || "").toLowerCase().includes(filters.sku.toLowerCase())) {
-        return false;
-      }
-      if (filters.desc && !(product.description || "").toLowerCase().includes(filters.desc.toLowerCase())) {
+      if (filters.desc && !matchesAllTokens(product.description || "", filters.desc)) {
         return false;
       }
       if (filters.source !== "all") {
