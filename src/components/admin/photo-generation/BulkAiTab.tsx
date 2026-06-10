@@ -415,25 +415,50 @@ export function BulkAiTab({ storeId }: Props) {
             </TabsList>
           </Tabs>
           <Input placeholder="Поиск..." value={search} onChange={(e) => setSearch(e.target.value)} />
-          <div className="text-xs text-muted-foreground">Выбрано: {selectedProductIds.size}</div>
+          <div className="text-xs text-muted-foreground">
+            Выбрано: {selectedProductIds.size} · всего: {filtered.length}
+          </div>
           <ScrollArea className="h-[560px]">
-            <div className="space-y-1 pr-2">
+            <div className="space-y-2 pr-2">
               {loadingProducts && <div className="text-sm text-muted-foreground">Загрузка...</div>}
-              {filtered.map((p) => {
-                const imgs = source === "avito"
-                  ? (feedByProduct.get(p.id)?.avito_params?.avitoImages?.length || p.images?.length || 0)
-                  : (p.images?.length || 0);
+              {!loadingProducts && sections.map((sec) => {
+                const collapsed = collapsedSections.has(sec.key);
+                const allSelected = sec.items.length > 0 && sec.items.every((p) => selectedProductIds.has(p.id));
                 return (
-                  <label key={p.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted cursor-pointer">
-                    <Checkbox checked={selectedProductIds.has(p.id)} onCheckedChange={() => toggleProduct(p.id)} />
-                    {p.images?.[0]
-                      ? <img src={p.images[0]} alt="" className="h-8 w-8 rounded object-cover" />
-                      : <div className="h-8 w-8 rounded bg-muted" />}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs truncate">{p.name}</div>
-                      <div className="text-[10px] text-muted-foreground">{imgs} фото</div>
+                  <div key={sec.key} className="space-y-0.5">
+                    <div className="flex items-center gap-1 sticky top-0 bg-card z-10 py-1 border-b border-border">
+                      <button
+                        type="button"
+                        onClick={() => toggleSection(sec.key)}
+                        className="p-0.5 hover:bg-muted rounded"
+                      >
+                        {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      </button>
+                      <Checkbox
+                        checked={allSelected}
+                        onCheckedChange={() => toggleSectionSelectAll(sec.items)}
+                      />
+                      <div className="text-[11px] font-semibold flex-1 truncate" title={sec.title}>{sec.title}</div>
+                      <div className="text-[10px] text-muted-foreground">{sec.count}</div>
                     </div>
-                  </label>
+                    {!collapsed && sec.items.map((p) => {
+                      const imgs = source === "avito"
+                        ? (feedByProduct.get(p.id)?.avito_params?.avitoImages?.length || p.images?.length || 0)
+                        : (p.images?.length || 0);
+                      return (
+                        <label key={p.id} className="flex items-center gap-2 p-1.5 pl-5 rounded hover:bg-muted cursor-pointer">
+                          <Checkbox checked={selectedProductIds.has(p.id)} onCheckedChange={() => toggleProduct(p.id)} />
+                          {p.images?.[0]
+                            ? <img src={p.images[0]} alt="" className="h-8 w-8 rounded object-cover" />
+                            : <div className="h-8 w-8 rounded bg-muted" />}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs truncate">{p.name}</div>
+                            <div className="text-[10px] text-muted-foreground">{imgs} фото</div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
                 );
               })}
               {!loadingProducts && filtered.length === 0 && (
@@ -441,6 +466,7 @@ export function BulkAiTab({ storeId }: Props) {
               )}
             </div>
           </ScrollArea>
+
         </div>
 
         {/* Col 2: thumbnails of selected products → pick photos */}
