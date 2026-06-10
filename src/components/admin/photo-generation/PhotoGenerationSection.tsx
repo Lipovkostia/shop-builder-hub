@@ -423,18 +423,54 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
       if (item.jobId) e.jobIds.push(item.jobId);
       byProduct.set(item.productId, e);
     }
-    let ok = 0; const allJobIds: string[] = []; const allTaskIds: string[] = [];
+    let ok = 0;
+    let avitoUpdated = 0;
+    const allJobIds: string[] = [];
+    const allTaskIds: string[] = [];
     for (const [pid, { urls, jobIds }] of byProduct) {
       const prod = products.find((p) => p.id === pid);
       const next = [...(prod?.images ?? []), ...urls];
       const { error } = await supabase.from("products").update({ images: next }).eq("id", pid);
-      if (error) toast.error(`${prod?.name}: ${error.message}`);
-      else { ok++; allJobIds.push(...jobIds); setProducts((prev) => prev.map((p) => p.id === pid ? { ...p, images: next } : p)); }
+      if (error) { toast.error(`${prod?.name}: ${error.message}`); continue; }
+      ok++;
+      allJobIds.push(...jobIds);
+      setProducts((prev) => prev.map((p) => p.id === pid ? { ...p, images: next } : p));
+
+      // Also sync into Avito feed rows for this product (all accounts/tabs).
+      // If `avitoImages` already curated — append new URLs. If not — leave fallback to products.images.
+      try {
+        const { data: feedRows } = await (supabase as any)
+          .from("avito_feed_products")
+          .select("id, avito_params")
+          .eq("store_id", storeId)
+          .eq("product_id", pid);
+        if (Array.isArray(feedRows) && feedRows.length > 0) {
+          await Promise.all(feedRows.map(async (row: any) => {
+            const params = row.avito_params || {};
+            const current: string[] = Array.isArray(params.avitoImages) ? params.avitoImages : [];
+            // Only mutate if the user already explicitly chose avitoImages — that's the case where
+            // fallback to products.images stops working. Otherwise no-op (fallback covers it).
+            if (current.length === 0) return;
+            const merged = Array.from(new Set([...current, ...urls]));
+            await (supabase as any)
+              .from("avito_feed_products")
+              .update({ avito_params: { ...params, avitoImages: merged } })
+              .eq("id", row.id);
+            avitoUpdated++;
+          }));
+        }
+      } catch (e) {
+        console.error("Sync to Avito feed failed:", e);
+      }
     }
     if (allJobIds.length) {
       await supabase.from("image_generation_jobs" as never).update({ approved: true } as never).in("id", allJobIds);
     }
-    toast.success(`Добавлено в ${ok} товаров`);
+    toast.success(
+      avitoUpdated > 0
+        ? `Добавлено в ${ok} товаров (в т.ч. в ${avitoUpdated} объявлений Авито)`
+        : `Добавлено в ${ok} товаров`
+    );
     approvable.forEach((item) => { if (selectedJobIds.has(item.key) && item.taskId) allTaskIds.push(item.taskId); });
     if (allTaskIds.length) persistLocalJobs(localJobs.filter((j) => !allTaskIds.includes(j.id)));
     Object.keys(results).forEach(clearResult);
