@@ -9,7 +9,7 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuGroup, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Folder, FolderOpen, Inbox, MoreHorizontal, Pencil, Trash2, AlertCircle, Tag, ChevronRight, ChevronDown } from "lucide-react";
+import { Plus, Folder, FolderOpen, Inbox, MoreHorizontal, Pencil, Trash2, AlertCircle, Tag, ChevronRight, ChevronDown, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { AvitoProductGroup, AVITO_GROUP_COLORS, colorClass } from "@/hooks/useAvitoProductGroups";
 import { AvitoFeedProduct } from "@/hooks/useAvitoFeedProducts";
 
