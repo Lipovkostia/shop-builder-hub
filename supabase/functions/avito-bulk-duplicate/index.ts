@@ -192,11 +192,20 @@ serve(async (req) => {
     const sourceProductId: string = body.sourceProductId;
     const count: number = Math.max(1, Math.min(20, Number(body.count) || 1));
     const options: DuplicateOptions = body.options || {};
-    const rewriteTitle = options.rewriteTitle !== false;
-    const rewriteDescription = options.rewriteDescription !== false;
+    const titleStrategy = options.titleStrategy
+      ?? (options.rewriteTitle === false ? "none" : "ai");
+    const descStrategy = options.descStrategy
+      ?? (options.rewriteDescription === false ? "none" : "ai");
+    const titleExtras = (options.titleExtras && options.titleExtras.length > 0)
+      ? options.titleExtras
+      : ["Свежий", "Качественный", "Отборный", "Премиум", "Натуральный", "Фирменный", "Лучший"];
+    const descExtraTop = options.descExtraTop || "";
+    const descExtraBottom = options.descExtraBottom || "";
     const reuploadImages = options.reuploadImages !== false;
     const jitterPrice = options.jitterPrice !== false;
     const instruction = options.instruction;
+    const rewriteTitle = titleStrategy === "ai";
+    const rewriteDescription = descStrategy === "ai";
 
     if (!storeId || !sourceProductId) {
       return new Response(JSON.stringify({ error: "storeId и sourceProductId обязательны" }), {
