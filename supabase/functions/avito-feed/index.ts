@@ -236,13 +236,20 @@ Deno.serve(async (req) => {
       // в разных вкладках-городах не считались дублями, добавляем к ID суффикс вкладки.
       const tabSuffix = fp.tab_id ? `-${String(fp.tab_id).replace(/-/g, '').substring(0, 6)}` : '';
       const id = product.id.substring(0, 8) + tabSuffix;
+
+      // ---- Антидубль: уникальный seed на объявление + дата релиза (стабильно в течение суток)
+      const adSeed = `${product.id}|${fp.tab_id || ''}|${releaseEpoch()}`;
+      const article = uniqueArticle(adSeed);
+
       const rawTitle = params.title || product.name || "Товар";
       const rawDescription = params.description || product.description || product.name || "";
       const finalTitle = applyGlobalPrefix ? applyTitlePrefix(rawTitle, defaultTitlePrefix) : rawTitle;
-      const finalDescription = applyGlobalPrefix ? applyDescriptionFirstLine(rawDescription, defaultDescriptionFirstLine) : rawDescription;
+      const baseDescription = applyGlobalPrefix ? applyDescriptionFirstLine(rawDescription, defaultDescriptionFirstLine) : rawDescription;
+      const finalDescription = withAntiDupSuffix(baseDescription, article, adSeed);
       const title = escapeXml(finalTitle);
       const description = escapeXml(finalDescription);
-      const price = resolvePrice(params, product.price, params.price_source);
+      const rawPrice = resolvePrice(params, product.price, params.price_source);
+      const price = jitterPrice(rawPrice, adSeed);
       // Defensive split: if category is a hierarchical path "A---B---C", use level 2 as <Category> and leaf as <GoodsType>
       let rawCategory = fp.avito_category || params.category || defaultCategory;
       let derivedGoodsSubType = params.GoodsType || params.goodsSubType || "";
@@ -255,7 +262,7 @@ Deno.serve(async (req) => {
       const selectedImages: string[] = Array.isArray(params.avitoImages) && params.avitoImages.length > 0
         ? params.avitoImages
         : (product.images || []);
-      const images = selectedImages;
+      const images = shuffledImages(selectedImages, adSeed);
       const address = escapeXml(fp.avito_address || params.address || defaultAddress);
       const adType = escapeXml(params.adType || params.goodsType || defaultAdType);
       const goodsType = escapeXml(derivedGoodsSubType || defaultGoodsType);
@@ -273,10 +280,11 @@ Deno.serve(async (req) => {
         imagesXml = "    <Images>\n";
         for (const img of images.slice(0, 10)) {
           if (/[_\-](thumb|small|xs|50x|100x|150x)/i.test(img)) continue;
-          imagesXml += `      <Image url="${escapeXml(img)}" />\n`;
+          imagesXml += `      <Image url="${escapeXml(bustImageUrl(img, adSeed))}" />\n`;
         }
         imagesXml += "    </Images>\n";
       }
+
 
       ads += `  <Ad>\n`;
       ads += `    <Id>${escapeXml(id)}</Id>\n`;
