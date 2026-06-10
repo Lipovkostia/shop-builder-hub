@@ -49,7 +49,27 @@ interface PurchaseSession {
 }
 
 export default function Zakupka() {
+  const { user, isSuperAdmin, loading: authLoading } = useAuth();
   const isMobile = useIsMobile();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  if (!user) return <Navigate to="/" replace />;
+  if (!isSuperAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+        <div className="max-w-md text-center space-y-2">
+          <h1 className="text-xl font-semibold">Доступ только для супер-администратора</h1>
+          <p className="text-sm text-muted-foreground">Сервис «Закупка» содержит чувствительные данные поставщиков и доступен только администратору платформы.</p>
+        </div>
+      </div>
+    );
+  }
   const [session, setSession] = useState<PurchaseSession | null>(null);
   const [items, setItems] = useState<PurchaseItem[]>([]);
   const [questions, setQuestions] = useState<PurchaseQuestion[]>([]);
