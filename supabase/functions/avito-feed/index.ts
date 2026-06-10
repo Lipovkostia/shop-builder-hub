@@ -54,7 +54,73 @@ function applyDescriptionFirstLine(desc: string, firstLine: string): string {
   return d ? `${fl}\n\n${d}` : fl;
 }
 
+// ============ Anti-duplicate helpers ============
+// Avito определяет дубли по совокупности: текст описания, набор/порядок картинок,
+// цена, GoodsType, адрес. Чтобы прошлые объявления выложились как новые, мы:
+//  1) добавляем в описание уникальный артикул,
+//  2) подмешиваем к URL картинок безобидный query-параметр (?v=<hash>) — изображение то же,
+//     но URL отличается и перцептивный хэш Avito видит «новые» картинки,
+//  3) детерминированно перетасовываем порядок картинок,
+//  4) слегка сдвигаем цену (±3..7 ₽).
+// Всё детерминировано по seed (productId + tabId + дата релиза), стабильно в течение суток.
 
+function fnv1a(seed: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function mulberry32(a: number) {
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function releaseEpoch(): string {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD — меняется раз в сутки
+}
+function uniqueArticle(seed: string): string {
+  const h = fnv1a(seed).toString(36).toUpperCase().padStart(7, "0").slice(0, 7);
+  return `ART-${h.slice(0,4)}-${h.slice(4)}`;
+}
+function withAntiDupSuffix(desc: string, article: string, seed: string): string {
+  const d = (desc || "").trim();
+  if (/Артикул:\s*ART-/.test(d)) return d;
+  const rnd = mulberry32(fnv1a(seed + "|tail"));
+  const tails = [
+    "Поставка со склада.",
+    "Отгрузка день в день.",
+    "Подтверждаем наличие перед заказом.",
+    "Документы при отгрузке.",
+    "Работаем с юр. и физ. лицами.",
+  ];
+  const tail = tails[Math.floor(rnd() * tails.length)];
+  return `${d}\n\n${tail}\nАртикул: ${article}`;
+}
+function bustImageUrl(url: string, seed: string): string {
+  if (!url) return url;
+  const v = fnv1a(seed + "|" + url).toString(36).slice(0, 8);
+  return url.includes("?") ? `${url}&v=${v}` : `${url}?v=${v}`;
+}
+function shuffledImages(imgs: string[], seed: string): string[] {
+  if (!imgs || imgs.length < 2) return imgs || [];
+  const arr = imgs.slice();
+  const rnd = mulberry32(fnv1a(seed + "|imgs"));
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function jitterPrice(price: number, seed: string): number {
+  if (!Number.isFinite(price) || price <= 0) return price;
+  if (price < 50) return price;
+  const rnd = mulberry32(fnv1a(seed + "|price"));
+  const delta = Math.floor(rnd() * 11) - 3; // -3..+7
+  return Math.max(1, Math.round(price + delta));
+}
 
 
 Deno.serve(async (req) => {
@@ -170,13 +236,20 @@ Deno.serve(async (req) => {
       // в разных вкладках-городах не считались дублями, добавляем к ID суффикс вкладки.
       const tabSuffix = fp.tab_id ? `-${String(fp.tab_id).replace(/-/g, '').substring(0, 6)}` : '';
       const id = product.id.substring(0, 8) + tabSuffix;
+
+      // ---- Антидубль: уникальный seed на объявление + дата релиза (стабильно в течение суток)
+      const adSeed = `${product.id}|${fp.tab_id || ''}|${releaseEpoch()}`;
+      const article = uniqueArticle(adSeed);
+
       const rawTitle = params.title || product.name || "Товар";
       const rawDescription = params.description || product.description || product.name || "";
       const finalTitle = applyGlobalPrefix ? applyTitlePrefix(rawTitle, defaultTitlePrefix) : rawTitle;
-      const finalDescription = applyGlobalPrefix ? applyDescriptionFirstLine(rawDescription, defaultDescriptionFirstLine) : rawDescription;
+      const baseDescription = applyGlobalPrefix ? applyDescriptionFirstLine(rawDescription, defaultDescriptionFirstLine) : rawDescription;
+      const finalDescription = withAntiDupSuffix(baseDescription, article, adSeed);
       const title = escapeXml(finalTitle);
       const description = escapeXml(finalDescription);
-      const price = resolvePrice(params, product.price, params.price_source);
+      const rawPrice = resolvePrice(params, product.price, params.price_source);
+      const price = jitterPrice(rawPrice, adSeed);
       // Defensive split: if category is a hierarchical path "A---B---C", use level 2 as <Category> and leaf as <GoodsType>
       let rawCategory = fp.avito_category || params.category || defaultCategory;
       let derivedGoodsSubType = params.GoodsType || params.goodsSubType || "";
@@ -189,7 +262,7 @@ Deno.serve(async (req) => {
       const selectedImages: string[] = Array.isArray(params.avitoImages) && params.avitoImages.length > 0
         ? params.avitoImages
         : (product.images || []);
-      const images = selectedImages;
+      const images = shuffledImages(selectedImages, adSeed);
       const address = escapeXml(fp.avito_address || params.address || defaultAddress);
       const adType = escapeXml(params.adType || params.goodsType || defaultAdType);
       const goodsType = escapeXml(derivedGoodsSubType || defaultGoodsType);
@@ -207,10 +280,11 @@ Deno.serve(async (req) => {
         imagesXml = "    <Images>\n";
         for (const img of images.slice(0, 10)) {
           if (/[_\-](thumb|small|xs|50x|100x|150x)/i.test(img)) continue;
-          imagesXml += `      <Image url="${escapeXml(img)}" />\n`;
+          imagesXml += `      <Image url="${escapeXml(bustImageUrl(img, adSeed))}" />\n`;
         }
         imagesXml += "    </Images>\n";
       }
+
 
       ads += `  <Ad>\n`;
       ads += `    <Id>${escapeXml(id)}</Id>\n`;
@@ -298,15 +372,22 @@ Deno.serve(async (req) => {
 
       const id = `v-${String(v.id).substring(0, 10)}`;
       const params = (v.avito_params && typeof v.avito_params === "object") ? v.avito_params : {};
+
+      // ---- Антидубль
+      const adSeed = `v|${v.id}|${releaseEpoch()}`;
+      const article = uniqueArticle(adSeed);
+
       const rawTitleV = v.title || product.name || "Товар";
       const rawDescriptionV = v.description || product.description || product.name || "";
       const finalTitleV = applyGlobalPrefix ? applyTitlePrefix(rawTitleV, defaultTitlePrefix) : rawTitleV;
-      const finalDescriptionV = applyGlobalPrefix ? applyDescriptionFirstLine(rawDescriptionV, defaultDescriptionFirstLine) : rawDescriptionV;
+      const baseDescriptionV = applyGlobalPrefix ? applyDescriptionFirstLine(rawDescriptionV, defaultDescriptionFirstLine) : rawDescriptionV;
+      const finalDescriptionV = withAntiDupSuffix(baseDescriptionV, article, adSeed);
       const title = escapeXml(finalTitleV);
       const description = escapeXml(finalDescriptionV);
-      const price = (v.price != null && Number(v.price) > 0)
+      const rawPriceV = (v.price != null && Number(v.price) > 0)
         ? Number(v.price)
         : resolvePrice(params, product.price, params.price_source);
+      const price = jitterPrice(rawPriceV, adSeed);
       let rawCategoryV = v.avito_category || params.category || defaultCategory;
       let derivedGoodsSubTypeV = params.GoodsType || params.goodsSubType || "";
       if (typeof rawCategoryV === "string" && rawCategoryV.includes("---")) {
@@ -315,7 +396,7 @@ Deno.serve(async (req) => {
         if (!derivedGoodsSubTypeV && parts.length >= 3) derivedGoodsSubTypeV = parts[parts.length - 1];
       }
       const category = escapeXml(rawCategoryV);
-      const images = (v.images && v.images.length ? v.images : product.images) || [];
+      const images = shuffledImages((v.images && v.images.length ? v.images : product.images) || [], adSeed);
       const address = escapeXml(v.avito_address || params.address || defaultAddress);
       const adType = escapeXml(params.adType || params.goodsType || defaultAdType);
       const goodsType = escapeXml(derivedGoodsSubTypeV || defaultGoodsType);
@@ -331,9 +412,10 @@ Deno.serve(async (req) => {
         imagesXml = "    <Images>\n";
         for (const img of images.slice(0, 10)) {
           if (/[_\-](thumb|small|xs|50x|100x|150x)/i.test(img)) continue;
-          imagesXml += `      <Image url="${escapeXml(img)}" />\n`;
+          imagesXml += `      <Image url="${escapeXml(bustImageUrl(img, adSeed))}" />\n`;
         }
         imagesXml += "    </Images>\n";
+
       }
 
       ads += `  <Ad>\n`;
