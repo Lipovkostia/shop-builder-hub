@@ -316,13 +316,41 @@ serve(async (req) => {
       const seed = baseSeed + i + 1;
       const newProductId = crypto.randomUUID();
       const aiVariant = texts[i] || {};
-      const newTitle = (rewriteTitle && aiVariant.title)
-        ? String(aiVariant.title).slice(0, 100)
-        : `${baseTitle} (дубль ${seed})`;
+
+      // ===== Title =====
+      let newTitle = baseTitle;
+      if (titleStrategy === "ai" && aiVariant.title) {
+        newTitle = String(aiVariant.title);
+      } else if (titleStrategy === "shuffle") {
+        newTitle = shuffleWords(baseTitle, seed * 7919);
+      } else if (titleStrategy === "epithet" && titleExtras.length) {
+        const word = titleExtras[(seed - 1) % titleExtras.length];
+        const first = baseTitle.slice(0, 1).toLowerCase() + baseTitle.slice(1);
+        newTitle = `${word} ${first}`;
+      } else if (titleStrategy === "prefix" && titleExtras.length) {
+        const word = titleExtras[(seed - 1) % titleExtras.length];
+        newTitle = `${word} ${baseTitle}`;
+      } else if (titleStrategy === "suffix" && titleExtras.length) {
+        const word = titleExtras[(seed - 1) % titleExtras.length];
+        newTitle = `${baseTitle} ${word}`;
+      } else if (titleStrategy === "none") {
+        newTitle = baseTitle;
+      }
+      newTitle = newTitle.slice(0, 100);
+
       const article = `ART-${shortHash(sourceProductId + seed)}-${rand(100, 999)}`;
-      let newDescription = (rewriteDescription && aiVariant.description)
-        ? String(aiVariant.description)
-        : baseDescription;
+
+      // ===== Description =====
+      let newDescription = baseDescription;
+      if (descStrategy === "ai" && aiVariant.description) {
+        newDescription = String(aiVariant.description);
+      } else if (descStrategy === "prepend" && descExtraTop) {
+        newDescription = `${descExtraTop}\n\n${baseDescription}`.trim();
+      } else if (descStrategy === "append" && descExtraBottom) {
+        newDescription = `${baseDescription}\n\n${descExtraBottom}`.trim();
+      } else if (descStrategy === "wrap") {
+        newDescription = [descExtraTop, baseDescription, descExtraBottom].filter(Boolean).join("\n\n").trim();
+      }
       if (!/ART-[A-Z0-9]+-\d+/.test(newDescription)) {
         newDescription = `${newDescription}\n\nАртикул: ${article}`.trim();
       }
