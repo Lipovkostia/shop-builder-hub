@@ -12,11 +12,35 @@ const corsHeaders = {
 };
 
 interface DuplicateOptions {
+  // Strategies
+  titleStrategy?: "ai" | "shuffle" | "prefix" | "suffix" | "epithet" | "none";
+  titleExtras?: string[];
+  descStrategy?: "ai" | "prepend" | "append" | "wrap" | "none";
+  descExtraTop?: string;
+  descExtraBottom?: string;
+  // Back-compat / other
   rewriteTitle?: boolean;
   rewriteDescription?: boolean;
   reuploadImages?: boolean;
   jitterPrice?: boolean;
   instruction?: string;
+}
+
+function shuffleWords(s: string, seed: number): string {
+  if (!s) return s;
+  // Keep first capitalized word in place; shuffle middle tokens; preserve trailing punctuation.
+  const tokens = s.trim().split(/\s+/);
+  if (tokens.length < 3) return s;
+  const first = tokens[0];
+  const middle = tokens.slice(1, tokens.length - 1);
+  const last = tokens[tokens.length - 1];
+  // simple seeded shuffle
+  for (let i = middle.length - 1; i > 0; i--) {
+    seed = (seed * 9301 + 49297) % 233280;
+    const j = Math.floor((seed / 233280) * (i + 1));
+    [middle[i], middle[j]] = [middle[j], middle[i]];
+  }
+  return [first, ...middle, last].join(" ");
 }
 
 function rand(min: number, max: number) {
