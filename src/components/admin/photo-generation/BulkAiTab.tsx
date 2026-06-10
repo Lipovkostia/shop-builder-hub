@@ -166,6 +166,61 @@ export function BulkAiTab({ storeId }: Props) {
     );
   }, [visibleProducts, search]);
 
+  // Группировка для левой колонки: по группам Авито или по категориям прайс-листа.
+  const sections = useMemo(() => {
+    type Section = { key: string; title: string; items: ProductLite[]; count: number };
+    const out: Section[] = [];
+    if (source === "avito") {
+      const byGroup = new Map<string, ProductLite[]>();
+      for (const p of filtered) {
+        const gid = feedByProduct.get(p.id)?.group_id || "__none__";
+        if (!byGroup.has(gid)) byGroup.set(gid, []);
+        byGroup.get(gid)!.push(p);
+      }
+      const ordered = [...avitoGroups].sort((a, b) => a.sort_order - b.sort_order);
+      for (const g of ordered) {
+        const items = byGroup.get(g.id) || [];
+        if (items.length) out.push({ key: g.id, title: g.name, items, count: items.length });
+      }
+      const none = byGroup.get("__none__") || [];
+      if (none.length) out.push({ key: "__none__", title: "Без группы", items: none, count: none.length });
+    } else {
+      const catName = new Map(categories.map((c) => [c.id, c.name]));
+      const byCat = new Map<string, ProductLite[]>();
+      for (const p of filtered) {
+        const cid = p.category_id || "__none__";
+        if (!byCat.has(cid)) byCat.set(cid, []);
+        byCat.get(cid)!.push(p);
+      }
+      const ordered = [...categories].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name));
+      for (const c of ordered) {
+        const items = byCat.get(c.id) || [];
+        if (items.length) out.push({ key: c.id, title: catName.get(c.id) || c.name, items, count: items.length });
+      }
+      const none = byCat.get("__none__") || [];
+      if (none.length) out.push({ key: "__none__", title: "Без категории", items: none, count: none.length });
+    }
+    return out;
+  }, [filtered, source, feedByProduct, avitoGroups, categories]);
+
+  const toggleSection = (key: string) => {
+    setCollapsedSections((prev) => {
+      const n = new Set(prev);
+      if (n.has(key)) n.delete(key); else n.add(key);
+      return n;
+    });
+  };
+  const toggleSectionSelectAll = (items: ProductLite[]) => {
+    setSelectedProductIds((prev) => {
+      const n = new Set(prev);
+      const allSelected = items.every((p) => n.has(p.id));
+      if (allSelected) items.forEach((p) => n.delete(p.id));
+      else items.forEach((p) => n.add(p.id));
+      return n;
+    });
+  };
+
+
   const toggleProduct = (id: string) => {
     setSelectedProductIds((prev) => {
       const n = new Set(prev);
