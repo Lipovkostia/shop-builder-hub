@@ -34,6 +34,7 @@ export interface AvitoDefaults {
   titlePrefix?: string;
   descriptionFirstLine?: string;
   applyGlobalPrefix?: boolean;
+  priceSource?: "manual" | "moysklad";
 }
 
 
@@ -64,6 +65,7 @@ export function useAvitoFeedProducts(storeId: string | null, activeTabId: string
     titlePrefix: "Опт:",
     descriptionFirstLine: "Продажа только в опт от 15 тыс. ₽ заказ",
     applyGlobalPrefix: true,
+    priceSource: "moysklad",
   });
 
 
