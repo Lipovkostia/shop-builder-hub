@@ -24,7 +24,7 @@ import {
   ExternalLink, Loader2, Link2, Unlink, RefreshCw, Check, Package, Search, Filter,
 
   MapPin, Calendar, Eye, Image as ImageIcon, X, Download, Settings, Save, Sparkles, Wand2,
-  Plus, Trash2, BookOpen, Clock, ImagePlus, AlertCircle, AlertTriangle, Upload, Folder, Inbox,
+  Plus, Trash2, BookOpen, Clock, ImagePlus, AlertCircle, AlertTriangle, Upload, Folder, Inbox, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, GripVertical,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
@@ -1162,6 +1162,40 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [feedSearchQuery, setFeedSearchQuery] = useState("");
   const [feedPriceFilter, setFeedPriceFilter] = useState("all");
+
+  // Left panels collapse + bulk panel resizable width (persisted)
+  const [groupsCollapsed, setGroupsCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem("avito_groups_collapsed") === "1"; } catch { return false; }
+  });
+  const [bulkCollapsed, setBulkCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem("avito_bulk_collapsed") === "1"; } catch { return false; }
+  });
+  const [bulkWidth, setBulkWidth] = useState<number>(() => {
+    try { const v = parseInt(localStorage.getItem("avito_bulk_width") || "", 10); return v >= 220 && v <= 560 ? v : 300; } catch { return 300; }
+  });
+  useEffect(() => { try { localStorage.setItem("avito_groups_collapsed", groupsCollapsed ? "1" : "0"); } catch {} }, [groupsCollapsed]);
+  useEffect(() => { try { localStorage.setItem("avito_bulk_collapsed", bulkCollapsed ? "1" : "0"); } catch {} }, [bulkCollapsed]);
+  useEffect(() => { try { localStorage.setItem("avito_bulk_width", String(bulkWidth)); } catch {} }, [bulkWidth]);
+  const bulkResizingRef = useRef<{ startX: number; startW: number } | null>(null);
+  const onBulkResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    bulkResizingRef.current = { startX: e.clientX, startW: bulkWidth };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    const onMove = (ev: MouseEvent) => {
+      const s = bulkResizingRef.current; if (!s) return;
+      const next = Math.max(220, Math.min(560, s.startW + (ev.clientX - s.startX)));
+      setBulkWidth(next);
+    };
+    const onUp = () => {
+      bulkResizingRef.current = null;
+      document.body.style.cursor = ""; document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [bulkWidth]);
 
   // Stats tab
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -2493,11 +2527,32 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                 storeCategories={storeCategories as any}
                 selectedCategoryId={selectedSourceCategoryId}
                 onSelectCategory={setSelectedSourceCategoryId}
+                collapsed={groupsCollapsed}
+                onToggleCollapse={() => setGroupsCollapsed(v => !v)}
               />
             )}
-            {/* Left Sidebar - Settings, Filters, Bulk Actions */}
-            <div className="w-[260px] min-w-[220px] flex-shrink-0 border-r overflow-y-auto bg-muted/10">
+            {/* Left Sidebar - Settings, Filters, Bulk Actions (resizable + collapsible) */}
+            {bulkCollapsed ? (
+              <div className="w-9 min-w-9 flex-shrink-0 border-r bg-muted/10 flex flex-col items-center py-2 gap-1">
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setBulkCollapsed(false)} title="Развернуть панель действий">
+                  <PanelRightOpen className="h-4 w-4" />
+                </Button>
+                <div className="rotate-180 [writing-mode:vertical-rl] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mt-2">
+                  Поиск · Массовые значения
+                </div>
+              </div>
+            ) : (
+            <div
+              className="flex-shrink-0 border-r overflow-hidden bg-muted/10 relative"
+              style={{ width: bulkWidth, minWidth: bulkWidth }}
+            >
+              <div className="absolute top-1 right-1 z-10">
+                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setBulkCollapsed(true)} title="Свернуть">
+                  <PanelRightClose className="h-3.5 w-3.5" />
+                </Button>
+              </div>
               <ScrollArea className="h-full">
+
                 <div className="p-3 space-y-3">
 
                   {/* Search & Price Filter */}
@@ -3099,9 +3154,19 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                 </div>
               </ScrollArea>
             </div>
+            )}
+            {/* Drag handle for resizing bulk panel */}
+            {!bulkCollapsed && (
+              <div
+                onMouseDown={onBulkResizeStart}
+                className="w-1.5 cursor-col-resize bg-border/40 hover:bg-primary/50 active:bg-primary transition-colors flex-shrink-0"
+                title="Перетащите, чтобы изменить ширину"
+              />
+            )}
 
             {/* Right Area - Table */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+
               {/* Bulk actions bar - always visible when there are products */}
               {avitoFeed && avitoFeed.feedProducts.length > 0 && (() => {
                 // (filtering computed below, with category filter included)
