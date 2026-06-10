@@ -43,8 +43,11 @@ export type Database = {
           created_at: string
           feed_defaults: Json | null
           id: string
+          is_default: boolean
+          label: string | null
           last_sync: string | null
           profile_name: string | null
+          sort_order: number
           store_id: string
           updated_at: string
         }
@@ -55,8 +58,11 @@ export type Database = {
           created_at?: string
           feed_defaults?: Json | null
           id?: string
+          is_default?: boolean
+          label?: string | null
           last_sync?: string | null
           profile_name?: string | null
+          sort_order?: number
           store_id: string
           updated_at?: string
         }
@@ -67,8 +73,11 @@ export type Database = {
           created_at?: string
           feed_defaults?: Json | null
           id?: string
+          is_default?: boolean
+          label?: string | null
           last_sync?: string | null
           profile_name?: string | null
+          sort_order?: number
           store_id?: string
           updated_at?: string
         }
@@ -76,7 +85,7 @@ export type Database = {
           {
             foreignKeyName: "avito_accounts_store_id_fkey"
             columns: ["store_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "stores"
             referencedColumns: ["id"]
           },
@@ -542,6 +551,7 @@ export type Database = {
       }
       avito_city_tabs: {
         Row: {
+          account_id: string | null
           address: string | null
           city: string | null
           created_at: string
@@ -556,6 +566,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_id?: string | null
           address?: string | null
           city?: string | null
           created_at?: string
@@ -570,6 +581,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_id?: string | null
           address?: string | null
           city?: string | null
           created_at?: string
@@ -583,10 +595,19 @@ export type Database = {
           store_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "avito_city_tabs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "avito_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       avito_feed_products: {
         Row: {
+          account_id: string | null
           avito_address: string | null
           avito_category: string | null
           avito_params: Json | null
@@ -599,6 +620,7 @@ export type Database = {
           tab_id: string | null
         }
         Insert: {
+          account_id?: string | null
           avito_address?: string | null
           avito_category?: string | null
           avito_params?: Json | null
@@ -611,6 +633,7 @@ export type Database = {
           tab_id?: string | null
         }
         Update: {
+          account_id?: string | null
           avito_address?: string | null
           avito_category?: string | null
           avito_params?: Json | null
@@ -623,6 +646,13 @@ export type Database = {
           tab_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "avito_feed_products_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "avito_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "avito_feed_products_group_id_fkey"
             columns: ["group_id"]
