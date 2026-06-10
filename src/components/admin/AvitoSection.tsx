@@ -594,7 +594,30 @@ function AvitoFeedTable({
       });
     }
 
-    return result;
+    // Group duplicate products right after their source so the hierarchy is visible.
+    const byProduct = new Map<string, typeof result[number]>();
+    for (const fp of result) byProduct.set(fp.product_id, fp);
+    const placed = new Set<string>();
+    const ordered: typeof result = [];
+    for (const fp of result) {
+      const prod = storeProducts.find(p => p.id === fp.product_id) as any;
+      const parentId = prod?.duplicate_of_product_id;
+      // If this row is a duplicate AND its parent is also in the visible list,
+      // skip — it will be inserted right after the parent below.
+      if (parentId && byProduct.has(parentId)) continue;
+      if (placed.has(fp.product_id)) continue;
+      ordered.push(fp);
+      placed.add(fp.product_id);
+      // Append all duplicates of this product, in original order
+      for (const childFp of result) {
+        const childProd = storeProducts.find(p => p.id === childFp.product_id) as any;
+        if (childProd?.duplicate_of_product_id === fp.product_id && !placed.has(childFp.product_id)) {
+          ordered.push(childFp);
+          placed.add(childFp.product_id);
+        }
+      }
+    }
+    return ordered;
   }, [preFiltered, storeProducts, columnFilters, sortConfig, categoryMap]);
   const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
 
@@ -749,6 +772,7 @@ function AvitoFeedTable({
               const modStatus: string | undefined = params.moderation?.status;
               const notPublished = params.moderation?.published === false;
 
+              const isDup = !!(product as any).duplicate_of_product_id;
               const rowBg = excluded
                 ? "bg-muted/40 opacity-60"
                 : hasModError
@@ -759,7 +783,9 @@ function AvitoFeedTable({
                       ? "bg-amber-500/5 border-l-2 border-l-amber-500"
                       : isDone ? 'bg-green-50 dark:bg-green-950/20'
                         : isGenerating ? 'bg-yellow-50 dark:bg-yellow-950/20'
-                          : isQueued ? 'bg-muted/20' : '';
+                          : isQueued ? 'bg-muted/20'
+                            : isDup ? 'bg-fuchsia-50/40 dark:bg-fuchsia-950/10 border-l-2 border-l-fuchsia-400/60'
+                              : '';
 
               return (
                 <div key={fp.id} className={`flex border-b text-xs hover:bg-muted/30 items-start transition-colors ${rowBg}`}>
@@ -806,6 +832,17 @@ function AvitoFeedTable({
                         #{shortId}
                       </button>
                       {excluded && <span className="text-[9px] px-1 rounded bg-muted text-muted-foreground">не выгр.</span>}
+                      {(product as any).duplicate_of_product_id && (() => {
+                        const parent = storeProducts.find(sp => sp.id === (product as any).duplicate_of_product_id);
+                        return (
+                          <span
+                            className="text-[9px] px-1 rounded bg-fuchsia-100 dark:bg-fuchsia-950/40 text-fuchsia-700 dark:text-fuchsia-300 truncate max-w-[140px]"
+                            title={parent ? `Дубль от: ${parent.name}` : "Дубль объявления"}
+                          >
+                            ↳ Дубль{parent ? ` от: ${parent.name}` : ""}
+                          </span>
+                        );
+                      })()}
                       {hasModError && <span className="text-[9px] px-1 rounded bg-destructive/15 text-destructive">ошибка</span>}
                       {!hasModError && hasModWarning && <span className="text-[9px] px-1 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400">предупр.</span>}
                       {notPublished && <span className="text-[9px] px-1 rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 font-medium" title={modStatus || "Не опубликовано на Авито"}>не опубл.{modStatus ? `: ${modStatus}` : ""}</span>}
@@ -1153,7 +1190,7 @@ function AvitoFeedTable({
             onOpenChange={(open) => { if (!open) setBulkDuplicateProductId(null); }}
             storeId={storeId}
             product={p ? { id: p.id, name: p.name } : null}
-            onDone={() => setVariantsManagerProductId(bulkDuplicateProductId)}
+            onDone={() => { /* Дубли появятся в общем списке (привязка по duplicate_of_product_id). */ }}
           />
         );
       })()}
