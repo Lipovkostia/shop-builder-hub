@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
       const finalDescription = applyGlobalPrefix ? applyDescriptionFirstLine(rawDescription, defaultDescriptionFirstLine) : rawDescription;
       const title = escapeXml(finalTitle);
       const description = escapeXml(finalDescription);
-      const price = params.Price || params.price || product.price || 0;
+      const price = resolvePrice(params, product.price, params.price_source);
       // Defensive split: if category is a hierarchical path "A---B---C", use level 2 as <Category> and leaf as <GoodsType>
       let rawCategory = fp.avito_category || params.category || defaultCategory;
       let derivedGoodsSubType = params.GoodsType || params.goodsSubType || "";
@@ -304,7 +304,9 @@ Deno.serve(async (req) => {
       const finalDescriptionV = applyGlobalPrefix ? applyDescriptionFirstLine(rawDescriptionV, defaultDescriptionFirstLine) : rawDescriptionV;
       const title = escapeXml(finalTitleV);
       const description = escapeXml(finalDescriptionV);
-      const price = v.price ?? params.Price ?? params.price ?? product.price ?? 0;
+      const price = (v.price != null && Number(v.price) > 0)
+        ? Number(v.price)
+        : resolvePrice(params, product.price, params.price_source);
       let rawCategoryV = v.avito_category || params.category || defaultCategory;
       let derivedGoodsSubTypeV = params.GoodsType || params.goodsSubType || "";
       if (typeof rawCategoryV === "string" && rawCategoryV.includes("---")) {
