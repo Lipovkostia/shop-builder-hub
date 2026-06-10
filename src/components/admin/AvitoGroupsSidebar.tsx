@@ -100,14 +100,34 @@ export function AvitoGroupsSidebar({
     </div>
   );
 
+  if (collapsed) {
+    return (
+      <div className="w-9 min-w-9 flex-shrink-0 border-r bg-muted/5 flex flex-col items-center py-2 gap-1">
+        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={onToggleCollapse} title="Развернуть категории">
+          <PanelLeftOpen className="h-4 w-4" />
+        </Button>
+        <div className="rotate-180 [writing-mode:vertical-rl] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mt-2">
+          Мои категории · {totalCount}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-[220px] min-w-[200px] flex-shrink-0 border-r bg-muted/5 flex flex-col">
       <div className="p-2.5 border-b">
         <div className="flex items-center justify-between mb-1.5">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Мои категории</h3>
-          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setCreating(v => !v)} title="Новая группа">
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
+          <div className="flex items-center gap-0.5">
+            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setCreating(v => !v)} title="Новая группа">
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+            {onToggleCollapse && (
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={onToggleCollapse} title="Свернуть">
+                <PanelLeftClose className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
         </div>
         {creating && (
           <div className="space-y-1.5 mt-1 p-2 rounded-md border bg-background">
