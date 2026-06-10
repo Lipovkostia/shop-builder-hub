@@ -2559,6 +2559,83 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                           {selectedFeedProducts.size > 0 && <Badge variant="secondary" className="ml-1 text-[9px] py-0">{selectedFeedProducts.size} выбр.</Badge>}
                         </p>
 
+                        {/* Master apply-all button: writes every set field to selected (or all) rows in ONE bulk update */}
+                        {(() => {
+                          const applyAll = async (onlySelected: boolean) => {
+                            const targets = onlySelected
+                              ? avitoFeed.feedProducts.filter(fp => selectedFeedProducts.has(fp.product_id))
+                              : avitoFeed.feedProducts;
+                            if (targets.length === 0) { toast({ title: "Нет товаров для обновления", variant: "destructive" }); return; }
+                            const d = localDefaults;
+                            const promoVal = d.promo === "none" ? "" : (d.promo || "");
+                            const promoManualLine = d.promo === "Manual" && d.promoPrice
+                              ? `${d.promoRegion || ""}|${d.promoPrice}|${d.promoLimit || ""}` : null;
+                            const promoAutoLine = (d.promo === "Auto_1" || d.promo === "Auto_7" || d.promo === "Auto_30") && d.promoBudget
+                              ? `${d.promoRegion || ""}|${d.promoBudget}` : null;
+                            const source = (d.priceSource || "moysklad") as "manual" | "moysklad";
+                            const rows = targets.map(fp => {
+                              const product = storeProducts.find((p: any) => p.id === fp.product_id);
+                              const cur = (fp.avito_params || {}) as any;
+                              const next: any = { ...cur };
+                              if (d.address) next.address = d.address;
+                              if (d.category) next.category = d.category;
+                              if (d.goodsType) next.goodsType = d.goodsType;
+                              if (d.goodsSubType) next.goodsSubType = d.goodsSubType;
+                              if (d.targetAudience) next.targetAudience = d.targetAudience;
+                              if (d.managerName) next.managerName = d.managerName;
+                              if (d.contactPhone) next.contactPhone = d.contactPhone;
+                              if (d.email) next.email = d.email;
+                              if (d.companyName) next.companyName = d.companyName;
+                              if (d.cpcBid) next.cpcBid = d.cpcBid; else delete next.cpcBid;
+                              if (promoVal) {
+                                next.promo = promoVal;
+                                if (d.promoRegion) next.promoRegion = d.promoRegion;
+                                if (d.promoBudget) next.promoBudget = d.promoBudget;
+                                if (d.promoPrice) next.promoPrice = d.promoPrice;
+                                if (d.promoLimit) next.promoLimit = d.promoLimit;
+                                if (promoManualLine) next.promoManualOptions = promoManualLine;
+                                if (promoAutoLine) next.promoAutoOptions = promoAutoLine;
+                              } else if (d.promo === "none") {
+                                delete next.promo; delete next.promoRegion; delete next.promoBudget;
+                                delete next.promoPrice; delete next.promoLimit;
+                                delete next.promoManualOptions; delete next.promoAutoOptions;
+                              }
+                              next.price_source = source;
+                              if (source === "manual" && (!next.Price || Number(next.Price) <= 0)) {
+                                const seed = Number(cur.Price) || Number(cur.price) || Number((product as any)?.pricePerUnit) || 0;
+                                if (seed > 0) next.Price = seed;
+                              }
+                              return { product_id: fp.product_id, params: next };
+                            });
+                            await avitoFeed.bulkUpdateProductParams(rows);
+                            avitoFeed.saveDefaults(d);
+                            toast({ title: `Применено ко всем полям · ${targets.length} товар(ов)` });
+                          };
+                          return (
+                            <div className="flex flex-col gap-1 p-2 rounded-md bg-primary/5 border border-primary/20">
+                              <p className="text-[9px] text-muted-foreground leading-tight">
+                                Применить ВСЕ значения ниже сразу к выбранным или всем товарам — одной кнопкой, мгновенно.
+                              </p>
+                              <div className="flex gap-1">
+                                {selectedFeedProducts.size > 0 ? (
+                                  <Button size="sm" className="h-7 text-[11px] flex-1" onClick={() => applyAll(true)}>
+                                    <Check className="h-3 w-3 mr-1" /> К выбранным ({selectedFeedProducts.size})
+                                  </Button>
+                                ) : (
+                                  <Button size="sm" variant="secondary" className="h-7 text-[11px] flex-1" disabled title="Выберите товары галочкой">
+                                    <Check className="h-3 w-3 mr-1" /> К выбранным
+                                  </Button>
+                                )}
+                                <Button size="sm" variant="outline" className="h-7 text-[11px] flex-1" onClick={() => applyAll(false)}>
+                                  Ко всем ({avitoFeed.feedProducts.length})
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+
+
                         {/* Address */}
                         <div className="space-y-1">
                           <Label className="text-[10px] text-muted-foreground">Адрес</Label>
