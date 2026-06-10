@@ -76,19 +76,30 @@ export function BulkAiTab({ storeId }: Props) {
   const selectedModel = useMemo(() => KIE_MODELS.find((m) => m.id === modelId) ?? KIE_MODELS[0], [modelId]);
   const pricePerImageRub = selectedModel.priceUsd * usdRub;
 
-  // Load products
+  // Load products — постраничный фетч, чтобы обойти лимит Supabase в 1000 строк.
   useEffect(() => {
     if (!storeId) return;
     (async () => {
       setLoadingProducts(true);
       try {
-        const { data, error } = await supabase
-          .from("products")
-          .select("id, name, images, sku")
-          .eq("store_id", storeId)
-          .order("name");
-        if (error) throw error;
-        setProducts((data as ProductLite[]) ?? []);
+        const pageSize = 1000;
+        let from = 0;
+        const all: ProductLite[] = [];
+        // безопасный потолок
+        for (let i = 0; i < 50; i++) {
+          const { data, error } = await supabase
+            .from("products")
+            .select("id, name, images, sku, category_id")
+            .eq("store_id", storeId)
+            .order("name")
+            .range(from, from + pageSize - 1);
+          if (error) throw error;
+          const chunk = (data as ProductLite[]) ?? [];
+          all.push(...chunk);
+          if (chunk.length < pageSize) break;
+          from += pageSize;
+        }
+        setProducts(all);
       } catch (e: any) {
         toast.error(`Не удалось загрузить товары: ${e.message}`);
       } finally {
@@ -97,22 +108,42 @@ export function BulkAiTab({ storeId }: Props) {
     })();
   }, [storeId]);
 
-  // Load Avito feed rows
+  // Load Avito feed rows + group/category dictionaries
   useEffect(() => {
     if (!storeId) return;
     (async () => {
       try {
-        const { data, error } = await (supabase as any)
-          .from("avito_feed_products")
-          .select("id, product_id, avito_params")
-          .eq("store_id", storeId);
-        if (error) throw error;
-        setFeedRows((data as FeedRow[]) ?? []);
+        const pageSize = 1000;
+        const feedAll: FeedRow[] = [];
+        let from = 0;
+        for (let i = 0; i < 50; i++) {
+          const { data, error } = await (supabase as any)
+            .from("avito_feed_products")
+            .select("id, product_id, avito_params, group_id")
+            .eq("store_id", storeId)
+            .range(from, from + pageSize - 1);
+          if (error) throw error;
+          const chunk = (data as FeedRow[]) ?? [];
+          feedAll.push(...chunk);
+          if (chunk.length < pageSize) break;
+          from += pageSize;
+        }
+        setFeedRows(feedAll);
+
+        const [{ data: gd }, { data: cd }] = await Promise.all([
+          (supabase as any).from("avito_product_groups")
+            .select("id, name, color, sort_order").eq("store_id", storeId).order("sort_order"),
+          supabase.from("categories")
+            .select("id, name, parent_id, sort_order").eq("store_id", storeId).order("sort_order"),
+        ]);
+        setAvitoGroups((gd as AvitoGroup[]) ?? []);
+        setCategories((cd as Category[]) ?? []);
       } catch (e: any) {
         console.error("Avito feed load failed:", e);
       }
     })();
   }, [storeId]);
+
 
   const feedByProduct = useMemo(() => {
     const m = new Map<string, FeedRow>();
