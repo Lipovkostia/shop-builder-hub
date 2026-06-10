@@ -103,6 +103,7 @@ interface AvitoSectionProps {
     removeProductsFromFeed: (productIds: string[]) => Promise<void>;
     updateProductParams: (productId: string, params: any) => Promise<void>;
     assignGroup?: (productIds: string[], groupId: string | null) => Promise<void>;
+    setPriceSource?: (productIds: string[], source: "manual" | "moysklad", seedPrices?: Record<string, number>) => Promise<void>;
     refetch: () => Promise<void>;
   };
   cityTabs?: {
@@ -853,12 +854,46 @@ function AvitoFeedTable({
                     )}
                   </div>
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.price }}>
-                    <InlineCell
-                      value={String(Number(params.Price) || Number(params.price) || Number(product.pricePerUnit) || 0)}
-                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "Price", val)}
-                      placeholder="0"
-                      type="number"
-                    />
+                    {(() => {
+                      const src: "manual" | "moysklad" = (params.price_source === "manual" || params.price_source === "moysklad")
+                        ? params.price_source
+                        : (localDefaults.priceSource || "moysklad");
+                      const msPrice = Number(product.pricePerUnit) || 0;
+                      const manualPrice = Number(params.Price) || Number(params.price) || 0;
+                      const toggle = async () => {
+                        const next = src === "manual" ? "moysklad" : "manual";
+                        const newParams: any = { ...(fp.avito_params || {}), price_source: next };
+                        if (next === "manual" && (!newParams.Price || Number(newParams.Price) <= 0)) {
+                          const seed = manualPrice || msPrice;
+                          if (seed > 0) newParams.Price = seed;
+                        }
+                        await onUpdateProductParams(fp.product_id, newParams);
+                      };
+                      return (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={toggle}
+                            title={src === "manual" ? "Цена задана вручную (Авито). Нажмите чтобы переключить на МойСклад" : "Цена синхронизируется из МойСклад. Нажмите чтобы задать вручную"}
+                            className={`text-[9px] px-1 py-0.5 rounded border ${src === "manual" ? "bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950/30 dark:border-amber-700 dark:text-amber-300" : "bg-sky-50 border-sky-300 text-sky-700 dark:bg-sky-950/30 dark:border-sky-700 dark:text-sky-300"}`}
+                          >
+                            {src === "manual" ? "Авито" : "МС"}
+                          </button>
+                          {src === "manual" ? (
+                            <InlineCell
+                              value={String(manualPrice || 0)}
+                              onChange={(val) => handleInlineParamUpdate(fp.product_id, "Price", val)}
+                              placeholder="0"
+                              type="number"
+                            />
+                          ) : (
+                            <span className="text-xs text-muted-foreground" title="Из МойСклад">
+                              {msPrice ? `${msPrice.toLocaleString("ru")} ₽` : "—"}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                   {/* Категория магазина (из прайс-листа) — внутренняя */}
                   {visibleColKeys.has("storeCategory") && (
@@ -2490,7 +2525,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                           <X className="h-3 w-3 mr-1" /> Сбросить
                         </Button>
                       )}
-                    </div>
+                        </div>
                   )}
 
                   {/* Bulk Apply Section */}
@@ -2538,7 +2573,46 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                           </div>
                         </div>
 
-                        {/* Category */}
+                        {/* Price source */}
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Источник цены</Label>
+                          <div className="flex gap-1">
+                            <Select
+                              value={localDefaults.priceSource || "moysklad"}
+                              onValueChange={(v) => {
+                                const next = { ...localDefaults, priceSource: v as "manual" | "moysklad" };
+                                setLocalDefaults(next);
+                                avitoFeed.saveDefaults(next);
+                              }}
+                            >
+                              <SelectTrigger className="h-7 text-xs flex-1"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="moysklad">МойСклад (синхр.)</SelectItem>
+                                <SelectItem value="manual">Авито (вручную)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <BulkButtons onApply={async (onlySelected) => {
+                              const source = (localDefaults.priceSource || "moysklad") as "manual" | "moysklad";
+                              await applyToTargets(async (targets) => {
+                                for (const fp of targets) {
+                                  const product = storeProducts.find((p: any) => p.id === fp.product_id);
+                                  const cur = (fp.avito_params || {}) as any;
+                                  const newP: any = { ...cur, price_source: source };
+                                  if (source === "manual" && (!newP.Price || Number(newP.Price) <= 0)) {
+                                    const seed = Number(cur.Price) || Number(cur.price) || Number((product as any)?.pricePerUnit) || 0;
+                                    if (seed > 0) newP.Price = seed;
+                                  }
+                                  await avitoFeed.updateProductParams(fp.product_id, newP);
+                                }
+                                toast({ title: `Источник цены: ${source === "manual" ? "Авито" : "МойСклад"} — ${targets.length} товар(ов)` });
+                              }, onlySelected);
+                            }} />
+                          </div>
+                          <p className="text-[9px] text-muted-foreground leading-tight">
+                            МС — цена из МойСклад. Авито — цена редактируется вручную в карточке.
+                          </p>
+                        </div>
+
                         <div className="space-y-1">
                           <Label className="text-[10px] text-muted-foreground">Категория Авито</Label>
                           <div className="flex gap-1">
