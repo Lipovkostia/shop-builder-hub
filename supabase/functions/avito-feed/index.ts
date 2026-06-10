@@ -113,6 +113,20 @@ Deno.serve(async (req) => {
       ? String(fd.descriptionFirstLine)
       : "Продажа только в опт от 15 тыс. ₽ заказ";
     const applyGlobalPrefix = fd.applyGlobalPrefix !== false; // default ON
+    const defaultPriceSource: "manual" | "moysklad" = (fd.priceSource === "manual") ? "manual" : "moysklad";
+
+    function resolvePrice(params: any, productPrice: number | null | undefined, source?: string): number {
+      const eff = (source === "manual" || source === "moysklad") ? source : defaultPriceSource;
+      if (eff === "manual") {
+        const v = Number(params.Price ?? params.price);
+        return Number.isFinite(v) && v > 0 ? v : 0;
+      }
+      // moysklad/sync
+      const ms = Number(productPrice);
+      if (Number.isFinite(ms) && ms > 0) return ms;
+      const fallback = Number(params.Price ?? params.price);
+      return Number.isFinite(fallback) && fallback > 0 ? fallback : 0;
+    }
 
 
     // Get feed products with product data; scope by account_id (if any) and optionally by tab_id
