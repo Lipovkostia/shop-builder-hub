@@ -2527,11 +2527,32 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                 storeCategories={storeCategories as any}
                 selectedCategoryId={selectedSourceCategoryId}
                 onSelectCategory={setSelectedSourceCategoryId}
+                collapsed={groupsCollapsed}
+                onToggleCollapse={() => setGroupsCollapsed(v => !v)}
               />
             )}
-            {/* Left Sidebar - Settings, Filters, Bulk Actions */}
-            <div className="w-[260px] min-w-[220px] flex-shrink-0 border-r overflow-y-auto bg-muted/10">
+            {/* Left Sidebar - Settings, Filters, Bulk Actions (resizable + collapsible) */}
+            {bulkCollapsed ? (
+              <div className="w-9 min-w-9 flex-shrink-0 border-r bg-muted/10 flex flex-col items-center py-2 gap-1">
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setBulkCollapsed(false)} title="Развернуть панель действий">
+                  <PanelRightOpen className="h-4 w-4" />
+                </Button>
+                <div className="rotate-180 [writing-mode:vertical-rl] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mt-2">
+                  Поиск · Массовые значения
+                </div>
+              </div>
+            ) : (
+            <div
+              className="flex-shrink-0 border-r overflow-hidden bg-muted/10 relative"
+              style={{ width: bulkWidth, minWidth: bulkWidth }}
+            >
+              <div className="absolute top-1 right-1 z-10">
+                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setBulkCollapsed(true)} title="Свернуть">
+                  <PanelRightClose className="h-3.5 w-3.5" />
+                </Button>
+              </div>
               <ScrollArea className="h-full">
+
                 <div className="p-3 space-y-3">
 
                   {/* Search & Price Filter */}
