@@ -102,6 +102,7 @@ interface AvitoSectionProps {
     removeProductFromFeed: (productId: string) => Promise<void>;
     removeProductsFromFeed: (productIds: string[]) => Promise<void>;
     updateProductParams: (productId: string, params: any) => Promise<void>;
+    bulkUpdateProductParams: (rows: { product_id: string; params: any }[]) => Promise<void>;
     assignGroup?: (productIds: string[], groupId: string | null) => Promise<void>;
     setPriceSource?: (productIds: string[], source: "manual" | "moysklad", seedPrices?: Record<string, number>) => Promise<void>;
     refetch: () => Promise<void>;
@@ -2558,6 +2559,83 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                           {selectedFeedProducts.size > 0 && <Badge variant="secondary" className="ml-1 text-[9px] py-0">{selectedFeedProducts.size} выбр.</Badge>}
                         </p>
 
+                        {/* Master apply-all button: writes every set field to selected (or all) rows in ONE bulk update */}
+                        {(() => {
+                          const applyAll = async (onlySelected: boolean) => {
+                            const targets = onlySelected
+                              ? avitoFeed.feedProducts.filter(fp => selectedFeedProducts.has(fp.product_id))
+                              : avitoFeed.feedProducts;
+                            if (targets.length === 0) { toast({ title: "Нет товаров для обновления", variant: "destructive" }); return; }
+                            const d = localDefaults;
+                            const promoVal = d.promo === "none" ? "" : (d.promo || "");
+                            const promoManualLine = d.promo === "Manual" && d.promoPrice
+                              ? `${d.promoRegion || ""}|${d.promoPrice}|${d.promoLimit || ""}` : null;
+                            const promoAutoLine = (d.promo === "Auto_1" || d.promo === "Auto_7" || d.promo === "Auto_30") && d.promoBudget
+                              ? `${d.promoRegion || ""}|${d.promoBudget}` : null;
+                            const source = (d.priceSource || "moysklad") as "manual" | "moysklad";
+                            const rows = targets.map(fp => {
+                              const product = storeProducts.find((p: any) => p.id === fp.product_id);
+                              const cur = (fp.avito_params || {}) as any;
+                              const next: any = { ...cur };
+                              if (d.address) next.address = d.address;
+                              if (d.category) next.category = d.category;
+                              if (d.goodsType) next.goodsType = d.goodsType;
+                              if (d.goodsSubType) next.goodsSubType = d.goodsSubType;
+                              if (d.targetAudience) next.targetAudience = d.targetAudience;
+                              if (d.managerName) next.managerName = d.managerName;
+                              if (d.contactPhone) next.contactPhone = d.contactPhone;
+                              if (d.email) next.email = d.email;
+                              if (d.companyName) next.companyName = d.companyName;
+                              if (d.cpcBid) next.cpcBid = d.cpcBid; else delete next.cpcBid;
+                              if (promoVal) {
+                                next.promo = promoVal;
+                                if (d.promoRegion) next.promoRegion = d.promoRegion;
+                                if (d.promoBudget) next.promoBudget = d.promoBudget;
+                                if (d.promoPrice) next.promoPrice = d.promoPrice;
+                                if (d.promoLimit) next.promoLimit = d.promoLimit;
+                                if (promoManualLine) next.promoManualOptions = promoManualLine;
+                                if (promoAutoLine) next.promoAutoOptions = promoAutoLine;
+                              } else if (d.promo === "none") {
+                                delete next.promo; delete next.promoRegion; delete next.promoBudget;
+                                delete next.promoPrice; delete next.promoLimit;
+                                delete next.promoManualOptions; delete next.promoAutoOptions;
+                              }
+                              next.price_source = source;
+                              if (source === "manual" && (!next.Price || Number(next.Price) <= 0)) {
+                                const seed = Number(cur.Price) || Number(cur.price) || Number((product as any)?.pricePerUnit) || 0;
+                                if (seed > 0) next.Price = seed;
+                              }
+                              return { product_id: fp.product_id, params: next };
+                            });
+                            await avitoFeed.bulkUpdateProductParams(rows);
+                            avitoFeed.saveDefaults(d);
+                            toast({ title: `Применено ко всем полям · ${targets.length} товар(ов)` });
+                          };
+                          return (
+                            <div className="flex flex-col gap-1 p-2 rounded-md bg-primary/5 border border-primary/20">
+                              <p className="text-[9px] text-muted-foreground leading-tight">
+                                Применить ВСЕ значения ниже сразу к выбранным или всем товарам — одной кнопкой, мгновенно.
+                              </p>
+                              <div className="flex gap-1">
+                                {selectedFeedProducts.size > 0 ? (
+                                  <Button size="sm" className="h-7 text-[11px] flex-1" onClick={() => applyAll(true)}>
+                                    <Check className="h-3 w-3 mr-1" /> К выбранным ({selectedFeedProducts.size})
+                                  </Button>
+                                ) : (
+                                  <Button size="sm" variant="secondary" className="h-7 text-[11px] flex-1" disabled title="Выберите товары галочкой">
+                                    <Check className="h-3 w-3 mr-1" /> К выбранным
+                                  </Button>
+                                )}
+                                <Button size="sm" variant="outline" className="h-7 text-[11px] flex-1" onClick={() => applyAll(false)}>
+                                  Ко всем ({avitoFeed.feedProducts.length})
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+
+
                         {/* Address */}
                         <div className="space-y-1">
                           <Label className="text-[10px] text-muted-foreground">Адрес</Label>
@@ -2566,7 +2644,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                             <BulkButtons onApply={async (onlySelected) => {
                               if (!localDefaults.address) { toast({ title: "Введите адрес", variant: "destructive" }); return; }
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) { await avitoFeed.updateProductParams(fp.product_id, { ...(fp.avito_params || {}), address: localDefaults.address }); }
+                                await avitoFeed.bulkUpdateProductParams(targets.map(fp => ({ product_id: fp.product_id, params: { ...(fp.avito_params || {}), address: localDefaults.address } })));
                                 toast({ title: `Адрес проставлен для ${targets.length} товар(ов)` });
                               }, onlySelected);
                             }} />
@@ -2594,7 +2672,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                             <BulkButtons onApply={async (onlySelected) => {
                               const source = (localDefaults.priceSource || "moysklad") as "manual" | "moysklad";
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) {
+                                const rows = targets.map(fp => {
                                   const product = storeProducts.find((p: any) => p.id === fp.product_id);
                                   const cur = (fp.avito_params || {}) as any;
                                   const newP: any = { ...cur, price_source: source };
@@ -2602,8 +2680,9 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                     const seed = Number(cur.Price) || Number(cur.price) || Number((product as any)?.pricePerUnit) || 0;
                                     if (seed > 0) newP.Price = seed;
                                   }
-                                  await avitoFeed.updateProductParams(fp.product_id, newP);
-                                }
+                                  return { product_id: fp.product_id, params: newP };
+                                });
+                                await avitoFeed.bulkUpdateProductParams(rows);
                                 toast({ title: `Источник цены: ${source === "manual" ? "Авито" : "МойСклад"} — ${targets.length} товар(ов)` });
                               }, onlySelected);
                             }} />
@@ -2630,7 +2709,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                             <BulkButtons onApply={async (onlySelected) => {
                               if (!localDefaults.category) { toast({ title: "Введите категорию", variant: "destructive" }); return; }
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) { await avitoFeed.updateProductParams(fp.product_id, { ...(fp.avito_params || {}), category: localDefaults.category }); }
+                                await avitoFeed.bulkUpdateProductParams(targets.map(fp => ({ product_id: fp.product_id, params: { ...(fp.avito_params || {}), category: localDefaults.category } })));
                                 toast({ title: `Категория проставлена для ${targets.length} товар(ов)` });
                               }, onlySelected);
                             }} />
@@ -2650,7 +2729,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                             </Select>
                             <BulkButtons onApply={async (onlySelected) => {
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) { await avitoFeed.updateProductParams(fp.product_id, { ...(fp.avito_params || {}), goodsType: localDefaults.goodsType }); }
+                                await avitoFeed.bulkUpdateProductParams(targets.map(fp => ({ product_id: fp.product_id, params: { ...(fp.avito_params || {}), goodsType: localDefaults.goodsType } })));
                                 avitoFeed.saveDefaults(localDefaults);
                                 toast({ title: `Вид объявления проставлен для ${targets.length} товар(ов)` });
                               }, onlySelected);
@@ -2666,7 +2745,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                             <BulkButtons onApply={async (onlySelected) => {
                               if (!localDefaults.goodsSubType) { toast({ title: "Введите вид товара", variant: "destructive" }); return; }
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) { await avitoFeed.updateProductParams(fp.product_id, { ...(fp.avito_params || {}), goodsSubType: localDefaults.goodsSubType }); }
+                                await avitoFeed.bulkUpdateProductParams(targets.map(fp => ({ product_id: fp.product_id, params: { ...(fp.avito_params || {}), goodsSubType: localDefaults.goodsSubType } })));
                                 toast({ title: `Вид товара проставлен для ${targets.length} товар(ов)` });
                               }, onlySelected);
                             }} />
@@ -2690,12 +2769,13 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                             <BulkButtons onApply={async (onlySelected) => {
                               const promoVal = localDefaults.promo === "none" ? "" : localDefaults.promo;
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) {
-                                  const params = { ...(fp.avito_params || {}) };
+                                const rows = targets.map(fp => {
+                                  const params = { ...(fp.avito_params || {}) } as any;
                                   if (promoVal) { params.promo = promoVal; if (localDefaults.promoRegion) params.promoRegion = localDefaults.promoRegion; if (localDefaults.promoBudget) params.promoBudget = localDefaults.promoBudget; if (localDefaults.promoPrice) params.promoPrice = localDefaults.promoPrice; if (localDefaults.promoLimit) params.promoLimit = localDefaults.promoLimit; }
                                   else { delete params.promo; delete params.promoRegion; delete params.promoBudget; delete params.promoPrice; delete params.promoLimit; }
-                                  await avitoFeed.updateProductParams(fp.product_id, params);
-                                }
+                                  return { product_id: fp.product_id, params };
+                                });
+                                await avitoFeed.bulkUpdateProductParams(rows);
                                 avitoFeed.saveDefaults(localDefaults);
                                 toast({ title: promoVal ? `Promo проставлен для ${targets.length} товар(ов)` : `Promo убран у ${targets.length} товар(ов)` });
                               }, onlySelected);
@@ -2720,7 +2800,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                               if (!promoPrice) { toast({ title: "Укажите цену целевого действия", variant: "destructive" }); return; }
                               const line = `${localDefaults.promoRegion || ""}|${promoPrice}|${localDefaults.promoLimit || ""}`;
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) { await avitoFeed.updateProductParams(fp.product_id, { ...(fp.avito_params || {}), promoManualOptions: line }); }
+                                await avitoFeed.bulkUpdateProductParams(targets.map(fp => ({ product_id: fp.product_id, params: { ...(fp.avito_params || {}), promoManualOptions: line } })));
                                 avitoFeed.saveDefaults(localDefaults);
                                 toast({ title: `PromoManual проставлен для ${targets.length} товар(ов)` });
                               }, onlySelected);
@@ -2745,7 +2825,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                               if (!budget) { toast({ title: "Укажите бюджет", variant: "destructive" }); return; }
                               const line = `${localDefaults.promoRegion || ""}|${budget}`;
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) { await avitoFeed.updateProductParams(fp.product_id, { ...(fp.avito_params || {}), promoAutoOptions: line }); }
+                                await avitoFeed.bulkUpdateProductParams(targets.map(fp => ({ product_id: fp.product_id, params: { ...(fp.avito_params || {}), promoAutoOptions: line } })));
                                 avitoFeed.saveDefaults(localDefaults);
                                 toast({ title: `PromoAuto проставлен для ${targets.length} товар(ов)` });
                               }, onlySelected);
@@ -2761,7 +2841,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                             <BulkButtons onApply={async (onlySelected) => {
                               const val = localDefaults.cpcBid || "";
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) { const params = { ...(fp.avito_params || {}) }; if (val) params.cpcBid = val; else delete params.cpcBid; await avitoFeed.updateProductParams(fp.product_id, params); }
+                                const rows = targets.map(fp => { const params = { ...(fp.avito_params || {}) } as any; if (val) params.cpcBid = val; else delete params.cpcBid; return { product_id: fp.product_id, params }; });
+                                await avitoFeed.bulkUpdateProductParams(rows);
                                 avitoFeed.saveDefaults(localDefaults);
                                 toast({ title: val ? `CPC ${val}₽ для ${targets.length} товар(ов)` : `CPC убран у ${targets.length} товар(ов)` });
                               }, onlySelected);
@@ -2777,7 +2858,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                             <BulkButtons onApply={async (onlySelected) => {
                               if (!localDefaults.managerName) { toast({ title: "Введите контактное лицо", variant: "destructive" }); return; }
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) { await avitoFeed.updateProductParams(fp.product_id, { ...(fp.avito_params || {}), managerName: localDefaults.managerName }); }
+                                await avitoFeed.bulkUpdateProductParams(targets.map(fp => ({ product_id: fp.product_id, params: { ...(fp.avito_params || {}), managerName: localDefaults.managerName } })));
                                 avitoFeed.saveDefaults(localDefaults);
                                 toast({ title: `Конт. лицо проставлено для ${targets.length} товар(ов)` });
                               }, onlySelected);
@@ -2793,7 +2874,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                             <BulkButtons onApply={async (onlySelected) => {
                               if (!localDefaults.contactPhone) { toast({ title: "Введите телефон", variant: "destructive" }); return; }
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) { await avitoFeed.updateProductParams(fp.product_id, { ...(fp.avito_params || {}), contactPhone: localDefaults.contactPhone }); }
+                                await avitoFeed.bulkUpdateProductParams(targets.map(fp => ({ product_id: fp.product_id, params: { ...(fp.avito_params || {}), contactPhone: localDefaults.contactPhone } })));
                                 avitoFeed.saveDefaults(localDefaults);
                                 toast({ title: `Телефон проставлен для ${targets.length} товар(ов)` });
                               }, onlySelected);
@@ -2809,7 +2890,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                             <BulkButtons onApply={async (onlySelected) => {
                               if (!localDefaults.email) { toast({ title: "Введите email", variant: "destructive" }); return; }
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) { await avitoFeed.updateProductParams(fp.product_id, { ...(fp.avito_params || {}), email: localDefaults.email }); }
+                                await avitoFeed.bulkUpdateProductParams(targets.map(fp => ({ product_id: fp.product_id, params: { ...(fp.avito_params || {}), email: localDefaults.email } })));
                                 avitoFeed.saveDefaults(localDefaults);
                                 toast({ title: `Почта проставлена для ${targets.length} товар(ов)` });
                               }, onlySelected);
@@ -2825,7 +2906,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                             <BulkButtons onApply={async (onlySelected) => {
                               if (!localDefaults.companyName) { toast({ title: "Введите название компании", variant: "destructive" }); return; }
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) { await avitoFeed.updateProductParams(fp.product_id, { ...(fp.avito_params || {}), companyName: localDefaults.companyName }); }
+                                await avitoFeed.bulkUpdateProductParams(targets.map(fp => ({ product_id: fp.product_id, params: { ...(fp.avito_params || {}), companyName: localDefaults.companyName } })));
                                 avitoFeed.saveDefaults(localDefaults);
                                 toast({ title: `Компания проставлена для ${targets.length} товар(ов)` });
                               }, onlySelected);
@@ -2847,7 +2928,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                             </Select>
                             <BulkButtons onApply={async (onlySelected) => {
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) { await avitoFeed.updateProductParams(fp.product_id, { ...(fp.avito_params || {}), targetAudience: localDefaults.targetAudience }); }
+                                await avitoFeed.bulkUpdateProductParams(targets.map(fp => ({ product_id: fp.product_id, params: { ...(fp.avito_params || {}), targetAudience: localDefaults.targetAudience } })));
                                 avitoFeed.saveDefaults(localDefaults);
                                 toast({ title: `Аудитория проставлена для ${targets.length} товар(ов)` });
                               }, onlySelected);
