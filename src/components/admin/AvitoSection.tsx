@@ -2594,7 +2594,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                             <BulkButtons onApply={async (onlySelected) => {
                               const source = (localDefaults.priceSource || "moysklad") as "manual" | "moysklad";
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) {
+                                const rows = targets.map(fp => {
                                   const product = storeProducts.find((p: any) => p.id === fp.product_id);
                                   const cur = (fp.avito_params || {}) as any;
                                   const newP: any = { ...cur, price_source: source };
@@ -2602,8 +2602,9 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                                     const seed = Number(cur.Price) || Number(cur.price) || Number((product as any)?.pricePerUnit) || 0;
                                     if (seed > 0) newP.Price = seed;
                                   }
-                                  await avitoFeed.updateProductParams(fp.product_id, newP);
-                                }
+                                  return { product_id: fp.product_id, params: newP };
+                                });
+                                await avitoFeed.bulkUpdateProductParams(rows);
                                 toast({ title: `Источник цены: ${source === "manual" ? "Авито" : "МойСклад"} — ${targets.length} товар(ов)` });
                               }, onlySelected);
                             }} />
