@@ -24,7 +24,7 @@ import {
   ExternalLink, Loader2, Link2, Unlink, RefreshCw, Check, Package, Search, Filter,
 
   MapPin, Calendar, Eye, Image as ImageIcon, X, Download, Settings, Save, Sparkles, Wand2,
-  Plus, Trash2, BookOpen, Clock, ImagePlus, AlertCircle, AlertTriangle, Upload, Folder, Inbox, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, GripVertical,
+  Plus, Trash2, BookOpen, Clock, ImagePlus, AlertCircle, AlertTriangle, Upload, Folder, Inbox, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, GripVertical, Layers,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
@@ -46,6 +46,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AvitoAiDescriptionWorkspace } from "./AvitoAiDescriptionWorkspace";
 import { AvitoCategoryCombobox } from "./AvitoCategoryCombobox";
 import { AvitoListingVariantsManager } from "./AvitoListingVariantsManager";
+import { AvitoBulkDuplicateDialog } from "./AvitoBulkDuplicateDialog";
 import { AvitoGroupsSidebar, AvitoGroupBadge } from "./AvitoGroupsSidebar";
 import { AvitoSheetsPanel } from "./AvitoSheetsPanel";
 import { AvitoPhotosPanel } from "./AvitoPhotosPanel";
@@ -396,6 +397,7 @@ function AvitoFeedTable({
   const { toast } = useToast();
   const [editingImageProduct, setEditingImageProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
   const [variantsManagerProductId, setVariantsManagerProductId] = useState<string | null>(null);
+  const [bulkDuplicateProductId, setBulkDuplicateProductId] = useState<string | null>(null);
 
   // Auto-open image editor when navigated from another section (e.g. AI Photo → Avito)
   useEffect(() => {
@@ -1067,6 +1069,15 @@ function AvitoFeedTable({
                         size="icon"
                         variant="ghost"
                         className="h-6 w-6"
+                        title="Сделать N дублей объявления (AI)"
+                        onClick={() => setBulkDuplicateProductId(fp.product_id)}
+                      >
+                        <Layers className="h-3.5 w-3.5 text-fuchsia-600" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
                         title={excluded ? "Включить в автозалив" : "Отключить от автозалива"}
                         onClick={() => {
                           const newParams = { ...(fp.avito_params || {}), excluded_from_feed: !excluded };
@@ -1130,6 +1141,19 @@ function AvitoFeedTable({
             onOpenChange={(open) => { if (!open) setVariantsManagerProductId(null); }}
             storeId={storeId}
             product={sourceProduct}
+          />
+        );
+      })()}
+
+      {bulkDuplicateProductId && (() => {
+        const p = storeProducts.find(sp => sp.id === bulkDuplicateProductId);
+        return (
+          <AvitoBulkDuplicateDialog
+            open={!!bulkDuplicateProductId}
+            onOpenChange={(open) => { if (!open) setBulkDuplicateProductId(null); }}
+            storeId={storeId}
+            product={p ? { id: p.id, name: p.name } : null}
+            onDone={() => setVariantsManagerProductId(bulkDuplicateProductId)}
           />
         );
       })()}
