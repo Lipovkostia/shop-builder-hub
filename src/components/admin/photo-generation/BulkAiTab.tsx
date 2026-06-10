@@ -62,6 +62,10 @@ export function BulkAiTab({ storeId }: Props) {
   const [tasks, setTasks] = useState<BulkTask[]>([]);
   const [globalPrompt, setGlobalPrompt] = useState("");
   const [globalPromptId, setGlobalPromptId] = useState<string>("");
+  const [avitoGroups, setAvitoGroups] = useState<AvitoGroup[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+
 
   const [modelId, setModelId] = useState<string>(() => {
     try { return localStorage.getItem("kie_model") || "nano-banana-edit"; } catch { return "nano-banana-edit"; }
