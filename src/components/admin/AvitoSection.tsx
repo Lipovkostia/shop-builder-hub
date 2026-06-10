@@ -24,7 +24,7 @@ import {
   ExternalLink, Loader2, Link2, Unlink, RefreshCw, Check, Package, Search, Filter,
 
   MapPin, Calendar, Eye, Image as ImageIcon, X, Download, Settings, Save, Sparkles, Wand2,
-  Plus, Trash2, BookOpen, Clock, ImagePlus, AlertCircle, AlertTriangle, Upload, Folder, Inbox,
+  Plus, Trash2, BookOpen, Clock, ImagePlus, AlertCircle, AlertTriangle, Upload, Folder, Inbox, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, GripVertical,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
