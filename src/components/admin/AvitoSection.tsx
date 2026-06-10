@@ -862,15 +862,12 @@ function AvitoFeedTable({
                       const manualPrice = Number(params.Price) || Number(params.price) || 0;
                       const toggle = async () => {
                         const next = src === "manual" ? "moysklad" : "manual";
-                        if (avitoFeed?.setPriceSource) {
-                          await avitoFeed.setPriceSource(
-                            [fp.product_id],
-                            next,
-                            next === "manual" ? { [fp.product_id]: manualPrice || msPrice } : undefined,
-                          );
-                        } else {
-                          await onUpdateProductParams(fp.product_id, { ...(fp.avito_params || {}), price_source: next });
+                        const newParams: any = { ...(fp.avito_params || {}), price_source: next };
+                        if (next === "manual" && (!newParams.Price || Number(newParams.Price) <= 0)) {
+                          const seed = manualPrice || msPrice;
+                          if (seed > 0) newParams.Price = seed;
                         }
+                        await onUpdateProductParams(fp.product_id, newParams);
                       };
                       return (
                         <div className="flex items-center gap-1">
