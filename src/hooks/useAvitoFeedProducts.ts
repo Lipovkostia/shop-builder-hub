@@ -205,6 +205,30 @@ export function useAvitoFeedProducts(storeId: string | null, activeTabId: string
     }
   }, [storeId, activeTabId, toast]);
 
+  // Bulk parallel params update — applies per-row params map in one batch.
+  // All DB writes run in parallel and local state updates once at the end.
+  const bulkUpdateProductParams = useCallback(async (
+    rows: { product_id: string; params: any }[],
+  ) => {
+    if (!storeId || rows.length === 0) return;
+    try {
+      const byId = new Map(rows.map(r => [r.product_id, r.params]));
+      await Promise.all(rows.map(r => {
+        const q = (supabase as any)
+          .from("avito_feed_products")
+          .update({ avito_params: r.params })
+          .eq("store_id", storeId)
+          .eq("product_id", r.product_id);
+        return (activeTabId ? q.eq("tab_id", activeTabId) : q);
+      }));
+      setFeedProducts(prev => prev.map(fp =>
+        byId.has(fp.product_id) ? { ...fp, avito_params: byId.get(fp.product_id) } : fp
+      ));
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  }, [storeId, activeTabId, toast]);
+
   const assignGroup = useCallback(async (productIds: string[], groupId: string | null) => {
     if (!storeId || productIds.length === 0) return;
     try {
