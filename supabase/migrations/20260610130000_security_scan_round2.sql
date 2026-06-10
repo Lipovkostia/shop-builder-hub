@@ -136,3 +136,32 @@ CREATE POLICY "Auth update order-attachments"
 CREATE POLICY "Auth delete order-attachments"
   ON storage.objects FOR DELETE TO authenticated
   USING (bucket_id = 'order-attachments');
+
+-- ============================================================================
+-- 8. Customer-safe products lookup RPC (replaces direct SELECT from customer
+--    role). Strips buy_price, markup_value, markup_type and other internals.
+-- ============================================================================
+CREATE OR REPLACE FUNCTION public.get_customer_product_summaries(
+  _store_id uuid,
+  _ids uuid[]
+)
+RETURNS TABLE (
+  id uuid,
+  name text,
+  price numeric,
+  images text[]
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $fn$
+  SELECT p.id, p.name, p.price, COALESCE(p.images, '{}'::text[])
+  FROM public.products p
+  WHERE p.store_id = _store_id
+    AND p.id = ANY(_ids)
+    AND p.is_active = true
+    AND p.deleted_at IS NULL;
+$fn$;
+
+GRANT EXECUTE ON FUNCTION public.get_customer_product_summaries(uuid, uuid[]) TO anon, authenticated;
