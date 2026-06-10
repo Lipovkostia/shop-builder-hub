@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
-  Upload, MessageCircle, HelpCircle, CalendarIcon, Send, ChevronLeft, ChevronRight, FileSpreadsheet, X
+  Upload, MessageCircle, HelpCircle, CalendarIcon, Send, ChevronLeft, ChevronRight, FileSpreadsheet, X, Loader2
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import * as XLSX from "xlsx";
