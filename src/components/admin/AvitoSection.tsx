@@ -772,6 +772,7 @@ function AvitoFeedTable({
               const modStatus: string | undefined = params.moderation?.status;
               const notPublished = params.moderation?.published === false;
 
+              const isDup = !!(product as any).duplicate_of_product_id;
               const rowBg = excluded
                 ? "bg-muted/40 opacity-60"
                 : hasModError
@@ -782,7 +783,9 @@ function AvitoFeedTable({
                       ? "bg-amber-500/5 border-l-2 border-l-amber-500"
                       : isDone ? 'bg-green-50 dark:bg-green-950/20'
                         : isGenerating ? 'bg-yellow-50 dark:bg-yellow-950/20'
-                          : isQueued ? 'bg-muted/20' : '';
+                          : isQueued ? 'bg-muted/20'
+                            : isDup ? 'bg-fuchsia-50/40 dark:bg-fuchsia-950/10 border-l-2 border-l-fuchsia-400/60'
+                              : '';
 
               return (
                 <div key={fp.id} className={`flex border-b text-xs hover:bg-muted/30 items-start transition-colors ${rowBg}`}>
