@@ -2526,60 +2526,6 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                         </Button>
                       )}
                         </div>
-
-                        {/* Price source */}
-                        <div className="space-y-1">
-                          <Label className="text-[10px] text-muted-foreground">Источник цены</Label>
-                          <div className="flex gap-1">
-                            <Select
-                              value={localDefaults.priceSource || "moysklad"}
-                              onValueChange={(v: "manual" | "moysklad") => {
-                                const next = { ...localDefaults, priceSource: v };
-                                setLocalDefaults(next);
-                                avitoFeed.saveDefaults(next);
-                              }}
-                            >
-                              <SelectTrigger className="h-7 text-xs flex-1"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="moysklad">МойСклад (синхронизация)</SelectItem>
-                                <SelectItem value="manual">Авито (ручная цена)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <BulkButtons onApply={async (onlySelected) => {
-                              const source = (localDefaults.priceSource || "moysklad") as "manual" | "moysklad";
-                              await applyToTargets(async (targets) => {
-                                if (avitoFeed.setPriceSource) {
-                                  const ids = targets.map(t => t.product_id);
-                                  const seedMap: Record<string, number> = {};
-                                  if (source === "manual") {
-                                    for (const t of targets) {
-                                      const product = storeProducts.find((p: any) => p.id === t.product_id);
-                                      const p = (t.avito_params || {}) as any;
-                                      const seed = Number(p.Price) || Number(p.price) || Number(product?.pricePerUnit) || 0;
-                                      if (seed > 0) seedMap[t.product_id] = seed;
-                                    }
-                                  }
-                                  await avitoFeed.setPriceSource(ids, source, seedMap);
-                                } else {
-                                  for (const fp of targets) {
-                                    const product = storeProducts.find((p: any) => p.id === fp.product_id);
-                                    const cur = (fp.avito_params || {}) as any;
-                                    const newP: any = { ...cur, price_source: source };
-                                    if (source === "manual" && (!newP.Price || Number(newP.Price) <= 0)) {
-                                      const seed = Number(cur.Price) || Number(cur.price) || Number(product?.pricePerUnit) || 0;
-                                      if (seed > 0) newP.Price = seed;
-                                    }
-                                    await avitoFeed.updateProductParams(fp.product_id, newP);
-                                  }
-                                  toast({ title: `Источник цены проставлен для ${targets.length} товар(ов)` });
-                                }
-                              }, onlySelected);
-                            }} />
-                          </div>
-                          <p className="text-[9px] text-muted-foreground leading-tight">
-                            МС — цена тянется из МойСклад. Авито — цена редактируется вручную в карточке.
-                          </p>
-                        </div>
                   )}
 
                   {/* Bulk Apply Section */}
