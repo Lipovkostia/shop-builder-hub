@@ -854,12 +854,49 @@ function AvitoFeedTable({
                     )}
                   </div>
                   <div className="flex-shrink-0 px-1 overflow-hidden" style={{ width: colWidths.price }}>
-                    <InlineCell
-                      value={String(Number(params.Price) || Number(params.price) || Number(product.pricePerUnit) || 0)}
-                      onChange={(val) => handleInlineParamUpdate(fp.product_id, "Price", val)}
-                      placeholder="0"
-                      type="number"
-                    />
+                    {(() => {
+                      const src: "manual" | "moysklad" = (params.price_source === "manual" || params.price_source === "moysklad")
+                        ? params.price_source
+                        : (localDefaults.priceSource || "moysklad");
+                      const msPrice = Number(product.pricePerUnit) || 0;
+                      const manualPrice = Number(params.Price) || Number(params.price) || 0;
+                      const toggle = async () => {
+                        const next = src === "manual" ? "moysklad" : "manual";
+                        if (avitoFeed?.setPriceSource) {
+                          await avitoFeed.setPriceSource(
+                            [fp.product_id],
+                            next,
+                            next === "manual" ? { [fp.product_id]: manualPrice || msPrice } : undefined,
+                          );
+                        } else {
+                          await onUpdateProductParams(fp.product_id, { ...(fp.avito_params || {}), price_source: next });
+                        }
+                      };
+                      return (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={toggle}
+                            title={src === "manual" ? "Цена задана вручную (Авито). Нажмите чтобы переключить на МойСклад" : "Цена синхронизируется из МойСклад. Нажмите чтобы задать вручную"}
+                            className={`text-[9px] px-1 py-0.5 rounded border ${src === "manual" ? "bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950/30 dark:border-amber-700 dark:text-amber-300" : "bg-sky-50 border-sky-300 text-sky-700 dark:bg-sky-950/30 dark:border-sky-700 dark:text-sky-300"}`}
+                          >
+                            {src === "manual" ? "Авито" : "МС"}
+                          </button>
+                          {src === "manual" ? (
+                            <InlineCell
+                              value={String(manualPrice || 0)}
+                              onChange={(val) => handleInlineParamUpdate(fp.product_id, "Price", val)}
+                              placeholder="0"
+                              type="number"
+                            />
+                          ) : (
+                            <span className="text-xs text-muted-foreground" title="Из МойСклад">
+                              {msPrice ? `${msPrice.toLocaleString("ru")} ₽` : "—"}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                   {/* Категория магазина (из прайс-листа) — внутренняя */}
                   {visibleColKeys.has("storeCategory") && (
