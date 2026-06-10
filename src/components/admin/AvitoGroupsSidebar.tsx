@@ -37,6 +37,8 @@ interface Props {
   storeCategories?: SidebarCat[];
   selectedCategoryId?: string | null;
   onSelectCategory?: (id: string | null) => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export function AvitoGroupsSidebar({
