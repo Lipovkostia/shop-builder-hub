@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2, Layers, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -17,20 +18,30 @@ interface Props {
   onDone?: () => void;
 }
 
+type TitleStrategy = "ai" | "shuffle" | "prefix" | "suffix" | "epithet" | "none";
+type DescStrategy = "ai" | "prepend" | "append" | "wrap" | "none";
+
 export function AvitoBulkDuplicateDialog({ open, onOpenChange, storeId, product, onDone }: Props) {
   const { toast } = useToast();
-  const [count, setCount] = useState(5);
-  const [rewriteTitle, setRewriteTitle] = useState(true);
-  const [rewriteDescription, setRewriteDescription] = useState(true);
+  const [countStr, setCountStr] = useState("5");
+  const [titleStrategy, setTitleStrategy] = useState<TitleStrategy>("ai");
+  const [titleExtras, setTitleExtras] = useState(
+    "Свежий, Качественный, Отборный, Премиум, Натуральный, Фирменный, Лучший"
+  );
+  const [descStrategy, setDescStrategy] = useState<DescStrategy>("ai");
+  const [descExtraTop, setDescExtraTop] = useState("");
+  const [descExtraBottom, setDescExtraBottom] = useState("");
   const [reuploadImages, setReuploadImages] = useState(true);
   const [jitterPrice, setJitterPrice] = useState(true);
   const [instruction, setInstruction] = useState("");
   const [running, setRunning] = useState(false);
 
+  const count = Math.max(0, Math.min(20, parseInt(countStr || "0", 10) || 0));
+
   const run = async () => {
     if (!product) return;
     if (count < 1 || count > 20) {
-      toast({ title: "Количество должно быть от 1 до 20", variant: "destructive" });
+      toast({ title: "Введите количество от 1 до 20", variant: "destructive" });
       return;
     }
     setRunning(true);
@@ -40,7 +51,22 @@ export function AvitoBulkDuplicateDialog({ open, onOpenChange, storeId, product,
           storeId,
           sourceProductId: product.id,
           count,
-          options: { rewriteTitle, rewriteDescription, reuploadImages, jitterPrice, instruction: instruction.trim() || undefined },
+          options: {
+            titleStrategy,
+            titleExtras: titleExtras
+              .split(/[,\n;]+/)
+              .map((s) => s.trim())
+              .filter(Boolean),
+            descStrategy,
+            descExtraTop: descExtraTop.trim() || undefined,
+            descExtraBottom: descExtraBottom.trim() || undefined,
+            reuploadImages,
+            jitterPrice,
+            instruction: instruction.trim() || undefined,
+            // Back-compat:
+            rewriteTitle: titleStrategy === "ai",
+            rewriteDescription: descStrategy === "ai",
+          },
         },
       });
       if (error) throw error;
@@ -49,7 +75,9 @@ export function AvitoBulkDuplicateDialog({ open, onOpenChange, storeId, product,
       if (created > 0) {
         toast({
           title: `Создано ${created} дубль(ей)`,
-          description: errs.length ? `Ошибок: ${errs.length}. Откройте «Дубли объявления» для проверки.` : "Дубли попадут в фид при следующей публикации.",
+          description: errs.length
+            ? `Ошибок: ${errs.length}. В списке Авито разверните родителя кнопкой «▸ N дублей».`
+            : "В списке Авито разверните родителя кнопкой «▸ N дублей», чтобы увидеть их.",
         });
         onDone?.();
         onOpenChange(false);
@@ -65,14 +93,15 @@ export function AvitoBulkDuplicateDialog({ open, onOpenChange, storeId, product,
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!running) onOpenChange(o); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Layers className="h-4 w-4 text-amber-600" />
             Сделать дубли объявления
           </DialogTitle>
           <DialogDescription className="text-xs">
-            {product ? <>«{product.name}»</> : null} — каждый дубль создаётся как <b>отдельный товар</b>, привязанный к этому исходному. Вы сможете править его как обычный товар, а в списке Авито он отобразится с пометкой «↳ Дубль». Уникальный текст, перезалитые фото и сдвиг цены — чтобы Авито считал его новым объявлением.
+            {product ? <>«{product.name}»</> : null} — каждый дубль создаётся как <b>отдельный товар</b>, привязанный к этому исходному.
+            В списке Авито у родителя появится кнопка <b>«▸ N дублей»</b> — нажмите, чтобы развернуть список и править как обычные товары.
           </DialogDescription>
         </DialogHeader>
 
@@ -80,23 +109,107 @@ export function AvitoBulkDuplicateDialog({ open, onOpenChange, storeId, product,
           <div>
             <Label className="text-xs">Количество дублей (1–20)</Label>
             <Input
-              type="number"
-              min={1}
-              max={20}
-              value={count}
-              onChange={(e) => setCount(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+              type="text"
+              inputMode="numeric"
+              value={countStr}
+              placeholder="5"
+              onChange={(e) => {
+                // allow empty + digits, max 2 chars
+                const v = e.target.value.replace(/[^\d]/g, "").slice(0, 2);
+                setCountStr(v);
+              }}
+              onBlur={() => {
+                if (!countStr) return; // оставляем пустым, если пользователь стер
+                const n = Math.max(1, Math.min(20, parseInt(countStr, 10) || 1));
+                setCountStr(String(n));
+              }}
             />
           </div>
 
+          {/* Title strategy */}
           <div className="space-y-2 rounded-md border p-3">
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={rewriteTitle} onCheckedChange={(v) => setRewriteTitle(!!v)} />
-              Переписать <b>заголовок</b> ИИ (другие слова, тот же смысл)
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={rewriteDescription} onCheckedChange={(v) => setRewriteDescription(!!v)} />
-              Переписать <b>описание</b> ИИ
-            </label>
+            <div className="text-xs font-semibold">Как менять название</div>
+            <RadioGroup value={titleStrategy} onValueChange={(v) => setTitleStrategy(v as TitleStrategy)} className="space-y-1.5">
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <RadioGroupItem value="ai" className="mt-0.5" />
+                <span><b>ИИ-перефраз</b> — переписать другими словами, сохранив смысл (рекомендуется)</span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <RadioGroupItem value="shuffle" className="mt-0.5" />
+                <span><b>Переставить слова</b> местами (без ИИ, бесплатно)</span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <RadioGroupItem value="epithet" className="mt-0.5" />
+                <span><b>Добавить эпитет</b> из списка ниже в начало</span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <RadioGroupItem value="prefix" className="mt-0.5" />
+                <span><b>Префикс</b> перед названием (любое слово из списка ниже, по очереди)</span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <RadioGroupItem value="suffix" className="mt-0.5" />
+                <span><b>Суффикс</b> после названия (любое слово из списка ниже)</span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <RadioGroupItem value="none" className="mt-0.5" />
+                <span>Не менять (только добавится скрытый артикул)</span>
+              </label>
+            </RadioGroup>
+            {(titleStrategy === "epithet" || titleStrategy === "prefix" || titleStrategy === "suffix") && (
+              <div className="pt-1">
+                <Label className="text-[11px] text-muted-foreground">Варианты слов (через запятую). Будут перебираться по кругу.</Label>
+                <Textarea
+                  rows={2}
+                  value={titleExtras}
+                  onChange={(e) => setTitleExtras(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Description strategy */}
+          <div className="space-y-2 rounded-md border p-3">
+            <div className="text-xs font-semibold">Как менять описание</div>
+            <RadioGroup value={descStrategy} onValueChange={(v) => setDescStrategy(v as DescStrategy)} className="space-y-1.5">
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <RadioGroupItem value="ai" className="mt-0.5" />
+                <span><b>ИИ-перефраз</b> описания (рекомендуется)</span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <RadioGroupItem value="prepend" className="mt-0.5" />
+                <span><b>Добавить блок сверху</b> описания</span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <RadioGroupItem value="append" className="mt-0.5" />
+                <span><b>Добавить блок снизу</b> описания</span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <RadioGroupItem value="wrap" className="mt-0.5" />
+                <span><b>Обернуть</b>: один блок сверху, другой снизу</span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <RadioGroupItem value="none" className="mt-0.5" />
+                <span>Не менять</span>
+              </label>
+            </RadioGroup>
+            {(descStrategy === "prepend" || descStrategy === "wrap") && (
+              <div className="pt-1">
+                <Label className="text-[11px] text-muted-foreground">Текст СВЕРХУ описания</Label>
+                <Textarea rows={2} value={descExtraTop} onChange={(e) => setDescExtraTop(e.target.value)} className="text-xs" placeholder="Например: ⚡ В наличии. Доставка сегодня." />
+              </div>
+            )}
+            {(descStrategy === "append" || descStrategy === "wrap") && (
+              <div className="pt-1">
+                <Label className="text-[11px] text-muted-foreground">Текст СНИЗУ описания</Label>
+                <Textarea rows={2} value={descExtraBottom} onChange={(e) => setDescExtraBottom(e.target.value)} className="text-xs" placeholder="Например: Звоните, отправим расчёт за 5 минут." />
+              </div>
+            )}
+          </div>
+
+          {/* Other uniqueness */}
+          <div className="space-y-2 rounded-md border p-3">
+            <div className="text-xs font-semibold">Прочая уникализация</div>
             <label className="flex items-center gap-2 text-sm">
               <Checkbox checked={reuploadImages} onCheckedChange={(v) => setReuploadImages(!!v)} />
               Перезалить <b>фото</b> с новыми URL (анти-дубль по хешу)
@@ -107,27 +220,30 @@ export function AvitoBulkDuplicateDialog({ open, onOpenChange, storeId, product,
             </label>
           </div>
 
-          <div>
-            <Label className="text-xs">Инструкция для ИИ (опц.)</Label>
-            <Textarea
-              rows={3}
-              value={instruction}
-              onChange={(e) => setInstruction(e.target.value)}
-              placeholder="Например: тон — деловой, добавь упоминание доставки по РФ, без эмодзи."
-            />
-          </div>
+          {titleStrategy === "ai" || descStrategy === "ai" ? (
+            <div>
+              <Label className="text-xs">Инструкция для ИИ (опц.)</Label>
+              <Textarea
+                rows={2}
+                value={instruction}
+                onChange={(e) => setInstruction(e.target.value)}
+                placeholder="Например: тон — деловой, добавь упоминание доставки по РФ, без эмодзи."
+              />
+            </div>
+          ) : null}
 
           <div className="text-[11px] text-muted-foreground">
-            Дубли создаются как новые товары со ссылкой на исходный (поле «дубль от…»). Они автоматически попадают в фид Авито со всеми городами/группами. Адрес, телефон, категория Авито, контактное лицо — копируются с оригинала.
+            Адрес, телефон, контактное лицо, категория Авито — копируются с оригинала.
+            У каждого дубля будет уникальный артикул, чтобы Авито считал его новым объявлением.
           </div>
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={running}>Отмена</Button>
-          <Button onClick={run} disabled={running || !product}>
+          <Button onClick={run} disabled={running || !product || count < 1}>
             {running
               ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Генерирую…</>
-              : <><Sparkles className="h-3.5 w-3.5 mr-1" /> Запустить генерацию</>}
+              : <><Sparkles className="h-3.5 w-3.5 mr-1" /> Создать {count || ""} дубл{count === 1 ? "ь" : count > 1 && count < 5 ? "я" : "ей"}</>}
           </Button>
         </div>
       </DialogContent>
