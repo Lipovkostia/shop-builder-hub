@@ -299,6 +299,7 @@ export function useAvitoFeedProducts(storeId: string | null, activeTabId: string
     removeProductFromFeed,
     removeProductsFromFeed,
     updateProductParams,
+    bulkUpdateProductParams,
     assignGroup,
     setPriceSource,
     refetch: fetchFeedProducts,
