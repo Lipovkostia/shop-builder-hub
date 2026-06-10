@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Wand2, Check, X, Trash2, Sparkles, RotateCw, Image as ImageIcon } from "lucide-react";
+import { Loader2, Wand2, Check, X, Trash2, Sparkles, RotateCw, Image as ImageIcon, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useImagePrompts } from "@/hooks/useImagePrompts";
