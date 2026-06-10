@@ -852,6 +852,21 @@ function AvitoFeedTable({
                         #{shortId}
                       </button>
                       {excluded && <span className="text-[9px] px-1 rounded bg-muted text-muted-foreground">не выгр.</span>}
+                      {(() => {
+                        const n = dupCountByParent.get(fp.product_id) || 0;
+                        if (n === 0) return null;
+                        const isOpen = expandedDupParents.has(fp.product_id);
+                        return (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); toggleDupExpand(fp.product_id); }}
+                            className="text-[10px] px-1.5 py-0 rounded bg-fuchsia-100 dark:bg-fuchsia-950/40 text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-200 dark:hover:bg-fuchsia-900/50 font-medium"
+                            title={isOpen ? "Свернуть дубли" : "Показать дубли"}
+                          >
+                            {isOpen ? "▾" : "▸"} {n} {n === 1 ? "дубль" : n < 5 ? "дубля" : "дублей"}
+                          </button>
+                        );
+                      })()}
                       {(product as any).duplicate_of_product_id && (() => {
                         const parent = storeProducts.find(sp => sp.id === (product as any).duplicate_of_product_id);
                         return (
