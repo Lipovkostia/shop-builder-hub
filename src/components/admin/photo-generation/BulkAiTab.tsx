@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Wand2, Check, X, Trash2, Sparkles, RotateCw, Image as ImageIcon } from "lucide-react";
+import { Loader2, Wand2, Check, X, Trash2, Sparkles, RotateCw, Image as ImageIcon, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useImagePrompts } from "@/hooks/useImagePrompts";
@@ -23,13 +23,19 @@ interface ProductLite {
   name: string;
   images: string[] | null;
   sku?: string | null;
+  category_id?: string | null;
 }
 
 interface FeedRow {
   id: string;
   product_id: string;
   avito_params: any;
+  group_id: string | null;
 }
+
+interface AvitoGroup { id: string; name: string; color: string; sort_order: number }
+interface Category { id: string; name: string; parent_id: string | null; sort_order: number | null }
+
 
 type Source = "pricelist" | "avito";
 
@@ -56,6 +62,10 @@ export function BulkAiTab({ storeId }: Props) {
   const [tasks, setTasks] = useState<BulkTask[]>([]);
   const [globalPrompt, setGlobalPrompt] = useState("");
   const [globalPromptId, setGlobalPromptId] = useState<string>("");
+  const [avitoGroups, setAvitoGroups] = useState<AvitoGroup[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+
 
   const [modelId, setModelId] = useState<string>(() => {
     try { return localStorage.getItem("kie_model") || "nano-banana-edit"; } catch { return "nano-banana-edit"; }
@@ -66,19 +76,30 @@ export function BulkAiTab({ storeId }: Props) {
   const selectedModel = useMemo(() => KIE_MODELS.find((m) => m.id === modelId) ?? KIE_MODELS[0], [modelId]);
   const pricePerImageRub = selectedModel.priceUsd * usdRub;
 
-  // Load products
+  // Load products — постраничный фетч, чтобы обойти лимит Supabase в 1000 строк.
   useEffect(() => {
     if (!storeId) return;
     (async () => {
       setLoadingProducts(true);
       try {
-        const { data, error } = await supabase
-          .from("products")
-          .select("id, name, images, sku")
-          .eq("store_id", storeId)
-          .order("name");
-        if (error) throw error;
-        setProducts((data as ProductLite[]) ?? []);
+        const pageSize = 1000;
+        let from = 0;
+        const all: ProductLite[] = [];
+        // безопасный потолок
+        for (let i = 0; i < 50; i++) {
+          const { data, error } = await supabase
+            .from("products")
+            .select("id, name, images, sku, category_id")
+            .eq("store_id", storeId)
+            .order("name")
+            .range(from, from + pageSize - 1);
+          if (error) throw error;
+          const chunk = (data as ProductLite[]) ?? [];
+          all.push(...chunk);
+          if (chunk.length < pageSize) break;
+          from += pageSize;
+        }
+        setProducts(all);
       } catch (e: any) {
         toast.error(`Не удалось загрузить товары: ${e.message}`);
       } finally {
@@ -87,22 +108,42 @@ export function BulkAiTab({ storeId }: Props) {
     })();
   }, [storeId]);
 
-  // Load Avito feed rows
+  // Load Avito feed rows + group/category dictionaries
   useEffect(() => {
     if (!storeId) return;
     (async () => {
       try {
-        const { data, error } = await (supabase as any)
-          .from("avito_feed_products")
-          .select("id, product_id, avito_params")
-          .eq("store_id", storeId);
-        if (error) throw error;
-        setFeedRows((data as FeedRow[]) ?? []);
+        const pageSize = 1000;
+        const feedAll: FeedRow[] = [];
+        let from = 0;
+        for (let i = 0; i < 50; i++) {
+          const { data, error } = await (supabase as any)
+            .from("avito_feed_products")
+            .select("id, product_id, avito_params, group_id")
+            .eq("store_id", storeId)
+            .range(from, from + pageSize - 1);
+          if (error) throw error;
+          const chunk = (data as FeedRow[]) ?? [];
+          feedAll.push(...chunk);
+          if (chunk.length < pageSize) break;
+          from += pageSize;
+        }
+        setFeedRows(feedAll);
+
+        const [{ data: gd }, { data: cd }] = await Promise.all([
+          (supabase as any).from("avito_product_groups")
+            .select("id, name, color, sort_order").eq("store_id", storeId).order("sort_order"),
+          supabase.from("categories")
+            .select("id, name, parent_id, sort_order").eq("store_id", storeId).order("sort_order"),
+        ]);
+        setAvitoGroups((gd as AvitoGroup[]) ?? []);
+        setCategories((cd as Category[]) ?? []);
       } catch (e: any) {
         console.error("Avito feed load failed:", e);
       }
     })();
   }, [storeId]);
+
 
   const feedByProduct = useMemo(() => {
     const m = new Map<string, FeedRow>();
@@ -124,6 +165,61 @@ export function BulkAiTab({ storeId }: Props) {
       (p) => p.name.toLowerCase().includes(q) || (p.sku ?? "").toLowerCase().includes(q)
     );
   }, [visibleProducts, search]);
+
+  // Группировка для левой колонки: по группам Авито или по категориям прайс-листа.
+  const sections = useMemo(() => {
+    type Section = { key: string; title: string; items: ProductLite[]; count: number };
+    const out: Section[] = [];
+    if (source === "avito") {
+      const byGroup = new Map<string, ProductLite[]>();
+      for (const p of filtered) {
+        const gid = feedByProduct.get(p.id)?.group_id || "__none__";
+        if (!byGroup.has(gid)) byGroup.set(gid, []);
+        byGroup.get(gid)!.push(p);
+      }
+      const ordered = [...avitoGroups].sort((a, b) => a.sort_order - b.sort_order);
+      for (const g of ordered) {
+        const items = byGroup.get(g.id) || [];
+        if (items.length) out.push({ key: g.id, title: g.name, items, count: items.length });
+      }
+      const none = byGroup.get("__none__") || [];
+      if (none.length) out.push({ key: "__none__", title: "Без группы", items: none, count: none.length });
+    } else {
+      const catName = new Map(categories.map((c) => [c.id, c.name]));
+      const byCat = new Map<string, ProductLite[]>();
+      for (const p of filtered) {
+        const cid = p.category_id || "__none__";
+        if (!byCat.has(cid)) byCat.set(cid, []);
+        byCat.get(cid)!.push(p);
+      }
+      const ordered = [...categories].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name));
+      for (const c of ordered) {
+        const items = byCat.get(c.id) || [];
+        if (items.length) out.push({ key: c.id, title: catName.get(c.id) || c.name, items, count: items.length });
+      }
+      const none = byCat.get("__none__") || [];
+      if (none.length) out.push({ key: "__none__", title: "Без категории", items: none, count: none.length });
+    }
+    return out;
+  }, [filtered, source, feedByProduct, avitoGroups, categories]);
+
+  const toggleSection = (key: string) => {
+    setCollapsedSections((prev) => {
+      const n = new Set(prev);
+      if (n.has(key)) n.delete(key); else n.add(key);
+      return n;
+    });
+  };
+  const toggleSectionSelectAll = (items: ProductLite[]) => {
+    setSelectedProductIds((prev) => {
+      const n = new Set(prev);
+      const allSelected = items.every((p) => n.has(p.id));
+      if (allSelected) items.forEach((p) => n.delete(p.id));
+      else items.forEach((p) => n.add(p.id));
+      return n;
+    });
+  };
+
 
   const toggleProduct = (id: string) => {
     setSelectedProductIds((prev) => {
@@ -319,25 +415,50 @@ export function BulkAiTab({ storeId }: Props) {
             </TabsList>
           </Tabs>
           <Input placeholder="Поиск..." value={search} onChange={(e) => setSearch(e.target.value)} />
-          <div className="text-xs text-muted-foreground">Выбрано: {selectedProductIds.size}</div>
+          <div className="text-xs text-muted-foreground">
+            Выбрано: {selectedProductIds.size} · всего: {filtered.length}
+          </div>
           <ScrollArea className="h-[560px]">
-            <div className="space-y-1 pr-2">
+            <div className="space-y-2 pr-2">
               {loadingProducts && <div className="text-sm text-muted-foreground">Загрузка...</div>}
-              {filtered.map((p) => {
-                const imgs = source === "avito"
-                  ? (feedByProduct.get(p.id)?.avito_params?.avitoImages?.length || p.images?.length || 0)
-                  : (p.images?.length || 0);
+              {!loadingProducts && sections.map((sec) => {
+                const collapsed = collapsedSections.has(sec.key);
+                const allSelected = sec.items.length > 0 && sec.items.every((p) => selectedProductIds.has(p.id));
                 return (
-                  <label key={p.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted cursor-pointer">
-                    <Checkbox checked={selectedProductIds.has(p.id)} onCheckedChange={() => toggleProduct(p.id)} />
-                    {p.images?.[0]
-                      ? <img src={p.images[0]} alt="" className="h-8 w-8 rounded object-cover" />
-                      : <div className="h-8 w-8 rounded bg-muted" />}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs truncate">{p.name}</div>
-                      <div className="text-[10px] text-muted-foreground">{imgs} фото</div>
+                  <div key={sec.key} className="space-y-0.5">
+                    <div className="flex items-center gap-1 sticky top-0 bg-card z-10 py-1 border-b border-border">
+                      <button
+                        type="button"
+                        onClick={() => toggleSection(sec.key)}
+                        className="p-0.5 hover:bg-muted rounded"
+                      >
+                        {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      </button>
+                      <Checkbox
+                        checked={allSelected}
+                        onCheckedChange={() => toggleSectionSelectAll(sec.items)}
+                      />
+                      <div className="text-[11px] font-semibold flex-1 truncate" title={sec.title}>{sec.title}</div>
+                      <div className="text-[10px] text-muted-foreground">{sec.count}</div>
                     </div>
-                  </label>
+                    {!collapsed && sec.items.map((p) => {
+                      const imgs = source === "avito"
+                        ? (feedByProduct.get(p.id)?.avito_params?.avitoImages?.length || p.images?.length || 0)
+                        : (p.images?.length || 0);
+                      return (
+                        <label key={p.id} className="flex items-center gap-2 p-1.5 pl-5 rounded hover:bg-muted cursor-pointer">
+                          <Checkbox checked={selectedProductIds.has(p.id)} onCheckedChange={() => toggleProduct(p.id)} />
+                          {p.images?.[0]
+                            ? <img src={p.images[0]} alt="" className="h-8 w-8 rounded object-cover" />
+                            : <div className="h-8 w-8 rounded bg-muted" />}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs truncate">{p.name}</div>
+                            <div className="text-[10px] text-muted-foreground">{imgs} фото</div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
                 );
               })}
               {!loadingProducts && filtered.length === 0 && (
@@ -345,6 +466,7 @@ export function BulkAiTab({ storeId }: Props) {
               )}
             </div>
           </ScrollArea>
+
         </div>
 
         {/* Col 2: thumbnails of selected products → pick photos */}
