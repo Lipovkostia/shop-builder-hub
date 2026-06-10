@@ -174,7 +174,7 @@ export function BulkAiTab({ storeId }: Props) {
 
   const applyGlobalPromptToAll = () => {
     const text = globalPromptId
-      ? (prompts.find((p) => p.id === globalPromptId)?.prompt_text ?? "")
+      ? (prompts.find((p) => p.id === globalPromptId)?.prompt_template ?? "")
       : globalPrompt;
     if (!text.trim()) { toast.info("Промпт пустой"); return; }
     setTasks((prev) => prev.map((t) => ({ ...t, prompt: text })));
@@ -268,7 +268,7 @@ export function BulkAiTab({ storeId }: Props) {
             <Select value={globalPromptId} onValueChange={(v) => {
               setGlobalPromptId(v);
               const p = prompts.find((x) => x.id === v);
-              if (p) setGlobalPrompt(p.prompt_text);
+              if (p) setGlobalPrompt(p.prompt_template);
             }}>
               <SelectTrigger><SelectValue placeholder="— выбрать —" /></SelectTrigger>
               <SelectContent>
