@@ -422,6 +422,13 @@ function AvitoFeedTable({
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   // Sorting state
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  // Which parents have their duplicate children expanded
+  const [expandedDupParents, setExpandedDupParents] = useState<Set<string>>(new Set());
+  const toggleDupExpand = (pid: string) => setExpandedDupParents(prev => {
+    const next = new Set(prev);
+    if (next.has(pid)) next.delete(pid); else next.add(pid);
+    return next;
+  });
 
   const setFilter = (col: string, val: string) => {
     setColumnFilters(prev => {
