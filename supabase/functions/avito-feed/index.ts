@@ -54,7 +54,73 @@ function applyDescriptionFirstLine(desc: string, firstLine: string): string {
   return d ? `${fl}\n\n${d}` : fl;
 }
 
+// ============ Anti-duplicate helpers ============
+// Avito определяет дубли по совокупности: текст описания, набор/порядок картинок,
+// цена, GoodsType, адрес. Чтобы прошлые объявления выложились как новые, мы:
+//  1) добавляем в описание уникальный артикул,
+//  2) подмешиваем к URL картинок безобидный query-параметр (?v=<hash>) — изображение то же,
+//     но URL отличается и перцептивный хэш Avito видит «новые» картинки,
+//  3) детерминированно перетасовываем порядок картинок,
+//  4) слегка сдвигаем цену (±3..7 ₽).
+// Всё детерминировано по seed (productId + tabId + дата релиза), стабильно в течение суток.
 
+function fnv1a(seed: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function mulberry32(a: number) {
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function releaseEpoch(): string {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD — меняется раз в сутки
+}
+function uniqueArticle(seed: string): string {
+  const h = fnv1a(seed).toString(36).toUpperCase().padStart(7, "0").slice(0, 7);
+  return `ART-${h.slice(0,4)}-${h.slice(4)}`;
+}
+function withAntiDupSuffix(desc: string, article: string, seed: string): string {
+  const d = (desc || "").trim();
+  if (/Артикул:\s*ART-/.test(d)) return d;
+  const rnd = mulberry32(fnv1a(seed + "|tail"));
+  const tails = [
+    "Поставка со склада.",
+    "Отгрузка день в день.",
+    "Подтверждаем наличие перед заказом.",
+    "Документы при отгрузке.",
+    "Работаем с юр. и физ. лицами.",
+  ];
+  const tail = tails[Math.floor(rnd() * tails.length)];
+  return `${d}\n\n${tail}\nАртикул: ${article}`;
+}
+function bustImageUrl(url: string, seed: string): string {
+  if (!url) return url;
+  const v = fnv1a(seed + "|" + url).toString(36).slice(0, 8);
+  return url.includes("?") ? `${url}&v=${v}` : `${url}?v=${v}`;
+}
+function shuffledImages(imgs: string[], seed: string): string[] {
+  if (!imgs || imgs.length < 2) return imgs || [];
+  const arr = imgs.slice();
+  const rnd = mulberry32(fnv1a(seed + "|imgs"));
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function jitterPrice(price: number, seed: string): number {
+  if (!Number.isFinite(price) || price <= 0) return price;
+  if (price < 50) return price;
+  const rnd = mulberry32(fnv1a(seed + "|price"));
+  const delta = Math.floor(rnd() * 11) - 3; // -3..+7
+  return Math.max(1, Math.round(price + delta));
+}
 
 
 Deno.serve(async (req) => {
