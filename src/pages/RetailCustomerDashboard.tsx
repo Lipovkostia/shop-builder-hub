@@ -138,14 +138,11 @@ export default function RetailCustomerDashboard() {
           .single();
         if (!store) return;
         
-        const { data } = await supabase
-          .from("products")
-          .select("id, name, price, images")
-          .eq("store_id", store.id)
-          .in("id", favorites);
-        
+        const { data } = await (supabase as any)
+          .rpc("get_customer_product_summaries", { _store_id: store.id, _ids: favorites });
+
         if (data) {
-          setFavoriteProducts(data.map(p => ({
+          setFavoriteProducts((data as any[]).map((p) => ({
             id: p.id,
             name: p.name,
             price: Number(p.price),
