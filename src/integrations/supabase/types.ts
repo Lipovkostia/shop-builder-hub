@@ -2186,6 +2186,7 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           description: string | null
+          duplicate_of_product_id: string | null
           id: string
           images: string[] | null
           is_active: boolean | null
@@ -2230,6 +2231,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           description?: string | null
+          duplicate_of_product_id?: string | null
           id?: string
           images?: string[] | null
           is_active?: boolean | null
@@ -2274,6 +2276,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           description?: string | null
+          duplicate_of_product_id?: string | null
           id?: string
           images?: string[] | null
           is_active?: boolean | null
@@ -2322,6 +2325,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_duplicate_of_product_id_fkey"
+            columns: ["duplicate_of_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
           {

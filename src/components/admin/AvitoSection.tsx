@@ -422,6 +422,13 @@ function AvitoFeedTable({
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   // Sorting state
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  // Which parents have their duplicate children expanded
+  const [expandedDupParents, setExpandedDupParents] = useState<Set<string>>(new Set());
+  const toggleDupExpand = (pid: string) => setExpandedDupParents(prev => {
+    const next = new Set(prev);
+    if (next.has(pid)) next.delete(pid); else next.add(pid);
+    return next;
+  });
 
   const setFilter = (col: string, val: string) => {
     setColumnFilters(prev => {
@@ -595,6 +602,7 @@ function AvitoFeedTable({
     }
 
     // Group duplicate products right after their source so the hierarchy is visible.
+    // Children are hidden by default and only shown when the parent is expanded.
     const byProduct = new Map<string, typeof result[number]>();
     for (const fp of result) byProduct.set(fp.product_id, fp);
     const placed = new Set<string>();
@@ -603,22 +611,34 @@ function AvitoFeedTable({
       const prod = storeProducts.find(p => p.id === fp.product_id) as any;
       const parentId = prod?.duplicate_of_product_id;
       // If this row is a duplicate AND its parent is also in the visible list,
-      // skip — it will be inserted right after the parent below.
+      // skip — it will be inserted right after the parent (if expanded) below.
       if (parentId && byProduct.has(parentId)) continue;
       if (placed.has(fp.product_id)) continue;
       ordered.push(fp);
       placed.add(fp.product_id);
-      // Append all duplicates of this product, in original order
-      for (const childFp of result) {
-        const childProd = storeProducts.find(p => p.id === childFp.product_id) as any;
-        if (childProd?.duplicate_of_product_id === fp.product_id && !placed.has(childFp.product_id)) {
-          ordered.push(childFp);
-          placed.add(childFp.product_id);
+      // Append duplicates only if user expanded this parent
+      if (expandedDupParents.has(fp.product_id)) {
+        for (const childFp of result) {
+          const childProd = storeProducts.find(p => p.id === childFp.product_id) as any;
+          if (childProd?.duplicate_of_product_id === fp.product_id && !placed.has(childFp.product_id)) {
+            ordered.push(childFp);
+            placed.add(childFp.product_id);
+          }
         }
       }
     }
     return ordered;
-  }, [preFiltered, storeProducts, columnFilters, sortConfig, categoryMap]);
+  }, [preFiltered, storeProducts, columnFilters, sortConfig, categoryMap, expandedDupParents]);
+  // Count of duplicates per parent product (within the current filtered set)
+  const dupCountByParent = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const fp of preFiltered) {
+      const prod = storeProducts.find(p => p.id === fp.product_id) as any;
+      const pid = prod?.duplicate_of_product_id;
+      if (pid) map.set(pid, (map.get(pid) || 0) + 1);
+    }
+    return map;
+  }, [preFiltered, storeProducts]);
   const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
 
   const allCols = [
@@ -832,6 +852,21 @@ function AvitoFeedTable({
                         #{shortId}
                       </button>
                       {excluded && <span className="text-[9px] px-1 rounded bg-muted text-muted-foreground">не выгр.</span>}
+                      {(() => {
+                        const n = dupCountByParent.get(fp.product_id) || 0;
+                        if (n === 0) return null;
+                        const isOpen = expandedDupParents.has(fp.product_id);
+                        return (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); toggleDupExpand(fp.product_id); }}
+                            className="text-[10px] px-1.5 py-0 rounded bg-fuchsia-100 dark:bg-fuchsia-950/40 text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-200 dark:hover:bg-fuchsia-900/50 font-medium"
+                            title={isOpen ? "Свернуть дубли" : "Показать дубли"}
+                          >
+                            {isOpen ? "▾" : "▸"} {n} {n === 1 ? "дубль" : n < 5 ? "дубля" : "дублей"}
+                          </button>
+                        );
+                      })()}
                       {(product as any).duplicate_of_product_id && (() => {
                         const parent = storeProducts.find(sp => sp.id === (product as any).duplicate_of_product_id);
                         return (

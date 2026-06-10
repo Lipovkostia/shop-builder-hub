@@ -12,11 +12,35 @@ const corsHeaders = {
 };
 
 interface DuplicateOptions {
+  // Strategies
+  titleStrategy?: "ai" | "shuffle" | "prefix" | "suffix" | "epithet" | "none";
+  titleExtras?: string[];
+  descStrategy?: "ai" | "prepend" | "append" | "wrap" | "none";
+  descExtraTop?: string;
+  descExtraBottom?: string;
+  // Back-compat / other
   rewriteTitle?: boolean;
   rewriteDescription?: boolean;
   reuploadImages?: boolean;
   jitterPrice?: boolean;
   instruction?: string;
+}
+
+function shuffleWords(s: string, seed: number): string {
+  if (!s) return s;
+  // Keep first capitalized word in place; shuffle middle tokens; preserve trailing punctuation.
+  const tokens = s.trim().split(/\s+/);
+  if (tokens.length < 3) return s;
+  const first = tokens[0];
+  const middle = tokens.slice(1, tokens.length - 1);
+  const last = tokens[tokens.length - 1];
+  // simple seeded shuffle
+  for (let i = middle.length - 1; i > 0; i--) {
+    seed = (seed * 9301 + 49297) % 233280;
+    const j = Math.floor((seed / 233280) * (i + 1));
+    [middle[i], middle[j]] = [middle[j], middle[i]];
+  }
+  return [first, ...middle, last].join(" ");
 }
 
 function rand(min: number, max: number) {
@@ -168,11 +192,20 @@ serve(async (req) => {
     const sourceProductId: string = body.sourceProductId;
     const count: number = Math.max(1, Math.min(20, Number(body.count) || 1));
     const options: DuplicateOptions = body.options || {};
-    const rewriteTitle = options.rewriteTitle !== false;
-    const rewriteDescription = options.rewriteDescription !== false;
+    const titleStrategy = options.titleStrategy
+      ?? (options.rewriteTitle === false ? "none" : "ai");
+    const descStrategy = options.descStrategy
+      ?? (options.rewriteDescription === false ? "none" : "ai");
+    const titleExtras = (options.titleExtras && options.titleExtras.length > 0)
+      ? options.titleExtras
+      : ["Свежий", "Качественный", "Отборный", "Премиум", "Натуральный", "Фирменный", "Лучший"];
+    const descExtraTop = options.descExtraTop || "";
+    const descExtraBottom = options.descExtraBottom || "";
     const reuploadImages = options.reuploadImages !== false;
     const jitterPrice = options.jitterPrice !== false;
     const instruction = options.instruction;
+    const rewriteTitle = titleStrategy === "ai";
+    const rewriteDescription = descStrategy === "ai";
 
     if (!storeId || !sourceProductId) {
       return new Response(JSON.stringify({ error: "storeId и sourceProductId обязательны" }), {
@@ -283,13 +316,41 @@ serve(async (req) => {
       const seed = baseSeed + i + 1;
       const newProductId = crypto.randomUUID();
       const aiVariant = texts[i] || {};
-      const newTitle = (rewriteTitle && aiVariant.title)
-        ? String(aiVariant.title).slice(0, 100)
-        : `${baseTitle} (дубль ${seed})`;
+
+      // ===== Title =====
+      let newTitle = baseTitle;
+      if (titleStrategy === "ai" && aiVariant.title) {
+        newTitle = String(aiVariant.title);
+      } else if (titleStrategy === "shuffle") {
+        newTitle = shuffleWords(baseTitle, seed * 7919);
+      } else if (titleStrategy === "epithet" && titleExtras.length) {
+        const word = titleExtras[(seed - 1) % titleExtras.length];
+        const first = baseTitle.slice(0, 1).toLowerCase() + baseTitle.slice(1);
+        newTitle = `${word} ${first}`;
+      } else if (titleStrategy === "prefix" && titleExtras.length) {
+        const word = titleExtras[(seed - 1) % titleExtras.length];
+        newTitle = `${word} ${baseTitle}`;
+      } else if (titleStrategy === "suffix" && titleExtras.length) {
+        const word = titleExtras[(seed - 1) % titleExtras.length];
+        newTitle = `${baseTitle} ${word}`;
+      } else if (titleStrategy === "none") {
+        newTitle = baseTitle;
+      }
+      newTitle = newTitle.slice(0, 100);
+
       const article = `ART-${shortHash(sourceProductId + seed)}-${rand(100, 999)}`;
-      let newDescription = (rewriteDescription && aiVariant.description)
-        ? String(aiVariant.description)
-        : baseDescription;
+
+      // ===== Description =====
+      let newDescription = baseDescription;
+      if (descStrategy === "ai" && aiVariant.description) {
+        newDescription = String(aiVariant.description);
+      } else if (descStrategy === "prepend" && descExtraTop) {
+        newDescription = `${descExtraTop}\n\n${baseDescription}`.trim();
+      } else if (descStrategy === "append" && descExtraBottom) {
+        newDescription = `${baseDescription}\n\n${descExtraBottom}`.trim();
+      } else if (descStrategy === "wrap") {
+        newDescription = [descExtraTop, baseDescription, descExtraBottom].filter(Boolean).join("\n\n").trim();
+      }
       if (!/ART-[A-Z0-9]+-\d+/.test(newDescription)) {
         newDescription = `${newDescription}\n\nАртикул: ${article}`.trim();
       }
