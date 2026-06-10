@@ -103,6 +103,7 @@ interface AvitoSectionProps {
     removeProductsFromFeed: (productIds: string[]) => Promise<void>;
     updateProductParams: (productId: string, params: any) => Promise<void>;
     assignGroup?: (productIds: string[], groupId: string | null) => Promise<void>;
+    setPriceSource?: (productIds: string[], source: "manual" | "moysklad", seedPrices?: Record<string, number>) => Promise<void>;
     refetch: () => Promise<void>;
   };
   cityTabs?: {
