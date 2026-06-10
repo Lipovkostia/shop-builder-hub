@@ -227,6 +227,44 @@ export function useAvitoFeedProducts(storeId: string | null, activeTabId: string
 
   const feedProductIds = new Set(feedProducts.map(fp => fp.product_id));
 
+  const setPriceSource = useCallback(async (
+    productIds: string[],
+    source: "manual" | "moysklad",
+    seedPrices?: Record<string, number>,
+  ) => {
+    if (!storeId || productIds.length === 0) return;
+    try {
+      const targets = feedProducts.filter(fp => productIds.includes(fp.product_id));
+      for (const fp of targets) {
+        const next: any = { ...(fp.avito_params || {}), price_source: source };
+        if (source === "manual" && (next.Price == null || Number(next.Price) <= 0)) {
+          const seed = seedPrices?.[fp.product_id];
+          if (seed && seed > 0) next.Price = seed;
+        }
+        const q = (supabase as any)
+          .from("avito_feed_products")
+          .update({ avito_params: next })
+          .eq("store_id", storeId)
+          .eq("product_id", fp.product_id);
+        const scoped = activeTabId ? q.eq("tab_id", activeTabId) : q;
+        const { error } = await scoped;
+        if (error) throw error;
+      }
+      setFeedProducts(prev => prev.map(fp => {
+        if (!productIds.includes(fp.product_id)) return fp;
+        const next: any = { ...(fp.avito_params || {}), price_source: source };
+        if (source === "manual" && (next.Price == null || Number(next.Price) <= 0)) {
+          const seed = seedPrices?.[fp.product_id];
+          if (seed && seed > 0) next.Price = seed;
+        }
+        return { ...fp, avito_params: next };
+      }));
+      toast({ title: source === "manual" ? `Источник цены: Авито (${productIds.length})` : `Источник цены: МойСклад (${productIds.length})` });
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+  }, [storeId, activeTabId, feedProducts, toast]);
+
   return {
     feedProducts,
     feedProductIds,
@@ -238,6 +276,7 @@ export function useAvitoFeedProducts(storeId: string | null, activeTabId: string
     removeProductsFromFeed,
     updateProductParams,
     assignGroup,
+    setPriceSource,
     refetch: fetchFeedProducts,
   };
 }
