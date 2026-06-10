@@ -23,13 +23,19 @@ interface ProductLite {
   name: string;
   images: string[] | null;
   sku?: string | null;
+  category_id?: string | null;
 }
 
 interface FeedRow {
   id: string;
   product_id: string;
   avito_params: any;
+  group_id: string | null;
 }
+
+interface AvitoGroup { id: string; name: string; color: string; sort_order: number }
+interface Category { id: string; name: string; parent_id: string | null; sort_order: number | null }
+
 
 type Source = "pricelist" | "avito";
 
