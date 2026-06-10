@@ -372,15 +372,22 @@ Deno.serve(async (req) => {
 
       const id = `v-${String(v.id).substring(0, 10)}`;
       const params = (v.avito_params && typeof v.avito_params === "object") ? v.avito_params : {};
+
+      // ---- Антидубль
+      const adSeed = `v|${v.id}|${releaseEpoch()}`;
+      const article = uniqueArticle(adSeed);
+
       const rawTitleV = v.title || product.name || "Товар";
       const rawDescriptionV = v.description || product.description || product.name || "";
       const finalTitleV = applyGlobalPrefix ? applyTitlePrefix(rawTitleV, defaultTitlePrefix) : rawTitleV;
-      const finalDescriptionV = applyGlobalPrefix ? applyDescriptionFirstLine(rawDescriptionV, defaultDescriptionFirstLine) : rawDescriptionV;
+      const baseDescriptionV = applyGlobalPrefix ? applyDescriptionFirstLine(rawDescriptionV, defaultDescriptionFirstLine) : rawDescriptionV;
+      const finalDescriptionV = withAntiDupSuffix(baseDescriptionV, article, adSeed);
       const title = escapeXml(finalTitleV);
       const description = escapeXml(finalDescriptionV);
-      const price = (v.price != null && Number(v.price) > 0)
+      const rawPriceV = (v.price != null && Number(v.price) > 0)
         ? Number(v.price)
         : resolvePrice(params, product.price, params.price_source);
+      const price = jitterPrice(rawPriceV, adSeed);
       let rawCategoryV = v.avito_category || params.category || defaultCategory;
       let derivedGoodsSubTypeV = params.GoodsType || params.goodsSubType || "";
       if (typeof rawCategoryV === "string" && rawCategoryV.includes("---")) {
@@ -389,7 +396,7 @@ Deno.serve(async (req) => {
         if (!derivedGoodsSubTypeV && parts.length >= 3) derivedGoodsSubTypeV = parts[parts.length - 1];
       }
       const category = escapeXml(rawCategoryV);
-      const images = (v.images && v.images.length ? v.images : product.images) || [];
+      const images = shuffledImages((v.images && v.images.length ? v.images : product.images) || [], adSeed);
       const address = escapeXml(v.avito_address || params.address || defaultAddress);
       const adType = escapeXml(params.adType || params.goodsType || defaultAdType);
       const goodsType = escapeXml(derivedGoodsSubTypeV || defaultGoodsType);
@@ -405,9 +412,10 @@ Deno.serve(async (req) => {
         imagesXml = "    <Images>\n";
         for (const img of images.slice(0, 10)) {
           if (/[_\-](thumb|small|xs|50x|100x|150x)/i.test(img)) continue;
-          imagesXml += `      <Image url="${escapeXml(img)}" />\n`;
+          imagesXml += `      <Image url="${escapeXml(bustImageUrl(img, adSeed))}" />\n`;
         }
         imagesXml += "    </Images>\n";
+
       }
 
       ads += `  <Ad>\n`;
