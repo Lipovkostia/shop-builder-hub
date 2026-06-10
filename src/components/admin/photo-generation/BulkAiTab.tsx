@@ -208,24 +208,39 @@ export function BulkAiTab({ storeId }: Props) {
         const fp = feedByProduct.get(task.productId);
         if (!fp) throw new Error("Нет строки Авито");
         const params = fp.avito_params || {};
-        const list: string[] = Array.isArray(params.avitoImages) ? [...params.avitoImages] : [];
-        list[task.imageIndex] = res.url;
-        const nextParams = { ...params, avitoImages: list };
+        // Берём текущий список фото Авито (или фолбэк на фото товара),
+        // и ДОБАВЛЯЕМ сгенерированное в конец — исходное фото остаётся.
+        const prod = products.find((p) => p.id === task.productId);
+        const baseList: string[] = Array.isArray(params.avitoImages) && params.avitoImages.length > 0
+          ? [...params.avitoImages]
+          : [...(prod?.images ?? [])];
+        if (!baseList.includes(res.url)) baseList.push(res.url);
+        const nextParams = { ...params, avitoImages: baseList };
         const { error } = await (supabase as any)
           .from("avito_feed_products")
           .update({ avito_params: nextParams })
           .eq("id", fp.id);
         if (error) throw error;
         setFeedRows((prev) => prev.map((r) => r.id === fp.id ? { ...r, avito_params: nextParams } : r));
+        // Также добавим в общий список фото товара, чтобы было видно в карточке.
+        if (prod) {
+          const prodList = [...(prod.images ?? [])];
+          if (!prodList.includes(res.url)) {
+            prodList.push(res.url);
+            await supabase.from("products").update({ images: prodList }).eq("id", task.productId);
+            setProducts((prev) => prev.map((p) => p.id === task.productId ? { ...p, images: prodList } : p));
+          }
+        }
       } else {
         const prod = products.find((p) => p.id === task.productId);
         const list = [...(prod?.images ?? [])];
-        list[task.imageIndex] = res.url;
+        if (!list.includes(res.url)) list.push(res.url);
         const { error } = await supabase.from("products").update({ images: list }).eq("id", task.productId);
         if (error) throw error;
         setProducts((prev) => prev.map((p) => p.id === task.productId ? { ...p, images: list } : p));
       }
-      toast.success("Фото обновлено");
+      toast.success("Фото добавлено к товару");
+
       removeTask(task.id);
     } catch (e: any) {
       toast.error(e.message);
