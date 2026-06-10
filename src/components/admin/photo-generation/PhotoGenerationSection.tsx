@@ -45,6 +45,7 @@ import { PromptsManager } from "./PromptsManager";
 import { ReferencesManager } from "./ReferencesManager";
 import { PlaygroundChat } from "./PlaygroundChat";
 import { HistoryTab } from "./HistoryTab";
+import { BulkAiTab } from "./BulkAiTab";
 import { useAiHistory } from "@/hooks/useAiHistory";
 
 interface ProductLite { id: string; name: string; images: string[] | null; sku?: string | null; }
