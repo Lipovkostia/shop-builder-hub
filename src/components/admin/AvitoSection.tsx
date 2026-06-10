@@ -1190,7 +1190,7 @@ function AvitoFeedTable({
             onOpenChange={(open) => { if (!open) setBulkDuplicateProductId(null); }}
             storeId={storeId}
             product={p ? { id: p.id, name: p.name } : null}
-            onDone={() => setVariantsManagerProductId(bulkDuplicateProductId)}
+            onDone={() => { /* Дубли появятся в общем списке (привязка по duplicate_of_product_id). */ }}
           />
         );
       })()}
