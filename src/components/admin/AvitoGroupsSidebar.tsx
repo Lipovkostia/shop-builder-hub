@@ -45,6 +45,7 @@ export function AvitoGroupsSidebar({
   groups, feedProducts, selectedGroupId, onSelectGroup,
   errorIds, onCreateGroup, onUpdateGroup, onDeleteGroup,
   storeProducts = [], storeCategories = [], selectedCategoryId = null, onSelectCategory,
+  collapsed = false, onToggleCollapse,
 }: Props) {
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState("slate");
