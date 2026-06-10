@@ -501,11 +501,15 @@ export function PhotoGenerationSection({ storeId, preselectedProductId, onOpenIn
       <Tabs defaultValue="workspace">
         <TabsList>
           <TabsTrigger value="workspace">Рабочая область</TabsTrigger>
+          <TabsTrigger value="bulk-ai">Массовая AI-генерация</TabsTrigger>
           <TabsTrigger value="history">История генераций</TabsTrigger>
           <TabsTrigger value="prompts">Шаблоны промптов</TabsTrigger>
           <TabsTrigger value="references">Референсы</TabsTrigger>
           <TabsTrigger value="chat">AI-чат</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="bulk-ai"><BulkAiTab storeId={storeId} /></TabsContent>
+
 
         <TabsContent value="workspace" className="space-y-3">
           <div className="rounded-lg border border-border bg-card p-3 space-y-3">
