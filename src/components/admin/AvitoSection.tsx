@@ -2764,7 +2764,8 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                             <BulkButtons onApply={async (onlySelected) => {
                               const val = localDefaults.cpcBid || "";
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) { const params = { ...(fp.avito_params || {}) }; if (val) params.cpcBid = val; else delete params.cpcBid; await avitoFeed.updateProductParams(fp.product_id, params); }
+                                const rows = targets.map(fp => { const params = { ...(fp.avito_params || {}) } as any; if (val) params.cpcBid = val; else delete params.cpcBid; return { product_id: fp.product_id, params }; });
+                                await avitoFeed.bulkUpdateProductParams(rows);
                                 avitoFeed.saveDefaults(localDefaults);
                                 toast({ title: val ? `CPC ${val}₽ для ${targets.length} товар(ов)` : `CPC убран у ${targets.length} товар(ов)` });
                               }, onlySelected);
