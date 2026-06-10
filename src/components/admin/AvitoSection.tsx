@@ -3154,9 +3154,19 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                 </div>
               </ScrollArea>
             </div>
+            )}
+            {/* Drag handle for resizing bulk panel */}
+            {!bulkCollapsed && (
+              <div
+                onMouseDown={onBulkResizeStart}
+                className="w-1.5 cursor-col-resize bg-border/40 hover:bg-primary/50 active:bg-primary transition-colors flex-shrink-0"
+                title="Перетащите, чтобы изменить ширину"
+              />
+            )}
 
             {/* Right Area - Table */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+
               {/* Bulk actions bar - always visible when there are products */}
               {avitoFeed && avitoFeed.feedProducts.length > 0 && (() => {
                 // (filtering computed below, with category filter included)
