@@ -602,6 +602,7 @@ function AvitoFeedTable({
     }
 
     // Group duplicate products right after their source so the hierarchy is visible.
+    // Children are hidden by default and only shown when the parent is expanded.
     const byProduct = new Map<string, typeof result[number]>();
     for (const fp of result) byProduct.set(fp.product_id, fp);
     const placed = new Set<string>();
@@ -610,22 +611,34 @@ function AvitoFeedTable({
       const prod = storeProducts.find(p => p.id === fp.product_id) as any;
       const parentId = prod?.duplicate_of_product_id;
       // If this row is a duplicate AND its parent is also in the visible list,
-      // skip — it will be inserted right after the parent below.
+      // skip — it will be inserted right after the parent (if expanded) below.
       if (parentId && byProduct.has(parentId)) continue;
       if (placed.has(fp.product_id)) continue;
       ordered.push(fp);
       placed.add(fp.product_id);
-      // Append all duplicates of this product, in original order
-      for (const childFp of result) {
-        const childProd = storeProducts.find(p => p.id === childFp.product_id) as any;
-        if (childProd?.duplicate_of_product_id === fp.product_id && !placed.has(childFp.product_id)) {
-          ordered.push(childFp);
-          placed.add(childFp.product_id);
+      // Append duplicates only if user expanded this parent
+      if (expandedDupParents.has(fp.product_id)) {
+        for (const childFp of result) {
+          const childProd = storeProducts.find(p => p.id === childFp.product_id) as any;
+          if (childProd?.duplicate_of_product_id === fp.product_id && !placed.has(childFp.product_id)) {
+            ordered.push(childFp);
+            placed.add(childFp.product_id);
+          }
         }
       }
     }
     return ordered;
-  }, [preFiltered, storeProducts, columnFilters, sortConfig, categoryMap]);
+  }, [preFiltered, storeProducts, columnFilters, sortConfig, categoryMap, expandedDupParents]);
+  // Count of duplicates per parent product (within the current filtered set)
+  const dupCountByParent = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const fp of preFiltered) {
+      const prod = storeProducts.find(p => p.id === fp.product_id) as any;
+      const pid = prod?.duplicate_of_product_id;
+      if (pid) map.set(pid, (map.get(pid) || 0) + 1);
+    }
+    return map;
+  }, [preFiltered, storeProducts]);
   const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
 
   const allCols = [
