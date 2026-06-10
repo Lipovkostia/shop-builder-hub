@@ -1,89 +1,56 @@
+## Задача
 
-## Цель
+Сейчас в фиде Авито цена берётся в порядке: `avito_params.Price` → `product.price` (синхронизированная из МойСклад). Если для товара цена в Авито вручную не задана — подставляется старая цена из прайс-листа (МойСклад). Нужно дать явный выбор источника цены: **«Из Авито» (ручная)** или **«Из МойСклад» (синхронизация)** — массово и индивидуально.
 
-Во вкладке «Авито» сделать переключатель аккаунтов сверху: можно добавить несколько аккаунтов Авито (client_id/secret), переключаться между ними и видеть для каждого свою рабочую область — города-вкладки, товары для фида, активные объявления, статистику, бот, аналитика, фид XML.
+## Что делаем
 
-## Что меняется
+### 1. Модель данных (без миграций)
+Используем существующий `avito_params` (jsonb) в `avito_feed_products` и `feed_defaults` (jsonb) в `avito_accounts`:
 
-### 1. БД (миграция)
+- В `avito_params` добавляем поле `price_source`: `"manual" | "moysklad"` (если не задано — берём дефолт аккаунта).
+- В `feed_defaults` добавляем поле `priceSource` (дефолт для аккаунта, начальное значение `"moysklad"` чтобы поведение не сломалось у тех, кто уже синхронизируется).
 
-- `avito_accounts`: убрать UNIQUE на `store_id`, добавить `is_default boolean`, `sort_order int`, `label text` (отображаемое имя на пилюле, по умолчанию = profile_name).
-- `avito_city_tabs`: добавить колонку `account_id uuid references avito_accounts(id) on delete cascade`, индекс. Существующую вкладку «Основная» привязать к текущему единственному аккаунту магазина.
-- `avito_feed_products`: добавить `account_id uuid references avito_accounts(id) on delete cascade`, индекс. Бэкфил по `tab_id → city_tabs.account_id` или по единственному аккаунту магазина.
-- RLS остаётся через `store_id` (политики не трогаем).
-- GRANT'ы уже есть на этих таблицах.
+### 2. Edge function `avito-feed`
+Меняем расчёт `price` (строка 165 и 293 для вариантов):
 
-### 2. Edge функции
-
-- `avito-api`:
-  - Принимает опциональный `account_id` во всех экшенах. Если не передан — берётся `is_default` либо первый.
-  - Все `.eq("store_id", ...).single()` заменяются на `.eq("id", account_id)` (или fallback по store_id+default).
-  - Новые экшены: `list_accounts`, `set_default_account`, `update_account_label`. `connect/save_credentials/disconnect` работают per-account (`account_id` опционален при создании нового).
-  - `restore_feed_from_active` и статистика — для выбранного account_id, вставка в `avito_feed_products` с `account_id` и `tab_id` активной вкладки этого аккаунта.
-- `avito-feed`:
-  - URL получает параметр `?account=<id>` (или сохраняем обратную совместимость: без параметра отдаём дефолтный аккаунт магазина).
-  - Подгружает только city_tabs/feed_products этого account_id, `feed_defaults` берёт из его записи `avito_accounts`.
-
-### 3. UI — `src/components/admin/AvitoSection.tsx`
-
-Сверху, над блоком «Города», добавляется панель **«Аккаунты Авито»**:
-
-```text
-[● Вероника ✓подкл]  [○ Аккаунт 2]  [+ Добавить аккаунт]   [⚙ переименовать] [★ сделать основным] [🗑 удалить]
+```ts
+const itemSource = params.price_source || defaults.priceSource || "moysklad";
+const price = itemSource === "manual"
+  ? (params.Price ?? params.price ?? 0)        // только ручная, без fallback
+  : (product.price ?? params.Price ?? 0);      // приоритет МойСклад
 ```
 
-- Пилюли-табы аккаунтов (как сейчас вкладки-города), активный подсвечен зелёным, рядом бэйдж «Подключено/Не подключено».
-- Кнопка «+ Добавить аккаунт» → диалог с полями Client ID / Client Secret / Название → создаёт строку в `avito_accounts` и сразу делает её активной, подгружает profile_name из Avito API.
-- Контекстное меню на пилюле: переименовать, сделать основным, отключить (очистить токены), удалить (с подтверждением — каскадом удалит city_tabs и feed_products).
-- Активный `account_id` хранится в `localStorage` per-store (как сейчас `activeTabId` для городов).
-- Все существующие блоки (Города, Товары для Авито, Объявления с ошибками, Активные объявления, Статистика, API подключение, Настройки, Категории) фильтруются по активному account_id.
-- Бэйдж «Подключено: …» в шапке показывает имя активного аккаунта.
-- Кнопка «Скопировать ссылку на фид» подставляет `?account=<id>`.
+Так ручная цена из карточки Авито больше **не будет перекрываться** ценой из МойСклад, и наоборот.
 
-### 4. Хуки
+### 3. UI в разделе «Авито» → таблица товаров (`AvitoSection.tsx`)
 
-- `useAvitoAccounts(storeId)` — новый: список аккаунтов, активный, CRUD, setActive.
-- `useAvitoCityTabs` — принимает `accountId`, фильтрует и создаёт вкладки с `account_id`.
-- `useAvitoFeedProducts` — принимает `accountId`, фильтрует и пишет `account_id`.
-- `useAvitoBot` — уже привязан к `avito_account_id`, передаём активный.
+- **Новая колонка «Источник цены»** рядом со столбцом «Цена»: маленький селектор/тоггл с двумя значениями:
+  - `Авито` (ручная) — иконка карандаша, цена редактируется инлайн (уже есть `InlinePriceCell`).
+  - `МойСклад` (синхронизация) — иконка облака, цена показывается серой (read-only, из `product.price`).
+- В режиме `МойСклад` инлайн-редактор цены отключён; в подсказке: «Цена тянется из МойСклад. Переключите на „Авито“ чтобы задать вручную».
+- В режиме `Авито` показывается значение из `avito_params.Price`; редактирование сохраняется как сейчас.
 
-### 5. Что не меняется
+### 4. Массовые действия
+- В строке массовых действий (где уже есть «Адрес», «Категория», «Promo» и т.п.) добавляем блок **«Источник цены»** с теми же двумя кнопками + «Применить к выделенным». Использует существующий механизм bulk‑update `avito_params`.
+- При выборе **«МойСклад»** — массово выставляем `price_source: "moysklad"` (значение `Price` в params не удаляется, чтобы можно было вернуться обратно).
+- При выборе **«Авито»** — массово выставляем `price_source: "manual"`; если у товара ещё нет `Price`, подставляем текущий `product.price` как стартовое значение (чтобы было что показывать/редактировать).
 
-- Схема товаров магазина, общие категории, фото-студия (она per-store).
-- Логика префиксов «Опт:», восстановления фида, AI-аналитика — переиспользуются, просто per-account.
-- RLS-политики на public таблицах.
+### 5. Настройки аккаунта (сайдбар «Настройки фида»)
+- Добавляем переключатель **«Источник цены по умолчанию»** → `feed_defaults.priceSource`. Применяется ко всем товарам, где индивидуально не задано.
+- Подсказка: «Можно переопределить для каждого товара в таблице».
 
-## Технические детали
-
-**Миграция (укрупнённо):**
-```sql
-alter table public.avito_accounts drop constraint avito_accounts_store_id_key;
-alter table public.avito_accounts
-  add column is_default boolean not null default false,
-  add column sort_order int not null default 0,
-  add column label text;
-update public.avito_accounts set is_default = true, label = coalesce(profile_name, 'Аккаунт');
-
-alter table public.avito_city_tabs add column account_id uuid references public.avito_accounts(id) on delete cascade;
-create index idx_avito_city_tabs_account on public.avito_city_tabs(account_id);
-update public.avito_city_tabs t set account_id = (
-  select a.id from public.avito_accounts a where a.store_id = t.store_id and a.is_default limit 1
-);
-
-alter table public.avito_feed_products add column account_id uuid references public.avito_accounts(id) on delete cascade;
-create index idx_avito_feed_products_account on public.avito_feed_products(account_id);
-update public.avito_feed_products fp set account_id = (
-  select ct.account_id from public.avito_city_tabs ct where ct.id = fp.tab_id
-);
-```
-
-**Backwards-compat фида:** `avito-feed` без `?account=` → дефолтный аккаунт магазина, чтобы уже настроенные в Авито URL продолжали работать.
+### 6. Индикатор в шапке таблицы
+Маленькая легенда над таблицей: «● Цена: Авито — ручная, МойСклад — синхронизация». Чтобы пользователю было сразу понятно, что значат иконки/цвета в колонке цены.
 
 ## Файлы
 
-- новая миграция `supabase/migrations/*_avito_multi_account.sql`
-- `supabase/functions/avito-api/index.ts` (account_id во всех экшенах + list/set_default/update_label)
-- `supabase/functions/avito-feed/index.ts` (читаем ?account=)
-- новый `src/hooks/useAvitoAccounts.ts`
-- `src/hooks/useAvitoCityTabs.ts`, `src/hooks/useAvitoFeedProducts.ts` (фильтр по accountId)
-- `src/components/admin/AvitoSection.tsx` (панель аккаунтов сверху + проброс accountId везде)
+- `supabase/functions/avito-feed/index.ts` — новая логика выбора цены (строки 165, 293) + чтение `defaults.priceSource`.
+- `src/hooks/useAvitoFeedProducts.ts` — расширить `AvitoDefaults` полем `priceSource`; хелпер `setPriceSource(productIds, source)`.
+- `src/components/admin/AvitoSection.tsx` — новая колонка «Источник цены», блок массового действия, настройка в сайдбаре, легенда.
+- (Edge function `avito-feed` будет передеплоена.)
+
+## Что НЕ меняем
+
+- Структуру БД (миграция не нужна — используем jsonb).
+- Логику синхронизации с МойСклад (`product.price` обновляется как раньше).
+- Текущие фиды у других аккаунтов: дефолт остаётся `moysklad`, поведение прежнее, пока пользователь явно не переключит.
