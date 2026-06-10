@@ -2692,12 +2692,13 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                             <BulkButtons onApply={async (onlySelected) => {
                               const promoVal = localDefaults.promo === "none" ? "" : localDefaults.promo;
                               await applyToTargets(async (targets) => {
-                                for (const fp of targets) {
-                                  const params = { ...(fp.avito_params || {}) };
+                                const rows = targets.map(fp => {
+                                  const params = { ...(fp.avito_params || {}) } as any;
                                   if (promoVal) { params.promo = promoVal; if (localDefaults.promoRegion) params.promoRegion = localDefaults.promoRegion; if (localDefaults.promoBudget) params.promoBudget = localDefaults.promoBudget; if (localDefaults.promoPrice) params.promoPrice = localDefaults.promoPrice; if (localDefaults.promoLimit) params.promoLimit = localDefaults.promoLimit; }
                                   else { delete params.promo; delete params.promoRegion; delete params.promoBudget; delete params.promoPrice; delete params.promoLimit; }
-                                  await avitoFeed.updateProductParams(fp.product_id, params);
-                                }
+                                  return { product_id: fp.product_id, params };
+                                });
+                                await avitoFeed.bulkUpdateProductParams(rows);
                                 avitoFeed.saveDefaults(localDefaults);
                                 toast({ title: promoVal ? `Promo проставлен для ${targets.length} товар(ов)` : `Promo убран у ${targets.length} товар(ов)` });
                               }, onlySelected);
