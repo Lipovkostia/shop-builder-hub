@@ -30,6 +30,7 @@ import HomepageVersionManager from '@/components/admin/HomepageVersionManager';
 import RetailPartnersManager from '@/components/admin/RetailPartnersManager';
 import HomepageCatalogSection from '@/components/admin/HomepageCatalog/HomepageCatalogSection';
 import HomepageImportFromSellers from '@/components/admin/HomepageCatalog/HomepageImportFromSellers';
+import SuperAdminPhotoExport from '@/components/admin/SuperAdminPhotoExport';
 
 interface StoreWithCounts {
   id: string;
