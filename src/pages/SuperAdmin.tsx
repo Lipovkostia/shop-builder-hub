@@ -598,6 +598,10 @@ export default function SuperAdmin() {
               <LayoutGrid className="h-4 w-4" />
               <span className="hidden sm:inline">Главная: настройки</span>
             </TabsTrigger>
+            <TabsTrigger value="photo-export" className="gap-2">
+              <Image className="h-4 w-4" />
+              <span className="hidden sm:inline">Экспорт фото</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
