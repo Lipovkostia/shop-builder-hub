@@ -1130,6 +1130,11 @@ export default function SuperAdmin() {
             <HomepageVersionManager />
             <RetailPartnersManager />
           </TabsContent>
+
+          {/* Photo Export Tab */}
+          <TabsContent value="photo-export" className="space-y-6">
+            <SuperAdminPhotoExport />
+          </TabsContent>
         </Tabs>
       </main>
     </div>
