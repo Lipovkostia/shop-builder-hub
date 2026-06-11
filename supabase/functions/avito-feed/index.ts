@@ -99,6 +99,7 @@ function withAntiDupSuffix(desc: string, article: string, seed: string): string 
   const tail = tails[Math.floor(rnd() * tails.length)];
   return `${d}\n\n${tail}\nАртикул: ${article}`;
 }
+function escapeXmlSafe(s: any): string { return escapeXml(s == null ? '' : String(s)); }
 function bustImageUrl(url: string, seed: string): string {
   if (!url) return url;
   const v = fnv1a(seed + "|" + url).toString(36).slice(0, 8);
