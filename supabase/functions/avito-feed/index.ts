@@ -263,7 +263,7 @@ Deno.serve(async (req) => {
       const selectedImages: string[] = Array.isArray(params.avitoImages) && params.avitoImages.length > 0
         ? params.avitoImages
         : (product.images || []);
-      const images = shuffledImages(selectedImages, adSeed);
+      const images = shuffledImages(selectedImages.filter((u: any) => typeof u === 'string' && u.trim().length > 0), adSeed);
       const address = escapeXml(fp.avito_address || params.address || defaultAddress);
       const adType = escapeXml(params.adType || params.goodsType || defaultAdType);
       const goodsType = escapeXml(derivedGoodsSubType || defaultGoodsType);
