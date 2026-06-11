@@ -397,7 +397,7 @@ Deno.serve(async (req) => {
         if (!derivedGoodsSubTypeV && parts.length >= 3) derivedGoodsSubTypeV = parts[parts.length - 1];
       }
       const category = escapeXml(rawCategoryV);
-      const images = shuffledImages((v.images && v.images.length ? v.images : product.images) || [], adSeed);
+      const images = shuffledImages((((v.images && v.images.length ? v.images : product.images) || []) as any[]).filter((u: any) => typeof u === 'string' && u.trim().length > 0), adSeed);
       const address = escapeXml(v.avito_address || params.address || defaultAddress);
       const adType = escapeXml(params.adType || params.goodsType || defaultAdType);
       const goodsType = escapeXml(derivedGoodsSubTypeV || defaultGoodsType);
