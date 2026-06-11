@@ -31,6 +31,7 @@ import RetailPartnersManager from '@/components/admin/RetailPartnersManager';
 import HomepageCatalogSection from '@/components/admin/HomepageCatalog/HomepageCatalogSection';
 import HomepageImportFromSellers from '@/components/admin/HomepageCatalog/HomepageImportFromSellers';
 import SuperAdminPhotoExport from '@/components/admin/SuperAdminPhotoExport';
+import SuperAdminProductExport from '@/components/admin/SuperAdminProductExport';
 
 interface StoreWithCounts {
   id: string;
@@ -602,6 +603,10 @@ export default function SuperAdmin() {
               <Image className="h-4 w-4" />
               <span className="hidden sm:inline">Экспорт фото</span>
             </TabsTrigger>
+            <TabsTrigger value="product-export" className="gap-2">
+              <FileSpreadsheet className="h-4 w-4" />
+              <span className="hidden sm:inline">Экспорт товаров</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
@@ -1134,6 +1139,11 @@ export default function SuperAdmin() {
           {/* Photo Export Tab */}
           <TabsContent value="photo-export" className="space-y-6">
             <SuperAdminPhotoExport />
+          </TabsContent>
+
+          {/* Product Export (titles + descriptions to Excel) */}
+          <TabsContent value="product-export" className="space-y-6">
+            <SuperAdminProductExport />
           </TabsContent>
         </Tabs>
       </main>
