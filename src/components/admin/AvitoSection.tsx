@@ -50,6 +50,8 @@ import { AvitoBulkDuplicateDialog } from "./AvitoBulkDuplicateDialog";
 import { AvitoGroupsSidebar, AvitoGroupBadge } from "./AvitoGroupsSidebar";
 import { AvitoSheetsPanel } from "./AvitoSheetsPanel";
 import { AvitoPhotosPanel } from "./AvitoPhotosPanel";
+import { AvitoStoreContextBadge } from "./AvitoStoreContextBadge";
+import { AvitoCreateListingsPanel } from "./AvitoCreateListingsPanel";
 import { useAvitoProductGroups, AvitoProductGroup, colorClass } from "@/hooks/useAvitoProductGroups";
 import { Copy as CopyIcon } from "lucide-react";
 
@@ -2514,16 +2516,19 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-lg font-semibold">Авито</h2>
           <p className="text-sm text-muted-foreground">Интеграция с Авито для управления объявлениями</p>
         </div>
-        {isConnected && (
-          <Badge variant="outline" className="gap-1 text-primary border-primary/30">
-            <Check className="h-3 w-3" /> Подключено: {activeAccount?.label || activeAccount?.profile_name || account?.profile_name}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          <AvitoStoreContextBadge storeId={storeId} />
+          {isConnected && (
+            <Badge variant="outline" className="gap-1 text-primary border-primary/30">
+              <Check className="h-3 w-3" /> Подключено: {activeAccount?.label || activeAccount?.profile_name || account?.profile_name}
+            </Badge>
+          )}
+        </div>
       </div>
 
       {accounts && (
@@ -2537,6 +2542,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
           onDelete={accounts.deleteAccount}
         />
       )}
+
+      <AvitoCreateListingsPanel
+        storeId={storeId}
+        activeAccountId={accounts?.activeAccountId ?? null}
+      />
 
       {/* Validation: detect issues per feed product */}
       {(() => null)()}
