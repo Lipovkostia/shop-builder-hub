@@ -6,8 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function escapeXml(str: string): string {
-  return str
+function escapeXml(str: any): string {
+  return String(str ?? '')
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -99,6 +99,7 @@ function withAntiDupSuffix(desc: string, article: string, seed: string): string 
   const tail = tails[Math.floor(rnd() * tails.length)];
   return `${d}\n\n${tail}\nАртикул: ${article}`;
 }
+function escapeXmlSafe(s: any): string { return escapeXml(s == null ? '' : String(s)); }
 function bustImageUrl(url: string, seed: string): string {
   if (!url) return url;
   const v = fnv1a(seed + "|" + url).toString(36).slice(0, 8);
@@ -262,7 +263,7 @@ Deno.serve(async (req) => {
       const selectedImages: string[] = Array.isArray(params.avitoImages) && params.avitoImages.length > 0
         ? params.avitoImages
         : (product.images || []);
-      const images = shuffledImages(selectedImages, adSeed);
+      const images = shuffledImages(selectedImages.filter((u: any) => typeof u === 'string' && u.trim().length > 0), adSeed);
       const address = escapeXml(fp.avito_address || params.address || defaultAddress);
       const adType = escapeXml(params.adType || params.goodsType || defaultAdType);
       const goodsType = escapeXml(derivedGoodsSubType || defaultGoodsType);
@@ -396,7 +397,7 @@ Deno.serve(async (req) => {
         if (!derivedGoodsSubTypeV && parts.length >= 3) derivedGoodsSubTypeV = parts[parts.length - 1];
       }
       const category = escapeXml(rawCategoryV);
-      const images = shuffledImages((v.images && v.images.length ? v.images : product.images) || [], adSeed);
+      const images = shuffledImages((((v.images && v.images.length ? v.images : product.images) || []) as any[]).filter((u: any) => typeof u === 'string' && u.trim().length > 0), adSeed);
       const address = escapeXml(v.avito_address || params.address || defaultAddress);
       const adType = escapeXml(params.adType || params.goodsType || defaultAdType);
       const goodsType = escapeXml(derivedGoodsSubTypeV || defaultGoodsType);
