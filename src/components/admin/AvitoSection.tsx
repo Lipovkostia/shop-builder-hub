@@ -510,14 +510,23 @@ function AvitoFeedTable({
       case "contactPhone": return params.contactPhone || "";
       case "email": return params.email || "";
       case "companyName": return params.companyName || "";
+      case "publish": return params.excluded_from_feed === true ? "Не публикуется" : "Публикуется";
+      case "avitoStatus": {
+        const mod = params.moderation || {};
+        const st = String(params.avitoStatus || mod.status || "").trim();
+        if (st) return st;
+        if (mod.published === true) return "Активно";
+        if (mod.published === false) return "Не опубликовано";
+        return "";
+      }
       default: return "";
     }
   };
 
   // Filterable columns
-  const filterableCols = ["storeCategory", "category", "adType", "goodsType", "promo", "address", "managerName", "contactPhone", "email", "companyName"];
+  const filterableCols = ["storeCategory", "category", "adType", "goodsType", "promo", "address", "managerName", "contactPhone", "email", "companyName", "publish", "avitoStatus"];
   // Sortable columns
-  const sortableCols = ["title", "price", "storeCategory", "category"];
+  const sortableCols = ["title", "price", "storeCategory", "category", "publish", "avitoStatus"];
 
   // Pre-filter: search + price
   const preFiltered = feedProducts.filter((fp) => {
