@@ -855,6 +855,43 @@ function AvitoFeedTable({
                       />
                     </div>
                   )}
+                  {visibleColKeys.has("publish") && (
+                    <div className="flex-shrink-0 px-2 pt-2 flex items-center justify-center" style={{ width: colWidths.publish }}>
+                      <Switch
+                        checked={!excluded}
+                        title={excluded ? "Включить в выгрузку Авито" : "Снять с выгрузки Авито"}
+                        onCheckedChange={(checked) => {
+                          const newParams = { ...(fp.avito_params || {}), excluded_from_feed: !checked };
+                          onUpdateProductParams(fp.product_id, newParams);
+                        }}
+                      />
+                    </div>
+                  )}
+                  {visibleColKeys.has("avitoStatus") && (() => {
+                    const st = String(params.avitoStatus || modStatus || "").trim();
+                    const checkedAt = params.avitoStatusCheckedAt || params.moderation?.checked_at;
+                    const isBlocked = /block|заблок|откло|reject/i.test(st);
+                    const isRemoved = /remov|удал|снят/i.test(st);
+                    const isActive = st ? /act|опубл/i.test(st) && !isBlocked && !isRemoved : params.moderation?.published === true;
+                    const isNotPublished = !st && params.moderation?.published === false;
+                    const tone =
+                      isBlocked ? "bg-destructive/15 text-destructive border-destructive/30" :
+                      isRemoved ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30" :
+                      isActive ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" :
+                      isNotPublished ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30" :
+                      "bg-muted text-muted-foreground border-muted-foreground/20";
+                    const label = st || (isActive ? "Активно" : isNotPublished ? "Не опубл." : "—");
+                    return (
+                      <div className="flex-shrink-0 px-1.5 pt-2" style={{ width: colWidths.avitoStatus }}>
+                        <span
+                          className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border ${tone} max-w-full truncate`}
+                          title={checkedAt ? `Статус Авито: ${label}\nПроверено: ${new Date(checkedAt).toLocaleString("ru-RU")}` : `Статус Авито: ${label}`}
+                        >
+                          {label}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   <div className="flex-shrink-0 px-1 py-1 cursor-pointer" style={{ width: colWidths.photo }} onClick={() => setEditingImageProduct({ id: product.id, name: product.name, images: product.images || [] })}>
                     {imageUrl ? (
                       <img src={imageUrl} alt="" className="w-9 h-9 rounded object-cover hover:ring-2 hover:ring-primary transition-all" />
