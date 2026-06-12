@@ -33,6 +33,7 @@ import {
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Product } from "./types";
 import { AvitoImageEditor } from "./AvitoImageEditor";
@@ -202,12 +203,13 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 }
 // Avito Feed Table with resizable columns
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
-const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, group: 90, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, promoAuto: 140, cpcBid: 80, address: 120, avitoId: 110, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
+const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, group: 90, publish: 72, avitoStatus: 130, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, promoAuto: 140, cpcBid: 80, address: 120, avitoId: 110, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
 
 // Column classification: "export" = goes into Avito XLSX/ZIP, "internal" = only for filtering/grouping
 type ColKind = "export" | "internal" | "system";
 const COL_KIND: Record<string, ColKind> = {
   check: "system", photo: "system", imgs: "system", actions: "system",
+  publish: "system", avitoStatus: "system",
   group: "internal", storeCategory: "internal",
   title: "export", desc: "export", price: "export", category: "export",
   adType: "export", goodsType: "export", promo: "export", promoManual: "export",
@@ -508,14 +510,23 @@ function AvitoFeedTable({
       case "contactPhone": return params.contactPhone || "";
       case "email": return params.email || "";
       case "companyName": return params.companyName || "";
+      case "publish": return params.excluded_from_feed === true ? "Не публикуется" : "Публикуется";
+      case "avitoStatus": {
+        const mod = params.moderation || {};
+        const st = String(params.avitoStatus || mod.status || "").trim();
+        if (st) return st;
+        if (mod.published === true) return "Активно";
+        if (mod.published === false) return "Не опубликовано";
+        return "";
+      }
       default: return "";
     }
   };
 
   // Filterable columns
-  const filterableCols = ["storeCategory", "category", "adType", "goodsType", "promo", "address", "managerName", "contactPhone", "email", "companyName"];
+  const filterableCols = ["storeCategory", "category", "adType", "goodsType", "promo", "address", "managerName", "contactPhone", "email", "companyName", "publish", "avitoStatus"];
   // Sortable columns
-  const sortableCols = ["title", "price", "storeCategory", "category"];
+  const sortableCols = ["title", "price", "storeCategory", "category", "publish", "avitoStatus"];
 
   // Pre-filter: search + price
   const preFiltered = feedProducts.filter((fp) => {
@@ -595,6 +606,14 @@ function AvitoFeedTable({
             valA = (paramsA.category || "").toLowerCase();
             valB = (paramsB.category || "").toLowerCase();
             break;
+          case "publish":
+            valA = paramsA.excluded_from_feed === true ? "1_off" : "0_on";
+            valB = paramsB.excluded_from_feed === true ? "1_off" : "0_on";
+            break;
+          case "avitoStatus":
+            valA = String(paramsA.avitoStatus || paramsA.moderation?.status || "").toLowerCase();
+            valB = String(paramsB.avitoStatus || paramsB.moderation?.status || "").toLowerCase();
+            break;
           default:
             return 0;
         }
@@ -646,6 +665,8 @@ function AvitoFeedTable({
   const allCols = [
     { key: "check", label: "", resizable: false },
     { key: "group", label: "Группа", resizable: true },
+    { key: "publish", label: "Публикация", resizable: false },
+    { key: "avitoStatus", label: "Статус Авито", resizable: true },
     { key: "photo", label: "Фото", resizable: false },
     { key: "title", label: "Название", resizable: true },
     { key: "desc", label: "Описание", resizable: true },
@@ -834,6 +855,43 @@ function AvitoFeedTable({
                       />
                     </div>
                   )}
+                  {visibleColKeys.has("publish") && (
+                    <div className="flex-shrink-0 px-2 pt-2 flex items-center justify-center" style={{ width: colWidths.publish }}>
+                      <Switch
+                        checked={!excluded}
+                        title={excluded ? "Включить в выгрузку Авито" : "Снять с выгрузки Авито"}
+                        onCheckedChange={(checked) => {
+                          const newParams = { ...(fp.avito_params || {}), excluded_from_feed: !checked };
+                          onUpdateProductParams(fp.product_id, newParams);
+                        }}
+                      />
+                    </div>
+                  )}
+                  {visibleColKeys.has("avitoStatus") && (() => {
+                    const st = String(params.avitoStatus || modStatus || "").trim();
+                    const checkedAt = params.avitoStatusCheckedAt || params.moderation?.checked_at;
+                    const isBlocked = /block|заблок|откло|reject/i.test(st);
+                    const isRemoved = /remov|удал|снят/i.test(st);
+                    const isActive = st ? /act|опубл/i.test(st) && !isBlocked && !isRemoved : params.moderation?.published === true;
+                    const isNotPublished = !st && params.moderation?.published === false;
+                    const tone =
+                      isBlocked ? "bg-destructive/15 text-destructive border-destructive/30" :
+                      isRemoved ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30" :
+                      isActive ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" :
+                      isNotPublished ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30" :
+                      "bg-muted text-muted-foreground border-muted-foreground/20";
+                    const label = st || (isActive ? "Активно" : isNotPublished ? "Не опубл." : "—");
+                    return (
+                      <div className="flex-shrink-0 px-1.5 pt-2" style={{ width: colWidths.avitoStatus }}>
+                        <span
+                          className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border ${tone} max-w-full truncate`}
+                          title={checkedAt ? `Статус Авито: ${label}\nПроверено: ${new Date(checkedAt).toLocaleString("ru-RU")}` : `Статус Авито: ${label}`}
+                        >
+                          {label}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   <div className="flex-shrink-0 px-1 py-1 cursor-pointer" style={{ width: colWidths.photo }} onClick={() => setEditingImageProduct({ id: product.id, name: product.name, images: product.images || [] })}>
                     {imageUrl ? (
                       <img src={imageUrl} alt="" className="w-9 h-9 rounded object-cover hover:ring-2 hover:ring-primary transition-all" />
@@ -1242,6 +1300,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [connecting, setConnecting] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [fetchingErrors, setFetchingErrors] = useState(false);
+  const [syncingStatuses, setSyncingStatuses] = useState(false);
   const [importingErrors, setImportingErrors] = useState(false);
   const errorsFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1766,6 +1825,26 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
       toast({ title: "Ошибка загрузки отчёта", description: err.message, variant: "destructive" });
     } finally { setFetchingErrors(false); }
   };
+
+  const handleSyncItemsStatus = async () => {
+    if (!storeId) return;
+    setSyncingStatuses(true);
+    try {
+      const data = await callAvitoApi({ action: "sync_items_status", store_id: storeId });
+      if (data?.success === false) {
+        toast({ title: "Авито недоступен", description: data?.message || "Не удалось получить статусы объявлений.", variant: "destructive" });
+        return;
+      }
+      await avitoFeed?.refetch?.();
+      toast({
+        title: "Статусы Авито обновлены",
+        description: `Всего на Авито: ${data.total_items ?? 0}. Сопоставлено: ${data.matched ?? 0}. Заблокировано: ${data.blocked ?? 0}. Удалено/снято: ${data.removed ?? 0}.`,
+      });
+    } catch (err: any) {
+      toast({ title: "Ошибка получения статусов", description: err.message, variant: "destructive" });
+    } finally { setSyncingStatuses(false); }
+  };
+
 
   const detectAvitoField = (text: string): string | undefined => {
     const t = text.toLowerCase();
@@ -3339,6 +3418,17 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                       <div className="flex gap-1.5 ml-auto items-center flex-wrap">
                         <Button
                           size="sm"
+                          variant="outline"
+                          className="h-6 text-[10px] gap-1"
+                          onClick={handleSyncItemsStatus}
+                          disabled={syncingStatuses || !isConnected}
+                          title="Запросить актуальные статусы (активно/заблокировано/снято) через API Авито"
+                        >
+                          {syncingStatuses ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                          Статусы Авито
+                        </Button>
+                        <Button
+                          size="sm"
                           variant={hideInternalCols ? "default" : "outline"}
                           className="h-6 text-[10px] gap-1"
                           onClick={() => setHideInternalCols(v => !v)}
@@ -3491,6 +3581,12 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                   <Button size="default" variant="outline" className="h-9 px-4" onClick={handleFetchAutoloadErrors} disabled={fetchingErrors}>
                     {fetchingErrors ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                     Обновить с Авито
+                  </Button>
+                )}
+                {isConnected && (
+                  <Button size="default" variant="outline" className="h-9 px-4" onClick={handleSyncItemsStatus} disabled={syncingStatuses} title="Запросить актуальные статусы (активно/заблокировано/снято) через API Авито">
+                    {syncingStatuses ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                    Статусы объявлений
                   </Button>
                 )}
               </div>
