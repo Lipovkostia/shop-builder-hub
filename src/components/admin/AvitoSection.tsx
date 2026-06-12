@@ -665,6 +665,8 @@ function AvitoFeedTable({
   const allCols = [
     { key: "check", label: "", resizable: false },
     { key: "group", label: "Группа", resizable: true },
+    { key: "publish", label: "Публикация", resizable: false },
+    { key: "avitoStatus", label: "Статус Авито", resizable: true },
     { key: "photo", label: "Фото", resizable: false },
     { key: "title", label: "Название", resizable: true },
     { key: "desc", label: "Описание", resizable: true },
