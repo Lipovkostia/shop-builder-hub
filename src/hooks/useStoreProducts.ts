@@ -292,6 +292,18 @@ export function useStoreProducts(storeId: string | null) {
           );
         }
 
+        // Verify the update actually applied — RLS UPDATE policies can deny
+        // silently (0 rows affected, no error) when the user can SELECT but
+        // not UPDATE. Detect that by comparing key fields we tried to write.
+        if (
+          updates.images !== undefined &&
+          JSON.stringify(updatedProduct.images || []) !== JSON.stringify(updates.images)
+        ) {
+          throw new Error(
+            "Изменения не сохранились. Возможно, нет прав на редактирование товара."
+          );
+        }
+
         // Update local state with the returned data (and realtime will keep everything else in sync)
         setProducts((prev) =>
           prev.map((p) => (p.id === productId ? updatedProduct : p))
