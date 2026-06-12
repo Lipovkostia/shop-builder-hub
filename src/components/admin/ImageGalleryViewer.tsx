@@ -260,24 +260,24 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
             className="z-[100]"
             onCloseAutoFocus={(e) => e.preventDefault()}
           >
-            <DropdownMenuItem onSelect={(e) => {
-              e.preventDefault();
-              setTimeout(() => fileInputRef.current?.click(), 0);
-            }}>
+            <DropdownMenuItem
+              onPointerDown={(e) => { e.preventDefault(); fileInputRef.current?.click(); }}
+              onSelect={(e) => e.preventDefault()}
+            >
               <Upload className="h-4 w-4 mr-2" />
               Загрузить с компьютера
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={(e) => {
-              e.preventDefault();
-              setTimeout(() => fileInputRef.current?.click(), 0);
-            }}>
+            <DropdownMenuItem
+              onPointerDown={(e) => { e.preventDefault(); fileInputRef.current?.click(); }}
+              onSelect={(e) => e.preventDefault()}
+            >
               <ImageIcon className="h-4 w-4 mr-2" />
               Выбрать из медиатеки
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={(e) => {
-              e.preventDefault();
-              setTimeout(() => cameraInputRef.current?.click(), 0);
-            }}>
+            <DropdownMenuItem
+              onPointerDown={(e) => { e.preventDefault(); cameraInputRef.current?.click(); }}
+              onSelect={(e) => e.preventDefault()}
+            >
               <Camera className="h-4 w-4 mr-2" />
               Сделать фото
             </DropdownMenuItem>
