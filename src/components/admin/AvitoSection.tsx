@@ -1826,6 +1826,26 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     } finally { setFetchingErrors(false); }
   };
 
+  const handleSyncItemsStatus = async () => {
+    if (!storeId) return;
+    setSyncingStatuses(true);
+    try {
+      const data = await callAvitoApi({ action: "sync_items_status", store_id: storeId });
+      if (data?.success === false) {
+        toast({ title: "Авито недоступен", description: data?.message || "Не удалось получить статусы объявлений.", variant: "destructive" });
+        return;
+      }
+      await avitoFeed?.refetch?.();
+      toast({
+        title: "Статусы Авито обновлены",
+        description: `Всего на Авито: ${data.total_items ?? 0}. Сопоставлено: ${data.matched ?? 0}. Заблокировано: ${data.blocked ?? 0}. Удалено/снято: ${data.removed ?? 0}.`,
+      });
+    } catch (err: any) {
+      toast({ title: "Ошибка получения статусов", description: err.message, variant: "destructive" });
+    } finally { setSyncingStatuses(false); }
+  };
+
+
   const detectAvitoField = (text: string): string | undefined => {
     const t = text.toLowerCase();
     if (/назван|заголов|title/.test(t)) return "title";
