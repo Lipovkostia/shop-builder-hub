@@ -3572,6 +3572,12 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     Обновить с Авито
                   </Button>
                 )}
+                {isConnected && (
+                  <Button size="default" variant="outline" className="h-9 px-4" onClick={handleSyncItemsStatus} disabled={syncingStatuses} title="Запросить актуальные статусы (активно/заблокировано/снято) через API Авито">
+                    {syncingStatuses ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                    Статусы объявлений
+                  </Button>
+                )}
               </div>
             </div>
           </Card>
