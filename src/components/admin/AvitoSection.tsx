@@ -203,12 +203,13 @@ function InlineCell({ value, onChange, placeholder, maxLength, className = "", t
 }
 // Avito Feed Table with resizable columns
 const AVITO_COL_STORAGE_KEY = "avito_feed_col_widths";
-const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, group: 90, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, promoAuto: 140, cpcBid: 80, address: 120, avitoId: 110, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
+const DEFAULT_COL_WIDTHS: Record<string, number> = { check: 36, group: 90, publish: 72, avitoStatus: 130, photo: 48, title: 180, desc: 260, price: 80, storeCategory: 120, category: 130, goodsType: 130, adType: 130, promo: 100, promoManual: 140, promoAuto: 140, cpcBid: 80, address: 120, avitoId: 110, avitoNumber: 100, managerName: 120, contactPhone: 110, email: 120, companyName: 120, imgs: 50, actions: 60 };
 
 // Column classification: "export" = goes into Avito XLSX/ZIP, "internal" = only for filtering/grouping
 type ColKind = "export" | "internal" | "system";
 const COL_KIND: Record<string, ColKind> = {
   check: "system", photo: "system", imgs: "system", actions: "system",
+  publish: "system", avitoStatus: "system",
   group: "internal", storeCategory: "internal",
   title: "export", desc: "export", price: "export", category: "export",
   adType: "export", goodsType: "export", promo: "export", promoManual: "export",
