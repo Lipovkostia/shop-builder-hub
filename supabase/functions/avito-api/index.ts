@@ -319,6 +319,7 @@ Deno.serve(async (req) => {
       }
 
       const errorsByAdId = new Map<string, any>();
+      const avitoIdByAdId = new Map<string, string>();
       const checkedAt = new Date().toISOString();
       let inspected = 0;
 
@@ -337,6 +338,8 @@ Deno.serve(async (req) => {
           for (const it of items) {
             const adId = String(it.ad_id || it.adId || it.ad_external_id || it.external_id || "");
             if (!adId) continue;
+            const avitoId = String(it.avito_id || it.avitoId || it.id || "");
+            if (avitoId && !avitoIdByAdId.has(adId)) avitoIdByAdId.set(adId, avitoId);
             const rawMsgs: any[] = it.messages || it.errors || it.problems || [];
             const messages = rawMsgs
               .map((m) => ({ type: String(m.type || m.code || m.level || "error"), text: String(m.text || m.description || m.message || m.title || "").trim() }))
@@ -349,7 +352,7 @@ Deno.serve(async (req) => {
             const hasIssue = messages.length > 0 || /block|reject|error|fail|problem|moderation/i.test(status);
             if (!hasIssue) continue;
             if (!errorsByAdId.has(adId)) {
-              errorsByAdId.set(adId, { status, messages, avito_id: it.avito_id || it.avitoId || it.id, report_id: reportId, checked_at: checkedAt, section: it.section, url: it.url || it.avito_url });
+              errorsByAdId.set(adId, { status, messages, avito_id: avitoId, report_id: reportId, checked_at: checkedAt, section: it.section, url: it.url || it.avito_url });
             }
           }
           if (items.length < 100) break;
@@ -371,18 +374,20 @@ Deno.serve(async (req) => {
         const adId = String(row.product_id).substring(0, 8);
         const params = (row.avito_params && typeof row.avito_params === "object") ? row.avito_params as any : {};
         const moderation = errorsByAdId.get(adId) || null;
+        const avitoIdFromReport = avitoIdByAdId.get(adId);
         const prev = params.moderation || null;
-        const same = prev && moderation && prev.status === moderation.status
+        const sameMod = prev && moderation && prev.status === moderation.status
           && JSON.stringify(prev.messages || []) === JSON.stringify(moderation.messages);
-        if (moderation) {
-          if (same) continue;
-          await supabase.from("avito_feed_products").update({ avito_params: { ...params, moderation } }).eq("id", row.id);
-          updated++;
-        } else if (prev) {
-          const newParams = { ...params }; delete newParams.moderation;
-          await supabase.from("avito_feed_products").update({ avito_params: newParams }).eq("id", row.id);
-        }
+        const sameAvitoNum = !avitoIdFromReport || params.avitoNumber === avitoIdFromReport;
+        if (sameMod && sameAvitoNum && (moderation || !prev)) continue;
+        const newParams: any = { ...params };
+        if (avitoIdFromReport) newParams.avitoNumber = avitoIdFromReport;
+        if (moderation) newParams.moderation = moderation;
+        else if (prev) delete newParams.moderation;
+        await supabase.from("avito_feed_products").update({ avito_params: newParams }).eq("id", row.id);
+        updated++;
       }
+
       return new Response(JSON.stringify({ success: true, updated, with_errors: errorsByAdId.size, inspected, reports: reports.length, checked_at: checkedAt }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
