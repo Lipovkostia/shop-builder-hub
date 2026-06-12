@@ -223,24 +223,36 @@ function ProductCard({
       const startIndex = images.length;
       const newUrls = await uploadFilesToStorage(filesArray, product.id, startIndex);
       
-      if (newUrls.length > 0) {
+      if (newUrls.length === 0) {
+        toast({
+          title: "Не удалось загрузить фото",
+          description: "Файлы не загрузились в хранилище. Проверьте подключение и попробуйте снова.",
+          variant: "destructive",
+        });
+      } else {
         const updatedImages = [...images, ...newUrls];
-        // onSave returns null on error, so we need to check
         const result = await onSave(product.id, { images: updatedImages });
-        if (result !== undefined) {
+        if (result) {
           onImagesUpdate(product.id, updatedImages);
           toast({
             title: "Изображения загружены",
-            description: `Добавлено ${newUrls.length} фото`,
+            description: newUrls.length < filesArray.length
+              ? `Добавлено ${newUrls.length} из ${filesArray.length} фото`
+              : `Добавлено ${newUrls.length} фото`,
+          });
+        } else {
+          toast({
+            title: "Фото загружено, но не сохранено",
+            description: "Не удалось обновить товар. Возможно, нет прав на редактирование.",
+            variant: "destructive",
           });
         }
-        // If result is undefined/null, updateProduct already showed an error toast
       }
     } catch (error) {
       console.error("Error uploading images:", error);
       toast({
         title: "Ошибка загрузки",
-        description: "Не удалось загрузить изображения",
+        description: (error as Error)?.message || "Не удалось загрузить изображения",
         variant: "destructive",
       });
     } finally {
