@@ -606,6 +606,14 @@ function AvitoFeedTable({
             valA = (paramsA.category || "").toLowerCase();
             valB = (paramsB.category || "").toLowerCase();
             break;
+          case "publish":
+            valA = paramsA.excluded_from_feed === true ? "1_off" : "0_on";
+            valB = paramsB.excluded_from_feed === true ? "1_off" : "0_on";
+            break;
+          case "avitoStatus":
+            valA = String(paramsA.avitoStatus || paramsA.moderation?.status || "").toLowerCase();
+            valB = String(paramsB.avitoStatus || paramsB.moderation?.status || "").toLowerCase();
+            break;
           default:
             return 0;
         }
