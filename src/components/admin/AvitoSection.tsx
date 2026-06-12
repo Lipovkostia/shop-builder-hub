@@ -3418,6 +3418,17 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                       <div className="flex gap-1.5 ml-auto items-center flex-wrap">
                         <Button
                           size="sm"
+                          variant="outline"
+                          className="h-6 text-[10px] gap-1"
+                          onClick={handleSyncItemsStatus}
+                          disabled={syncingStatuses || !isConnected}
+                          title="Запросить актуальные статусы (активно/заблокировано/снято) через API Авито"
+                        >
+                          {syncingStatuses ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                          Статусы Авито
+                        </Button>
+                        <Button
+                          size="sm"
                           variant={hideInternalCols ? "default" : "outline"}
                           className="h-6 text-[10px] gap-1"
                           onClick={() => setHideInternalCols(v => !v)}
