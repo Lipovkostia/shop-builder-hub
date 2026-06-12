@@ -608,6 +608,107 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    if (action === "sync_items_status") {
+      const account = await resolveAccount(supabase, account_id, store_id);
+      if (!account) throw new Error("Avito аккаунт не найден. Сначала подключите Авито.");
+      if (!account.avito_user_id) throw new Error("avito_user_id отсутствует — переподключите Авито.");
+      const token = await getAvitoToken(account.client_id, account.client_secret);
+
+      // Fetch items across all statuses
+      const STATUSES = ["active", "removed", "old", "blocked"];
+      const byItemId = new Map<string, { status: string; title: string; url: string }>();
+      for (const st of STATUSES) {
+        let page = 1; const perPage = 100;
+        while (true) {
+          const u = `${AVITO_API_BASE}/core/v1/items?per_page=${perPage}&page=${page}&status=${st}`;
+          const r = await fetch(u, { headers: { Authorization: `Bearer ${token}` } });
+          if (!r.ok) { console.error(`items[${st}] failed [${r.status}]: ${(await r.text()).slice(0,200)}`); break; }
+          const j = await r.json();
+          const res = (j.resources || []) as any[];
+          for (const it of res) {
+            const id = String(it.id || it.item_id || "");
+            if (!id) continue;
+            byItemId.set(id, {
+              status: String(it.status || st),
+              title: String(it.title || it.name || ""),
+              url: String(it.url || ""),
+            });
+          }
+          if (res.length < perPage) break;
+          page++; if (page > 100) break;
+        }
+      }
+
+      const { data: feedRows, error: fErr } = await supabase
+        .from("avito_feed_products")
+        .select("id, product_id, avito_params")
+        .eq("store_id", account.store_id)
+        .eq("account_id", account.id);
+      if (fErr) throw fErr;
+
+      const checkedAt = new Date().toISOString();
+      let matched = 0, blocked = 0, removed = 0, active = 0;
+      const STATUS_LABEL: Record<string, string> = {
+        active: "Активно",
+        removed: "Снято с публикации",
+        old: "Завершено",
+        blocked: "Заблокировано",
+      };
+      for (const row of feedRows || []) {
+        const params: any = (row.avito_params && typeof row.avito_params === "object") ? row.avito_params : {};
+        const an = String(params.avitoNumber || params.AvitoId || "").trim();
+        if (!an) continue;
+        const info = byItemId.get(an);
+        if (!info) {
+          // Item not found among any status — clear known status fields
+          if (params.avitoStatus || params.moderation?.published != null) {
+            const newParams = { ...params };
+            delete newParams.avitoStatus;
+            delete newParams.avitoStatusCheckedAt;
+            newParams.avitoStatusUnknown = true;
+            await supabase.from("avito_feed_products").update({ avito_params: newParams }).eq("id", row.id);
+          }
+          continue;
+        }
+        matched++;
+        const rawStatus = info.status;
+        const label = STATUS_LABEL[rawStatus] || rawStatus;
+        const isActive = rawStatus === "active";
+        if (rawStatus === "blocked") blocked++;
+        else if (rawStatus === "removed" || rawStatus === "old") removed++;
+        else if (isActive) active++;
+
+        const prevMod = (params.moderation && typeof params.moderation === "object") ? params.moderation : {};
+        const newMod = {
+          ...prevMod,
+          status: label,
+          published: isActive,
+          checked_at: checkedAt,
+          url: info.url || prevMod.url,
+          avito_id: an,
+        };
+        const newParams = {
+          ...params,
+          avitoStatus: label,
+          avitoStatusRaw: rawStatus,
+          avitoStatusCheckedAt: checkedAt,
+          avitoStatusUnknown: false,
+          moderation: newMod,
+        };
+        await supabase.from("avito_feed_products").update({ avito_params: newParams }).eq("id", row.id);
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        total_items: byItemId.size,
+        matched,
+        active,
+        blocked,
+        removed,
+        checked_at: checkedAt,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     if (action === "disconnect") {
       // Delete a specific account (or default-for-store if account_id absent)
       const account = await resolveAccount(supabase, account_id, store_id);
