@@ -1324,35 +1324,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [groupsCollapsed, setGroupsCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem("avito_groups_collapsed") === "1"; } catch { return false; }
   });
-  const [bulkCollapsed, setBulkCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem("avito_bulk_collapsed") === "1"; } catch { return false; }
-  });
-  const [bulkWidth, setBulkWidth] = useState<number>(() => {
-    try { const v = parseInt(localStorage.getItem("avito_bulk_width") || "", 10); return v >= 280 && v <= 560 ? v : 320; } catch { return 320; }
-  });
+  // Bulk values panel is now a side Sheet (drawer) overlay, not a column
+  const [bulkSheetOpen, setBulkSheetOpen] = useState<boolean>(false);
   useEffect(() => { try { localStorage.setItem("avito_groups_collapsed", groupsCollapsed ? "1" : "0"); } catch {} }, [groupsCollapsed]);
-  useEffect(() => { try { localStorage.setItem("avito_bulk_collapsed", bulkCollapsed ? "1" : "0"); } catch {} }, [bulkCollapsed]);
-  useEffect(() => { try { localStorage.setItem("avito_bulk_width", String(bulkWidth)); } catch {} }, [bulkWidth]);
-  const bulkResizingRef = useRef<{ startX: number; startW: number } | null>(null);
-  const onBulkResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    bulkResizingRef.current = { startX: e.clientX, startW: bulkWidth };
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-    const onMove = (ev: MouseEvent) => {
-      const s = bulkResizingRef.current; if (!s) return;
-      const next = Math.max(280, Math.min(560, s.startW + (ev.clientX - s.startX)));
-      setBulkWidth(next);
-    };
-    const onUp = () => {
-      bulkResizingRef.current = null;
-      document.body.style.cursor = ""; document.body.style.userSelect = "";
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }, [bulkWidth]);
+  // Auto-open the Sheet the first time the user selects rows (one-shot per session, dismissible)
+  const bulkAutoOpenedRef = useRef(false);
 
   // Stats tab
   const todayStr = new Date().toISOString().slice(0, 10);
