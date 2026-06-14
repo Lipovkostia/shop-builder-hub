@@ -3279,42 +3279,38 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     </CollapsibleContent>
                   </Collapsible>
 
-                  {/* Export Section */}
-                  {avitoFeed && avitoFeed.feedProducts.length > 0 && storeId && (
-                    <div className="space-y-2 border-t pt-2">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Экспорт</p>
-                      <div className="space-y-1.5">
-                        <Button size="sm" variant="outline" className="h-7 text-xs w-full" onClick={() => importFileRef.current?.click()} disabled={importingExcel}>
-                          {importingExcel ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />}
-                          {importingExcel ? "Импорт..." : "Загрузить Excel"}
-                        </Button>
-                        <input ref={importFileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
-                        <Button size="sm" className="h-7 text-xs w-full" onClick={handleExportExcelOnly} disabled={exportingExcel}>
-                          {exportingExcel ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
-                          {exportingExcel ? "Подготовка..." : "Скачать Excel"}
-                        </Button>
-                        <Button size="sm" className="h-7 text-xs w-full" onClick={handleExportExcel} disabled={exporting}>
-                          {exporting ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
-                          {exporting ? "ZIP..." : "Скачать ZIP с фото"}
-                        </Button>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-[9px] text-muted-foreground">XML-фид:</p>
-                        <div className="flex gap-1">
-                          {(() => {
-                            const urlStr = `https://${projectId}.supabase.co/functions/v1/avito-feed?store_id=${storeId}${activeAccountId ? `&account=${activeAccountId}` : ""}`;
-                            return (
-                              <Button size="sm" variant="outline" className="h-6 text-[10px] w-full" onClick={() => { navigator.clipboard.writeText(urlStr); toast({ title: "Ссылка скопирована" }); }}>
-                                Копировать ссылку фида
-                              </Button>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-                  )}
                   </div>
                 </ScrollArea>
+                {/* Sticky footer — критические действия всегда видны */}
+                {avitoFeed && avitoFeed.feedProducts.length > 0 && storeId && (
+                  <div className="border-t bg-background flex-shrink-0 px-3 py-2 space-y-1.5" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => importFileRef.current?.click()} disabled={importingExcel}>
+                        {importingExcel ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
+                        {importingExcel ? "Импорт..." : "Загрузить Excel"}
+                      </Button>
+                      <input ref={importFileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
+                      <Button size="sm" className="h-8 text-xs" onClick={handleExportExcelOnly} disabled={exportingExcel}>
+                        {exportingExcel ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
+                        Скачать Excel
+                      </Button>
+                      <Button size="sm" variant="secondary" className="h-8 text-xs" onClick={handleExportExcel} disabled={exporting}>
+                        {exporting ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
+                        ZIP с фото
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => {
+                        const urlStr = `https://${projectId}.supabase.co/functions/v1/avito-feed?store_id=${storeId}${activeAccountId ? `&account=${activeAccountId}` : ""}`;
+                        navigator.clipboard.writeText(urlStr);
+                        toast({ title: "XML-ссылка скопирована" });
+                      }}>
+                        <Link2 className="h-3 w-3 mr-1" /> XML-ссылка
+                      </Button>
+                    </div>
+                    <Button size="sm" variant="ghost" className="h-7 text-[11px] w-full" onClick={() => { avitoFeed?.saveDefaults(localDefaults); toast({ title: "Настройки сохранены" }); }}>
+                      <Save className="h-3 w-3 mr-1" /> Сохранить настройки
+                    </Button>
+                  </div>
+                )}
               </SheetContent>
             </Sheet>
 
