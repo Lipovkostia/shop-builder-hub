@@ -1328,7 +1328,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     try { return localStorage.getItem("avito_bulk_collapsed") === "1"; } catch { return false; }
   });
   const [bulkWidth, setBulkWidth] = useState<number>(() => {
-    try { const v = parseInt(localStorage.getItem("avito_bulk_width") || "", 10); return v >= 220 && v <= 560 ? v : 300; } catch { return 300; }
+    try { const v = parseInt(localStorage.getItem("avito_bulk_width") || "", 10); return v >= 280 && v <= 560 ? v : 320; } catch { return 320; }
   });
   useEffect(() => { try { localStorage.setItem("avito_groups_collapsed", groupsCollapsed ? "1" : "0"); } catch {} }, [groupsCollapsed]);
   useEffect(() => { try { localStorage.setItem("avito_bulk_collapsed", bulkCollapsed ? "1" : "0"); } catch {} }, [bulkCollapsed]);
