@@ -1329,6 +1329,12 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   useEffect(() => { try { localStorage.setItem("avito_groups_collapsed", groupsCollapsed ? "1" : "0"); } catch {} }, [groupsCollapsed]);
   // Auto-open the Sheet the first time the user selects rows (one-shot per session, dismissible)
   const bulkAutoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (selectedFeedProducts.size > 0 && !bulkAutoOpenedRef.current && !bulkSheetOpen) {
+      bulkAutoOpenedRef.current = true;
+      setBulkSheetOpen(true);
+    }
+  }, [selectedFeedProducts.size, bulkSheetOpen]);
 
   // Stats tab
   const todayStr = new Date().toISOString().slice(0, 10);
