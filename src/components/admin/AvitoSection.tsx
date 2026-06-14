@@ -1324,35 +1324,17 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
   const [groupsCollapsed, setGroupsCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem("avito_groups_collapsed") === "1"; } catch { return false; }
   });
-  const [bulkCollapsed, setBulkCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem("avito_bulk_collapsed") === "1"; } catch { return false; }
-  });
-  const [bulkWidth, setBulkWidth] = useState<number>(() => {
-    try { const v = parseInt(localStorage.getItem("avito_bulk_width") || "", 10); return v >= 280 && v <= 560 ? v : 320; } catch { return 320; }
-  });
+  // Bulk values panel is now a side Sheet (drawer) overlay, not a column
+  const [bulkSheetOpen, setBulkSheetOpen] = useState<boolean>(false);
   useEffect(() => { try { localStorage.setItem("avito_groups_collapsed", groupsCollapsed ? "1" : "0"); } catch {} }, [groupsCollapsed]);
-  useEffect(() => { try { localStorage.setItem("avito_bulk_collapsed", bulkCollapsed ? "1" : "0"); } catch {} }, [bulkCollapsed]);
-  useEffect(() => { try { localStorage.setItem("avito_bulk_width", String(bulkWidth)); } catch {} }, [bulkWidth]);
-  const bulkResizingRef = useRef<{ startX: number; startW: number } | null>(null);
-  const onBulkResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    bulkResizingRef.current = { startX: e.clientX, startW: bulkWidth };
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-    const onMove = (ev: MouseEvent) => {
-      const s = bulkResizingRef.current; if (!s) return;
-      const next = Math.max(280, Math.min(560, s.startW + (ev.clientX - s.startX)));
-      setBulkWidth(next);
-    };
-    const onUp = () => {
-      bulkResizingRef.current = null;
-      document.body.style.cursor = ""; document.body.style.userSelect = "";
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }, [bulkWidth]);
+  // Auto-open the Sheet the first time the user selects rows (one-shot per session, dismissible)
+  const bulkAutoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (selectedFeedProducts.size > 0 && !bulkAutoOpenedRef.current && !bulkSheetOpen) {
+      bulkAutoOpenedRef.current = true;
+      setBulkSheetOpen(true);
+    }
+  }, [selectedFeedProducts.size, bulkSheetOpen]);
 
   // Stats tab
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -2716,29 +2698,24 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                 onToggleCollapse={() => setGroupsCollapsed(v => !v)}
               />
             )}
-            {/* Left Sidebar - Settings, Filters, Bulk Actions (resizable + collapsible) */}
-            {bulkCollapsed ? (
-              <div className="w-9 min-w-9 flex-shrink-0 border-r bg-muted/10 flex flex-col items-center py-2 gap-1">
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setBulkCollapsed(false)} title="Развернуть панель действий">
-                  <PanelRightOpen className="h-4 w-4" />
-                </Button>
-                <div className="rotate-180 [writing-mode:vertical-rl] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mt-2">
-                  Поиск · Массовые значения
-                </div>
-              </div>
-            ) : (
-            <div
-              className="flex-shrink-0 border-r bg-muted/10 relative h-full flex flex-col"
-              style={{ width: bulkWidth, minWidth: bulkWidth }}
-            >
-              <div className="absolute top-1 right-1 z-10">
-                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setBulkCollapsed(true)} title="Свернуть">
-                  <PanelRightClose className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              <ScrollArea className="h-full">
+            {/* Bulk values panel — outside the column row, rendered as a side Sheet over the table */}
+            <Sheet open={bulkSheetOpen} onOpenChange={setBulkSheetOpen} modal={false}>
+              <SheetContent
+                side="right"
+                className="w-full sm:max-w-[480px] p-0 flex flex-col gap-0"
+                onInteractOutside={(e) => e.preventDefault()}
+              >
+                <SheetHeader className="px-4 py-3 border-b flex-shrink-0">
+                  <SheetTitle className="text-sm flex items-center gap-2">
+                    Массовые значения
+                    {selectedFeedProducts.size > 0 && (
+                      <Badge variant="secondary" className="text-[10px]">{selectedFeedProducts.size} выбрано</Badge>
+                    )}
+                  </SheetTitle>
+                </SheetHeader>
+                <ScrollArea className="flex-1 min-h-0">
+                  <div className="p-3 space-y-3">
 
-                <div className="p-3 space-y-3">
 
                   {/* Search & Price Filter */}
                   {avitoFeed && avitoFeed.feedProducts.length > 0 && (
@@ -3336,18 +3313,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                       </div>
                     </div>
                   )}
-                </div>
-              </ScrollArea>
-            </div>
-            )}
-            {/* Drag handle for resizing bulk panel */}
-            {!bulkCollapsed && (
-              <div
-                onMouseDown={onBulkResizeStart}
-                className="w-1.5 cursor-col-resize bg-border/40 hover:bg-primary/50 active:bg-primary transition-colors flex-shrink-0"
-                title="Перетащите, чтобы изменить ширину"
-              />
-            )}
+                  </div>
+                </ScrollArea>
+              </SheetContent>
+            </Sheet>
+
 
             {/* Right Area - Table */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -3416,6 +3386,19 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                           : `Показано: ${groupFilteredFeed.length} из ${avitoFeed.feedProducts.length}`}
                       </span>
                       <div className="flex gap-1.5 ml-auto items-center flex-wrap">
+                        <Button
+                          size="sm"
+                          variant={bulkSheetOpen ? "default" : "outline"}
+                          className="h-6 text-[10px] gap-1"
+                          onClick={() => setBulkSheetOpen(v => !v)}
+                          title="Открыть панель массовых значений, поиска и экспорта"
+                        >
+                          <Settings className="h-3 w-3" />
+                          Массовые значения
+                          {selectedFeedProducts.size > 0 && (
+                            <Badge variant="secondary" className="ml-0.5 h-3.5 px-1 text-[9px]">{selectedFeedProducts.size}</Badge>
+                          )}
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
