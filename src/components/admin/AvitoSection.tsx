@@ -2728,7 +2728,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
               </div>
             ) : (
             <div
-              className="flex-shrink-0 border-r overflow-hidden bg-muted/10 relative"
+              className="flex-shrink-0 border-r bg-muted/10 relative h-full flex flex-col"
               style={{ width: bulkWidth, minWidth: bulkWidth }}
             >
               <div className="absolute top-1 right-1 z-10">
