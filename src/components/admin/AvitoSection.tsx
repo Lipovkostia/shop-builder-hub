@@ -3307,18 +3307,11 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                       </div>
                     </div>
                   )}
-                </div>
-              </ScrollArea>
-            </div>
-            )}
-            {/* Drag handle for resizing bulk panel */}
-            {!bulkCollapsed && (
-              <div
-                onMouseDown={onBulkResizeStart}
-                className="w-1.5 cursor-col-resize bg-border/40 hover:bg-primary/50 active:bg-primary transition-colors flex-shrink-0"
-                title="Перетащите, чтобы изменить ширину"
-              />
-            )}
+                  </div>
+                </ScrollArea>
+              </SheetContent>
+            </Sheet>
+
 
             {/* Right Area - Table */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
