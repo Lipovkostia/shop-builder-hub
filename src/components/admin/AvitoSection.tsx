@@ -2702,10 +2702,10 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
             <Sheet open={bulkSheetOpen} onOpenChange={setBulkSheetOpen} modal={false}>
               <SheetContent
                 side="right"
-                className="w-full sm:max-w-[480px] p-0 flex flex-col gap-0"
+                className="w-[min(520px,100vw)] sm:max-w-[520px] p-0 gap-0 flex flex-col h-[100dvh] max-h-[100dvh] overflow-hidden"
                 onInteractOutside={(e) => e.preventDefault()}
               >
-                <SheetHeader className="px-4 py-3 border-b flex-shrink-0">
+                <SheetHeader className="px-4 py-3 border-b flex-shrink-0 pr-10">
                   <SheetTitle className="text-sm flex items-center gap-2">
                     Массовые значения
                     {selectedFeedProducts.size > 0 && (
@@ -2713,7 +2713,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                     )}
                   </SheetTitle>
                 </SheetHeader>
-                <ScrollArea className="flex-1 min-h-0">
+                <ScrollArea className="flex-1 min-h-0 [&>[data-radix-scroll-area-viewport]]:max-h-full">
                   <div className="p-3 space-y-3">
 
 
