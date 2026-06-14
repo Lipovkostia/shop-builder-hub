@@ -2692,29 +2692,24 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                 onToggleCollapse={() => setGroupsCollapsed(v => !v)}
               />
             )}
-            {/* Left Sidebar - Settings, Filters, Bulk Actions (resizable + collapsible) */}
-            {bulkCollapsed ? (
-              <div className="w-9 min-w-9 flex-shrink-0 border-r bg-muted/10 flex flex-col items-center py-2 gap-1">
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setBulkCollapsed(false)} title="Развернуть панель действий">
-                  <PanelRightOpen className="h-4 w-4" />
-                </Button>
-                <div className="rotate-180 [writing-mode:vertical-rl] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mt-2">
-                  Поиск · Массовые значения
-                </div>
-              </div>
-            ) : (
-            <div
-              className="flex-shrink-0 border-r bg-muted/10 relative h-full flex flex-col"
-              style={{ width: bulkWidth, minWidth: bulkWidth }}
-            >
-              <div className="absolute top-1 right-1 z-10">
-                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setBulkCollapsed(true)} title="Свернуть">
-                  <PanelRightClose className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              <ScrollArea className="h-full">
+            {/* Bulk values panel — outside the column row, rendered as a side Sheet over the table */}
+            <Sheet open={bulkSheetOpen} onOpenChange={setBulkSheetOpen} modal={false}>
+              <SheetContent
+                side="right"
+                className="w-full sm:max-w-[480px] p-0 flex flex-col gap-0"
+                onInteractOutside={(e) => e.preventDefault()}
+              >
+                <SheetHeader className="px-4 py-3 border-b flex-shrink-0">
+                  <SheetTitle className="text-sm flex items-center gap-2">
+                    Массовые значения
+                    {selectedFeedProducts.size > 0 && (
+                      <Badge variant="secondary" className="text-[10px]">{selectedFeedProducts.size} выбрано</Badge>
+                    )}
+                  </SheetTitle>
+                </SheetHeader>
+                <ScrollArea className="flex-1 min-h-0">
+                  <div className="p-3 space-y-3">
 
-                <div className="p-3 space-y-3">
 
                   {/* Search & Price Filter */}
                   {avitoFeed && avitoFeed.feedProducts.length > 0 && (
