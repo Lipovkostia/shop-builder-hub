@@ -3382,6 +3382,19 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
                       <div className="flex gap-1.5 ml-auto items-center flex-wrap">
                         <Button
                           size="sm"
+                          variant={bulkSheetOpen ? "default" : "outline"}
+                          className="h-6 text-[10px] gap-1"
+                          onClick={() => setBulkSheetOpen(v => !v)}
+                          title="Открыть панель массовых значений, поиска и экспорта"
+                        >
+                          <Settings className="h-3 w-3" />
+                          Массовые значения
+                          {selectedFeedProducts.size > 0 && (
+                            <Badge variant="secondary" className="ml-0.5 h-3.5 px-1 text-[9px]">{selectedFeedProducts.size}</Badge>
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="outline"
                           className="h-6 text-[10px] gap-1"
                           onClick={handleSyncItemsStatus}
