@@ -1328,7 +1328,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     try { return localStorage.getItem("avito_bulk_collapsed") === "1"; } catch { return false; }
   });
   const [bulkWidth, setBulkWidth] = useState<number>(() => {
-    try { const v = parseInt(localStorage.getItem("avito_bulk_width") || "", 10); return v >= 220 && v <= 560 ? v : 300; } catch { return 300; }
+    try { const v = parseInt(localStorage.getItem("avito_bulk_width") || "", 10); return v >= 280 && v <= 560 ? v : 320; } catch { return 320; }
   });
   useEffect(() => { try { localStorage.setItem("avito_groups_collapsed", groupsCollapsed ? "1" : "0"); } catch {} }, [groupsCollapsed]);
   useEffect(() => { try { localStorage.setItem("avito_bulk_collapsed", bulkCollapsed ? "1" : "0"); } catch {} }, [bulkCollapsed]);
@@ -1341,7 +1341,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     document.body.style.userSelect = "none";
     const onMove = (ev: MouseEvent) => {
       const s = bulkResizingRef.current; if (!s) return;
-      const next = Math.max(220, Math.min(560, s.startW + (ev.clientX - s.startX)));
+      const next = Math.max(280, Math.min(560, s.startW + (ev.clientX - s.startX)));
       setBulkWidth(next);
     };
     const onUp = () => {
@@ -2728,7 +2728,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
               </div>
             ) : (
             <div
-              className="flex-shrink-0 border-r overflow-hidden bg-muted/10 relative"
+              className="flex-shrink-0 border-r bg-muted/10 relative h-full flex flex-col"
               style={{ width: bulkWidth, minWidth: bulkWidth }}
             >
               <div className="absolute top-1 right-1 z-10">
