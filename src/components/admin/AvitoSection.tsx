@@ -1341,7 +1341,7 @@ export function AvitoSection({ storeId, products: storeProducts = [], storeCateg
     document.body.style.userSelect = "none";
     const onMove = (ev: MouseEvent) => {
       const s = bulkResizingRef.current; if (!s) return;
-      const next = Math.max(220, Math.min(560, s.startW + (ev.clientX - s.startX)));
+      const next = Math.max(280, Math.min(560, s.startW + (ev.clientX - s.startX)));
       setBulkWidth(next);
     };
     const onUp = () => {
