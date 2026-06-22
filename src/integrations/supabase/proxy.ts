@@ -21,6 +21,9 @@ function rewriteUrl(input: string): string {
   try {
     const url = new URL(input);
     if (url.host !== SUPABASE_HOST) return input;
+    // Не проксируем Storage — прокси не пропускает CORS-заголовок x-upsert,
+    // из-за чего падает загрузка файлов. Идём напрямую в Supabase.
+    if (url.pathname.startsWith("/storage/v1/")) return input;
     const isWs = url.protocol === "ws:" || url.protocol === "wss:";
     const base = isWs ? PROXY_WS_ORIGIN : PROXY_ORIGIN;
     return `${base}/${PROJECT_REF}${url.pathname}${url.search}`;
@@ -28,6 +31,7 @@ function rewriteUrl(input: string): string {
     return input;
   }
 }
+
 
 if (SUPABASE_HOST && PROJECT_REF && typeof window !== "undefined") {
   // fetch
