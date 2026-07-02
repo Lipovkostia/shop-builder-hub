@@ -28,6 +28,9 @@ interface Group {
   active: number;
   productIds: string[];
   isManual: boolean;
+  catalogId: string | null;
+  sourceSite: string | null;
+  sourceUrlPrefix: string | null;
 }
 
 function groupProducts(products: HProduct[]): Group[] {
@@ -39,7 +42,11 @@ function groupProducts(products: HProduct[]): Group[] {
 
     const src = p.source_url || "";
     const m = src.match(/^catalog:([^:]+):/);
+    let catalogId: string | null = null;
+    let sourceUrlPrefix: string | null = null;
     if (m) {
+      catalogId = m[1];
+      sourceUrlPrefix = `catalog:${m[1]}:`;
       key = `catalog:${m[1]}`;
       label = p.source_site || `Прайс-лист ${m[1].slice(0, 8)}`;
       isManual = false;
@@ -58,7 +65,7 @@ function groupProducts(products: HProduct[]): Group[] {
 
     let g = map.get(key);
     if (!g) {
-      g = { key, label, total: 0, active: 0, productIds: [], isManual };
+      g = { key, label, total: 0, active: 0, productIds: [], isManual, catalogId, sourceSite: p.source_site || null, sourceUrlPrefix };
       map.set(key, g);
     }
     g.total += 1;
@@ -86,11 +93,17 @@ export default function ConnectedPriceListsPanel({ products, onChanged }: Props)
       if (!sess?.session) {
         throw new Error("Нет активной сессии. Войдите заново под super_admin.");
       }
-      const { data, error } = await sb
-        .from("homepage_products")
-        .update({ is_active: active })
-        .in("id", g.productIds)
-        .select("id");
+
+      let query = sb.from("homepage_products").update({ is_active: active }).select("id");
+      if (g.sourceUrlPrefix) {
+        query = query.like("source_url", `${g.sourceUrlPrefix}%`);
+      } else if (g.sourceSite) {
+        query = query.eq("source_site", g.sourceSite);
+      } else {
+        query = query.in("id", g.productIds);
+      }
+
+      const { data, error } = await query;
       if (error) {
         const details = [error.message, error.code, (error as any).hint, (error as any).details]
           .filter(Boolean)
@@ -119,7 +132,15 @@ export default function ConnectedPriceListsPanel({ products, onChanged }: Props)
     if (!confirm(`Удалить все ${g.total} товаров прайса «${g.label}» с главной?`)) return;
     setBusy(g.key);
     try {
-      const { error } = await sb.from("homepage_products").delete().in("id", g.productIds);
+      let query = sb.from("homepage_products").delete();
+      if (g.sourceUrlPrefix) {
+        query = query.like("source_url", `${g.sourceUrlPrefix}%`);
+      } else if (g.sourceSite) {
+        query = query.eq("source_site", g.sourceSite);
+      } else {
+        query = query.in("id", g.productIds);
+      }
+      const { error } = await query;
       if (error) throw error;
       toast({ title: "Удалено", description: `${g.label} · ${g.total} товаров` });
       onChanged();

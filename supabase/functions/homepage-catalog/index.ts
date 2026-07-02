@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const [settingsRes, partnersRes, homepageCatsRes] = await Promise.all([
+    const [settingsRes, partnersRes, homepageCatsRes, slidesRes, infoBlocksRes] = await Promise.all([
       supabase
         .from("landing_settings")
         .select("homepage_version, catalog_access_code")
@@ -30,10 +30,22 @@ Deno.serve(async (req) => {
         .select("id, catalog_id, access_code, is_active, sort_order")
         .eq("is_active", true)
         .order("sort_order", { ascending: true }),
+      supabase
+        .from("landing_slides")
+        .select("id, title, image_url, sort_order")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("landing_info_blocks")
+        .select("id, title, description, icon, image_url, sort_order")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true }),
     ]);
 
     const settings = settingsRes.data as any;
     const partnersData = partnersRes.data;
+    const slidesData = slidesRes.data || [];
+    const infoBlocksData = infoBlocksRes.data || [];
     const homepageVersion = settings?.homepage_version || "new";
     const homepageCats = (homepageCatsRes.data || []) as any[];
 
@@ -154,6 +166,8 @@ Deno.serve(async (req) => {
           data: products,
           categories,
           partners: partnersData || [],
+          slides: slidesData,
+          info_blocks: infoBlocksData,
           homepage_version: homepageVersion,
           price_lists: priceLists,
           source: "catalog",
@@ -203,6 +217,8 @@ Deno.serve(async (req) => {
         data: products,
         categories,
         partners: partnersData || [],
+        slides: slidesData,
+        info_blocks: infoBlocksData,
         homepage_version: homepageVersion,
         source: "parsed",
       }),
