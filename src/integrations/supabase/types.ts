@@ -1525,6 +1525,81 @@ export type Database = {
           },
         ]
       }
+      homepage_hero_settings: {
+        Row: {
+          contact_address: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          contact_phone_label: string | null
+          contact_telegram_label: string | null
+          contact_telegram_url: string | null
+          contact_whatsapp_url: string | null
+          created_at: string | null
+          cta_primary_label: string | null
+          cta_primary_url: string | null
+          cta_secondary_label: string | null
+          cta_secondary_url: string | null
+          featured_product_id: string | null
+          hero_badge: string | null
+          hero_image_url: string | null
+          hero_overlay_opacity: number | null
+          hero_subtitle: string | null
+          hero_title: string | null
+          id: string
+          side_blocks: Json | null
+          site_name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          contact_address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          contact_phone_label?: string | null
+          contact_telegram_label?: string | null
+          contact_telegram_url?: string | null
+          contact_whatsapp_url?: string | null
+          created_at?: string | null
+          cta_primary_label?: string | null
+          cta_primary_url?: string | null
+          cta_secondary_label?: string | null
+          cta_secondary_url?: string | null
+          featured_product_id?: string | null
+          hero_badge?: string | null
+          hero_image_url?: string | null
+          hero_overlay_opacity?: number | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          side_blocks?: Json | null
+          site_name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          contact_address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          contact_phone_label?: string | null
+          contact_telegram_label?: string | null
+          contact_telegram_url?: string | null
+          contact_whatsapp_url?: string | null
+          created_at?: string | null
+          cta_primary_label?: string | null
+          cta_primary_url?: string | null
+          cta_secondary_label?: string | null
+          cta_secondary_url?: string | null
+          featured_product_id?: string | null
+          hero_badge?: string | null
+          hero_image_url?: string | null
+          hero_overlay_opacity?: number | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          side_blocks?: Json | null
+          site_name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       homepage_products: {
         Row: {
           category_id: string | null
