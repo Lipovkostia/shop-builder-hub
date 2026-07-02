@@ -174,6 +174,7 @@ export default function IndexNew() {
           setPartners(json.partners || []);
           setSlides(json.slides || []);
           setInfoBlocks(json.info_blocks || []);
+          if (json.hero_settings) setHero({ ...DEFAULT_HERO, ...json.hero_settings });
           setLoading(false);
         }
       }
