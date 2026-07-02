@@ -368,6 +368,7 @@ Deno.serve(async (req) => {
         partners: partnersData || [],
         slides: slidesData,
         info_blocks: infoBlocksData,
+        hero_settings: heroSettings,
         homepage_version: homepageVersion,
         source: "parsed",
       }),
