@@ -16,6 +16,7 @@ import {
   ArrowUp, ArrowDown, EyeOff, Eye, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ConnectedPriceListsPanel from "./ConnectedPriceListsPanel";
 
 interface HCategory {
   id: string;
@@ -151,6 +152,8 @@ export default function HomepageCatalogSection() {
           </div>
         </CardHeader>
       </Card>
+
+      <ConnectedPriceListsPanel products={products} onChanged={load} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
         {/* Categories panel */}

@@ -1394,6 +1394,96 @@ export type Database = {
           },
         ]
       }
+      homepage_catalog_category_excludes: {
+        Row: {
+          category_id: string
+          created_at: string
+          homepage_catalog_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          homepage_catalog_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          homepage_catalog_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homepage_catalog_category_excludes_homepage_catalog_id_fkey"
+            columns: ["homepage_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "homepage_catalogs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homepage_catalog_product_excludes: {
+        Row: {
+          created_at: string
+          homepage_catalog_id: string
+          product_id: string
+        }
+        Insert: {
+          created_at?: string
+          homepage_catalog_id: string
+          product_id: string
+        }
+        Update: {
+          created_at?: string
+          homepage_catalog_id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homepage_catalog_product_excludes_homepage_catalog_id_fkey"
+            columns: ["homepage_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "homepage_catalogs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homepage_catalogs: {
+        Row: {
+          access_code: string
+          catalog_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          access_code: string
+          catalog_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          access_code?: string
+          catalog_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homepage_catalogs_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalogs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       homepage_categories: {
         Row: {
           created_at: string
