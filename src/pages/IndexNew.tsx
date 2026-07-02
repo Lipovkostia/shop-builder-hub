@@ -152,6 +152,7 @@ export default function IndexNew() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [infoBlocks, setInfoBlocks] = useState<InfoBlock[]>([]);
+  const [hero, setHero] = useState<HeroSettings>(DEFAULT_HERO);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
