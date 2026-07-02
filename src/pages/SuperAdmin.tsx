@@ -29,6 +29,7 @@ import LandingInfoBlocksManager from '@/components/admin/LandingInfoBlocksManage
 import HomepageVersionManager from '@/components/admin/HomepageVersionManager';
 import RetailPartnersManager from '@/components/admin/RetailPartnersManager';
 import HomepageCatalogSection from '@/components/admin/HomepageCatalog/HomepageCatalogSection';
+import HomepageHeroManager from '@/components/admin/HomepageHeroManager';
 import HomepageImportFromSellers from '@/components/admin/HomepageCatalog/HomepageImportFromSellers';
 import SuperAdminPhotoExport from '@/components/admin/SuperAdminPhotoExport';
 import SuperAdminProductExport from '@/components/admin/SuperAdminProductExport';
