@@ -156,6 +156,7 @@ const App = () => {
             <TooltipProvider>
               <Toaster />
               <Sonner />
+              <ProxyLogViewer />
               <AppErrorBoundary>
                 <Suspense fallback={<AppLoadingFallback />}>
                   <CustomDomainHandler hostname={hostname} />
