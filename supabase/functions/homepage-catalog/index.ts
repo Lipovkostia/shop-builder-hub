@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
         const rows = (data || []) as any[];
         let productsUpdated = 0;
         for (const row of rows) {
-          const catalogId = row.catalog_id || catalogIdFromBody || await resolveCatalogId(supabase, row.access_code);
+          const catalogId = row.catalog_id || catalogIdFromBody || (await resolveCatalogId(supabase, row.access_code));
           if (!catalogId) continue;
           const result = await updateHomepageProductsBySource(supabase, {
             is_active: isActive,
