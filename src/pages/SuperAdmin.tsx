@@ -1132,7 +1132,17 @@ export default function SuperAdmin() {
 
           {/* Homepage Settings Tab */}
           <TabsContent value="homepage" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Управление главной страницей</CardTitle>
+                <CardDescription>
+                  Здесь собраны блоки, которые формируют презентабельную главную: версия страницы, верхние баннеры, правые баннеры/партнёры и информационные карточки.
+                </CardDescription>
+              </CardHeader>
+            </Card>
             <HomepageVersionManager />
+            <SlidesManager />
+            <LandingInfoBlocksManager />
             <RetailPartnersManager />
           </TabsContent>
 
