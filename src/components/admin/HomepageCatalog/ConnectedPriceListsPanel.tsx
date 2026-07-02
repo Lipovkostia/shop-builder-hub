@@ -8,6 +8,15 @@ import { useToast } from "@/hooks/use-toast";
 import { FileText, Trash2, Loader2, Eye, EyeOff } from "lucide-react";
 
 const sb: any = supabase;
+const FORCED_DISABLED_CATALOG_IDS = new Set(["35121234-2811-4da7-b838-36a43698d5e0"]);
+
+function isForcedDisabledGroup(g: Group) {
+  return !!(
+    (g.catalogId && FORCED_DISABLED_CATALOG_IDS.has(g.catalogId)) ||
+    (g.sourceUrlPrefix && Array.from(FORCED_DISABLED_CATALOG_IDS).some((id) => g.sourceUrlPrefix === `catalog:${id}:`)) ||
+    g.label.toLowerCase().includes("оптовый прайс у2")
+  );
+}
 
 interface HProduct {
   id: string;
@@ -28,6 +37,9 @@ interface Group {
   active: number;
   productIds: string[];
   isManual: boolean;
+  catalogId: string | null;
+  sourceSite: string | null;
+  sourceUrlPrefix: string | null;
 }
 
 function groupProducts(products: HProduct[]): Group[] {
@@ -39,7 +51,11 @@ function groupProducts(products: HProduct[]): Group[] {
 
     const src = p.source_url || "";
     const m = src.match(/^catalog:([^:]+):/);
+    let catalogId: string | null = null;
+    let sourceUrlPrefix: string | null = null;
     if (m) {
+      catalogId = m[1];
+      sourceUrlPrefix = `catalog:${m[1]}:`;
       key = `catalog:${m[1]}`;
       label = p.source_site || `Прайс-лист ${m[1].slice(0, 8)}`;
       isManual = false;
@@ -58,7 +74,7 @@ function groupProducts(products: HProduct[]): Group[] {
 
     let g = map.get(key);
     if (!g) {
-      g = { key, label, total: 0, active: 0, productIds: [], isManual };
+      g = { key, label, total: 0, active: 0, productIds: [], isManual, catalogId, sourceSite: p.source_site || null, sourceUrlPrefix };
       map.set(key, g);
     }
     g.total += 1;
@@ -86,25 +102,35 @@ export default function ConnectedPriceListsPanel({ products, onChanged }: Props)
       if (!sess?.session) {
         throw new Error("Нет активной сессии. Войдите заново под super_admin.");
       }
-      const { data, error } = await sb
-        .from("homepage_products")
-        .update({ is_active: active })
-        .in("id", g.productIds)
-        .select("id");
-      if (error) {
-        const details = [error.message, error.code, (error as any).hint, (error as any).details]
-          .filter(Boolean)
-          .join(" · ");
-        throw new Error(details || "Не удалось обновить");
+
+      if (active && isForcedDisabledGroup(g)) {
+        throw new Error("Оптовый прайс У2 принудительно отключён для главной страницы.");
       }
-      if (!data || data.length === 0) {
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homepage-catalog`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sess.session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "toggle_homepage_products_group",
+          is_active: active,
+          source_url_prefix: g.sourceUrlPrefix,
+          source_site: g.sourceSite,
+          product_ids: g.sourceUrlPrefix || g.sourceSite ? undefined : g.productIds,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+      if (!json.count) {
         throw new Error(
           "0 строк обновлено. Скорее всего у аккаунта нет прав super_admin — войдите под lipovkostia@gmail.com."
         );
       }
       toast({
         title: active ? "Прайс включён" : "Прайс скрыт",
-        description: `${g.label} · ${data.length} товаров`,
+        description: `${g.label} · ${json.count} товаров`,
       });
       onChanged();
     } catch (e: any) {
@@ -119,8 +145,23 @@ export default function ConnectedPriceListsPanel({ products, onChanged }: Props)
     if (!confirm(`Удалить все ${g.total} товаров прайса «${g.label}» с главной?`)) return;
     setBusy(g.key);
     try {
-      const { error } = await sb.from("homepage_products").delete().in("id", g.productIds);
-      if (error) throw error;
+      const { data: sess } = await sb.auth.getSession();
+      if (!sess?.session) throw new Error("Нет активной сессии. Войдите заново под super_admin.");
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homepage-catalog`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sess.session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "remove_homepage_products_group",
+          source_url_prefix: g.sourceUrlPrefix,
+          source_site: g.sourceSite,
+          product_ids: g.sourceUrlPrefix || g.sourceSite ? undefined : g.productIds,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
       toast({ title: "Удалено", description: `${g.label} · ${g.total} товаров` });
       onChanged();
     } catch (e: any) {
@@ -148,6 +189,7 @@ export default function ConnectedPriceListsPanel({ products, onChanged }: Props)
             const allActive = g.active === g.total;
             const noneActive = g.active === 0;
             const isBusy = busy === g.key;
+            const forcedDisabled = isForcedDisabledGroup(g);
             return (
               <div
                 key={g.key}
@@ -183,8 +225,9 @@ export default function ConnectedPriceListsPanel({ products, onChanged }: Props)
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   ) : (
                     <Switch
-                      checked={allActive}
+                      checked={forcedDisabled ? false : allActive}
                       onCheckedChange={(v) => setActive(g, v)}
+                      disabled={forcedDisabled && !allActive}
                       aria-label="Показывать этот прайс"
                     />
                   )}
