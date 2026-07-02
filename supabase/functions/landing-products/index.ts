@@ -5,6 +5,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const FORCED_DISABLED_CATALOG_IDS = new Set(["35121234-2811-4da7-b838-36a43698d5e0"]);
+const FORCED_DISABLED_ACCESS_CODES = new Set(["4fe9c6e8"]);
+
+function isForcedDisabledCatalog(row: { catalog_id?: string | null; access_code?: string | null }) {
+  return !!(
+    (row.catalog_id && FORCED_DISABLED_CATALOG_IDS.has(row.catalog_id)) ||
+    (row.access_code && FORCED_DISABLED_ACCESS_CODES.has(row.access_code))
+  );
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -38,9 +48,10 @@ Deno.serve(async (req) => {
 
     // Build the effective list of price lists to display.
     let priceLists: Array<{ id: string | null; access_code: string }> = [];
-    if (homepageCats && homepageCats.length > 0) {
-      priceLists = homepageCats.map((c: any) => ({ id: c.id, access_code: c.access_code }));
-    } else if (settings?.catalog_access_code) {
+    const activeHomepageCats = ((homepageCats || []) as any[]).filter((c) => !isForcedDisabledCatalog(c));
+    if (activeHomepageCats.length > 0) {
+      priceLists = activeHomepageCats.map((c: any) => ({ id: c.id, access_code: c.access_code }));
+    } else if (settings?.catalog_access_code && !FORCED_DISABLED_ACCESS_CODES.has(settings.catalog_access_code)) {
       priceLists = [{ id: null, access_code: settings.catalog_access_code }];
     }
 
