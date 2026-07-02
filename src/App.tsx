@@ -9,6 +9,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { useStoreBySubdomain } from "@/hooks/useUserStore";
+import { ProxyLogViewer } from "@/components/ProxyLogViewer";
 
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const IndexLegacy = lazy(() => import("./pages/IndexLegacy"));
@@ -155,6 +156,7 @@ const App = () => {
             <TooltipProvider>
               <Toaster />
               <Sonner />
+              <ProxyLogViewer />
               <AppErrorBoundary>
                 <Suspense fallback={<AppLoadingFallback />}>
                   <CustomDomainHandler hostname={hostname} />
@@ -175,6 +177,7 @@ const App = () => {
             <TooltipProvider>
               <Toaster />
               <Sonner />
+              <ProxyLogViewer />
               <BrowserRouter>
                 <AppErrorBoundary>
                   <Suspense fallback={<AppLoadingFallback progress={92} />}>
