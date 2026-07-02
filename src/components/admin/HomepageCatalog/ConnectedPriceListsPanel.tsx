@@ -81,17 +81,34 @@ export default function ConnectedPriceListsPanel({ products, onChanged }: Props)
   const setActive = async (g: Group, active: boolean) => {
     setBusy(g.key);
     try {
-      const { error } = await sb
+      // Проверяем сессию — RLS требует super_admin
+      const { data: sess } = await sb.auth.getSession();
+      if (!sess?.session) {
+        throw new Error("Нет активной сессии. Войдите заново под super_admin.");
+      }
+      const { data, error } = await sb
         .from("homepage_products")
         .update({ is_active: active })
-        .in("id", g.productIds);
-      if (error) throw error;
+        .in("id", g.productIds)
+        .select("id");
+      if (error) {
+        const details = [error.message, error.code, (error as any).hint, (error as any).details]
+          .filter(Boolean)
+          .join(" · ");
+        throw new Error(details || "Не удалось обновить");
+      }
+      if (!data || data.length === 0) {
+        throw new Error(
+          "0 строк обновлено. Скорее всего у аккаунта нет прав super_admin — войдите под lipovkostia@gmail.com."
+        );
+      }
       toast({
         title: active ? "Прайс включён" : "Прайс скрыт",
-        description: `${g.label} · ${g.total} товаров`,
+        description: `${g.label} · ${data.length} товаров`,
       });
       onChanged();
     } catch (e: any) {
+      console.error("[ConnectedPriceListsPanel] setActive failed", e);
       toast({ title: "Ошибка", description: e.message, variant: "destructive" });
     } finally {
       setBusy(null);
