@@ -63,6 +63,54 @@ interface InfoBlock {
   image_url: string | null;
 }
 
+interface SideBlock {
+  id?: string;
+  title?: string;
+  subtitle?: string;
+  image_url?: string | null;
+  url?: string | null;
+}
+
+interface HeroSettings {
+  site_name?: string | null;
+  hero_badge?: string | null;
+  hero_title?: string | null;
+  hero_subtitle?: string | null;
+  hero_image_url?: string | null;
+  hero_overlay_opacity?: number | null;
+  cta_primary_label?: string | null;
+  cta_primary_url?: string | null;
+  cta_secondary_label?: string | null;
+  cta_secondary_url?: string | null;
+  contact_phone?: string | null;
+  contact_phone_label?: string | null;
+  contact_telegram_url?: string | null;
+  contact_telegram_label?: string | null;
+  contact_whatsapp_url?: string | null;
+  contact_email?: string | null;
+  contact_address?: string | null;
+  side_blocks?: SideBlock[] | null;
+}
+
+const DEFAULT_HERO: HeroSettings = {
+  site_name: "9999999999",
+  hero_badge: "Опт, розница и предложения поставщиков",
+  hero_title: "Торговая витрина 9999999999",
+  hero_subtitle:
+    "Собирайте ассортимент, находите поставщиков и переходите к покупке через проверенные розничные точки.",
+  hero_overlay_opacity: 0.55,
+  cta_primary_label: "Смотреть товары",
+  cta_primary_url: "#catalog",
+  cta_secondary_label: "Связаться",
+  cta_secondary_url: "https://t.me/zakaz9999999999_bot",
+  contact_phone: "+79999999999",
+  contact_phone_label: "+7 999 999-99-99",
+  contact_telegram_url: "https://t.me/zakaz9999999999_bot",
+  contact_telegram_label: "Telegram-бот",
+  contact_email: "info@9999999999.ru",
+  side_blocks: [],
+};
+
 const CACHE_KEY = "homepage_catalog_cache_v2";
 const LEGACY_CACHE_KEYS = ["homepage_catalog_cache_v1"];
 const FORCED_DISABLED_CATALOG_IDS = new Set(["35121234-2811-4da7-b838-36a43698d5e0"]);
