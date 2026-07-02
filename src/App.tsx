@@ -176,6 +176,7 @@ const App = () => {
             <TooltipProvider>
               <Toaster />
               <Sonner />
+              <ProxyLogViewer />
               <BrowserRouter>
                 <AppErrorBoundary>
                   <Suspense fallback={<AppLoadingFallback progress={92} />}>
