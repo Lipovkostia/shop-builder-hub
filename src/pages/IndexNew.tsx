@@ -63,7 +63,31 @@ interface InfoBlock {
   image_url: string | null;
 }
 
-const CACHE_KEY = "homepage_catalog_cache_v1";
+const CACHE_KEY = "homepage_catalog_cache_v2";
+const LEGACY_CACHE_KEYS = ["homepage_catalog_cache_v1"];
+const FORCED_DISABLED_CATALOG_IDS = new Set(["35121234-2811-4da7-b838-36a43698d5e0"]);
+const FORCED_DISABLED_ACCESS_CODES = new Set(["4fe9c6e8"]);
+
+function isForcedDisabledHomepageItem(item: any) {
+  const sourceUrl = String(item?.source_url || "");
+  const sourceSite = String(item?.source_site || "").toLowerCase();
+  return !!(
+    FORCED_DISABLED_ACCESS_CODES.has(String(item?.access_code || "")) ||
+    FORCED_DISABLED_CATALOG_IDS.has(String(item?.homepage_catalog_id || "")) ||
+    Array.from(FORCED_DISABLED_CATALOG_IDS).some((id) => sourceUrl.startsWith(`catalog:${id}:`)) ||
+    sourceSite.includes("оптовый прайс у2")
+  );
+}
+
+function normalizeHomepagePayload(json: any) {
+  const disabledAccessCodes = FORCED_DISABLED_ACCESS_CODES;
+  return {
+    ...json,
+    data: (json?.data || []).filter((p: any) => !isForcedDisabledHomepageItem(p)),
+    categories: (json?.categories || []).filter((c: any) => !disabledAccessCodes.has(String(c?.access_code || ""))),
+    price_lists: (json?.price_lists || []).filter((pl: any) => !disabledAccessCodes.has(String(pl?.access_code || ""))),
+  };
+}
 
 const iconMap = {
   Rocket: Truck,
@@ -87,10 +111,14 @@ export default function IndexNew() {
   const [quickView, setQuickView] = useState<ShopProduct | null>(null);
 
   useEffect(() => {
+    LEGACY_CACHE_KEYS.forEach((key) => {
+      try { localStorage.removeItem(key); } catch { /* ignore */ }
+    });
+
     try {
       const cached = localStorage.getItem(CACHE_KEY);
       if (cached) {
-        const json = JSON.parse(cached);
+        const json = normalizeHomepagePayload(JSON.parse(cached));
         if (json.data) {
           setProducts(json.data);
           setCategories(json.categories || []);
@@ -102,9 +130,10 @@ export default function IndexNew() {
       }
     } catch { /* ignore */ }
 
-    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homepage-catalog`)
+    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homepage-catalog?ts=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((json) => {
+        json = normalizeHomepagePayload(json);
         try { localStorage.setItem(CACHE_KEY, JSON.stringify(json)); } catch { /* ignore */ }
         setProducts(json.data || []);
         setCategories(json.categories || []);
