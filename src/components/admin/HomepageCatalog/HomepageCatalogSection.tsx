@@ -16,6 +16,7 @@ import {
   ArrowUp, ArrowDown, EyeOff, Eye, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ConnectedPriceListsPanel from "./ConnectedPriceListsPanel";
 
 interface HCategory {
   id: string;
