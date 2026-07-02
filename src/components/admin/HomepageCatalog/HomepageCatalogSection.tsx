@@ -153,6 +153,8 @@ export default function HomepageCatalogSection() {
         </CardHeader>
       </Card>
 
+      <ConnectedPriceListsPanel products={products} onChanged={load} />
+
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
         {/* Categories panel */}
         <Card className="lg:sticky lg:top-4 self-start">
