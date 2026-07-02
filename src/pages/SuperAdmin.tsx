@@ -1141,6 +1141,7 @@ export default function SuperAdmin() {
               </CardHeader>
             </Card>
             <HomepageVersionManager />
+            <HomepageHeroManager />
             <SlidesManager />
             <LandingInfoBlocksManager />
             <RetailPartnersManager />
