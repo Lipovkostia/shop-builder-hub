@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
       return json({ error: "Unknown action" }, 400);
     }
 
-    const [settingsRes, partnersRes, homepageCatsRes, slidesRes, infoBlocksRes] = await Promise.all([
+    const [settingsRes, partnersRes, homepageCatsRes, slidesRes, infoBlocksRes, heroRes] = await Promise.all([
       supabase
         .from("landing_settings")
         .select("homepage_version, catalog_access_code")
@@ -181,12 +181,19 @@ Deno.serve(async (req) => {
         .select("id, title, description, icon, image_url, sort_order")
         .eq("is_active", true)
         .order("sort_order", { ascending: true }),
+      supabase
+        .from("homepage_hero_settings")
+        .select("*")
+        .eq("id", "default")
+        .maybeSingle()
+        .then((r: any) => r, () => ({ data: null })),
     ]);
 
     const settings = settingsRes.data as any;
     const partnersData = partnersRes.data;
     const slidesData = slidesRes.data || [];
     const infoBlocksData = infoBlocksRes.data || [];
+    const heroSettings = (heroRes as any)?.data || null;
     const homepageVersion = settings?.homepage_version || "new";
     const homepageCats = ((homepageCatsRes.data || []) as any[]).filter((c) => !isForcedDisabledCatalog(c));
 
@@ -309,6 +316,7 @@ Deno.serve(async (req) => {
           partners: partnersData || [],
           slides: slidesData,
           info_blocks: infoBlocksData,
+          hero_settings: heroSettings,
           homepage_version: homepageVersion,
           price_lists: priceLists,
           source: "catalog",
@@ -360,6 +368,7 @@ Deno.serve(async (req) => {
         partners: partnersData || [],
         slides: slidesData,
         info_blocks: infoBlocksData,
+        hero_settings: heroSettings,
         homepage_version: homepageVersion,
         source: "parsed",
       }),

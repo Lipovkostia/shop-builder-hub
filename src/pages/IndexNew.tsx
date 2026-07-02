@@ -63,6 +63,54 @@ interface InfoBlock {
   image_url: string | null;
 }
 
+interface SideBlock {
+  id?: string;
+  title?: string;
+  subtitle?: string;
+  image_url?: string | null;
+  url?: string | null;
+}
+
+interface HeroSettings {
+  site_name?: string | null;
+  hero_badge?: string | null;
+  hero_title?: string | null;
+  hero_subtitle?: string | null;
+  hero_image_url?: string | null;
+  hero_overlay_opacity?: number | null;
+  cta_primary_label?: string | null;
+  cta_primary_url?: string | null;
+  cta_secondary_label?: string | null;
+  cta_secondary_url?: string | null;
+  contact_phone?: string | null;
+  contact_phone_label?: string | null;
+  contact_telegram_url?: string | null;
+  contact_telegram_label?: string | null;
+  contact_whatsapp_url?: string | null;
+  contact_email?: string | null;
+  contact_address?: string | null;
+  side_blocks?: SideBlock[] | null;
+}
+
+const DEFAULT_HERO: HeroSettings = {
+  site_name: "9999999999",
+  hero_badge: "Опт, розница и предложения поставщиков",
+  hero_title: "Торговая витрина 9999999999",
+  hero_subtitle:
+    "Собирайте ассортимент, находите поставщиков и переходите к покупке через проверенные розничные точки.",
+  hero_overlay_opacity: 0.55,
+  cta_primary_label: "Смотреть товары",
+  cta_primary_url: "#catalog",
+  cta_secondary_label: "Связаться",
+  cta_secondary_url: "https://t.me/zakaz9999999999_bot",
+  contact_phone: "+79999999999",
+  contact_phone_label: "+7 999 999-99-99",
+  contact_telegram_url: "https://t.me/zakaz9999999999_bot",
+  contact_telegram_label: "Telegram-бот",
+  contact_email: "info@9999999999.ru",
+  side_blocks: [],
+};
+
 const CACHE_KEY = "homepage_catalog_cache_v2";
 const LEGACY_CACHE_KEYS = ["homepage_catalog_cache_v1"];
 const FORCED_DISABLED_CATALOG_IDS = new Set(["35121234-2811-4da7-b838-36a43698d5e0"]);
@@ -104,6 +152,7 @@ export default function IndexNew() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [infoBlocks, setInfoBlocks] = useState<InfoBlock[]>([]);
+  const [hero, setHero] = useState<HeroSettings>(DEFAULT_HERO);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
@@ -125,6 +174,7 @@ export default function IndexNew() {
           setPartners(json.partners || []);
           setSlides(json.slides || []);
           setInfoBlocks(json.info_blocks || []);
+          if (json.hero_settings) setHero({ ...DEFAULT_HERO, ...json.hero_settings });
           setLoading(false);
         }
       }
@@ -140,6 +190,7 @@ export default function IndexNew() {
         setPartners(json.partners || []);
         setSlides(json.slides || []);
         setInfoBlocks(json.info_blocks || []);
+        if (json.hero_settings) setHero({ ...DEFAULT_HERO, ...json.hero_settings });
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -242,7 +293,7 @@ export default function IndexNew() {
             <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <ShoppingBag className="h-5 w-5" />
             </span>
-            <span className="hidden text-xl font-bold tracking-normal text-foreground sm:block">9999999999</span>
+            <span className="hidden text-xl font-bold tracking-normal text-foreground sm:block">{hero.site_name || "Магазин"}</span>
           </Link>
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
@@ -255,12 +306,16 @@ export default function IndexNew() {
             />
           </div>
           <div className="hidden items-center gap-3 text-xs text-muted-foreground xl:flex">
-            <a href="tel:+79999999999" className="flex items-center gap-1.5 hover:text-primary">
-              <Phone className="h-4 w-4" /> +7 999 999-99-99
-            </a>
-            <a href="https://t.me/zakaz9999999999_bot" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-primary">
-              <MessageCircle className="h-4 w-4" /> Telegram
-            </a>
+            {hero.contact_phone && (
+              <a href={`tel:${hero.contact_phone}`} className="flex items-center gap-1.5 hover:text-primary">
+                <Phone className="h-4 w-4" /> {hero.contact_phone_label || hero.contact_phone}
+              </a>
+            )}
+            {hero.contact_telegram_url && (
+              <a href={hero.contact_telegram_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-primary">
+                <MessageCircle className="h-4 w-4" /> {hero.contact_telegram_label || "Telegram"}
+              </a>
+            )}
           </div>
           <Link to="/auth?tab=customer" className="shrink-0">
             <Button variant="outline" size="sm" className="gap-1.5 px-2.5 sm:px-3">
@@ -274,59 +329,99 @@ export default function IndexNew() {
       <section className="border-b border-border bg-card">
         <div className="mx-auto grid max-w-[1680px] gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:px-6">
           <div className="relative min-h-[280px] overflow-hidden rounded-md bg-secondary lg:min-h-[360px]">
-            {heroMedia[0]?.image_url ? (
-              <img src={heroMedia[0].image_url} alt={heroMedia[0].title} className="absolute inset-0 h-full w-full object-cover" />
+            {(hero.hero_image_url || heroMedia[0]?.image_url) ? (
+              <img src={hero.hero_image_url || heroMedia[0]?.image_url || ""} alt={hero.hero_title || ""} className="absolute inset-0 h-full w-full object-cover" />
             ) : (
               <div className="absolute inset-0 gradient-hero" />
             )}
-            <div className="absolute inset-0 bg-foreground/55" />
+            <div className="absolute inset-0 bg-foreground" style={{ opacity: hero.hero_overlay_opacity ?? 0.55 }} />
             <div className="relative z-10 flex h-full min-h-[280px] flex-col justify-end p-5 lg:min-h-[360px] lg:p-8">
               <div className="max-w-3xl">
-                <div className="mb-3 inline-flex items-center gap-2 rounded-md bg-card/90 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
-                  <BadgeCheck className="h-4 w-4 text-primary" /> Опт, розница и предложения поставщиков
-                </div>
-                <h1 className="text-3xl font-bold leading-tight text-primary-foreground sm:text-4xl lg:text-6xl">
-                  Торговая витрина 9999999999
-                </h1>
-                <p className="mt-3 max-w-2xl text-base font-medium leading-relaxed text-primary-foreground/90 lg:text-lg">
-                  Собирайте ассортимент, находите поставщиков и переходите к покупке через проверенные розничные точки.
-                </p>
+                {hero.hero_badge && (
+                  <div className="mb-3 inline-flex items-center gap-2 rounded-md bg-card/90 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                    <BadgeCheck className="h-4 w-4 text-primary" /> {hero.hero_badge}
+                  </div>
+                )}
+                {hero.hero_title && (
+                  <h1 className="text-3xl font-bold leading-tight text-primary-foreground sm:text-4xl lg:text-6xl">
+                    {hero.hero_title}
+                  </h1>
+                )}
+                {hero.hero_subtitle && (
+                  <p className="mt-3 max-w-2xl text-base font-medium leading-relaxed text-primary-foreground/90 lg:text-lg">
+                    {hero.hero_subtitle}
+                  </p>
+                )}
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <Button onClick={() => document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth" })} className="gap-2">
-                    Смотреть товары <ArrowRight className="h-4 w-4" />
-                  </Button>
-                  <Button variant="secondary" asChild>
-                    <a href="https://t.me/zakaz9999999999_bot" target="_blank" rel="noopener noreferrer">Связаться</a>
-                  </Button>
+                  {hero.cta_primary_label && (
+                    hero.cta_primary_url?.startsWith("#") ? (
+                      <Button onClick={() => document.getElementById((hero.cta_primary_url || "#catalog").slice(1))?.scrollIntoView({ behavior: "smooth" })} className="gap-2">
+                        {hero.cta_primary_label} <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button asChild className="gap-2">
+                        <a href={hero.cta_primary_url || "#"} target={hero.cta_primary_url?.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer">
+                          {hero.cta_primary_label} <ArrowRight className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )
+                  )}
+                  {hero.cta_secondary_label && hero.cta_secondary_url && (
+                    <Button variant="secondary" asChild>
+                      <a href={hero.cta_secondary_url} target={hero.cta_secondary_url.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer">{hero.cta_secondary_label}</a>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
           <aside className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            {(heroMedia.slice(1, 3).length > 0 ? heroMedia.slice(1, 3) : infoBlocks.slice(0, 2)).map((item) => (
-              <div key={item.id} className="min-h-[132px] overflow-hidden rounded-md border border-border bg-card shadow-sm">
-                {item.image_url ? (
-                  <img src={item.image_url} alt={item.title} className="h-24 w-full object-cover" loading="lazy" />
-                ) : (
-                  <div className="flex h-24 items-center justify-center bg-muted text-muted-foreground"><ImageIcon className="h-6 w-6" /></div>
-                )}
-                <div className="p-3">
-                  <p className="line-clamp-2 text-sm font-semibold leading-snug">{item.title}</p>
-                </div>
-              </div>
-            ))}
+            {(hero.side_blocks && hero.side_blocks.length > 0
+              ? hero.side_blocks.slice(0, 2).map((b, i) => ({ id: b.id || `sb-${i}`, title: b.title || "", image_url: b.image_url || null, url: b.url || null }))
+              : (heroMedia.slice(1, 3).length > 0
+                ? heroMedia.slice(1, 3).map((m) => ({ id: m.id, title: m.title, image_url: m.image_url, url: null as string | null }))
+                : infoBlocks.slice(0, 2).map((b) => ({ id: b.id, title: b.title, image_url: b.image_url, url: null as string | null })))
+            ).map((item) => {
+              const inner = (
+                <>
+                  {item.image_url ? (
+                    <img src={item.image_url} alt={item.title} className="h-24 w-full object-cover" loading="lazy" />
+                  ) : (
+                    <div className="flex h-24 items-center justify-center bg-muted text-muted-foreground"><ImageIcon className="h-6 w-6" /></div>
+                  )}
+                  <div className="p-3">
+                    <p className="line-clamp-2 text-sm font-semibold leading-snug">{item.title}</p>
+                  </div>
+                </>
+              );
+              return item.url ? (
+                <a key={item.id} href={item.url} target={item.url.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className="min-h-[132px] overflow-hidden rounded-md border border-border bg-card shadow-sm transition-shadow hover:shadow-md">{inner}</a>
+              ) : (
+                <div key={item.id} className="min-h-[132px] overflow-hidden rounded-md border border-border bg-card shadow-sm">{inner}</div>
+              );
+            })}
             <div className="rounded-md border border-border bg-secondary p-4">
               <p className="text-xs font-semibold uppercase text-muted-foreground">Контакты</p>
               <div className="mt-3 space-y-2 text-sm">
-                <a href="tel:+79999999999" className="flex items-center gap-2 hover:text-primary"><Phone className="h-4 w-4" /> +7 999 999-99-99</a>
-                <a href="https://t.me/zakaz9999999999_bot" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary"><MessageCircle className="h-4 w-4" /> Telegram-бот</a>
-                <a href="mailto:info@9999999999.ru" className="flex items-center gap-2 hover:text-primary"><Mail className="h-4 w-4" /> info@9999999999.ru</a>
+                {hero.contact_phone && (
+                  <a href={`tel:${hero.contact_phone}`} className="flex items-center gap-2 hover:text-primary"><Phone className="h-4 w-4" /> {hero.contact_phone_label || hero.contact_phone}</a>
+                )}
+                {hero.contact_telegram_url && (
+                  <a href={hero.contact_telegram_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary"><MessageCircle className="h-4 w-4" /> {hero.contact_telegram_label || "Telegram"}</a>
+                )}
+                {hero.contact_email && (
+                  <a href={`mailto:${hero.contact_email}`} className="flex items-center gap-2 hover:text-primary"><Mail className="h-4 w-4" /> {hero.contact_email}</a>
+                )}
+                {hero.contact_address && (
+                  <p className="flex items-start gap-2 text-muted-foreground"><Store className="mt-0.5 h-4 w-4 shrink-0" /> <span>{hero.contact_address}</span></p>
+                )}
               </div>
             </div>
           </aside>
         </div>
       </section>
+
 
       {featuredCategories.length > 0 && (
         <div className="mx-auto flex max-w-[1680px] gap-2 overflow-x-auto px-4 py-3 lg:px-6">
