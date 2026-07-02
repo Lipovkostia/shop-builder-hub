@@ -15,7 +15,7 @@ export function useProfileSettings() {
         .from("profiles")
         .select("id, toast_notifications_enabled")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       return data;
@@ -25,7 +25,7 @@ export function useProfileSettings() {
 
   const updateSettings = useMutation({
     mutationFn: async (settings: { toast_notifications_enabled?: boolean }) => {
-      if (!profile?.id) throw new Error("Profile not found");
+      if (!profile?.id) throw new Error("Профиль пользователя не найден");
       
       const { error } = await supabase
         .from("profiles")
