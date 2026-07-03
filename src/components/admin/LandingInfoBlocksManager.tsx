@@ -132,6 +132,8 @@ export default function LandingInfoBlocksManager() {
         </Button>
       </div>
 
+      <UploadHint preset={UPLOAD_PRESETS.landingInfoBlock} />
+
       <input
         ref={fileInputRef}
         type="file"
