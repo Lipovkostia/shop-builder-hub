@@ -79,9 +79,14 @@ export default function RetailPartnersManager() {
   };
 
   const uploadImage = async (id: string, file: File) => {
+    const check = validateUpload(file, UPLOAD_PRESETS.heroSideBlock);
+    if (!check.ok) {
+      toast({ title: "Файл не подходит", description: check.error, variant: "destructive" });
+      return;
+    }
     setUploadingId(id);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `partners/${id}-${Date.now()}.${ext}`;
       const { error: upErr } = await (supabase as any).storage.from("landing-slides").upload(path, file, { upsert: true });
       if (upErr) throw upErr;
