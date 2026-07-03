@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Save, Trash2, Upload, X } from "lucide-react";
+import { UPLOAD_PRESETS, validateUpload } from "@/lib/uploadValidation";
+import UploadHint from "@/components/admin/UploadHint";
 
 interface SideBlock {
   id: string;
