@@ -253,6 +253,69 @@ if (SUPABASE_HOST && PROJECT_REF && typeof window !== "undefined") {
     }
   }
   (window as unknown as { WebSocket: typeof WebSocket }).WebSocket = ProxiedWS as unknown as typeof WebSocket;
+
+  // ============ Патчим <img>/<source>/<video>/<audio> src и srcset ============
+  // Публичные ссылки на Storage (…supabase.co/storage/v1/object/public/…) браузер
+  // грузит напрямую как ресурсы, минуя fetch. Переписываем их на прокси.
+  const rewriteMaybe = (v: string | null): string | null => {
+    if (!v) return v;
+    return rewriteUrl(v);
+  };
+  const rewriteSrcset = (v: string | null): string | null => {
+    if (!v) return v;
+    return v.split(",").map((part) => {
+      const trimmed = part.trim();
+      if (!trimmed) return part;
+      const sp = trimmed.split(/\s+/);
+      sp[0] = rewriteUrl(sp[0]);
+      return sp.join(" ");
+    }).join(", ");
+  };
+
+  const patchSrcProp = (Ctor: { prototype: HTMLElement } | undefined) => {
+    if (!Ctor) return;
+    const desc = Object.getOwnPropertyDescriptor(Ctor.prototype, "src");
+    if (!desc?.set || !desc.get) return;
+    Object.defineProperty(Ctor.prototype, "src", {
+      configurable: true,
+      enumerable: desc.enumerable,
+      get() { return desc.get!.call(this); },
+      set(v: string) { desc.set!.call(this, rewriteMaybe(String(v))); },
+    });
+  };
+  patchSrcProp(HTMLImageElement);
+  patchSrcProp(HTMLSourceElement);
+  patchSrcProp(HTMLMediaElement);
+  patchSrcProp(HTMLIFrameElement);
+  patchSrcProp(HTMLScriptElement);
+
+  const patchSrcsetProp = (Ctor: { prototype: HTMLElement } | undefined) => {
+    if (!Ctor) return;
+    const desc = Object.getOwnPropertyDescriptor(Ctor.prototype, "srcset");
+    if (!desc?.set || !desc.get) return;
+    Object.defineProperty(Ctor.prototype, "srcset", {
+      configurable: true,
+      enumerable: desc.enumerable,
+      get() { return desc.get!.call(this); },
+      set(v: string) { desc.set!.call(this, rewriteSrcset(String(v)) ?? ""); },
+    });
+  };
+  patchSrcsetProp(HTMLImageElement);
+  patchSrcsetProp(HTMLSourceElement);
+
+  // setAttribute — React и dangerouslySetInnerHTML часто идут этим путём.
+  const origSetAttr = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function (name: string, value: string) {
+    const lower = name.toLowerCase();
+    if (lower === "src" || lower === "href") {
+      return origSetAttr.call(this, name, rewriteMaybe(String(value)) ?? "");
+    }
+    if (lower === "srcset") {
+      return origSetAttr.call(this, name, rewriteSrcset(String(value)) ?? "");
+    }
+    return origSetAttr.call(this, name, value);
+  };
 }
 
 export {};
+
