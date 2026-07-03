@@ -363,6 +363,7 @@ export default function HomepageHeroManager() {
                   </label>
                   <Input value={b.image_url || ""} onChange={(e) => patchBlock(b.id, { image_url: e.target.value })} placeholder="или URL картинки" className="h-8 text-xs" />
                 </div>
+                <UploadHint preset={UPLOAD_PRESETS.heroSideBlock} />
               </div>
               <Button variant="ghost" size="icon" onClick={() => removeBlock(b.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
             </div>
