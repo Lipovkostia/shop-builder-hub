@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import useEmblaCarousel from 'embla-carousel-react';
+import { UPLOAD_PRESETS, validateUpload } from '@/lib/uploadValidation';
+import UploadHint from '@/components/admin/UploadHint';
 
 interface Slide {
   id: string;
