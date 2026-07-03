@@ -496,6 +496,7 @@ export default function SlidesManager() {
                     {isSaving && index === currentIndex && (
                       <p className="text-xs text-muted-foreground text-center mt-1">Сохранение...</p>
                     )}
+                    <UploadHint preset={UPLOAD_PRESETS.landingSlide} className="mt-2 justify-center" />
                   </div>
                 </div>
               ))}
