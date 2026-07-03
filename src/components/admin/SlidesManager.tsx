@@ -202,23 +202,9 @@ export default function SlidesManager() {
     const file = event.target.files?.[0];
     if (!file || !currentSlide) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: 'Ошибка',
-        description: 'Можно загружать только изображения',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: 'Ошибка',
-        description: 'Размер файла не должен превышать 5 МБ',
-        variant: 'destructive',
-      });
+    const check = validateUpload(file, UPLOAD_PRESETS.landingSlide);
+    if (!check.ok) {
+      toast({ title: 'Файл не подходит', description: check.error, variant: 'destructive' });
       return;
     }
 
