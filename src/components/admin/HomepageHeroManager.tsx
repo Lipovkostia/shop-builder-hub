@@ -117,16 +117,31 @@ export default function HomepageHeroManager() {
   };
 
   const uploadImage = async (target: "hero" | string, file: File) => {
+    const preset = target === "hero" ? UPLOAD_PRESETS.heroBanner : UPLOAD_PRESETS.heroSideBlock;
+    const check = validateUpload(file, preset);
+    if (!check.ok) {
+      toast({ title: "Файл не подходит", description: check.error, variant: "destructive" });
+      return;
+    }
     setUploading(target);
-    const ext = file.name.split(".").pop();
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
     const path = `hero/${target}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("landing-info").upload(path, file, { upsert: true });
+    const { error } = await supabase.storage.from("landing-info").upload(path, file, {
+      upsert: true,
+      contentType: file.type || undefined,
+      cacheControl: "3600",
+    });
     if (error) {
       toast({ title: "Ошибка загрузки", description: error.message, variant: "destructive" });
       setUploading(null);
       return;
     }
     const { data } = supabase.storage.from("landing-info").getPublicUrl(path);
+    if (!data?.publicUrl) {
+      toast({ title: "Ошибка", description: "Не удалось получить публичную ссылку.", variant: "destructive" });
+      setUploading(null);
+      return;
+    }
     if (target === "hero") {
       setForm((f) => ({ ...f, hero_image_url: data.publicUrl }));
     } else {
@@ -135,6 +150,7 @@ export default function HomepageHeroManager() {
         side_blocks: f.side_blocks.map((b) => (b.id === target ? { ...b, image_url: data.publicUrl } : b)),
       }));
     }
+    toast({ title: "Загружено", description: "Не забудьте сохранить изменения." });
     setUploading(null);
   };
 
