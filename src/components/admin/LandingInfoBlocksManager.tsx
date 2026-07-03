@@ -87,8 +87,13 @@ export default function LandingInfoBlocksManager() {
   };
 
   const handleImageUpload = async (blockId: string, file: File) => {
+    const check = validateUpload(file, UPLOAD_PRESETS.landingInfoBlock);
+    if (!check.ok) {
+      toast({ title: "Файл не подходит", description: check.error, variant: "destructive" });
+      return;
+    }
     setUploadingFor(blockId);
-    const ext = file.name.split(".").pop();
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
     const path = `info-blocks/${blockId}-${Date.now()}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
