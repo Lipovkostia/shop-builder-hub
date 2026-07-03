@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Save, Trash2, Upload, X } from "lucide-react";
+import { UPLOAD_PRESETS, validateUpload } from "@/lib/uploadValidation";
+import UploadHint from "@/components/admin/UploadHint";
 
 interface SideBlock {
   id: string;
@@ -115,16 +117,31 @@ export default function HomepageHeroManager() {
   };
 
   const uploadImage = async (target: "hero" | string, file: File) => {
+    const preset = target === "hero" ? UPLOAD_PRESETS.heroBanner : UPLOAD_PRESETS.heroSideBlock;
+    const check = validateUpload(file, preset);
+    if (!check.ok) {
+      toast({ title: "Файл не подходит", description: check.error, variant: "destructive" });
+      return;
+    }
     setUploading(target);
-    const ext = file.name.split(".").pop();
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
     const path = `hero/${target}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("landing-info").upload(path, file, { upsert: true });
+    const { error } = await supabase.storage.from("landing-info").upload(path, file, {
+      upsert: true,
+      contentType: file.type || undefined,
+      cacheControl: "3600",
+    });
     if (error) {
       toast({ title: "Ошибка загрузки", description: error.message, variant: "destructive" });
       setUploading(null);
       return;
     }
     const { data } = supabase.storage.from("landing-info").getPublicUrl(path);
+    if (!data?.publicUrl) {
+      toast({ title: "Ошибка", description: "Не удалось получить публичную ссылку.", variant: "destructive" });
+      setUploading(null);
+      return;
+    }
     if (target === "hero") {
       setForm((f) => ({ ...f, hero_image_url: data.publicUrl }));
     } else {
@@ -133,6 +150,7 @@ export default function HomepageHeroManager() {
         side_blocks: f.side_blocks.map((b) => (b.id === target ? { ...b, image_url: data.publicUrl } : b)),
       }));
     }
+    toast({ title: "Загружено", description: "Не забудьте сохранить изменения." });
     setUploading(null);
   };
 
@@ -217,6 +235,7 @@ export default function HomepageHeroManager() {
                   value={form.hero_image_url}
                   onChange={(e) => setForm({ ...form, hero_image_url: e.target.value })}
                 />
+                <UploadHint preset={UPLOAD_PRESETS.heroBanner} />
               </div>
             </div>
           </div>
@@ -344,6 +363,7 @@ export default function HomepageHeroManager() {
                   </label>
                   <Input value={b.image_url || ""} onChange={(e) => patchBlock(b.id, { image_url: e.target.value })} placeholder="или URL картинки" className="h-8 text-xs" />
                 </div>
+                <UploadHint preset={UPLOAD_PRESETS.heroSideBlock} />
               </div>
               <Button variant="ghost" size="icon" onClick={() => removeBlock(b.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
             </div>

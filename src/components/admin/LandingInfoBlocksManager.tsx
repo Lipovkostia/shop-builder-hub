@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, GripVertical, Upload, X, Loader2 } from "lucide-react";
+import { UPLOAD_PRESETS, validateUpload } from "@/lib/uploadValidation";
+import UploadHint from "@/components/admin/UploadHint";
 
 interface InfoBlock {
   id: string;
@@ -85,8 +87,13 @@ export default function LandingInfoBlocksManager() {
   };
 
   const handleImageUpload = async (blockId: string, file: File) => {
+    const check = validateUpload(file, UPLOAD_PRESETS.landingInfoBlock);
+    if (!check.ok) {
+      toast({ title: "Файл не подходит", description: check.error, variant: "destructive" });
+      return;
+    }
     setUploadingFor(blockId);
-    const ext = file.name.split(".").pop();
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
     const path = `info-blocks/${blockId}-${Date.now()}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
@@ -124,6 +131,8 @@ export default function LandingInfoBlocksManager() {
           Добавить
         </Button>
       </div>
+
+      <UploadHint preset={UPLOAD_PRESETS.landingInfoBlock} />
 
       <input
         ref={fileInputRef}

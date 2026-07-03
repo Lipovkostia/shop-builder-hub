@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import useEmblaCarousel from 'embla-carousel-react';
+import { UPLOAD_PRESETS, validateUpload } from '@/lib/uploadValidation';
+import UploadHint from '@/components/admin/UploadHint';
 
 interface Slide {
   id: string;
@@ -200,23 +202,9 @@ export default function SlidesManager() {
     const file = event.target.files?.[0];
     if (!file || !currentSlide) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: 'Ошибка',
-        description: 'Можно загружать только изображения',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: 'Ошибка',
-        description: 'Размер файла не должен превышать 5 МБ',
-        variant: 'destructive',
-      });
+    const check = validateUpload(file, UPLOAD_PRESETS.landingSlide);
+    if (!check.ok) {
+      toast({ title: 'Файл не подходит', description: check.error, variant: 'destructive' });
       return;
     }
 
@@ -508,6 +496,7 @@ export default function SlidesManager() {
                     {isSaving && index === currentIndex && (
                       <p className="text-xs text-muted-foreground text-center mt-1">Сохранение...</p>
                     )}
+                    <UploadHint preset={UPLOAD_PRESETS.landingSlide} className="mt-2 justify-center" />
                   </div>
                 </div>
               ))}

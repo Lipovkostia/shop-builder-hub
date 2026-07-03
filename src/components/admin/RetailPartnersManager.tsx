@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, Upload, Plus, ArrowUp, ArrowDown } from "lucide-react";
+import { UPLOAD_PRESETS, validateUpload } from "@/lib/uploadValidation";
+import UploadHint from "@/components/admin/UploadHint";
 
 interface Partner {
   id: string;
@@ -77,9 +79,14 @@ export default function RetailPartnersManager() {
   };
 
   const uploadImage = async (id: string, file: File) => {
+    const check = validateUpload(file, UPLOAD_PRESETS.heroSideBlock);
+    if (!check.ok) {
+      toast({ title: "Файл не подходит", description: check.error, variant: "destructive" });
+      return;
+    }
     setUploadingId(id);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `partners/${id}-${Date.now()}.${ext}`;
       const { error: upErr } = await (supabase as any).storage.from("landing-slides").upload(path, file, { upsert: true });
       if (upErr) throw upErr;
@@ -101,7 +108,8 @@ export default function RetailPartnersManager() {
         </div>
         <Button onClick={addNew} size="sm" className="gap-2"><Plus className="h-4 w-4" />Добавить</Button>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
+        <UploadHint preset={UPLOAD_PRESETS.heroSideBlock} />
         {loading ? (
           <div className="flex items-center justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : partners.length === 0 ? (
