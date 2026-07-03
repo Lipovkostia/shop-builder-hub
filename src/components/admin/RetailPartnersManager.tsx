@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, Upload, Plus, ArrowUp, ArrowDown } from "lucide-react";
+import { UPLOAD_PRESETS, validateUpload } from "@/lib/uploadValidation";
+import UploadHint from "@/components/admin/UploadHint";
 
 interface Partner {
   id: string;
