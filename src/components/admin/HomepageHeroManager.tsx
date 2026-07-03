@@ -235,6 +235,7 @@ export default function HomepageHeroManager() {
                   value={form.hero_image_url}
                   onChange={(e) => setForm({ ...form, hero_image_url: e.target.value })}
                 />
+                <UploadHint preset={UPLOAD_PRESETS.heroBanner} />
               </div>
             </div>
           </div>
