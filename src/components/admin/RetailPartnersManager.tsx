@@ -108,7 +108,8 @@ export default function RetailPartnersManager() {
         </div>
         <Button onClick={addNew} size="sm" className="gap-2"><Plus className="h-4 w-4" />Добавить</Button>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
+        <UploadHint preset={UPLOAD_PRESETS.heroSideBlock} />
         {loading ? (
           <div className="flex items-center justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : partners.length === 0 ? (
