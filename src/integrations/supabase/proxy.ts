@@ -315,7 +315,58 @@ if (SUPABASE_HOST && PROJECT_REF && typeof window !== "undefined") {
     }
     return origSetAttr.call(this, name, value);
   };
+
+  // href на <link>/<a> (preload, prefetch)
+  const patchHrefProp = (Ctor: { prototype: HTMLElement } | undefined) => {
+    if (!Ctor) return;
+    const desc = Object.getOwnPropertyDescriptor(Ctor.prototype, "href");
+    if (!desc?.set || !desc.get) return;
+    Object.defineProperty(Ctor.prototype, "href", {
+      configurable: true,
+      enumerable: desc.enumerable,
+      get() { return desc.get!.call(this); },
+      set(v: string) { desc.set!.call(this, rewriteMaybe(String(v)) ?? ""); },
+    });
+  };
+  patchHrefProp(HTMLLinkElement);
+
+  // ============ XMLHttpRequest ============
+  const OrigXHROpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (
+    method: string,
+    url: string | URL,
+    async?: boolean,
+    user?: string | null,
+    password?: string | null,
+  ) {
+    const original = typeof url === "string" ? url : url.toString();
+    const rewritten = rewriteUrl(original);
+    return OrigXHROpen.call(this, method, rewritten, async ?? true, user, password);
+  };
+
+  // ============ sendBeacon (analytics) ============
+  if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+    const origBeacon = navigator.sendBeacon.bind(navigator);
+    navigator.sendBeacon = (url: string | URL, data?: BodyInit | null): boolean => {
+      const original = typeof url === "string" ? url : url.toString();
+      return origBeacon(rewriteUrl(original), data as BodyInit);
+    };
+  }
+
+  // ============ EventSource (SSE) ============
+  if (typeof EventSource !== "undefined") {
+    const OrigES = EventSource;
+    class ProxiedES extends OrigES {
+      constructor(url: string | URL, init?: EventSourceInit) {
+        const original = typeof url === "string" ? url : url.toString();
+        super(rewriteUrl(original), init);
+      }
+    }
+    (window as unknown as { EventSource: typeof EventSource }).EventSource =
+      ProxiedES as unknown as typeof EventSource;
+  }
 }
 
 export {};
+
 
