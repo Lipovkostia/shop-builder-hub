@@ -76,6 +76,7 @@ interface SideBlock {
   subtitle?: string;
   image_url?: string | null;
   url?: string | null;
+  product_id?: string | null;
 }
 
 interface HeaderNavLink { id?: string; label?: string; url?: string; highlight?: boolean; }
