@@ -117,6 +117,82 @@ function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+interface PickerProduct { id: string; name: string; image: string | null; description?: string | null }
+
+function SizeBadge({ preset }: { preset: UploadPreset }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+      <span className="rounded-md bg-primary px-2 py-0.5 font-semibold text-primary-foreground">
+        Размер {preset.targetWidth}×{preset.targetHeight} px
+      </span>
+      <span className="text-muted-foreground">
+        {preset.formatsLabel} · до {Math.round(preset.maxBytes / 1024 / 1024)} МБ. Любую картинку можно обрезать под нужный размер.
+      </span>
+    </div>
+  );
+}
+
+function ProductPickerPopover({
+  products,
+  currentId,
+  onPick,
+  onClear,
+}: {
+  products: PickerProduct[];
+  currentId?: string | null;
+  onPick: (p: PickerProduct) => void;
+  onClear: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const filtered = useMemo(
+    () => {
+      const s = q.trim().toLowerCase();
+      const list = s ? products.filter((p) => p.name.toLowerCase().includes(s)) : products;
+      return list.slice(0, 50);
+    },
+    [products, q],
+  );
+  const current = currentId ? products.find((p) => p.id === currentId) : null;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+          <Package className="h-3.5 w-3.5" />
+          {current ? `Товар: ${current.name.slice(0, 24)}` : "Выбрать товар из каталога"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[380px] p-2" align="start">
+        <div className="relative mb-2">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск товара…" className="h-8 pl-7 text-xs" />
+        </div>
+        <div className="max-h-72 space-y-1 overflow-y-auto">
+          {products.length === 0 && <p className="p-3 text-xs text-muted-foreground">Товары не загружены.</p>}
+          {filtered.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => onPick(p)}
+              className={`flex w-full items-center gap-2 rounded-md border p-1.5 text-left text-xs hover:bg-muted ${currentId === p.id ? "border-primary bg-primary/5" : "border-transparent"}`}
+            >
+              {p.image ? (
+                <img src={p.image} alt="" className="h-9 w-9 shrink-0 rounded-sm object-cover" />
+              ) : (
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-muted"><Package className="h-4 w-4 text-muted-foreground" /></div>
+              )}
+              <span className="line-clamp-2 flex-1">{p.name}</span>
+            </button>
+          ))}
+        </div>
+        {current && (
+          <button onClick={onClear} className="mt-2 w-full rounded-md border border-destructive/40 px-2 py-1 text-xs text-destructive hover:bg-destructive/5">
+            Отвязать товар
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function HomepageHeroManager() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -124,6 +200,8 @@ export default function HomepageHeroManager() {
   const [uploading, setUploading] = useState<string | null>(null);
   const [form, setForm] = useState<HeroSettings>(EMPTY);
   const [missingTable, setMissingTable] = useState(false);
+  const [cropState, setCropState] = useState<{ target: string; file: File; preset: UploadPreset } | null>(null);
+  const [products, setProducts] = useState<PickerProduct[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -160,6 +238,22 @@ export default function HomepageHeroManager() {
 
   useEffect(() => { load(); }, []);
 
+  // Load products for the side-block product picker
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homepage-catalog`)
+      .then((r) => r.json())
+      .then((json) => {
+        const list: PickerProduct[] = (json?.data || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          image: p.image || null,
+          description: p.description || null,
+        }));
+        setProducts(list);
+      })
+      .catch(() => { /* ignore */ });
+  }, []);
+
   const save = async () => {
     setSaving(true);
     const payload: any = { ...form, id: "default", updated_at: new Date().toISOString() };
@@ -167,7 +261,6 @@ export default function HomepageHeroManager() {
       .from("homepage_hero_settings")
       .upsert(payload, { onConflict: "id" });
     if (error && /header_config/i.test(String(error.message || ""))) {
-      // Column not present yet — save without it and inform user
       const { header_config, ...rest } = payload;
       const retry = await (supabase as any)
         .from("homepage_hero_settings")
@@ -191,19 +284,23 @@ export default function HomepageHeroManager() {
     toast({ title: "Сохранено", description: "Главная страница обновлена." });
   };
 
-  const uploadImage = async (target: "hero" | string, file: File) => {
+  const requestUpload = (target: "hero" | string, file: File) => {
     const preset = target === "hero" ? UPLOAD_PRESETS.heroBanner : UPLOAD_PRESETS.heroSideBlock;
     const check = validateUpload(file, preset);
     if (!check.ok) {
       toast({ title: "Файл не подходит", description: check.error, variant: "destructive" });
       return;
     }
+    setCropState({ target, file, preset });
+  };
+
+  const uploadBlob = async (target: "hero" | string, blob: Blob, mime: string) => {
     setUploading(target);
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const ext = mime.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
     const path = `hero/${target}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("landing-info").upload(path, file, {
+    const { error } = await supabase.storage.from("landing-info").upload(path, blob, {
       upsert: true,
-      contentType: file.type || undefined,
+      contentType: mime,
       cacheControl: "3600",
     });
     if (error) {
