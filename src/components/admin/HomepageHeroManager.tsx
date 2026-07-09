@@ -489,12 +489,12 @@ export default function HomepageHeroManager() {
               <div className="space-y-2">
                 <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted">
                   {uploading === "hero" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  Загрузить
+                  Загрузить и обрезать
                   <input
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage("hero", f); e.currentTarget.value = ""; }}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) requestUpload("hero", f); e.currentTarget.value = ""; }}
                   />
                 </label>
                 <Input
@@ -502,7 +502,7 @@ export default function HomepageHeroManager() {
                   value={form.hero_image_url}
                   onChange={(e) => setForm({ ...form, hero_image_url: e.target.value })}
                 />
-                <UploadHint preset={UPLOAD_PRESETS.heroBanner} />
+                <SizeBadge preset={UPLOAD_PRESETS.heroBanner} />
               </div>
             </div>
           </div>
