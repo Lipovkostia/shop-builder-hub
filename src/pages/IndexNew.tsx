@@ -5,14 +5,21 @@ import {
   BadgeCheck,
   ChevronDown,
   ChevronRight,
+  Flame,
+  Heart,
   ImageIcon,
   Loader2,
   LogIn,
   Mail,
+  MapPin,
+  Menu,
   MessageCircle,
+  Percent,
   Phone,
   Search,
   ShoppingBag,
+  Sparkles,
+  Star,
   Store,
   Truck,
   X,
@@ -287,43 +294,119 @@ export default function IndexNew() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 bg-card/95 backdrop-blur-xl border-b border-border">
+        {/* Top utility bar */}
+        <div className="border-b border-border/60 bg-muted/40">
+          <div className="mx-auto flex h-9 max-w-[1680px] items-center gap-5 px-4 text-[13px] text-foreground/80 lg:px-6">
+            <nav className="hidden items-center gap-5 md:flex">
+              <a href="#delivery" className="hover:text-primary">Доставка и оплата</a>
+              <a href="#reviews" className="hover:text-primary">Отзывы</a>
+              <a href="#recipes" className="hover:text-primary">Рецепты</a>
+              <a href="#business" className="hover:text-primary">Бизнесу</a>
+              <a href="#bars" className="font-medium text-primary hover:opacity-80">Устричные бары</a>
+            </nav>
+            <div className="ml-auto flex items-center gap-4">
+              {hero.contact_phone && (
+                <a href={`tel:${hero.contact_phone}`} className="hidden items-center gap-1.5 font-medium hover:text-primary sm:flex">
+                  {hero.contact_phone_label || hero.contact_phone}
+                </a>
+              )}
+              <span className="hidden items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-xs font-medium md:inline-flex">
+                <Phone className="h-3 w-3" /> 24/7
+              </span>
+              <span className="hidden items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900 md:inline-flex">
+                <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> 5
+              </span>
+              <div className="hidden items-center gap-1.5 text-xs text-muted-foreground lg:flex">
+                <Truck className="h-4 w-4" />
+                <span>Ближайшая доставка</span>
+                <span className="font-medium text-foreground">сегодня с 18:00</span>
+              </div>
+              <button className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium hover:border-primary hover:text-primary">
+                <MapPin className="h-3.5 w-3.5" />
+                Указать адрес доставки
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Main bar */}
         <div className="mx-auto flex max-w-[1680px] items-center gap-3 px-4 py-3 lg:px-6">
           <Link to="/" className="flex items-center gap-2 whitespace-nowrap">
-            <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <ShoppingBag className="h-5 w-5" />
             </span>
-            <span className="hidden text-xl font-bold tracking-normal text-foreground sm:block">{hero.site_name || "Магазин"}</span>
+            <span className="hidden leading-tight sm:block">
+              <span className="block text-xl font-extrabold tracking-tight text-foreground">{hero.site_name || "Магазин"}</span>
+              <span className="block text-[11px] text-muted-foreground">радуем вас каждый день</span>
+            </span>
           </Link>
+
+          <Button size="lg" className="h-11 gap-2 rounded-md px-4 font-semibold">
+            <span>Каталог</span>
+            <Menu className="h-4 w-4" />
+          </Button>
+
+          <a href="#new" className="hidden items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium hover:text-primary md:inline-flex">
+            <Sparkles className="h-4 w-4 text-primary" /> Новинки
+          </a>
+          <a href="#sales" className="hidden items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium hover:text-primary md:inline-flex">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-amber-950"><Percent className="h-3 w-3" /></span>
+            Скидки <ChevronDown className="h-3 w-3" />
+          </a>
+
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск по товарам и категориям…"
-              className="h-11 rounded-md border-2 pl-11 text-base focus-visible:ring-primary lg:h-12"
+              placeholder="Поиск"
+              className="h-11 rounded-md border-2 pl-11 pr-40 text-base focus-visible:ring-primary"
             />
+            <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 text-sm text-muted-foreground lg:block">
+              Например, <span className="underline">красная икра</span>
+            </span>
           </div>
-          <div className="hidden items-center gap-3 text-xs text-muted-foreground xl:flex">
-            {hero.contact_phone && (
-              <a href={`tel:${hero.contact_phone}`} className="flex items-center gap-1.5 hover:text-primary">
-                <Phone className="h-4 w-4" /> {hero.contact_phone_label || hero.contact_phone}
-              </a>
-            )}
-            {hero.contact_telegram_url && (
-              <a href={hero.contact_telegram_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-primary">
-                <MessageCircle className="h-4 w-4" /> {hero.contact_telegram_label || "Telegram"}
-              </a>
-            )}
-          </div>
+
+          <button aria-label="Избранное" className="hidden h-11 w-11 items-center justify-center rounded-md text-foreground hover:bg-muted md:inline-flex">
+            <Heart className="h-5 w-5" />
+          </button>
           <Link to="/auth?tab=customer" className="shrink-0">
-            <Button variant="outline" size="sm" className="gap-1.5 px-2.5 sm:px-3">
+            <Button variant="outline" size="lg" className="h-11 gap-2 rounded-md">
               <LogIn className="h-4 w-4" />
               <span className="hidden sm:inline">Вход</span>
             </Button>
           </Link>
+          <button className="relative flex h-11 items-center gap-2 rounded-md bg-muted/60 px-3 font-semibold hover:bg-muted">
+            <ShoppingBag className="h-5 w-5" />
+            <span className="text-sm">0 ₽</span>
+          </button>
         </div>
+
+        {/* Promo chips */}
+        {featuredCategories.length > 0 && (
+          <div className="border-t border-border/60">
+            <div className="mx-auto flex max-w-[1680px] items-center gap-5 overflow-x-auto px-4 py-2 text-sm lg:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {featuredCategories.map((c, i) => {
+                const Icon = [Flame, ShoppingBag, Sparkles, BadgeCheck, Store, Truck, Percent][i % 7];
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedCat(c.id)}
+                    className="flex shrink-0 items-center gap-1.5 whitespace-nowrap font-medium text-foreground hover:text-primary"
+                  >
+                    <Icon className={cn("h-4 w-4", i === 0 ? "text-primary" : "text-muted-foreground")} />
+                    {c.name}
+                  </button>
+                );
+              })}
+              <button className="ml-auto shrink-0 rounded-full p-1 hover:bg-muted">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       <section className="border-b border-border bg-card">
