@@ -78,6 +78,27 @@ interface SideBlock {
   url?: string | null;
 }
 
+interface HeaderNavLink { id?: string; label?: string; url?: string; highlight?: boolean; }
+interface HeaderPromoChip { id?: string; label?: string; url?: string; icon?: string; accent?: boolean; }
+interface HeaderConfig {
+  tagline?: string;
+  catalog_button_label?: string;
+  new_link_label?: string;
+  sales_link_label?: string;
+  search_placeholder?: string;
+  search_hint_prefix?: string;
+  search_hint_word?: string;
+  address_button_label?: string;
+  delivery_prefix?: string;
+  delivery_time?: string;
+  rating_value?: string;
+  cart_label?: string;
+  login_label?: string;
+  top_nav?: HeaderNavLink[];
+  promo_chips?: HeaderPromoChip[];
+  use_categories_as_chips?: boolean;
+}
+
 interface HeroSettings {
   site_name?: string | null;
   hero_badge?: string | null;
@@ -97,6 +118,7 @@ interface HeroSettings {
   contact_email?: string | null;
   contact_address?: string | null;
   side_blocks?: SideBlock[] | null;
+  header_config?: HeaderConfig | null;
 }
 
 const DEFAULT_HERO: HeroSettings = {
