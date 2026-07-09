@@ -1,14 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Save, Trash2, Upload, X } from "lucide-react";
-import { UPLOAD_PRESETS, validateUpload } from "@/lib/uploadValidation";
-import UploadHint from "@/components/admin/UploadHint";
+import { Loader2, Package, Plus, Save, Search, Trash2, Upload, X } from "lucide-react";
+import { UPLOAD_PRESETS, validateUpload, type UploadPreset } from "@/lib/uploadValidation";
+import ImageCropperDialog from "@/components/admin/ImageCropperDialog";
 
 interface SideBlock {
   id: string;
@@ -16,6 +17,7 @@ interface SideBlock {
   subtitle?: string;
   image_url?: string | null;
   url?: string | null;
+  product_id?: string | null;
 }
 
 interface HeaderNavLink { id: string; label: string; url: string; highlight?: boolean; }
@@ -115,6 +117,82 @@ function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+interface PickerProduct { id: string; name: string; image: string | null; description?: string | null }
+
+function SizeBadge({ preset }: { preset: UploadPreset }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+      <span className="rounded-md bg-primary px-2 py-0.5 font-semibold text-primary-foreground">
+        Размер {preset.targetWidth}×{preset.targetHeight} px
+      </span>
+      <span className="text-muted-foreground">
+        {preset.formatsLabel} · до {Math.round(preset.maxBytes / 1024 / 1024)} МБ. Любую картинку можно обрезать под нужный размер.
+      </span>
+    </div>
+  );
+}
+
+function ProductPickerPopover({
+  products,
+  currentId,
+  onPick,
+  onClear,
+}: {
+  products: PickerProduct[];
+  currentId?: string | null;
+  onPick: (p: PickerProduct) => void;
+  onClear: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const filtered = useMemo(
+    () => {
+      const s = q.trim().toLowerCase();
+      const list = s ? products.filter((p) => p.name.toLowerCase().includes(s)) : products;
+      return list.slice(0, 50);
+    },
+    [products, q],
+  );
+  const current = currentId ? products.find((p) => p.id === currentId) : null;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+          <Package className="h-3.5 w-3.5" />
+          {current ? `Товар: ${current.name.slice(0, 24)}` : "Выбрать товар из каталога"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[380px] p-2" align="start">
+        <div className="relative mb-2">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск товара…" className="h-8 pl-7 text-xs" />
+        </div>
+        <div className="max-h-72 space-y-1 overflow-y-auto">
+          {products.length === 0 && <p className="p-3 text-xs text-muted-foreground">Товары не загружены.</p>}
+          {filtered.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => onPick(p)}
+              className={`flex w-full items-center gap-2 rounded-md border p-1.5 text-left text-xs hover:bg-muted ${currentId === p.id ? "border-primary bg-primary/5" : "border-transparent"}`}
+            >
+              {p.image ? (
+                <img src={p.image} alt="" className="h-9 w-9 shrink-0 rounded-sm object-cover" />
+              ) : (
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-muted"><Package className="h-4 w-4 text-muted-foreground" /></div>
+              )}
+              <span className="line-clamp-2 flex-1">{p.name}</span>
+            </button>
+          ))}
+        </div>
+        {current && (
+          <button onClick={onClear} className="mt-2 w-full rounded-md border border-destructive/40 px-2 py-1 text-xs text-destructive hover:bg-destructive/5">
+            Отвязать товар
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function HomepageHeroManager() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -122,6 +200,8 @@ export default function HomepageHeroManager() {
   const [uploading, setUploading] = useState<string | null>(null);
   const [form, setForm] = useState<HeroSettings>(EMPTY);
   const [missingTable, setMissingTable] = useState(false);
+  const [cropState, setCropState] = useState<{ target: string; file: File; preset: UploadPreset } | null>(null);
+  const [products, setProducts] = useState<PickerProduct[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -158,6 +238,22 @@ export default function HomepageHeroManager() {
 
   useEffect(() => { load(); }, []);
 
+  // Load products for the side-block product picker
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homepage-catalog`)
+      .then((r) => r.json())
+      .then((json) => {
+        const list: PickerProduct[] = (json?.data || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          image: p.image || null,
+          description: p.description || null,
+        }));
+        setProducts(list);
+      })
+      .catch(() => { /* ignore */ });
+  }, []);
+
   const save = async () => {
     setSaving(true);
     const payload: any = { ...form, id: "default", updated_at: new Date().toISOString() };
@@ -165,7 +261,6 @@ export default function HomepageHeroManager() {
       .from("homepage_hero_settings")
       .upsert(payload, { onConflict: "id" });
     if (error && /header_config/i.test(String(error.message || ""))) {
-      // Column not present yet — save without it and inform user
       const { header_config, ...rest } = payload;
       const retry = await (supabase as any)
         .from("homepage_hero_settings")
@@ -189,19 +284,23 @@ export default function HomepageHeroManager() {
     toast({ title: "Сохранено", description: "Главная страница обновлена." });
   };
 
-  const uploadImage = async (target: "hero" | string, file: File) => {
+  const requestUpload = (target: "hero" | string, file: File) => {
     const preset = target === "hero" ? UPLOAD_PRESETS.heroBanner : UPLOAD_PRESETS.heroSideBlock;
     const check = validateUpload(file, preset);
     if (!check.ok) {
       toast({ title: "Файл не подходит", description: check.error, variant: "destructive" });
       return;
     }
+    setCropState({ target, file, preset });
+  };
+
+  const uploadBlob = async (target: "hero" | string, blob: Blob, mime: string) => {
     setUploading(target);
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const ext = mime.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
     const path = `hero/${target}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("landing-info").upload(path, file, {
+    const { error } = await supabase.storage.from("landing-info").upload(path, blob, {
       upsert: true,
-      contentType: file.type || undefined,
+      contentType: mime,
       cacheControl: "3600",
     });
     if (error) {
@@ -390,12 +489,12 @@ export default function HomepageHeroManager() {
               <div className="space-y-2">
                 <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted">
                   {uploading === "hero" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  Загрузить
+                  Загрузить и обрезать
                   <input
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage("hero", f); e.currentTarget.value = ""; }}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) requestUpload("hero", f); e.currentTarget.value = ""; }}
                   />
                 </label>
                 <Input
@@ -403,7 +502,7 @@ export default function HomepageHeroManager() {
                   value={form.hero_image_url}
                   onChange={(e) => setForm({ ...form, hero_image_url: e.target.value })}
                 />
-                <UploadHint preset={UPLOAD_PRESETS.heroBanner} />
+                <SizeBadge preset={UPLOAD_PRESETS.heroBanner} />
               </div>
             </div>
           </div>
@@ -498,44 +597,74 @@ export default function HomepageHeroManager() {
         <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
           <div>
             <CardTitle className="text-base">Правые баннеры возле героя</CardTitle>
-            <CardDescription>До двух блоков рядом с главным баннером на большом экране.</CardDescription>
+            <CardDescription>
+              До двух блоков рядом с главным баннером. Каждый блок — либо своя картинка + заголовок,
+              либо привязка к товару из каталога (тогда фото и название подставятся автоматически).
+            </CardDescription>
           </div>
-          <Button size="sm" variant="outline" onClick={addBlock} className="gap-1.5"><Plus className="h-4 w-4" /> Добавить</Button>
+          <Button size="sm" variant="outline" onClick={addBlock} className="gap-1.5"><Plus className="h-4 w-4" /> Добавить блок</Button>
         </CardHeader>
         <CardContent className="space-y-3">
           {form.side_blocks.length === 0 && (
-            <p className="text-sm text-muted-foreground">Нет блоков — используются автоматические изображения из слайдера.</p>
+            <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+              Пока нет ручных блоков — на главной автоматически показываются картинки из слайдера.
+              Нажмите «Добавить блок», чтобы поставить свою карточку или товар.
+            </p>
           )}
-          {form.side_blocks.map((b) => (
-            <div key={b.id} className="grid gap-3 rounded-md border p-3 md:grid-cols-[128px_1fr_auto]">
-              <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-md border bg-muted">
-                {b.image_url ? (
-                  <img src={b.image_url} alt={b.title} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">Нет фото</div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Input value={b.title} onChange={(e) => patchBlock(b.id, { title: e.target.value })} placeholder="Заголовок блока" />
-                <Input value={b.url || ""} onChange={(e) => patchBlock(b.id, { url: e.target.value })} placeholder="Ссылка (необязательно)" />
-                <div className="flex items-center gap-2">
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
-                    {uploading === b.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                    Загрузить фото
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(b.id, f); e.currentTarget.value = ""; }}
-                    />
-                  </label>
-                  <Input value={b.image_url || ""} onChange={(e) => patchBlock(b.id, { image_url: e.target.value })} placeholder="или URL картинки" className="h-8 text-xs" />
+          {form.side_blocks.map((b, idx) => {
+            const linkedProduct = b.product_id ? products.find((p) => p.id === b.product_id) : null;
+            return (
+              <div key={b.id} className="grid gap-3 rounded-md border p-3 md:grid-cols-[140px_1fr_auto]">
+                <div className="space-y-1.5">
+                  <div className="relative h-24 w-full overflow-hidden rounded-md border bg-muted">
+                    {(b.image_url || linkedProduct?.image) ? (
+                      <img src={b.image_url || linkedProduct?.image || ""} alt={b.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">Нет фото</div>
+                    )}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Блок {idx + 1}</div>
                 </div>
-                <UploadHint preset={UPLOAD_PRESETS.heroSideBlock} />
+                <div className="space-y-2">
+                  <Input value={b.title} onChange={(e) => patchBlock(b.id, { title: e.target.value })} placeholder="Заголовок блока (например «Товар дня»)" />
+                  <Input value={b.url || ""} onChange={(e) => patchBlock(b.id, { url: e.target.value })} placeholder="Ссылка (необязательно)" />
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                      {uploading === b.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                      Загрузить и обрезать
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) requestUpload(b.id, f); e.currentTarget.value = ""; }}
+                      />
+                    </label>
+                    <Input value={b.image_url || ""} onChange={(e) => patchBlock(b.id, { image_url: e.target.value })} placeholder="или URL картинки" className="h-8 flex-1 text-xs" />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ProductPickerPopover
+                      products={products}
+                      currentId={b.product_id}
+                      onPick={(p) => patchBlock(b.id, {
+                        product_id: p.id,
+                        title: b.title && b.title !== "Новый блок" ? b.title : p.name,
+                        image_url: b.image_url || p.image || null,
+                      })}
+                      onClear={() => patchBlock(b.id, { product_id: null })}
+                    />
+                    {linkedProduct && (
+                      <span className="text-xs text-muted-foreground">Привязан к «{linkedProduct.name}»</span>
+                    )}
+                  </div>
+
+                  <SizeBadge preset={UPLOAD_PRESETS.heroSideBlock} />
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => removeBlock(b.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => removeBlock(b.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
 
@@ -545,6 +674,20 @@ export default function HomepageHeroManager() {
           Сохранить изменения
         </Button>
       </div>
+
+      <ImageCropperDialog
+        open={!!cropState}
+        onOpenChange={(v) => { if (!v) setCropState(null); }}
+        file={cropState?.file || null}
+        targetWidth={cropState?.preset.targetWidth || 1920}
+        targetHeight={cropState?.preset.targetHeight || 900}
+        recommendLabel={cropState?.preset.recommend}
+        onCropped={async (blob) => {
+          if (!cropState) return;
+          await uploadBlob(cropState.target, blob, "image/jpeg");
+          setCropState(null);
+        }}
+      />
     </div>
   );
 }
