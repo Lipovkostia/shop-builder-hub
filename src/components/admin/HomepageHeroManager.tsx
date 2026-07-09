@@ -18,6 +18,54 @@ interface SideBlock {
   url?: string | null;
 }
 
+interface HeaderNavLink { id: string; label: string; url: string; highlight?: boolean; }
+interface HeaderPromoChip { id: string; label: string; url?: string; icon?: string; accent?: boolean; }
+interface HeaderConfig {
+  tagline?: string;
+  catalog_button_label?: string;
+  new_link_label?: string;
+  sales_link_label?: string;
+  search_placeholder?: string;
+  search_hint_prefix?: string;
+  search_hint_word?: string;
+  address_button_label?: string;
+  delivery_prefix?: string;
+  delivery_time?: string;
+  rating_value?: string;
+  cart_label?: string;
+  login_label?: string;
+  use_categories_as_chips?: boolean;
+  top_nav: HeaderNavLink[];
+  promo_chips: HeaderPromoChip[];
+}
+
+const DEFAULT_HEADER: HeaderConfig = {
+  tagline: "радуем вас каждый день",
+  catalog_button_label: "Каталог",
+  new_link_label: "Новинки",
+  sales_link_label: "Скидки",
+  search_placeholder: "Поиск",
+  search_hint_prefix: "Например,",
+  search_hint_word: "красная икра",
+  address_button_label: "Указать адрес доставки",
+  delivery_prefix: "Ближайшая доставка",
+  delivery_time: "сегодня с 18:00",
+  rating_value: "5",
+  cart_label: "0 ₽",
+  login_label: "Вход",
+  use_categories_as_chips: true,
+  top_nav: [
+    { id: "n1", label: "Доставка и оплата", url: "#delivery" },
+    { id: "n2", label: "Отзывы", url: "#reviews" },
+    { id: "n3", label: "Рецепты", url: "#recipes" },
+    { id: "n4", label: "Бизнесу", url: "#business" },
+    { id: "n5", label: "Устричные бары", url: "#bars", highlight: true },
+  ],
+  promo_chips: [],
+};
+
+const CHIP_ICONS = ["flame", "bag", "sparkles", "badge", "store", "truck", "percent", "star"];
+
 interface HeroSettings {
   id?: string;
   site_name: string;
@@ -38,6 +86,7 @@ interface HeroSettings {
   contact_email: string;
   contact_address: string;
   side_blocks: SideBlock[];
+  header_config: HeaderConfig;
 }
 
 const EMPTY: HeroSettings = {
