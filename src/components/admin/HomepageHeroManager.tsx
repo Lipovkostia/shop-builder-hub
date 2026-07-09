@@ -1,14 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Save, Trash2, Upload, X } from "lucide-react";
-import { UPLOAD_PRESETS, validateUpload } from "@/lib/uploadValidation";
-import UploadHint from "@/components/admin/UploadHint";
+import { Loader2, Package, Plus, Save, Search, Trash2, Upload, X } from "lucide-react";
+import { UPLOAD_PRESETS, validateUpload, type UploadPreset } from "@/lib/uploadValidation";
+import ImageCropperDialog from "@/components/admin/ImageCropperDialog";
 
 interface SideBlock {
   id: string;
@@ -16,6 +17,7 @@ interface SideBlock {
   subtitle?: string;
   image_url?: string | null;
   url?: string | null;
+  product_id?: string | null;
 }
 
 interface HeaderNavLink { id: string; label: string; url: string; highlight?: boolean; }
