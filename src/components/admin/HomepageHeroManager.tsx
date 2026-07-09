@@ -18,6 +18,54 @@ interface SideBlock {
   url?: string | null;
 }
 
+interface HeaderNavLink { id: string; label: string; url: string; highlight?: boolean; }
+interface HeaderPromoChip { id: string; label: string; url?: string; icon?: string; accent?: boolean; }
+interface HeaderConfig {
+  tagline?: string;
+  catalog_button_label?: string;
+  new_link_label?: string;
+  sales_link_label?: string;
+  search_placeholder?: string;
+  search_hint_prefix?: string;
+  search_hint_word?: string;
+  address_button_label?: string;
+  delivery_prefix?: string;
+  delivery_time?: string;
+  rating_value?: string;
+  cart_label?: string;
+  login_label?: string;
+  use_categories_as_chips?: boolean;
+  top_nav: HeaderNavLink[];
+  promo_chips: HeaderPromoChip[];
+}
+
+const DEFAULT_HEADER: HeaderConfig = {
+  tagline: "радуем вас каждый день",
+  catalog_button_label: "Каталог",
+  new_link_label: "Новинки",
+  sales_link_label: "Скидки",
+  search_placeholder: "Поиск",
+  search_hint_prefix: "Например,",
+  search_hint_word: "красная икра",
+  address_button_label: "Указать адрес доставки",
+  delivery_prefix: "Ближайшая доставка",
+  delivery_time: "сегодня с 18:00",
+  rating_value: "5",
+  cart_label: "0 ₽",
+  login_label: "Вход",
+  use_categories_as_chips: true,
+  top_nav: [
+    { id: "n1", label: "Доставка и оплата", url: "#delivery" },
+    { id: "n2", label: "Отзывы", url: "#reviews" },
+    { id: "n3", label: "Рецепты", url: "#recipes" },
+    { id: "n4", label: "Бизнесу", url: "#business" },
+    { id: "n5", label: "Устричные бары", url: "#bars", highlight: true },
+  ],
+  promo_chips: [],
+};
+
+const CHIP_ICONS = ["flame", "bag", "sparkles", "badge", "store", "truck", "percent", "star"];
+
 interface HeroSettings {
   id?: string;
   site_name: string;
@@ -38,6 +86,7 @@ interface HeroSettings {
   contact_email: string;
   contact_address: string;
   side_blocks: SideBlock[];
+  header_config: HeaderConfig;
 }
 
 const EMPTY: HeroSettings = {
@@ -59,6 +108,7 @@ const EMPTY: HeroSettings = {
   contact_email: "",
   contact_address: "",
   side_blocks: [],
+  header_config: DEFAULT_HEADER,
 };
 
 function uid() {
@@ -95,6 +145,12 @@ export default function HomepageHeroManager() {
         ...data,
         hero_overlay_opacity: Number(data.hero_overlay_opacity ?? 0.55),
         side_blocks: Array.isArray(data.side_blocks) ? data.side_blocks : [],
+        header_config: {
+          ...DEFAULT_HEADER,
+          ...(data.header_config || {}),
+          top_nav: Array.isArray(data.header_config?.top_nav) ? data.header_config.top_nav : DEFAULT_HEADER.top_nav,
+          promo_chips: Array.isArray(data.header_config?.promo_chips) ? data.header_config.promo_chips : [],
+        },
       });
     }
     setLoading(false);
@@ -104,10 +160,27 @@ export default function HomepageHeroManager() {
 
   const save = async () => {
     setSaving(true);
-    const payload = { ...form, id: "default", updated_at: new Date().toISOString() };
-    const { error } = await (supabase as any)
+    const payload: any = { ...form, id: "default", updated_at: new Date().toISOString() };
+    let { error } = await (supabase as any)
       .from("homepage_hero_settings")
       .upsert(payload, { onConflict: "id" });
+    if (error && /header_config/i.test(String(error.message || ""))) {
+      // Column not present yet — save without it and inform user
+      const { header_config, ...rest } = payload;
+      const retry = await (supabase as any)
+        .from("homepage_hero_settings")
+        .upsert(rest, { onConflict: "id" });
+      error = retry.error;
+      if (!error) {
+        toast({
+          title: "Сохранено частично",
+          description: "Настройки шапки не сохранены — примените миграцию docs/migrations-pending/20260709120000_hero_header_config.sql",
+          variant: "destructive",
+        });
+        setSaving(false);
+        return;
+      }
+    }
     setSaving(false);
     if (error) {
       toast({ title: "Ошибка сохранения", description: error.message, variant: "destructive" });
@@ -197,6 +270,101 @@ export default function HomepageHeroManager() {
           Сохранить
         </Button>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Шапка сайта</CardTitle>
+          <CardDescription>Тексты и ссылки в верхней панели, поиске и промо-строке.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="space-y-1.5"><Label>Подпись под названием</Label>
+              <Input value={form.header_config.tagline || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, tagline: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Текст кнопки «Каталог»</Label>
+              <Input value={form.header_config.catalog_button_label || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, catalog_button_label: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Ссылка «Новинки»</Label>
+              <Input value={form.header_config.new_link_label || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, new_link_label: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Ссылка «Скидки»</Label>
+              <Input value={form.header_config.sales_link_label || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, sales_link_label: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Плейсхолдер поиска</Label>
+              <Input value={form.header_config.search_placeholder || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, search_placeholder: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Подсказка поиска — префикс</Label>
+              <Input value={form.header_config.search_hint_prefix || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, search_hint_prefix: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Подсказка поиска — слово</Label>
+              <Input value={form.header_config.search_hint_word || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, search_hint_word: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Кнопка «Адрес доставки»</Label>
+              <Input value={form.header_config.address_button_label || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, address_button_label: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Префикс «Доставка»</Label>
+              <Input value={form.header_config.delivery_prefix || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, delivery_prefix: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Время доставки</Label>
+              <Input value={form.header_config.delivery_time || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, delivery_time: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Рейтинг (пусто — скрыть)</Label>
+              <Input value={form.header_config.rating_value || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, rating_value: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Текст на корзине</Label>
+              <Input value={form.header_config.cart_label || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, cart_label: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Кнопка «Вход»</Label>
+              <Input value={form.header_config.login_label || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, login_label: e.target.value } }))} /></div>
+          </div>
+
+          {/* Top nav links */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold">Верхние ссылки (Доставка, Отзывы, …)</Label>
+              <Button size="sm" variant="outline" onClick={() => setForm((f) => ({ ...f, header_config: { ...f.header_config, top_nav: [...f.header_config.top_nav, { id: uid(), label: "Новая ссылка", url: "#" }] } }))}>
+                <Plus className="h-4 w-4" /> Добавить
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {form.header_config.top_nav.map((l) => (
+                <div key={l.id} className="grid gap-2 rounded-md border p-2 md:grid-cols-[1fr_1fr_auto_auto]">
+                  <Input placeholder="Название" value={l.label} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, top_nav: f.header_config.top_nav.map((x) => x.id === l.id ? { ...x, label: e.target.value } : x) } }))} />
+                  <Input placeholder="Ссылка (#hash или https://...)" value={l.url} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, top_nav: f.header_config.top_nav.map((x) => x.id === l.id ? { ...x, url: e.target.value } : x) } }))} />
+                  <label className="flex items-center gap-1.5 whitespace-nowrap text-xs">
+                    <input type="checkbox" checked={!!l.highlight} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, top_nav: f.header_config.top_nav.map((x) => x.id === l.id ? { ...x, highlight: e.target.checked } : x) } }))} />
+                    Акцент
+                  </label>
+                  <Button variant="ghost" size="icon" onClick={() => setForm((f) => ({ ...f, header_config: { ...f.header_config, top_nav: f.header_config.top_nav.filter((x) => x.id !== l.id) } }))} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Promo chips */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-semibold">Промо-строка (плашки под поиском)</Label>
+                <p className="text-xs text-muted-foreground">Если пусто — показываются категории с товарами.</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setForm((f) => ({ ...f, header_config: { ...f.header_config, use_categories_as_chips: false, promo_chips: [...f.header_config.promo_chips, { id: uid(), label: "Новая плашка", url: "", icon: "flame" }] } }))}>
+                <Plus className="h-4 w-4" /> Добавить
+              </Button>
+            </div>
+            {form.header_config.promo_chips.length > 0 && (
+              <label className="flex items-center gap-1.5 text-xs">
+                <input type="checkbox" checked={form.header_config.use_categories_as_chips !== false} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, use_categories_as_chips: e.target.checked } }))} />
+                Дополнительно показывать категории (если ручные пусты)
+              </label>
+            )}
+            <div className="space-y-2">
+              {form.header_config.promo_chips.map((c) => (
+                <div key={c.id} className="grid gap-2 rounded-md border p-2 md:grid-cols-[1fr_1fr_120px_auto_auto]">
+                  <Input placeholder="Текст плашки" value={c.label} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, promo_chips: f.header_config.promo_chips.map((x) => x.id === c.id ? { ...x, label: e.target.value } : x) } }))} />
+                  <Input placeholder="Ссылка (необязательно)" value={c.url || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, promo_chips: f.header_config.promo_chips.map((x) => x.id === c.id ? { ...x, url: e.target.value } : x) } }))} />
+                  <select className="h-9 rounded-md border bg-background px-2 text-sm" value={c.icon || "flame"} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, promo_chips: f.header_config.promo_chips.map((x) => x.id === c.id ? { ...x, icon: e.target.value } : x) } }))}>
+                    {CHIP_ICONS.map((i) => <option key={i} value={i}>{i}</option>)}
+                  </select>
+                  <label className="flex items-center gap-1.5 whitespace-nowrap text-xs">
+                    <input type="checkbox" checked={!!c.accent} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, promo_chips: f.header_config.promo_chips.map((x) => x.id === c.id ? { ...x, accent: e.target.checked } : x) } }))} />
+                    Акцент
+                  </label>
+                  <Button variant="ghost" size="icon" onClick={() => setForm((f) => ({ ...f, header_config: { ...f.header_config, promo_chips: f.header_config.promo_chips.filter((x) => x.id !== c.id) } }))} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle className="text-base">Главный баннер</CardTitle></CardHeader>

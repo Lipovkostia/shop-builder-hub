@@ -78,6 +78,27 @@ interface SideBlock {
   url?: string | null;
 }
 
+interface HeaderNavLink { id?: string; label?: string; url?: string; highlight?: boolean; }
+interface HeaderPromoChip { id?: string; label?: string; url?: string; icon?: string; accent?: boolean; }
+interface HeaderConfig {
+  tagline?: string;
+  catalog_button_label?: string;
+  new_link_label?: string;
+  sales_link_label?: string;
+  search_placeholder?: string;
+  search_hint_prefix?: string;
+  search_hint_word?: string;
+  address_button_label?: string;
+  delivery_prefix?: string;
+  delivery_time?: string;
+  rating_value?: string;
+  cart_label?: string;
+  login_label?: string;
+  top_nav?: HeaderNavLink[];
+  promo_chips?: HeaderPromoChip[];
+  use_categories_as_chips?: boolean;
+}
+
 interface HeroSettings {
   site_name?: string | null;
   hero_badge?: string | null;
@@ -97,6 +118,7 @@ interface HeroSettings {
   contact_email?: string | null;
   contact_address?: string | null;
   side_blocks?: SideBlock[] | null;
+  header_config?: HeaderConfig | null;
 }
 
 const DEFAULT_HERO: HeroSettings = {
@@ -292,6 +314,21 @@ export default function IndexNew() {
     setExpandedCats((prev) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
+  const hc: HeaderConfig = hero.header_config || {};
+  const chipIcons: Record<string, any> = { flame: Flame, bag: ShoppingBag, sparkles: Sparkles, badge: BadgeCheck, store: Store, truck: Truck, percent: Percent, star: Star };
+  const defaultTopNav: HeaderNavLink[] = [
+    { label: "Доставка и оплата", url: "#delivery" },
+    { label: "Отзывы", url: "#reviews" },
+    { label: "Рецепты", url: "#recipes" },
+    { label: "Бизнесу", url: "#business" },
+    { label: "Устричные бары", url: "#bars", highlight: true },
+  ];
+  const topNav = (hc.top_nav && hc.top_nav.length > 0) ? hc.top_nav : defaultTopNav;
+  const useCatChips = hc.use_categories_as_chips !== false && (!hc.promo_chips || hc.promo_chips.length === 0);
+  const chips: HeaderPromoChip[] = useCatChips
+    ? featuredCategories.map((c) => ({ id: c.id, label: c.name, icon: "flame" }))
+    : (hc.promo_chips || []);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 bg-card/95 backdrop-blur-xl border-b border-border">
@@ -299,11 +336,15 @@ export default function IndexNew() {
         <div className="border-b border-border/60 bg-muted/40">
           <div className="mx-auto flex h-9 max-w-[1680px] items-center gap-5 px-4 text-[13px] text-foreground/80 lg:px-6">
             <nav className="hidden items-center gap-5 md:flex">
-              <a href="#delivery" className="hover:text-primary">Доставка и оплата</a>
-              <a href="#reviews" className="hover:text-primary">Отзывы</a>
-              <a href="#recipes" className="hover:text-primary">Рецепты</a>
-              <a href="#business" className="hover:text-primary">Бизнесу</a>
-              <a href="#bars" className="font-medium text-primary hover:opacity-80">Устричные бары</a>
+              {topNav.map((l, i) => (
+                <a
+                  key={l.id || i}
+                  href={l.url || "#"}
+                  className={cn("hover:text-primary", l.highlight && "font-medium text-primary hover:opacity-80")}
+                >
+                  {l.label}
+                </a>
+              ))}
             </nav>
             <div className="ml-auto flex items-center gap-4">
               {hero.contact_phone && (
@@ -314,17 +355,19 @@ export default function IndexNew() {
               <span className="hidden items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-xs font-medium md:inline-flex">
                 <Phone className="h-3 w-3" /> 24/7
               </span>
-              <span className="hidden items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900 md:inline-flex">
-                <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> 5
-              </span>
+              {hc.rating_value !== "" && (
+                <span className="hidden items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900 md:inline-flex">
+                  <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> {hc.rating_value || "5"}
+                </span>
+              )}
               <div className="hidden items-center gap-1.5 text-xs text-muted-foreground lg:flex">
                 <Truck className="h-4 w-4" />
-                <span>Ближайшая доставка</span>
-                <span className="font-medium text-foreground">сегодня с 18:00</span>
+                <span>{hc.delivery_prefix || "Ближайшая доставка"}</span>
+                <span className="font-medium text-foreground">{hc.delivery_time || "сегодня с 18:00"}</span>
               </div>
               <button className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium hover:border-primary hover:text-primary">
                 <MapPin className="h-3.5 w-3.5" />
-                Указать адрес доставки
+                {hc.address_button_label || "Указать адрес доставки"}
               </button>
             </div>
           </div>
@@ -338,21 +381,23 @@ export default function IndexNew() {
             </span>
             <span className="hidden leading-tight sm:block">
               <span className="block text-xl font-extrabold tracking-tight text-foreground">{hero.site_name || "Магазин"}</span>
-              <span className="block text-[11px] text-muted-foreground">радуем вас каждый день</span>
+              {(hc.tagline ?? "радуем вас каждый день") && (
+                <span className="block text-[11px] text-muted-foreground">{hc.tagline ?? "радуем вас каждый день"}</span>
+              )}
             </span>
           </Link>
 
           <Button size="lg" className="h-11 gap-2 rounded-md px-4 font-semibold">
-            <span>Каталог</span>
+            <span>{hc.catalog_button_label || "Каталог"}</span>
             <Menu className="h-4 w-4" />
           </Button>
 
           <a href="#new" className="hidden items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium hover:text-primary md:inline-flex">
-            <Sparkles className="h-4 w-4 text-primary" /> Новинки
+            <Sparkles className="h-4 w-4 text-primary" /> {hc.new_link_label || "Новинки"}
           </a>
           <a href="#sales" className="hidden items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium hover:text-primary md:inline-flex">
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-amber-950"><Percent className="h-3 w-3" /></span>
-            Скидки <ChevronDown className="h-3 w-3" />
+            {hc.sales_link_label || "Скидки"} <ChevronDown className="h-3 w-3" />
           </a>
 
           <div className="relative flex-1">
@@ -361,12 +406,14 @@ export default function IndexNew() {
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск"
+              placeholder={hc.search_placeholder || "Поиск"}
               className="h-11 rounded-md border-2 pl-11 pr-40 text-base focus-visible:ring-primary"
             />
-            <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 text-sm text-muted-foreground lg:block">
-              Например, <span className="underline">красная икра</span>
-            </span>
+            {(hc.search_hint_word || hc.search_hint_prefix) && (
+              <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 text-sm text-muted-foreground lg:block">
+                {hc.search_hint_prefix || "Например,"} <span className="underline">{hc.search_hint_word || "красная икра"}</span>
+              </span>
+            )}
           </div>
 
           <button aria-label="Избранное" className="hidden h-11 w-11 items-center justify-center rounded-md text-foreground hover:bg-muted md:inline-flex">
@@ -375,29 +422,41 @@ export default function IndexNew() {
           <Link to="/auth?tab=customer" className="shrink-0">
             <Button variant="outline" size="lg" className="h-11 gap-2 rounded-md">
               <LogIn className="h-4 w-4" />
-              <span className="hidden sm:inline">Вход</span>
+              <span className="hidden sm:inline">{hc.login_label || "Вход"}</span>
             </Button>
           </Link>
           <button className="relative flex h-11 items-center gap-2 rounded-md bg-muted/60 px-3 font-semibold hover:bg-muted">
             <ShoppingBag className="h-5 w-5" />
-            <span className="text-sm">0 ₽</span>
+            <span className="text-sm">{hc.cart_label || "0 ₽"}</span>
           </button>
         </div>
 
         {/* Promo chips */}
-        {featuredCategories.length > 0 && (
+        {chips.length > 0 && (
           <div className="border-t border-border/60">
             <div className="mx-auto flex max-w-[1680px] items-center gap-5 overflow-x-auto px-4 py-2 text-sm lg:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {featuredCategories.map((c, i) => {
-                const Icon = [Flame, ShoppingBag, Sparkles, BadgeCheck, Store, Truck, Percent][i % 7];
+              {chips.map((chip, i) => {
+                const Icon = chipIcons[chip.icon || "flame"] || Flame;
+                const content = (
+                  <>
+                    <Icon className={cn("h-4 w-4", chip.accent || i === 0 ? "text-primary" : "text-muted-foreground")} />
+                    {chip.label}
+                  </>
+                );
+                if (chip.url) {
+                  return (
+                    <a key={chip.id || i} href={chip.url} className="flex shrink-0 items-center gap-1.5 whitespace-nowrap font-medium text-foreground hover:text-primary">
+                      {content}
+                    </a>
+                  );
+                }
                 return (
                   <button
-                    key={c.id}
-                    onClick={() => setSelectedCat(c.id)}
+                    key={chip.id || i}
+                    onClick={() => chip.id && setSelectedCat(chip.id)}
                     className="flex shrink-0 items-center gap-1.5 whitespace-nowrap font-medium text-foreground hover:text-primary"
                   >
-                    <Icon className={cn("h-4 w-4", i === 0 ? "text-primary" : "text-muted-foreground")} />
-                    {c.name}
+                    {content}
                   </button>
                 );
               })}
