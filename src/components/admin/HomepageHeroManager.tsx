@@ -597,44 +597,74 @@ export default function HomepageHeroManager() {
         <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
           <div>
             <CardTitle className="text-base">Правые баннеры возле героя</CardTitle>
-            <CardDescription>До двух блоков рядом с главным баннером на большом экране.</CardDescription>
+            <CardDescription>
+              До двух блоков рядом с главным баннером. Каждый блок — либо своя картинка + заголовок,
+              либо привязка к товару из каталога (тогда фото и название подставятся автоматически).
+            </CardDescription>
           </div>
-          <Button size="sm" variant="outline" onClick={addBlock} className="gap-1.5"><Plus className="h-4 w-4" /> Добавить</Button>
+          <Button size="sm" variant="outline" onClick={addBlock} className="gap-1.5"><Plus className="h-4 w-4" /> Добавить блок</Button>
         </CardHeader>
         <CardContent className="space-y-3">
           {form.side_blocks.length === 0 && (
-            <p className="text-sm text-muted-foreground">Нет блоков — используются автоматические изображения из слайдера.</p>
+            <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+              Пока нет ручных блоков — на главной автоматически показываются картинки из слайдера.
+              Нажмите «Добавить блок», чтобы поставить свою карточку или товар.
+            </p>
           )}
-          {form.side_blocks.map((b) => (
-            <div key={b.id} className="grid gap-3 rounded-md border p-3 md:grid-cols-[128px_1fr_auto]">
-              <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-md border bg-muted">
-                {b.image_url ? (
-                  <img src={b.image_url} alt={b.title} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">Нет фото</div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Input value={b.title} onChange={(e) => patchBlock(b.id, { title: e.target.value })} placeholder="Заголовок блока" />
-                <Input value={b.url || ""} onChange={(e) => patchBlock(b.id, { url: e.target.value })} placeholder="Ссылка (необязательно)" />
-                <div className="flex items-center gap-2">
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
-                    {uploading === b.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                    Загрузить фото
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(b.id, f); e.currentTarget.value = ""; }}
-                    />
-                  </label>
-                  <Input value={b.image_url || ""} onChange={(e) => patchBlock(b.id, { image_url: e.target.value })} placeholder="или URL картинки" className="h-8 text-xs" />
+          {form.side_blocks.map((b, idx) => {
+            const linkedProduct = b.product_id ? products.find((p) => p.id === b.product_id) : null;
+            return (
+              <div key={b.id} className="grid gap-3 rounded-md border p-3 md:grid-cols-[140px_1fr_auto]">
+                <div className="space-y-1.5">
+                  <div className="relative h-24 w-full overflow-hidden rounded-md border bg-muted">
+                    {(b.image_url || linkedProduct?.image) ? (
+                      <img src={b.image_url || linkedProduct?.image || ""} alt={b.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">Нет фото</div>
+                    )}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Блок {idx + 1}</div>
                 </div>
-                <UploadHint preset={UPLOAD_PRESETS.heroSideBlock} />
+                <div className="space-y-2">
+                  <Input value={b.title} onChange={(e) => patchBlock(b.id, { title: e.target.value })} placeholder="Заголовок блока (например «Товар дня»)" />
+                  <Input value={b.url || ""} onChange={(e) => patchBlock(b.id, { url: e.target.value })} placeholder="Ссылка (необязательно)" />
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                      {uploading === b.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                      Загрузить и обрезать
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) requestUpload(b.id, f); e.currentTarget.value = ""; }}
+                      />
+                    </label>
+                    <Input value={b.image_url || ""} onChange={(e) => patchBlock(b.id, { image_url: e.target.value })} placeholder="или URL картинки" className="h-8 flex-1 text-xs" />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ProductPickerPopover
+                      products={products}
+                      currentId={b.product_id}
+                      onPick={(p) => patchBlock(b.id, {
+                        product_id: p.id,
+                        title: b.title && b.title !== "Новый блок" ? b.title : p.name,
+                        image_url: b.image_url || p.image || null,
+                      })}
+                      onClear={() => patchBlock(b.id, { product_id: null })}
+                    />
+                    {linkedProduct && (
+                      <span className="text-xs text-muted-foreground">Привязан к «{linkedProduct.name}»</span>
+                    )}
+                  </div>
+
+                  <SizeBadge preset={UPLOAD_PRESETS.heroSideBlock} />
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => removeBlock(b.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => removeBlock(b.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
 
@@ -644,6 +674,20 @@ export default function HomepageHeroManager() {
           Сохранить изменения
         </Button>
       </div>
+
+      <ImageCropperDialog
+        open={!!cropState}
+        onOpenChange={(v) => { if (!v) setCropState(null); }}
+        file={cropState?.file || null}
+        targetWidth={cropState?.preset.targetWidth || 1920}
+        targetHeight={cropState?.preset.targetHeight || 900}
+        recommendLabel={cropState?.preset.recommend}
+        onCropped={async (blob) => {
+          if (!cropState) return;
+          await uploadBlob(cropState.target, blob, "image/jpeg");
+          setCropState(null);
+        }}
+      />
     </div>
   );
 }
