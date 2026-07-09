@@ -299,7 +299,6 @@ export default function HomepageHeroManager() {
     const ext = mime.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
     const path = `hero/${target}-${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from("landing-info").upload(path, blob, {
-      upsert: true,
       contentType: mime,
       cacheControl: "3600",
     });
