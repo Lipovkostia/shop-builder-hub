@@ -145,6 +145,12 @@ export default function HomepageHeroManager() {
         ...data,
         hero_overlay_opacity: Number(data.hero_overlay_opacity ?? 0.55),
         side_blocks: Array.isArray(data.side_blocks) ? data.side_blocks : [],
+        header_config: {
+          ...DEFAULT_HEADER,
+          ...(data.header_config || {}),
+          top_nav: Array.isArray(data.header_config?.top_nav) ? data.header_config.top_nav : DEFAULT_HEADER.top_nav,
+          promo_chips: Array.isArray(data.header_config?.promo_chips) ? data.header_config.promo_chips : [],
+        },
       });
     }
     setLoading(false);
@@ -154,10 +160,27 @@ export default function HomepageHeroManager() {
 
   const save = async () => {
     setSaving(true);
-    const payload = { ...form, id: "default", updated_at: new Date().toISOString() };
-    const { error } = await (supabase as any)
+    const payload: any = { ...form, id: "default", updated_at: new Date().toISOString() };
+    let { error } = await (supabase as any)
       .from("homepage_hero_settings")
       .upsert(payload, { onConflict: "id" });
+    if (error && /header_config/i.test(String(error.message || ""))) {
+      // Column not present yet — save without it and inform user
+      const { header_config, ...rest } = payload;
+      const retry = await (supabase as any)
+        .from("homepage_hero_settings")
+        .upsert(rest, { onConflict: "id" });
+      error = retry.error;
+      if (!error) {
+        toast({
+          title: "Сохранено частично",
+          description: "Настройки шапки не сохранены — примените миграцию docs/migrations-pending/20260709120000_hero_header_config.sql",
+          variant: "destructive",
+        });
+        setSaving(false);
+        return;
+      }
+    }
     setSaving(false);
     if (error) {
       toast({ title: "Ошибка сохранения", description: error.message, variant: "destructive" });
