@@ -521,7 +521,15 @@ export default function IndexNew() {
 
           <aside className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
             {(hero.side_blocks && hero.side_blocks.length > 0
-              ? hero.side_blocks.slice(0, 2).map((b, i) => ({ id: b.id || `sb-${i}`, title: b.title || "", image_url: b.image_url || null, url: b.url || null }))
+              ? hero.side_blocks.slice(0, 2).map((b, i) => {
+                  const linked = b.product_id ? products.find((p) => p.id === b.product_id) : null;
+                  return {
+                    id: b.id || `sb-${i}`,
+                    title: b.title || linked?.name || "",
+                    image_url: b.image_url || linked?.image || null,
+                    url: b.url || null,
+                  };
+                })
               : (heroMedia.slice(1, 3).length > 0
                 ? heroMedia.slice(1, 3).map((m) => ({ id: m.id, title: m.title, image_url: m.image_url, url: null as string | null }))
                 : infoBlocks.slice(0, 2).map((b) => ({ id: b.id, title: b.title, image_url: b.image_url, url: null as string | null })))
