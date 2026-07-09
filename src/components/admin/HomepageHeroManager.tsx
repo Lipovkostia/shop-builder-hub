@@ -108,6 +108,7 @@ const EMPTY: HeroSettings = {
   contact_email: "",
   contact_address: "",
   side_blocks: [],
+  header_config: DEFAULT_HEADER,
 };
 
 function uid() {
