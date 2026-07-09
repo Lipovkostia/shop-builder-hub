@@ -272,6 +272,101 @@ export default function HomepageHeroManager() {
       </div>
 
       <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Шапка сайта</CardTitle>
+          <CardDescription>Тексты и ссылки в верхней панели, поиске и промо-строке.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="space-y-1.5"><Label>Подпись под названием</Label>
+              <Input value={form.header_config.tagline || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, tagline: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Текст кнопки «Каталог»</Label>
+              <Input value={form.header_config.catalog_button_label || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, catalog_button_label: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Ссылка «Новинки»</Label>
+              <Input value={form.header_config.new_link_label || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, new_link_label: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Ссылка «Скидки»</Label>
+              <Input value={form.header_config.sales_link_label || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, sales_link_label: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Плейсхолдер поиска</Label>
+              <Input value={form.header_config.search_placeholder || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, search_placeholder: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Подсказка поиска — префикс</Label>
+              <Input value={form.header_config.search_hint_prefix || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, search_hint_prefix: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Подсказка поиска — слово</Label>
+              <Input value={form.header_config.search_hint_word || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, search_hint_word: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Кнопка «Адрес доставки»</Label>
+              <Input value={form.header_config.address_button_label || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, address_button_label: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Префикс «Доставка»</Label>
+              <Input value={form.header_config.delivery_prefix || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, delivery_prefix: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Время доставки</Label>
+              <Input value={form.header_config.delivery_time || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, delivery_time: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Рейтинг (пусто — скрыть)</Label>
+              <Input value={form.header_config.rating_value || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, rating_value: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Текст на корзине</Label>
+              <Input value={form.header_config.cart_label || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, cart_label: e.target.value } }))} /></div>
+            <div className="space-y-1.5"><Label>Кнопка «Вход»</Label>
+              <Input value={form.header_config.login_label || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, login_label: e.target.value } }))} /></div>
+          </div>
+
+          {/* Top nav links */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold">Верхние ссылки (Доставка, Отзывы, …)</Label>
+              <Button size="sm" variant="outline" onClick={() => setForm((f) => ({ ...f, header_config: { ...f.header_config, top_nav: [...f.header_config.top_nav, { id: uid(), label: "Новая ссылка", url: "#" }] } }))}>
+                <Plus className="h-4 w-4" /> Добавить
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {form.header_config.top_nav.map((l) => (
+                <div key={l.id} className="grid gap-2 rounded-md border p-2 md:grid-cols-[1fr_1fr_auto_auto]">
+                  <Input placeholder="Название" value={l.label} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, top_nav: f.header_config.top_nav.map((x) => x.id === l.id ? { ...x, label: e.target.value } : x) } }))} />
+                  <Input placeholder="Ссылка (#hash или https://...)" value={l.url} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, top_nav: f.header_config.top_nav.map((x) => x.id === l.id ? { ...x, url: e.target.value } : x) } }))} />
+                  <label className="flex items-center gap-1.5 whitespace-nowrap text-xs">
+                    <input type="checkbox" checked={!!l.highlight} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, top_nav: f.header_config.top_nav.map((x) => x.id === l.id ? { ...x, highlight: e.target.checked } : x) } }))} />
+                    Акцент
+                  </label>
+                  <Button variant="ghost" size="icon" onClick={() => setForm((f) => ({ ...f, header_config: { ...f.header_config, top_nav: f.header_config.top_nav.filter((x) => x.id !== l.id) } }))} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Promo chips */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-semibold">Промо-строка (плашки под поиском)</Label>
+                <p className="text-xs text-muted-foreground">Если пусто — показываются категории с товарами.</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setForm((f) => ({ ...f, header_config: { ...f.header_config, use_categories_as_chips: false, promo_chips: [...f.header_config.promo_chips, { id: uid(), label: "Новая плашка", url: "", icon: "flame" }] } }))}>
+                <Plus className="h-4 w-4" /> Добавить
+              </Button>
+            </div>
+            {form.header_config.promo_chips.length > 0 && (
+              <label className="flex items-center gap-1.5 text-xs">
+                <input type="checkbox" checked={form.header_config.use_categories_as_chips !== false} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, use_categories_as_chips: e.target.checked } }))} />
+                Дополнительно показывать категории (если ручные пусты)
+              </label>
+            )}
+            <div className="space-y-2">
+              {form.header_config.promo_chips.map((c) => (
+                <div key={c.id} className="grid gap-2 rounded-md border p-2 md:grid-cols-[1fr_1fr_120px_auto_auto]">
+                  <Input placeholder="Текст плашки" value={c.label} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, promo_chips: f.header_config.promo_chips.map((x) => x.id === c.id ? { ...x, label: e.target.value } : x) } }))} />
+                  <Input placeholder="Ссылка (необязательно)" value={c.url || ""} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, promo_chips: f.header_config.promo_chips.map((x) => x.id === c.id ? { ...x, url: e.target.value } : x) } }))} />
+                  <select className="h-9 rounded-md border bg-background px-2 text-sm" value={c.icon || "flame"} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, promo_chips: f.header_config.promo_chips.map((x) => x.id === c.id ? { ...x, icon: e.target.value } : x) } }))}>
+                    {CHIP_ICONS.map((i) => <option key={i} value={i}>{i}</option>)}
+                  </select>
+                  <label className="flex items-center gap-1.5 whitespace-nowrap text-xs">
+                    <input type="checkbox" checked={!!c.accent} onChange={(e) => setForm((f) => ({ ...f, header_config: { ...f.header_config, promo_chips: f.header_config.promo_chips.map((x) => x.id === c.id ? { ...x, accent: e.target.checked } : x) } }))} />
+                    Акцент
+                  </label>
+                  <Button variant="ghost" size="icon" onClick={() => setForm((f) => ({ ...f, header_config: { ...f.header_config, promo_chips: f.header_config.promo_chips.filter((x) => x.id !== c.id) } }))} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader><CardTitle className="text-base">Главный баннер</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
