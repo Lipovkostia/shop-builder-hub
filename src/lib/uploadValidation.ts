@@ -11,6 +11,10 @@ export interface UploadPreset {
   recommend?: string;
   /** Человекочитаемое перечисление форматов, напр. "JPG, PNG, WEBP". */
   formatsLabel?: string;
+  /** Целевая ширина в px (для кроппера). */
+  targetWidth?: number;
+  /** Целевая высота в px (для кроппера). */
+  targetHeight?: number;
 }
 
 export const UPLOAD_PRESETS = {
@@ -20,6 +24,8 @@ export const UPLOAD_PRESETS = {
     exts: ["jpg", "jpeg", "png", "webp"],
     recommend: "1920×900 px",
     formatsLabel: "JPG, PNG, WEBP",
+    targetWidth: 1920,
+    targetHeight: 900,
   },
   heroSideBlock: {
     maxBytes: 2 * 1024 * 1024,
@@ -27,6 +33,8 @@ export const UPLOAD_PRESETS = {
     exts: ["jpg", "jpeg", "png", "webp"],
     recommend: "800×600 px",
     formatsLabel: "JPG, PNG, WEBP",
+    targetWidth: 800,
+    targetHeight: 600,
   },
   landingSlide: {
     maxBytes: 3 * 1024 * 1024,
@@ -34,6 +42,8 @@ export const UPLOAD_PRESETS = {
     exts: ["jpg", "jpeg", "png", "webp"],
     recommend: "1920×800 px",
     formatsLabel: "JPG, PNG, WEBP",
+    targetWidth: 1920,
+    targetHeight: 800,
   },
   landingInfoBlock: {
     maxBytes: 2 * 1024 * 1024,
@@ -41,6 +51,8 @@ export const UPLOAD_PRESETS = {
     exts: ["jpg", "jpeg", "png", "webp"],
     recommend: "800×600 px",
     formatsLabel: "JPG, PNG, WEBP",
+    targetWidth: 800,
+    targetHeight: 600,
   },
   productImage: {
     maxBytes: 5 * 1024 * 1024,
