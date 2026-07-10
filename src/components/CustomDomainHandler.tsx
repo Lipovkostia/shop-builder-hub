@@ -1,7 +1,6 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useCustomDomainStore } from "@/hooks/useCustomDomainStore";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Package } from "lucide-react";
+import Index from "@/pages/Index";
 import RetailStore from "@/pages/RetailStore";
 import RetailProductPage from "@/pages/RetailProductPage";
 import RetailCheckout from "@/pages/RetailCheckout";
@@ -28,18 +27,15 @@ export function CustomDomainHandler({ hostname }: CustomDomainHandlerProps) {
     );
   }
 
-  // Store not found — redirect to main platform site
+  // Store not found — render the main platform landing on this domain
   if (!store || !storeType || !subdomain) {
-    if (typeof window !== "undefined") {
-      window.location.replace("https://9999999999.ru/");
-    }
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Package className="h-12 w-12 text-muted-foreground mx-auto" />
-          <p className="text-muted-foreground">Перенаправляем на главную…</p>
-        </div>
-      </div>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
     );
   }
 
