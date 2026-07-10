@@ -1,7 +1,6 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useCustomDomainStore } from "@/hooks/useCustomDomainStore";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Package } from "lucide-react";
+import Index from "@/pages/Index";
 import RetailStore from "@/pages/RetailStore";
 import RetailProductPage from "@/pages/RetailProductPage";
 import RetailCheckout from "@/pages/RetailCheckout";
